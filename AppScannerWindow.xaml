@@ -1,0 +1,44 @@
+﻿<ui:FluentWindow x:Class="FastApp.AppScannerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Add Application" Height="500" Width="450"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Title="Scan for Apps" Grid.Row="0" />
+
+        <ui:TextBox Grid.Row="1" 
+                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                    PlaceholderText="Search applications..." 
+                    Icon="Search24"
+                    Margin="20,10,20,10" Cursor="IBeam"/>
+
+        <ListBox Grid.Row="2" ItemsSource="{Binding DetectedAppsView}" Margin="20,0,20,20" Background="Transparent" BorderThickness="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" Foreground="White" FontSize="14"/>
+
+                        <ui:Button Grid.Column="1" Content="Track App" Appearance="Primary" Padding="15,5"
+                                   Command="{Binding DataContext.SaveDetectedAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                   CommandParameter="{Binding}"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</ui:FluentWindow>

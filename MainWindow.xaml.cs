@@ -1,0 +1,139 @@
+﻿using FastApp.Services;
+using FastApp.ViewModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Input;
+using Wpf.Ui.Controls;
+
+namespace FastApp
+{
+    public partial class MainWindow : FluentWindow
+    {
+        private MainViewModel _viewModel;
+
+        // NEW: The advanced global hook
+        private AdvancedKeyboardHook _keyboardHook;
+
+        private TrayService _trayService;
+        private bool _isForceExiting = false;
+
+        // NEW: Variables to track keys while recording a hotkey on the UI
+        private HashSet<Key> _currentCaptureKeys = new();
+        private bool _isCapturing = false;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+
+            _viewModel = new MainViewModel();
+            DataContext = _viewModel;
+
+            // Initialize the advanced hook
+            _keyboardHook = new AdvancedKeyboardHook();
+
+            // Wire the hook directly to the ViewModel's evaluation engine
+            _keyboardHook.KeysChanged += _viewModel.CheckForHotkeys;
+
+            _trayService = new TrayService(this);
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (!_isForceExiting)
+            {
+                // The user clicked the Red X. Cancel the shutdown, and just hide the window!
+                e.Cancel = true;
+                this.Hide();
+            }
+            else
+            {
+                // We are actually shutting down from the tray icon. Clean up the services.
+                _trayService?.Dispose();
+                _keyboardHook?.Dispose();
+                base.OnClosing(e);
+            }
+        }
+
+        // This is called ONLY by the "Exit" button in our TrayService's right-click menu
+        public void ForceExit()
+        {
+            _isForceExiting = true;
+            System.Windows.Application.Current.Shutdown();
+        }
+
+        private void ClearHotkey_Click(object sender, RoutedEventArgs e)
+        {
+            var button = (Wpf.Ui.Controls.Button)sender;
+            var appItem = (AppItemModel)button.DataContext;
+
+            // Reset the database model using the new string sequence
+            appItem.HotkeyDisplayText = "None";
+            appItem.HotkeySequence = string.Empty;
+
+            _viewModel.SaveDatabase();
+        }
+
+        // 1. When you click inside the box, it resets to a clean slate
+        private void HotkeyTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            _currentCaptureKeys.Clear();
+
+            var textBox = (Wpf.Ui.Controls.TextBox)sender;
+            textBox.Text = "Listening (Press keys...)";
+        }
+
+        // 2. As you press keys, it adds them and saves instantly
+        private void HotkeyTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            e.Handled = true;
+            Key key = (e.Key == Key.System ? e.SystemKey : e.Key);
+
+            // Only update if it's a new key being added to our combo
+            if (_currentCaptureKeys.Add(key))
+            {
+                var textBox = (Wpf.Ui.Controls.TextBox)sender;
+                var appItem = (AppItemModel)textBox.DataContext;
+
+                string displayCombo = string.Join(" + ", _currentCaptureKeys.Select(k => k.ToString()));
+
+                textBox.Text = displayCombo;
+                appItem.HotkeySequence = string.Join(",", _currentCaptureKeys.Select(k => k.ToString()));
+                appItem.HotkeyDisplayText = displayCombo;
+
+                _viewModel.SaveDatabase();
+            }
+        }
+
+        // 3. We completely ignore KeyUp so you don't ruin the capture by letting go too early
+        private void HotkeyTextBox_PreviewKeyUp(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            e.Handled = true;
+        }
+
+        // This fires the millisecond the window is actually created by the OS
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+
+            // 1. Force our App Manager to always be registered in Windows Startup
+            if (!StartupTaskService.IsStartupEnabled())
+            {
+                StartupTaskService.SetStartup(true);
+            }
+
+            // 2. Check if Windows launched us silently via the startup arguments
+
+
+
+        }
+
+        // Cleanup to prevent memory leaks when the app closes
+        protected override void OnClosed(EventArgs e)
+        {
+            _keyboardHook?.Dispose();
+            base.OnClosed(e);
+        }
+    }
+}
