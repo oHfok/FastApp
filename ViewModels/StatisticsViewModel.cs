@@ -15,6 +15,8 @@ namespace FastApp.ViewModels
 {
     public partial class StatisticsViewModel : ObservableObject
     {
+
+        private bool _hasLoadedOnce = false;
         // Global Stats
         [ObservableProperty] private string _pcTimeToday;
         [ObservableProperty] private string _pcTimeWeek;
@@ -110,7 +112,7 @@ namespace FastApp.ViewModels
                 return ((AppStatItem)item).AppName.Contains(StatsSearchText, StringComparison.OrdinalIgnoreCase);
             };
 
-            RefreshStats();
+            // RefreshStats();
         }
 
         [ObservableProperty] private string _detailCategory;
@@ -135,9 +137,10 @@ namespace FastApp.ViewModels
             {
                 _dbContext.AppCategories.Add(new AppCategoryMapping { AppName = DetailAppName, Category = value });
             }
-
+            
             _dbContext.SaveChanges();
             RefreshStats();
+            _mainVM.UpdateGamingProcessCache();
         }
 
         partial void OnStatsSearchTextChanged(string value)
@@ -145,10 +148,18 @@ namespace FastApp.ViewModels
             FilteredTopApps.Refresh();
         }
 
-        public void RefreshStats()
+        public void RefreshStats(bool forceLoad = false)
         {
+            if (!_hasLoadedOnce && !forceLoad)
+            {
+                return;
+            }
+            _hasLoadedOnce = true;
+
             DateTime today = DateTime.Today;
-            DateTime startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+            // Shift the .NET logic so Monday = 0 days subtracted, and Sunday = 6 days subtracted.
+            int diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
+            DateTime startOfWeek = today.AddDays(-diff);
             DateTime startOfMonth = new DateTime(today.Year, today.Month, 1);
             DateTime startOfYear = new DateTime(today.Year, 1, 1);
 
@@ -348,7 +359,9 @@ namespace FastApp.ViewModels
             DetailCategory = dbCategory != null ? dbCategory.Category : "Other";
 
             DateTime today = DateTime.Today;
-            DateTime startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+            // Shift the .NET logic so Monday = 0 days subtracted, and Sunday = 6 days subtracted.
+            int diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
+            DateTime startOfWeek = today.AddDays(-diff);
             DateTime startOfMonth = new DateTime(today.Year, today.Month, 1);
             DateTime startOfYear = new DateTime(today.Year, 1, 1);
             DateTime thirtyDaysAgo = today.AddDays(-30);

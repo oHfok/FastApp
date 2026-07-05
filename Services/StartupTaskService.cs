@@ -1,47 +1,110 @@
 ﻿using Microsoft.Win32;
+using System;
 using System.Diagnostics;
-using System.IO;
 
 namespace FastApp.Services
 {
     public static class StartupTaskService
     {
-        // This is the standard Windows Registry key for user-specific startup apps
-        private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        private const string TaskName = "FastApp_LogonTask";
+        private const string RegistryKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string AppName = "FastApp";
 
-        public static bool IsStartupEnabled()
+        // Checks if the app is registered AND if the path perfectly matches where the .exe is right now
+        public static bool IsStartupCorrectlyRegistered()
         {
-            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RunKey))
+            string currentPath = Environment.ProcessPath;
+
+            // 1. Check Task Scheduler First
+            try
             {
-                return key?.GetValue(AppName) != null;
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "schtasks",
+                    // Querying as XML allows us to easily search for the exact string path
+                    Arguments = $"/query /tn \"{TaskName}\" /xml",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var process = Process.Start(psi);
+                string output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+
+                if (process.ExitCode == 0 && output.Contains(currentPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true; // Task exists and points to the correct, current path!
+                }
             }
+            catch { }
+
+            // 2. Fallback: Check Registry
+            try
+            {
+                using RegistryKey key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath);
+                string regValue = key?.GetValue(AppName) as string;
+                if (regValue != null && regValue.Contains(currentPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true; // Registry exists and points to the correct, current path!
+                }
+            }
+            catch { }
+
+            return false; // Not registered, or the user moved the file to a new folder!
         }
 
         public static void SetStartup(bool enable)
         {
-            string exePath = Process.GetCurrentProcess().MainModule.FileName;
+            string currentPath = Environment.ProcessPath;
+            string commandArgs = $"\"{currentPath}\" --minimized";
 
-            // We pass the argument --minimized so it stays in the tray
-            string command = $"\"{exePath}\" --minimized";
-
-            try
+            if (enable)
             {
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RunKey, true))
+                // 1. Try Task Scheduler (Zero-Delay Boot)
+                bool taskSuccess = false;
+                try
                 {
-                    if (enable)
+                    var psi = new ProcessStartInfo
                     {
-                        key.SetValue(AppName, command);
-                    }
-                    else
+                        FileName = "schtasks",
+                        // /f forcefully overwrites the old rule if the user moved the file
+                        Arguments = $"/create /tn \"{TaskName}\" /tr \"\\\"{currentPath}\\\" --minimized\" /sc onlogon /f",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    using var process = Process.Start(psi);
+                    process.WaitForExit();
+                    taskSuccess = (process.ExitCode == 0);
+                }
+                catch { }
+
+                // 2. Fallback to Registry if Task Scheduler blocks us (Group Policy/Permissions)
+                if (!taskSuccess)
+                {
+                    try
                     {
-                        key.DeleteValue(AppName, false);
+                        using RegistryKey key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true);
+                        key.SetValue(AppName, commandArgs);
                     }
+                    catch { }
                 }
             }
-            catch
+            else
             {
-                // Registry access failed (permissions issue)
+                // Delete from both places to be absolutely clean
+                try
+                {
+                    var psi = new ProcessStartInfo { FileName = "schtasks", Arguments = $"/delete /tn \"{TaskName}\" /f", UseShellExecute = false, CreateNoWindow = true };
+                    Process.Start(psi)?.WaitForExit();
+                }
+                catch { }
+
+                try
+                {
+                    using RegistryKey key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true);
+                    key.DeleteValue(AppName, false);
+                }
+                catch { }
             }
         }
     }

@@ -1,0 +1,63 @@
+{
+    "codeDump.includeExtensions": [
+        "ts",
+        "tsx",
+        "js",
+        "jsx",
+        "json",
+        "java",
+        "kt",
+        "kts",
+        "groovy",
+        "xml",
+        "yml",
+        "yaml",
+        "properties",
+        "gradle",
+        "sql",
+        "sh",
+        "bat",
+        "ps1",
+        "txt",
+        "ini",
+        "cfg",
+        "csv",
+        "md"
+    ],
+    "codeDump.includeFileNames": [
+        "Dockerfile",
+        "Jenkinsfile",
+        "Makefile",
+        ".editorconfig",
+        ".gitattributes",
+        "pom.xml",
+        "build.gradle",
+        "settings.gradle",
+        "gradle.properties"
+    ],
+    "codeDump.excludeDirs": [
+        "node_modules",
+        "dist",
+        "out",
+        "build",
+        "target",
+        "bin",
+        "libs",
+        "generated",
+        "git",
+        "gradle",
+        "mvn",
+        "idea",
+        "vscode",
+        "m2",
+        "coverage",
+        "reports"
+    ],
+    "codeDump.excludeFileNames": [
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "CHANGELOG.md"
+    ],
+    "codeDump.maxFileBytes": 5242880
+}

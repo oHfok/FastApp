@@ -23,7 +23,8 @@
         <ui:TitleBar Title="FastApp" Grid.Row="0" Icon="/Assets/favicon(1).ico" />
 
         <!-- The Tab System -->
-        <TabControl Grid.Row="1" Margin="20,0,20,20" Background="Transparent" BorderThickness="0">
+        <!-- Add SelectedIndex="{Binding SelectedTabIndex}" to your TabControl -->
+        <TabControl Grid.Row="1" Margin="20,0,20,20" Background="Transparent" BorderThickness="0" SelectedIndex="{Binding SelectedTabIndex}">
 
             <!-- TAB 1: APPLICATIONS -->
             <TabItem Margin="0,0,0,0">

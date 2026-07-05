@@ -18,6 +18,9 @@ namespace FastApp.Services
 
         public DbSet<AppCategoryMapping> AppCategories { get; set; }
 
+        public DbSet<SessionLog> SessionLogs { get; set; }
+        public DbSet<MacroEventLog> MacroEventLogs { get; set; }
+
         public AppDbContext()
         {
             // Find the user's hidden AppData/Local folder

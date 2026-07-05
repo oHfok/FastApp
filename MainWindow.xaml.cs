@@ -27,16 +27,18 @@ namespace FastApp
         {
             InitializeComponent();
 
+            // 1. TRAY FIRST: Instant visibility in the taskbar.
+            _trayService = new TrayService(this);
+
+            // 2. HOOK SECOND: Macros are live immediately, even if the DB is still loading.
+            _keyboardHook = new AdvancedKeyboardHook();
+
+            // 3. VIEWMODEL LAST: Safe to do DB work now.
             _viewModel = new MainViewModel();
             DataContext = _viewModel;
 
-            // Initialize the advanced hook
-            _keyboardHook = new AdvancedKeyboardHook();
-
-            // Wire the hook directly to the ViewModel's evaluation engine
+            // 4. WIRE THE HOOK: Connect the live hook to the loaded ViewModel.
             _keyboardHook.KeysChanged += _viewModel.CheckForHotkeys;
-
-            _trayService = new TrayService(this);
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
@@ -73,6 +75,7 @@ namespace FastApp
             appItem.HotkeySequence = string.Empty;
 
             _viewModel.SaveDatabase();
+            _viewModel.RecompileHotkeys();
         }
 
         // 1. When you click inside the box, it resets to a clean slate
@@ -103,6 +106,7 @@ namespace FastApp
                 appItem.HotkeyDisplayText = displayCombo;
 
                 _viewModel.SaveDatabase();
+                _viewModel.RecompileHotkeys();
             }
         }
 
@@ -117,16 +121,12 @@ namespace FastApp
         {
             base.OnSourceInitialized(e);
 
-            // 1. Force our App Manager to always be registered in Windows Startup
-            if (!StartupTaskService.IsStartupEnabled())
+            // 1. Self-Healing Startup Check
+            // If they moved the .exe, this instantly fixes the OS paths!
+            if (!StartupTaskService.IsStartupCorrectlyRegistered())
             {
                 StartupTaskService.SetStartup(true);
             }
-
-            // 2. Check if Windows launched us silently via the startup arguments
-
-
-
         }
 
         // Cleanup to prevent memory leaks when the app closes
