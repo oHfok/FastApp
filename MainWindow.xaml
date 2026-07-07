@@ -22,11 +22,8 @@
 
         <ui:TitleBar Title="FastApp" Grid.Row="0" Icon="/Assets/favicon(1).ico" />
 
-        <!-- The Tab System -->
-        <!-- Add SelectedIndex="{Binding SelectedTabIndex}" to your TabControl -->
         <TabControl Grid.Row="1" Margin="20,0,20,20" Background="Transparent" BorderThickness="0" SelectedIndex="{Binding SelectedTabIndex}">
 
-            <!-- TAB 1: APPLICATIONS -->
             <TabItem Margin="0,0,0,0">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" Margin="5">
@@ -47,12 +44,9 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- SEARCH BAR (Moved left) -->
                         <ui:TextBox Grid.Column="0" Text="{Binding AppSearchText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Search items..." Icon="Search24" Width="250" HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
-                        <!-- THE 3 ACTION BUTTONS + NEW OSD TOGGLE -->
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                            <!-- NEW: OSD Toggle -->
                             <ui:ToggleSwitch Content="Overlay OSD" IsChecked="{Binding EnableOsd}" VerticalAlignment="Center" Margin="0,0,25,0"/>
                             <ui:Button Content="Scan PC" Icon="SearchInfo24" Appearance="Secondary" Command="{Binding AddApplicationCommand}" Padding="15,6" Margin="0,0,10,0"/>
                             <ui:Button Content="Browse File" Icon="FolderOpen24" Appearance="Secondary" Command="{Binding AddCustomFileCommand}" Padding="15,6" Margin="0,0,10,0"/>
@@ -75,7 +69,6 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
 
-                                                <!-- DYNAMIC IDENTIFIER ICON -->
                                                 <ui:SymbolIcon Grid.Column="0" FontSize="22" Margin="0,0,15,0" VerticalAlignment="Center">
                                                     <ui:SymbolIcon.Style>
                                                         <Style TargetType="ui:SymbolIcon">
@@ -91,13 +84,11 @@
                                                     </ui:SymbolIcon.Style>
                                                 </ui:SymbolIcon>
 
-                                                <!-- DYNAMIC HEADER: Big Custom Name + Small Original Name -->
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding DisplayNamePrimary}" FontSize="16" FontWeight="SemiBold" Foreground="White" />
                                                     <TextBlock Text="{Binding Name}" FontSize="11" Foreground="#888888" Visibility="{Binding SubtitleVisibility}" Margin="0,2,0,0"/>
                                                 </StackPanel>
 
-                                                <!-- Sleek Hotkey Badge -->
                                                 <Border Grid.Column="2" Background="#1AFFFFFF" CornerRadius="4" Padding="10,4" Margin="0,0,20,0" VerticalAlignment="Center">
                                                     <StackPanel Orientation="Horizontal">
                                                         <ui:SymbolIcon Symbol="Keyboard24" FontSize="14" Foreground="#0078D7" Margin="0,0,6,0"/>
@@ -105,20 +96,16 @@
                                                     </StackPanel>
                                                 </Border>
 
-                                                <!-- Auto-Start Toggle (APP ONLY) -->
                                                 <ui:ToggleSwitch Grid.Column="3" IsChecked="{Binding LaunchOnStartup}" Content="Auto-Start" Visibility="{Binding AppSettingsVisibility}" VerticalAlignment="Center" Margin="0,0,20,0"/>
 
-                                                <!-- Delete Button -->
                                                 <ui:Button Grid.Column="4" Content="Delete" Icon="Delete24" ToolTip="Remove App" Appearance="Danger" VerticalAlignment="Center" 
                                                            Command="{Binding ElementName=RootWindow, Path=DataContext.RemoveApplicationCommand}" 
                                                            CommandParameter="{Binding}"/>
                                             </Grid>
                                         </ui:CardExpander.Header>
 
-                                        <!-- Expanded Settings Area -->
                                         <StackPanel Margin="0,15,0,5">
 
-                                            <!-- TOP CONFIGURATION ROW -->
                                             <Grid Margin="0,0,0,20">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
@@ -126,7 +113,6 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
 
-                                                <!-- ACTION ONLY: Specialized Action Selector -->
                                                 <StackPanel Grid.Column="0" Margin="0,0,30,0" Visibility="{Binding ActionSettingsVisibility}">
                                                     <TextBlock Text="System Action Type" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
                                                     <ComboBox SelectedIndex="{Binding ActionSelectionIndex}" Width="220">
@@ -136,26 +122,22 @@
                                                     </ComboBox>
                                                 </StackPanel>
 
-                                                <!-- APP ONLY: Executable Path -->
                                                 <StackPanel Grid.Column="0" Margin="0,0,30,0" Visibility="{Binding AppSettingsVisibility}">
                                                     <TextBlock Text="Executable Path" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
                                                     <TextBlock Text="{Binding ExecutablePath}" FontSize="13" Foreground="#999999" VerticalAlignment="Center" Margin="0,5,0,0"/>
                                                 </StackPanel>
 
-                                                <!-- ACTION ONLY: Paste Text Payload -->
                                                 <StackPanel Grid.Column="1" Visibility="{Binding ShowTextPayload}">
                                                     <TextBlock Text="Text to Paste" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
                                                     <ui:TextBox Text="{Binding ActionPayload, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Enter text snippet..." MinHeight="32" Margin="0,0,20,0"/>
                                                 </StackPanel>
 
-                                                <!-- Display Name Editor -->
                                                 <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top">
                                                     <TextBlock Text="Custom Display Name" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
                                                     <ui:TextBox Text="{Binding CustomName, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="E.g. Panic Mute" MinHeight="32" Width="180"/>
                                                 </StackPanel>
                                             </Grid>
 
-                                            <!-- BOTTOM CONFIGURATION ROW -->
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
@@ -163,7 +145,6 @@
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
 
-                                                <!-- Left Side: Hotkey Setup (ALWAYS VISIBLE) -->
                                                 <StackPanel Grid.Column="0" Margin="0,0,40,0">
                                                     <TextBlock Text="Reassign Hotkey" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
                                                     <StackPanel Orientation="Horizontal">
@@ -172,7 +153,6 @@
                                                     </StackPanel>
                                                 </StackPanel>
 
-                                                <!-- Middle: Focus Mode (APP ONLY) -->
                                                 <StackPanel Grid.Column="1" Margin="0,0,40,0" Visibility="{Binding AppSettingsVisibility}">
                                                     <TextBlock Text="Daily Limit (Minutes)" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
                                                     <StackPanel Orientation="Horizontal">
@@ -181,18 +161,15 @@
                                                     </StackPanel>
                                                 </StackPanel>
 
-                                                <!-- Right Side: Usage Stats -->
                                                 <StackPanel Grid.Column="2" HorizontalAlignment="Right">
                                                     <TextBlock Text="Quick Stats" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
                                                     <StackPanel Orientation="Horizontal">
 
-                                                        <!-- TIME RUNNING: Restricted to APPS ONLY -->
                                                         <StackPanel Orientation="Horizontal" Visibility="{Binding AppSettingsVisibility}" Margin="0,0,25,0">
                                                             <ui:SymbolIcon Symbol="Clock24" Foreground="#0078D7" FontSize="16" VerticalAlignment="Center"/>
                                                             <TextBlock Text="{Binding TimeRunning, StringFormat='{}{0:hh\\:mm\\:ss}'}" Foreground="#CCCCCC" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="14"/>
                                                         </StackPanel>
 
-                                                        <!-- TRIGGER COUNT: Visible for BOTH Apps and Actions -->
                                                         <StackPanel Orientation="Horizontal">
                                                             <ui:SymbolIcon Symbol="Flash24" Foreground="#FF8C00" FontSize="16" VerticalAlignment="Center"/>
                                                             <TextBlock Text="{Binding HotkeyTriggerCount, StringFormat='{}Triggered {0}x'}" Foreground="#CCCCCC" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="14"/>
@@ -210,7 +187,6 @@
                 </Grid>
             </TabItem>
 
-            <!-- TAB 2: STATISTICS -->
             <TabItem DataContext="{Binding StatisticsVM}">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" Margin="5">
@@ -221,35 +197,26 @@
 
                 <Grid Margin="0,20,0,0">
 
-                    <!-- ============================================== -->
-                    <!-- MAIN LEADERBOARD VIEW -->
-                    <!-- ============================================== -->
                     <Grid Visibility="{Binding MainViewVisibility}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
-                            <!-- Row 0: PC Uptime Header -->
                             <RowDefinition Height="Auto"/>
-                            <!-- Row 1: Digital Diet Bar -->
                             <RowDefinition Height="Auto"/>
-                            <!-- Row 2: The 4 Stat Cards -->
                             <RowDefinition Height="*"/>
-                            <!-- Row 3: Heatmap & Apps Layout -->
                         </Grid.RowDefinitions>
 
-                        <!-- ROW 0: Header, Wrapped Button & AFK Toggle -->
                         <Grid Grid.Row="0" Margin="0,0,10,15">
                             <TextBlock Text="PC Uptime Overview" FontSize="18" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <ui:Button Content="Web Dashboard" Icon="Globe24" Appearance="Secondary" Command="{Binding OpenWebDashboardCommand}" Margin="0,0,15,0"/>
                                 <ui:Button Content="Month Wrapped" Icon="Gift24" Appearance="Primary" Command="{Binding GenerateWrappedCommand}" Margin="0,0,15,0"/>
                                 <ui:ToggleSwitch IsChecked="{Binding ExcludeAfkTime}" Content="Exclude AFK Time (5+ min idle)"/>
                             </StackPanel>
                         </Grid>
 
-                        <!-- ROW 1: Digital Diet Bar (Fully Responsive) -->
                         <StackPanel Grid.Row="1" Margin="0,0,10,25">
                             <TextBlock Text="Digital Diet (Today)" FontSize="14" Foreground="Gray" Margin="0,0,0,8"/>
 
-                            <!-- Notice x:Name="DietContainer" - this is how the converter knows how wide the window is! -->
                             <Border x:Name="DietContainer" Height="12" CornerRadius="6" Background="#151515" ClipToBounds="True">
                                 <ItemsControl ItemsSource="{Binding DietSegments}">
                                     <ItemsControl.ItemsPanel>
@@ -272,11 +239,9 @@
                                 </ItemsControl>
                             </Border>
 
-                            <!-- FIXED LEGEND: Uses WrapPanel and properly binds to TooltipText and Color -->
                             <ItemsControl ItemsSource="{Binding DietSegments}" Margin="0,8,0,0">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <!-- WrapPanel allows the legend to span multiple lines if there are many categories -->
                                         <WrapPanel Orientation="Horizontal"/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
@@ -291,7 +256,6 @@
                             </ItemsControl>
                         </StackPanel>
 
-                        <!-- ROW 2: Quick Stat Cards -->
                         <UniformGrid Grid.Row="2" Columns="4" Margin="0,0,10,25">
                             <ui:CardControl Margin="0,0,15,0" Padding="15">
                                 <ui:CardControl.Header>
@@ -333,7 +297,6 @@
                             </ui:CardControl>
                         </UniformGrid>
 
-                        <!-- ROW 3: SIDE-BY-SIDE LAYOUT -->
                         <Grid Grid.Row="3" Margin="0,0,10,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -341,7 +304,6 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- LEFT COLUMN: Heatmap -->
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="Activity This Month" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"/>
                                 <Border Background="#151515" CornerRadius="6" Padding="15,15,15,10" HorizontalAlignment="Left">
@@ -360,7 +322,6 @@
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
 
-                                        <!-- The Color Legend -->
                                         <StackPanel Orientation="Horizontal" Margin="0,15,0,0" HorizontalAlignment="Right">
                                             <TextBlock Text="0h" Foreground="Gray" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                             <Border Width="12" Height="12" Margin="1.5" CornerRadius="2" Background="#161B22" ToolTip="0 hours"/>
@@ -374,7 +335,6 @@
                                 </Border>
                             </StackPanel>
 
-                            <!-- RIGHT COLUMN: Top Apps & Hidden Apps -->
                             <Grid Grid.Column="2">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -391,7 +351,6 @@
                                     <ItemsControl ItemsSource="{Binding FilteredTopApps}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <!-- ZMIANA: Używamy ElementName=RootWindow, aby ominąć problemy z TabControl -->
                                                 <ui:CardAction Command="{Binding DataContext.StatisticsVM.ShowAppDetailsCommand, ElementName=RootWindow}" 
                                                                CommandParameter="{Binding}" 
                                                                Margin="0,0,10,12" Padding="15">
@@ -399,32 +358,25 @@
 
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="60"/>
-                                                            <!-- Spotify Rank Column -->
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
 
-                                                        <!-- Spotify Rank Tracker -->
                                                         <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,10,0">
 
-                                                            <!-- dynamically colored Rank Text -->
                                                             <TextBlock Text="{Binding CurrentRank, StringFormat='#{0}'}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center">
                                                                 <TextBlock.Style>
                                                                     <Style TargetType="TextBlock">
                                                                         <Setter Property="Foreground" Value="White"/>
-                                                                        <!-- Default Color -->
                                                                         <Style.Triggers>
                                                                             <DataTrigger Binding="{Binding CurrentRank}" Value="1">
                                                                                 <Setter Property="Foreground" Value="#FFD700"/>
-                                                                                <!-- Gold -->
                                                                             </DataTrigger>
                                                                             <DataTrigger Binding="{Binding CurrentRank}" Value="2">
                                                                                 <Setter Property="Foreground" Value="#C0C0C0"/>
-                                                                                <!-- Silver -->
                                                                             </DataTrigger>
                                                                             <DataTrigger Binding="{Binding CurrentRank}" Value="3">
                                                                                 <Setter Property="Foreground" Value="#CD7F32"/>
-                                                                                <!-- Bronze -->
                                                                             </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
@@ -440,32 +392,25 @@
                                                         </StackPanel>
 
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                            <!-- App Name & Category Dot -->
                                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                                                 <TextBlock Text="{Binding AppName}" FontSize="15" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
                                                                 <Ellipse Width="6" Height="6" Fill="{Binding CategoryColor}" Margin="8,0,4,0" VerticalAlignment="Center"/>
                                                                 <TextBlock Text="{Binding Category}" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
                                                             </StackPanel>
 
-                                                            <!-- Dynamically colored Progress Bar -->
                                                             <ProgressBar Value="{Binding PercentageOfMax}" Maximum="100" Height="2" Margin="0,0,20,0" Background="#2A2A2A" BorderThickness="0">
                                                                 <ProgressBar.Style>
-                                                                    <!-- Keep your existing triggers here -->
                                                                     <Style TargetType="ProgressBar">
                                                                         <Setter Property="Foreground" Value="#0078D7"/>
-                                                                        <!-- Default Blue -->
                                                                         <Style.Triggers>
                                                                             <DataTrigger Binding="{Binding CurrentRank}" Value="1">
                                                                                 <Setter Property="Foreground" Value="#FFD700"/>
-                                                                                <!-- Gold -->
                                                                             </DataTrigger>
                                                                             <DataTrigger Binding="{Binding CurrentRank}" Value="2">
                                                                                 <Setter Property="Foreground" Value="#C0C0C0"/>
-                                                                                <!-- Silver -->
                                                                             </DataTrigger>
                                                                             <DataTrigger Binding="{Binding CurrentRank}" Value="3">
                                                                                 <Setter Property="Foreground" Value="#CD7F32"/>
-                                                                                <!-- Bronze -->
                                                                             </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
@@ -482,7 +427,6 @@
                                 </ScrollViewer>
 
 
-                                <!-- Hidden Apps Manager -->
                                 <ui:CardExpander Grid.Row="2" Margin="0,10,10,0" VerticalAlignment="Bottom">
                                     <ui:CardExpander.Header>
                                         <TextBlock Text="Hidden Applications" FontSize="14" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
@@ -495,8 +439,8 @@
                                                     <Grid Margin="0,0,10,8">
                                                         <TextBlock Text="{Binding AppName}" Foreground="Gray" VerticalAlignment="Center"/>
                                                         <ui:Button Content="Restore" Appearance="Transparent" Foreground="#0078D7" HorizontalAlignment="Right" Padding="8,4"
-           Command="{Binding DataContext.StatisticsVM.UnhideAppCommand, ElementName=RootWindow}" 
-           CommandParameter="{Binding AppName}" />
+                                                                   Command="{Binding DataContext.StatisticsVM.UnhideAppCommand, ElementName=RootWindow}" 
+                                                                   CommandParameter="{Binding AppName}" />
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
@@ -506,32 +450,22 @@
                             </Grid>
                         </Grid>
                     </Grid>
-                    <!-- ============================================== -->
-                    <!-- DEEP DIVE DETAIL OVERLAY -->
-                    <!-- ============================================== -->
                     <Grid Visibility="{Binding DetailViewVisibility}" Margin="0,0,10,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
-                            <!-- Row 0: Back Button -->
                             <RowDefinition Height="Auto"/>
-                            <!-- Row 1: App Header -->
                             <RowDefinition Height="*"/>
-                            <!-- Row 2: ScrollViewer (Takes remaining space!) -->
                         </Grid.RowDefinitions>
 
                         <ui:Button Grid.Row="0" Content="Back to Leaderboard" Icon="ArrowLeft24" Appearance="Transparent" 
-           Command="{Binding DataContext.StatisticsVM.CloseDetailsCommand, ElementName=RootWindow}" Margin="-10,0,0,15"/>
+                                   Command="{Binding DataContext.StatisticsVM.CloseDetailsCommand, ElementName=RootWindow}" Margin="-10,0,0,15"/>
 
-                        <!-- App Header and Explorer Bridge -->
                         <Grid Grid.Row="1" Margin="0,0,0,25">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
-                                <!-- Title Row -->
                                 <RowDefinition Height="Auto"/>
-                                <!-- Controls Row -->
                             </Grid.RowDefinitions>
 
-                            <!-- Row 0: Title and Action Buttons -->
                             <Grid Grid.Row="0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -542,46 +476,33 @@
 
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <ui:Button Content="Hide" Icon="EyeOff24" Appearance="Danger" Padding="15,8" Margin="0,0,10,0" 
-                       Command="{Binding DataContext.StatisticsVM.HideAppCommand, ElementName=RootWindow}" />
+                                               Command="{Binding DataContext.StatisticsVM.HideAppCommand, ElementName=RootWindow}" />
                                     <ui:Button Content="Add" Icon="Add24" Appearance="Primary" Padding="15,8" 
-                       Visibility="{Binding AddButtonVisibility}" 
-                       Command="{Binding DataContext.StatisticsVM.AddToManagedAppsCommand, ElementName=RootWindow}" />
+                                               Visibility="{Binding AddButtonVisibility}" 
+                                               Command="{Binding DataContext.StatisticsVM.AddToManagedAppsCommand, ElementName=RootWindow}" />
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Row 1: Executable Path & Category Selector (Structured for Space) -->
                             <Grid Grid.Row="1" Margin="0,15,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <!-- Path takes available middle space -->
                                     <ColumnDefinition Width="Auto"/>
-                                    <!-- Category takes fixed width -->
                                 </Grid.ColumnDefinitions>
 
-                                <!-- Left: Path and Open Button -->
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Bottom">
                                     <TextBlock Text="{Binding DetailExecutablePath}" FontSize="13" Foreground="#888888" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                     <ui:Button Content="Open Location" Icon="FolderOpen24" Appearance="Secondary" FontSize="12" Padding="8,4" 
-                       Visibility="{Binding OpenExplorerVisibility}" 
-                       Command="{Binding DataContext.StatisticsVM.OpenInExplorerCommand, ElementName=RootWindow}" />
+                                               Visibility="{Binding OpenExplorerVisibility}" 
+                                               Command="{Binding DataContext.StatisticsVM.OpenInExplorerCommand, ElementName=RootWindow}" />
                                 </StackPanel>
 
-                                <!-- Right: Category Selector -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="Category:" FontSize="13" Foreground="Gray" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                    <ComboBox SelectedValue="{Binding DetailCategory, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Width="160" MinHeight="32">
-                                        <ComboBoxItem Content="Development"/>
-                                        <ComboBoxItem Content="Gaming"/>
-                                        <ComboBoxItem Content="Productivity"/>
-                                        <ComboBoxItem Content="Browsing"/>
-                                        <ComboBoxItem Content="Communication"/>
-                                        <ComboBoxItem Content="Media Production"/>
-                                        <ComboBoxItem Content="Music"/>
-                                        <ComboBoxItem Content="Fun"/>
-                                        <ComboBoxItem Content="Education"/>
-                                        <ComboBoxItem Content="Utilities"/>
-                                        <ComboBoxItem Content="Other"/>
-                                    </ComboBox>
+
+                                    <ComboBox ItemsSource="{Binding AvailableCategories}" 
+                                              SelectedItem="{Binding DetailCategory, UpdateSourceTrigger=PropertyChanged}" 
+                                              Width="160" MinHeight="32"/>
+
                                 </StackPanel>
                             </Grid>
                         </Grid>
@@ -589,7 +510,6 @@
                         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
                             <StackPanel>
 
-                                <!-- HERO BANNER: ALL TIME STATS -->
                                 <Border Background="#101010" BorderBrush="#222222" BorderThickness="1" CornerRadius="8" Padding="25" Margin="0,0,0,20">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -600,7 +520,6 @@
                                             <TextBlock Text="ALL TIME TOTAL" FontSize="14" FontWeight="Bold" Foreground="#0078D7" Margin="0,0,0,5"/>
                                             <TextBlock Text="{Binding DetailTimeAllTime}" FontSize="48" FontWeight="Black" Foreground="White" Margin="0,0,0,5"/>
                                             <TextBlock Text="{Binding DetailActiveAllTime, StringFormat='{}Active: {0}'}" Foreground="#FF8C00" FontSize="12" Margin="0,2,0,0"/>
-                                            <!-- Percentage Tag -->
                                             <Border Background="#1AFFFFFF" CornerRadius="4" Padding="10,4" HorizontalAlignment="Left">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="DataPie24" Foreground="#FFD700" FontSize="14" Margin="0,0,6,0"/>
@@ -613,7 +532,6 @@
                                     </Grid>
                                 </Border>
 
-                                <!-- TIME TIMELINE (Today -> Year) -->
                                 <TextBlock Text="Time Breakdown" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"/>
                                 <UniformGrid Columns="4" Margin="0,0,0,25">
                                     <ui:CardControl Margin="0,0,10,0" Padding="15" Background="#151515" BorderThickness="0">
@@ -657,11 +575,9 @@
                                     </ui:CardControl>
                                 </UniformGrid>
 
-                                <!-- NERD STATS -->
                                 <TextBlock Text="Behavioral Insights" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"/>
                                 <UniformGrid Columns="2" Rows="2" Margin="0,0,0,20">
 
-                                    <!-- Record Day -->
                                     <Border Background="#151515" CornerRadius="6" Padding="15" Margin="0,0,10,10">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -672,7 +588,6 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Daily Avg -->
                                     <Border Background="#151515" CornerRadius="6" Padding="15" Margin="0,0,0,10">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -683,11 +598,9 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Usage Bias -->
                                     <Border Background="#151515" CornerRadius="6" Padding="15" Margin="0,0,10,0">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                <!-- FIX: Replaced ScaleBalance24 with DataBarHorizontal24 -->
                                                 <ui:SymbolIcon Symbol="DataBarHorizontal24" Foreground="#9D00FF" FontSize="16" Margin="0,0,8,0"/>
                                                 <TextBlock Text="Usage Pattern" Foreground="Gray" FontSize="13" VerticalAlignment="Center"/>
                                             </StackPanel>
@@ -695,11 +608,9 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Consistency -->
                                     <Border Background="#151515" CornerRadius="6" Padding="15" Margin="0,0,0,0">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                <!-- FIX: Replaced CalendarCheck24 with Calendar24 -->
                                                 <ui:SymbolIcon Symbol="Calendar24" Foreground="#26A641" FontSize="16" Margin="0,0,8,0"/>
                                                 <TextBlock Text="30-Day Consistency" Foreground="Gray" FontSize="13" VerticalAlignment="Center"/>
                                             </StackPanel>
@@ -711,9 +622,6 @@
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>
-                    <!-- ============================================== -->
-                    <!-- FASTAPP WRAPPED OVERLAY -->
-                    <!-- ============================================== -->
                     <Grid Visibility="{Binding WrappedVisibility}" Background="#F50D0D0D" Panel.ZIndex="100" Margin="-20">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -727,7 +635,6 @@
                             <TextBlock Text="Your digital life, visualized." FontSize="16" Foreground="Gray" HorizontalAlignment="Center" Margin="0,0,0,40"/>
 
                             <UniformGrid Columns="2" Rows="2" Width="650" Height="320">
-                                <!-- TOP APP -->
                                 <Border Background="#1AFFFFFF" CornerRadius="12" Margin="10" Padding="20">
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="🏆 Most Used App" Foreground="LightGray" FontSize="14" HorizontalAlignment="Center"/>
@@ -735,7 +642,6 @@
                                         <TextBlock Text="{Binding WrappedTopAppTime, StringFormat='{}Time: {0}'}" FontSize="14" Foreground="#0078D7" HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
-                                <!-- DISTRACTION -->
                                 <Border Background="#1AFFFFFF" CornerRadius="12" Margin="10" Padding="20">
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="🕹️ Biggest Distraction" Foreground="LightGray" FontSize="14" HorizontalAlignment="Center"/>
@@ -743,7 +649,6 @@
                                         <TextBlock Text="{Binding WrappedDistractionTime, StringFormat='{}Time: {0}'}" FontSize="14" Foreground="#FF8C00" HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
-                                <!-- PEAK DAY -->
                                 <Border Background="#1AFFFFFF" CornerRadius="12" Margin="10" Padding="20">
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="🔥 Peak Active Day" Foreground="LightGray" FontSize="14" HorizontalAlignment="Center"/>
@@ -751,7 +656,6 @@
                                         <TextBlock Text="{Binding WrappedPeakDayTime, StringFormat='{}Time: {0}'}" FontSize="14" Foreground="#39D353" HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
-                                <!-- MACROS -->
                                 <Border Background="#1AFFFFFF" CornerRadius="12" Margin="10" Padding="20">
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="⚡ Macros Fired" Foreground="LightGray" FontSize="14" HorizontalAlignment="Center"/>
@@ -763,7 +667,7 @@
                         </StackPanel>
                     </Grid>
                 </Grid>
-                
+
             </TabItem>
         </TabControl>
     </Grid>

@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
-using FastApp.ViewModels;
+
 
 namespace FastApp.Services
 {
@@ -33,6 +33,23 @@ namespace FastApp.Services
 
             // Define the database file name
             DbPath = Path.Combine(appFolder, "appmanager.db");
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // 1. Index SessionLog by StartTime (Crucial for Dashboard timeframe queries)
+            modelBuilder.Entity<SessionLog>()
+                .HasIndex(s => s.StartTime);
+
+            // 2. Composite Index (for querying specific apps within a specific timeframe)
+            modelBuilder.Entity<SessionLog>()
+                .HasIndex(s => new { s.AppName, s.StartTime });
+
+            // 3. Index Macro logs by Timestamp
+            modelBuilder.Entity<MacroEventLog>()
+                .HasIndex(m => m.Timestamp);
         }
 
         // Tell Entity Framework to use SQLite and point it to our file

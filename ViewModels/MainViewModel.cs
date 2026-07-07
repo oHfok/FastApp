@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FastApp.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Win32;
 using System;
 using System.Collections.Concurrent;
@@ -17,10 +18,11 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.Collections.Concurrent;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace FastApp.ViewModels
 {
+
     public partial class MainViewModel : ObservableObject
     {
         // ==========================================
@@ -100,18 +102,66 @@ namespace FastApp.ViewModels
         {
             LoadOsdSetting();
 
+            // After
             _dbContext = new AppDbContext();
-            _dbContext.Database.EnsureCreated();
+            _dbContext.Database.Migrate();
 
-            // 1. QUICK LOAD: Read from SQLite (This is very fast)
+            _dbContext.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+
+            // --- TEMPORARY MIGRATION SCRIPT (Run Once) ---
+            var logsRequiringMigration = _dbContext.DailyLogs.Where(l => l.TimeSpentTicks == null).ToList();
+            if (logsRequiringMigration.Any())
+            {
+                System.Diagnostics.Debug.WriteLine($"\n[DATABASE] Migrating {logsRequiringMigration.Count} logs to new integer format...");
+                foreach (var log in logsRequiringMigration)
+                {
+                    log.TimeSpentTicks = log.TimeSpent.Ticks;
+                    log.AfkTimeSpentTicks = log.AfkTimeSpent.Ticks;
+                    log.TimeFocusedTicks = log.TimeFocused.Ticks;
+                }
+                _dbContext.SaveChanges();
+                System.Diagnostics.Debug.WriteLine("[DATABASE] Migration complete!\n");
+            }
+
+
+
+            // --- PHASE 5: UPGRADED DATABASE CLEANUP ---
+            Task.Run(() =>
+            {
+                try
+                {
+                    using var cleanupDb = new AppDbContext();
+                    int retentionDays = 90;
+                    using var command = cleanupDb.Database.GetDbConnection().CreateCommand();
+                    command.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'RetentionDays'";
+                    cleanupDb.Database.OpenConnection();
+                    using var result = command.ExecuteReader();
+                    if (result.Read() && int.TryParse(result.GetString(0), out int parsedDays))
+                    {
+                        retentionDays = parsedDays;
+                    }
+
+                    var cutoffDate = DateTime.Today.AddDays(-retentionDays);
+                    string sqlDateFormat = cutoffDate.ToString("yyyy-MM-dd HH:mm:ss");
+
+                    cleanupDb.Database.ExecuteSqlRaw($"DELETE FROM SessionLogs WHERE StartTime < '{sqlDateFormat}';");
+                    cleanupDb.Database.ExecuteSqlRaw($"DELETE FROM MacroEventLogs WHERE Timestamp < '{sqlDateFormat}';");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"DB Cleanup Failed: {ex.Message}");
+                }
+            });
+
+            // 1. QUICK LOAD: Read from SQLite
             var savedApps = _dbContext.ManagedApps.ToList();
             ManagedApps = new ObservableCollection<AppItemModel>(savedApps);
 
-            // 2. COMPILE Caches for Instant Execution & Gaming Guard
+            // 2. COMPILE Caches
             RecompileHotkeys();
             UpdateGamingProcessCache();
 
-            // 3. DEFERRED STATS: Initialize the VM, but we will stop it from computing yet.
+            // 3. DEFERRED STATS
             StatisticsVM = new StatisticsViewModel(_dbContext, this);
 
             // 4. SETUP FILTERS & HANDLERS 
@@ -123,6 +173,45 @@ namespace FastApp.ViewModels
                 return (app.Name?.Contains(AppSearchText, StringComparison.OrdinalIgnoreCase) == true) ||
                        (app.CustomName?.Contains(AppSearchText, StringComparison.OrdinalIgnoreCase) == true);
             };
+
+            // --- NEW: XAML-ALIGNED REMOTE CONTROL ---
+            WeakReferenceMessenger.Default.Register<UpdateCategoryCommand>(this, (recipient, message) =>
+            {
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+                {
+                    var existingApp = ManagedApps.FirstOrDefault(a =>
+                        a.Name.Equals(message.AppName, StringComparison.OrdinalIgnoreCase));
+
+                    if (existingApp != null)
+                    {
+                        // 1. The EXACT list from your XAML
+                        var masterCategories = new[] {
+                            "Development", "Gaming", "Productivity", "Browsing", "Communication",
+                            "Media Production", "Music", "Fun", "Education", "Utilities", "Other"
+                        };
+
+                        // 2. Sanitize and strictly match the incoming web text to your XAML list
+                        string exactCategoryMatch = masterCategories.FirstOrDefault(c =>
+                            c.Equals(message.NewCategory.Trim(), StringComparison.OrdinalIgnoreCase))
+                            ?? message.NewCategory.Trim();
+
+                        // 3. Update the base Category property (Saves to DB)
+                        existingApp.Category = exactCategoryMatch;
+
+                        // 4. CRITICAL: If your XAML is binding to DetailCategory, we MUST update it too!
+                        // If DetailCategory is a property on the AppItemModel:
+                        // existingApp.DetailCategory = exactCategoryMatch; 
+
+                        // OR if DetailCategory is a property on MainViewModel itself tracking the selected item:
+                        // if (this.SelectedApp == existingApp) { this.DetailCategory = exactCategoryMatch; }
+
+                        // 5. Force the UI to physically redraw
+                        FilteredManagedApps?.Refresh();
+                    }
+                });
+            });
+
+
 
             foreach (var app in ManagedApps)
             {
@@ -139,12 +228,15 @@ namespace FastApp.ViewModels
                 _dbContext.SaveChanges();
             };
 
-            // 5. FIRE AND FORGET: Push auto-launch, triggers, and scanning to a background thread!
+           
+
+            // 5. FIRE AND FORGET: Background tasks
             _ = Task.Run(() =>
             {
                 RunAutoLaunchAsync();
                 _ = ProcessTriggersAsync();
                 _ = StartProcessTrackerAsync();
+                _ = Services.DashboardServerService.StartAsync();
             });
         }
 
@@ -388,6 +480,7 @@ namespace FastApp.ViewModels
             var afkCache = new Dictionary<string, TimeSpan>();
             var focusCache = new Dictionary<string, TimeSpan>(); // NEW: Focus Cache
 
+
             int tickCount = 0;
             const int FlushIntervalTicks = 12; // 60 seconds
 
@@ -508,6 +601,10 @@ namespace FastApp.ViewModels
                         log.TimeSpent = log.TimeSpent.Add(addedTotal);
                         log.AfkTimeSpent = log.AfkTimeSpent.Add(addedAfk);
                         log.TimeFocused = log.TimeFocused.Add(addedFocus); // Save Focus Time
+                                                                           // Keep the fast INTEGER columns in sync so SQL-side SUM() reflects live data
+                        log.TimeSpentTicks = log.TimeSpent.Ticks;
+                        log.AfkTimeSpentTicks = log.AfkTimeSpent.Ticks;
+                        log.TimeFocusedTicks = log.TimeFocused.Ticks;
                     }
 
                     // 2. Flush Shadow Sessions
@@ -662,4 +759,9 @@ namespace FastApp.ViewModels
             ManagedApps.Remove(appToRemove);
         }
     }
+    // Drop this at the bottom of MainViewModel.cs
+    public record CategoryUpdatedMessage(string AppName, string NewCategory);
+
+    public record UpdateCategoryCommand(string AppName, string NewCategory);
+
 }
