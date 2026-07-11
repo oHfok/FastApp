@@ -48,6 +48,8 @@
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                             <ui:ToggleSwitch Content="Overlay OSD" IsChecked="{Binding EnableOsd}" VerticalAlignment="Center" Margin="0,0,25,0"/>
+                            <ui:ToggleSwitch Content="Launch on Windows Startup" IsChecked="{Binding LaunchOnSystemStartup}"                 
+                                VerticalAlignment="Center" Margin="0,0,25,0"/>
                             <ui:Button Content="Scan PC" Icon="SearchInfo24" Appearance="Secondary" Command="{Binding AddApplicationCommand}" Padding="15,6" Margin="0,0,10,0"/>
                             <ui:Button Content="Browse File" Icon="FolderOpen24" Appearance="Secondary" Command="{Binding AddCustomFileCommand}" Padding="15,6" Margin="0,0,10,0"/>
                             <ui:Button Content="New Action" Icon="Lightning24" Appearance="Primary" Command="{Binding AddCustomActionCommand}" Padding="15,6"/>
@@ -348,12 +350,21 @@
                                 </Grid>
 
                                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding FilteredTopApps}">
+                                    <ItemsControl ItemsSource="{Binding FilteredTopApps}"
+                  ScrollViewer.CanContentScroll="True"
+                  VirtualizingPanel.IsVirtualizing="True"
+                  VirtualizingPanel.VirtualizationMode="Recycling"
+                  VirtualizingPanel.ScrollUnit="Pixel">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <ui:CardAction Command="{Binding DataContext.StatisticsVM.ShowAppDetailsCommand, ElementName=RootWindow}" 
-                                                               CommandParameter="{Binding}" 
-                                                               Margin="0,0,10,12" Padding="15">
+                               CommandParameter="{Binding}" 
+                               Margin="0,0,10,12" Padding="15">
                                                     <Grid>
 
                                                         <Grid.ColumnDefinitions>

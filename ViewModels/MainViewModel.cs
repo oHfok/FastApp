@@ -69,6 +69,12 @@ namespace FastApp.ViewModels
         [ObservableProperty]
         private ICollectionView _detectedAppsView;
 
+        // Windows startup toggle
+        [ObservableProperty] private bool _launchOnSystemStartup;
+        [ObservableProperty] private bool _isStartupToggleBusy;
+
+        private bool _suppressStartupToggleHandler;
+
         // Search filter for Tab 1
         [ObservableProperty] private string _appSearchText;
         public ICollectionView FilteredManagedApps { get; }
@@ -237,6 +243,16 @@ namespace FastApp.ViewModels
                 _ = ProcessTriggersAsync();
                 _ = StartProcessTrackerAsync();
                 _ = Services.DashboardServerService.StartAsync();
+
+
+                // NEW: reflect actual current registration state in the toggle
+                bool isRegistered = StartupTaskService.IsStartupCorrectlyRegistered();
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    _suppressStartupToggleHandler = true;
+                    LaunchOnSystemStartup = isRegistered;
+                    _suppressStartupToggleHandler = false;
+                });
             });
         }
 
@@ -276,12 +292,12 @@ namespace FastApp.ViewModels
         // This method automatically fires the moment the user clicks a tab
         partial void OnSelectedTabIndexChanged(int value)
         {
-            // Index 0 = Apps Tab
-            // Index 1 = Statistics Tab
             if (value == 1)
             {
-                // The user just looked at the stats for the first time! Force the load.
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 StatisticsVM?.RefreshStats(forceLoad: true);
+                sw.Stop();
+                System.Diagnostics.Debug.WriteLine($"[PERF] RefreshStats took {sw.ElapsedMilliseconds}ms");
             }
         }
 
@@ -301,6 +317,29 @@ namespace FastApp.ViewModels
             {
                 Debug.WriteLine($"Failed to save OSD setting: {ex.Message}");
             }
+        }
+
+        partial void OnLaunchOnSystemStartupChanged(bool value)
+        {
+            if (_suppressStartupToggleHandler) return;
+
+            bool desiredState = value;
+            IsStartupToggleBusy = true;
+
+            Task.Run(() =>
+            {
+                bool success = StartupTaskService.SetStartup(desiredState);
+
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    _suppressStartupToggleHandler = true;
+                    // If SetStartup failed (e.g. the user clicked "No" on the UAC prompt),
+                    // snap the toggle back to the previous, actually-true state instead of lying.
+                    LaunchOnSystemStartup = success ? desiredState : !desiredState;
+                    _suppressStartupToggleHandler = false;
+                    IsStartupToggleBusy = false;
+                });
+            });
         }
 
         protected override void OnPropertyChanged(PropertyChangedEventArgs e)

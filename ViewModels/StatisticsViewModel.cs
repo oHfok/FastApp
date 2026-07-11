@@ -215,16 +215,27 @@ namespace FastApp.ViewModels
             // ==========================================
             // PC UPTIME — SQL-SIDE AGGREGATION
             // ==========================================
-            var pcQuery = _dbContext.DailyLogs.Where(l => l.AppName == "SYSTEM_PC");
+            // ==========================================
+            // PC UPTIME — ONE QUERY INSTEAD OF SEVEN
+            // ==========================================
+            var pcRows = _dbContext.DailyLogs
+                .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= startOfYear)
+                .Select(l => new { l.Date, l.TimeSpentTicks, l.AfkTimeSpentTicks })
+                .ToList();
 
-            PcTimeToday = FormatTime(GetEffectiveTicks(pcQuery.Where(l => l.Date == today)));
-            PcTimeWeek = FormatTime(GetEffectiveTicks(pcQuery.Where(l => l.Date >= startOfWeek)));
-            PcTimeMonth = FormatTime(GetEffectiveTicks(pcQuery.Where(l => l.Date >= startOfMonth)));
-            PcTimeYear = FormatTime(GetEffectiveTicks(pcQuery.Where(l => l.Date >= startOfYear)));
+            long PcTicksFor(DateTime from) =>
+                ExcludeAfkTime
+                    ? pcRows.Where(l => l.Date >= from).Sum(l => Math.Max(0, (l.TimeSpentTicks ?? 0) - (l.AfkTimeSpentTicks ?? 0)))
+                    : pcRows.Where(l => l.Date >= from).Sum(l => l.TimeSpentTicks ?? 0);
 
-            PcDailyAverageWeek = FormatTime(GetEffectiveTicks(pcQuery.Where(l => l.Date >= startOfWeek)) / daysThisWeek);
-            PcDailyAverageMonth = FormatTime(GetEffectiveTicks(pcQuery.Where(l => l.Date >= startOfMonth)) / daysThisMonth);
-            PcDailyAverageYear = FormatTime(GetEffectiveTicks(pcQuery.Where(l => l.Date >= startOfYear)) / daysThisYear);
+            PcTimeToday = FormatTime(PcTicksFor(today));
+            PcTimeWeek = FormatTime(PcTicksFor(startOfWeek));
+            PcTimeMonth = FormatTime(PcTicksFor(startOfMonth));
+            PcTimeYear = FormatTime(PcTicksFor(startOfYear));
+
+            PcDailyAverageWeek = FormatTime(PcTicksFor(startOfWeek) / daysThisWeek);
+            PcDailyAverageMonth = FormatTime(PcTicksFor(startOfMonth) / daysThisMonth);
+            PcDailyAverageYear = FormatTime(PcTicksFor(startOfYear) / daysThisYear);
 
             // Fetch Hidden Apps
             var hiddenAppNames = _dbContext.HiddenApps.Select(h => h.AppName).ToHashSet();
