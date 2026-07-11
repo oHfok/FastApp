@@ -7,10 +7,17 @@
 	 <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon>Assets\favicon(1).ico</ApplicationIcon>
 	  <PublishReadyToRun>true</PublishReadyToRun>
 	  <TieredCompilation>true</TieredCompilation>
+	  <NoWarn>NU1903</NoWarn>
+	  <StartupObject>FastApp.Program</StartupObject>
+	  <ApplicationIcon>Assets\favicon(1).ico</ApplicationIcon>
+	  <NoWin32Manifest>true</NoWin32Manifest>
   </PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
 
   <ItemGroup>
     <COMReference Include="IWshRuntimeLibrary">
@@ -33,6 +40,10 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
 
@@ -43,6 +54,9 @@
   <ItemGroup>
     <None Update="Assets\favicon%281%29.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="wwwroot\dashboard.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

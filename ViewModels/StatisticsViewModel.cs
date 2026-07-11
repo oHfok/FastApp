@@ -10,11 +10,14 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Data;
 using static FastApp.Services.AppDbContext;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace FastApp.ViewModels
 {
     public partial class StatisticsViewModel : ObservableObject
     {
+
+        private bool _hasLoadedOnce = false;
         // Global Stats
         [ObservableProperty] private string _pcTimeToday;
         [ObservableProperty] private string _pcTimeWeek;
@@ -57,7 +60,19 @@ namespace FastApp.ViewModels
 
         // AFK Toggle
         [ObservableProperty] private bool _excludeAfkTime;
-        partial void OnExcludeAfkTimeChanged(bool value) { RefreshStats(); }
+
+        // OFF-LOADED AFK TOGGLE METHOD TO FIX UI LAG
+        partial void OnExcludeAfkTimeChanged(bool value)
+        {
+            // Running on a background task so it doesn't freeze the toggle UI
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                lock (_dbContext)
+                {
+                    RefreshStats();
+                }
+            });
+        }
 
         // Active Time Detail Fields
         [ObservableProperty] private string _detailActiveTimeToday;
@@ -85,6 +100,13 @@ namespace FastApp.ViewModels
         [ObservableProperty] private string _wrappedMacros;
         [ObservableProperty] private string _wrappedTotalTime;
 
+        // THE MASTER LIST: Bind the UI directly to this pure string list
+        public List<string> AvailableCategories { get; } = new List<string>
+        {
+            "Development", "Gaming", "Productivity", "Browsing", "Communication",
+            "Media Production", "Music", "Fun", "Education", "Utilities", "Other"
+        };
+
         private string GetCategoryColor(string category)
         {
             var categoryColors = new Dictionary<string, string> {
@@ -110,7 +132,39 @@ namespace FastApp.ViewModels
                 return ((AppStatItem)item).AppName.Contains(StatsSearchText, StringComparison.OrdinalIgnoreCase);
             };
 
-            RefreshStats();
+            // --- NEW: THE TRUE TWO-WAY SYNC ---
+            WeakReferenceMessenger.Default.Register<UpdateCategoryCommand>(this, (recipient, message) =>
+            {
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+                {
+                    // 1. Force the Statistics Database to update its internal category mapping
+                    // FIX: Use .ToLower() for database queries instead of StringComparison!
+                    var dbCat = _dbContext.AppCategories.FirstOrDefault(c => c.AppName.ToLower() == message.AppName.ToLower());
+
+                    if (dbCat != null)
+                    {
+                        dbCat.Category = message.NewCategory;
+                    }
+                    else
+                    {
+                        _dbContext.AppCategories.Add(new AppCategoryMapping { AppName = message.AppName, Category = message.NewCategory });
+                    }
+                    _dbContext.SaveChanges(); // Save it so the UI redraws correctly!
+
+                    // 2. If the details panel is open for this exact app, update the ComboBox visually
+                    if (!string.IsNullOrEmpty(DetailAppName) && DetailAppName.Equals(message.AppName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Setting this automatically triggers the UI redraw and updates the charts
+                        DetailCategory = message.NewCategory;
+                    }
+                    else
+                    {
+                        // 3. If the details panel is NOT open, we still need to refresh the Top Apps list manually
+                        RefreshStats();
+                        _mainVM.UpdateGamingProcessCache();
+                    }
+                });
+            });
         }
 
         [ObservableProperty] private string _detailCategory;
@@ -118,12 +172,6 @@ namespace FastApp.ViewModels
         partial void OnDetailCategoryChanged(string value)
         {
             if (string.IsNullOrEmpty(DetailAppName) || string.IsNullOrEmpty(value)) return;
-
-            // AUTO-REPAIR: If the database or UI passes the ugly ComboBoxItem string, strip it down to just the category name.
-            if (value.Contains("ComboBoxItem: "))
-            {
-                value = value.Split(new[] { "ComboBoxItem: " }, StringSplitOptions.None)[1].Trim();
-            }
 
             // Save the clean category independently for this specific app in the Stats Database
             var dbCat = _dbContext.AppCategories.FirstOrDefault(c => c.AppName == DetailAppName);
@@ -138,6 +186,7 @@ namespace FastApp.ViewModels
 
             _dbContext.SaveChanges();
             RefreshStats();
+            _mainVM.UpdateGamingProcessCache();
         }
 
         partial void OnStatsSearchTextChanged(string value)
@@ -145,10 +194,17 @@ namespace FastApp.ViewModels
             FilteredTopApps.Refresh();
         }
 
-        public void RefreshStats()
+        public void RefreshStats(bool forceLoad = false)
         {
+            if (!_hasLoadedOnce && !forceLoad)
+            {
+                return;
+            }
+            _hasLoadedOnce = true;
+
             DateTime today = DateTime.Today;
-            DateTime startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+            int diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
+            DateTime startOfWeek = today.AddDays(-diff);
             DateTime startOfMonth = new DateTime(today.Year, today.Month, 1);
             DateTime startOfYear = new DateTime(today.Year, 1, 1);
 
@@ -156,17 +212,30 @@ namespace FastApp.ViewModels
             int daysThisMonth = Math.Max(1, today.Day);
             int daysThisYear = Math.Max(1, today.DayOfYear);
 
-            var pcLogs = _dbContext.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").ToList();
+            // ==========================================
+            // PC UPTIME — SQL-SIDE AGGREGATION
+            // ==========================================
+            // ==========================================
+            // PC UPTIME — ONE QUERY INSTEAD OF SEVEN
+            // ==========================================
+            var pcRows = _dbContext.DailyLogs
+                .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= startOfYear)
+                .Select(l => new { l.Date, l.TimeSpentTicks, l.AfkTimeSpentTicks })
+                .ToList();
 
-            // Use the new GetTicks helper for all calculations
-            PcTimeToday = FormatTime(GetTicks(pcLogs.Where(l => l.Date == today)));
-            PcTimeWeek = FormatTime(GetTicks(pcLogs.Where(l => l.Date >= startOfWeek)));
-            PcTimeMonth = FormatTime(GetTicks(pcLogs.Where(l => l.Date >= startOfMonth)));
-            PcTimeYear = FormatTime(GetTicks(pcLogs.Where(l => l.Date >= startOfYear)));
+            long PcTicksFor(DateTime from) =>
+                ExcludeAfkTime
+                    ? pcRows.Where(l => l.Date >= from).Sum(l => Math.Max(0, (l.TimeSpentTicks ?? 0) - (l.AfkTimeSpentTicks ?? 0)))
+                    : pcRows.Where(l => l.Date >= from).Sum(l => l.TimeSpentTicks ?? 0);
 
-            PcDailyAverageWeek = FormatTime(GetTicks(pcLogs.Where(l => l.Date >= startOfWeek)) / daysThisWeek);
-            PcDailyAverageMonth = FormatTime(GetTicks(pcLogs.Where(l => l.Date >= startOfMonth)) / daysThisMonth);
-            PcDailyAverageYear = FormatTime(GetTicks(pcLogs.Where(l => l.Date >= startOfYear)) / daysThisYear);
+            PcTimeToday = FormatTime(PcTicksFor(today));
+            PcTimeWeek = FormatTime(PcTicksFor(startOfWeek));
+            PcTimeMonth = FormatTime(PcTicksFor(startOfMonth));
+            PcTimeYear = FormatTime(PcTicksFor(startOfYear));
+
+            PcDailyAverageWeek = FormatTime(PcTicksFor(startOfWeek) / daysThisWeek);
+            PcDailyAverageMonth = FormatTime(PcTicksFor(startOfMonth) / daysThisMonth);
+            PcDailyAverageYear = FormatTime(PcTicksFor(startOfYear) / daysThisYear);
 
             // Fetch Hidden Apps
             var hiddenAppNames = _dbContext.HiddenApps.Select(h => h.AppName).ToHashSet();
@@ -178,32 +247,28 @@ namespace FastApp.ViewModels
             });
 
             // ==========================================
-            // DIGITAL DIET CHART DATA
+            // DIGITAL DIET CHART DATA — SQL-SIDE AGGREGATION
             // ==========================================
-            var categoryColors = new Dictionary<string, string> {
-                {"Development", "#9D00FF"},
-                {"Gaming", "#FF8C00"},
-                {"Productivity", "#0078D7"},
-                {"Browsing", "#26A641"},
-                {"Communication", "#FF3366"},
-                {"Media Production", "#FFD700"}, // Perfect for clipping/editing software
-                {"Music", "#1DB954"},            // Classic Spotify Green
-                {"Fun", "#FF00FF"},              // Vibrant Magenta
-                {"Education", "#00CED1"},        // Cyan
-                {"Utilities", "#808080"},        // Gray for background tools
-                {"Other", "#555555"}
-            };
-
-            // Grab all hand-picked categories from the database
             var categoryMap = _dbContext.AppCategories.ToDictionary(c => c.AppName, c => c.Category);
 
-            var dietData = _dbContext.DailyLogs
+            // SQLite groups by AppName and sums both tick columns; only per-app
+            // aggregates (today's apps — a few dozen rows at most) come back.
+            var rawDietTotals = _dbContext.DailyLogs
                 .Where(l => l.Date == today && l.AppName != "SYSTEM_PC" && !hiddenAppNames.Contains(l.AppName))
-                .AsEnumerable()
-                .GroupBy(l => categoryMap.GetValueOrDefault(l.AppName, "Other"))
+                .GroupBy(l => l.AppName)
+                .Select(g => new {
+                    AppName = g.Key,
+                    Total = g.Sum(x => (long?)x.TimeSpentTicks) ?? 0,
+                    Afk = g.Sum(x => (long?)x.AfkTimeSpentTicks) ?? 0
+                })
+                .ToList();
+
+            // Category remapping happens on this tiny in-memory set, not the raw rows
+            var dietData = rawDietTotals
+                .GroupBy(x => categoryMap.GetValueOrDefault(x.AppName, "Other"))
                 .Select(g => new {
                     Category = g.Key,
-                    Ticks = GetTicks(g)
+                    Ticks = g.Sum(x => ExcludeAfkTime ? Math.Max(0, x.Total - x.Afk) : x.Total)
                 }).ToList();
 
             long totalDietTicks = dietData.Sum(x => x.Ticks);
@@ -217,29 +282,45 @@ namespace FastApp.ViewModels
                     {
                         Category = item.Category,
                         Percentage = totalDietTicks > 0 ? (double)item.Ticks / totalDietTicks * 100 : 0,
-                        Color = GetCategoryColor(item.Category) // Uses the new helper
+                        Color = GetCategoryColor(item.Category)
                     });
                 }
             });
 
             // ==========================================
-            // SPOTIFY RANKING MATH
+            // SPOTIFY RANKING MATH — SQL-SIDE AGGREGATION
             // ==========================================
             var yesterday = today.AddDays(-1);
-            var yesterdayRanks = _dbContext.DailyLogs
+
+            var yesterdayRawTotals = _dbContext.DailyLogs
                 .Where(l => l.AppName != "SYSTEM_PC" && !hiddenAppNames.Contains(l.AppName) && l.Date <= yesterday)
-                .AsEnumerable()
                 .GroupBy(l => l.AppName)
-                .Select(g => new { AppName = g.Key, TotalTicks = GetTicks(g) })
+                .Select(g => new {
+                    AppName = g.Key,
+                    Total = g.Sum(x => (long?)x.TimeSpentTicks) ?? 0,
+                    Afk = g.Sum(x => (long?)x.AfkTimeSpentTicks) ?? 0
+                })
+                .ToList();
+
+            var yesterdayRanks = yesterdayRawTotals
+                .Select(x => new { x.AppName, TotalTicks = ExcludeAfkTime ? Math.Max(0, x.Total - x.Afk) : x.Total })
                 .OrderByDescending(x => x.TotalTicks)
                 .Select((x, index) => new { x.AppName, Rank = index + 1 })
                 .ToDictionary(x => x.AppName, x => x.Rank);
 
-            var appGroups = _dbContext.DailyLogs
+            // One row per distinct app, ever — not one row per day per app
+            var rawAppTotals = _dbContext.DailyLogs
                .Where(l => l.AppName != "SYSTEM_PC" && !hiddenAppNames.Contains(l.AppName))
-               .AsEnumerable()
                .GroupBy(l => l.AppName)
-               .Select(g => new { AppName = g.Key, TotalTicks = GetTicks(g) })
+               .Select(g => new {
+                   AppName = g.Key,
+                   Total = g.Sum(x => (long?)x.TimeSpentTicks) ?? 0,
+                   Afk = g.Sum(x => (long?)x.AfkTimeSpentTicks) ?? 0
+               })
+               .ToList();
+
+            var appGroups = rawAppTotals
+               .Select(x => new { x.AppName, TotalTicks = ExcludeAfkTime ? Math.Max(0, x.Total - x.Afk) : x.Total })
                .OrderByDescending(a => a.TotalTicks)
                .ToList();
 
@@ -252,7 +333,7 @@ namespace FastApp.ViewModels
                 foreach (var app in appGroups)
                 {
                     int historicalRank = yesterdayRanks.GetValueOrDefault(app.AppName, currentRank);
-                    string cat = categoryMap.GetValueOrDefault(app.AppName, "Other"); // Get category
+                    string cat = categoryMap.GetValueOrDefault(app.AppName, "Other");
 
                     TopApps.Add(new AppStatItem
                     {
@@ -261,24 +342,47 @@ namespace FastApp.ViewModels
                         PercentageOfMax = (double)app.TotalTicks / maxTicks * 100,
                         CurrentRank = currentRank,
                         RankChange = historicalRank - currentRank,
-                        Category = cat,                       // NEW
-                        CategoryColor = GetCategoryColor(cat) // NEW
+                        Category = cat,
+                        CategoryColor = GetCategoryColor(cat)
                     });
                     currentRank++;
                 }
 
+                // Heatmap still needs per-day PC totals, so this stays a targeted 30-row query
                 HeatmapDays.Clear();
                 DateTime heatmapStart = today.AddDays(-29);
-                var pcLogsDict = pcLogs.Where(l => l.Date >= heatmapStart).ToDictionary(l => l.Date, l => GetTicks(new[] { l }));
+                var pcDailyTotals = _dbContext.DailyLogs
+                    .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= heatmapStart)
+                    .Select(l => new { l.Date, Ticks = l.TimeSpentTicks ?? 0 })
+                    .ToDictionary(x => x.Date, x => x.Ticks);
 
                 for (int i = 0; i <= 29; i++)
                 {
                     DateTime d = heatmapStart.AddDays(i);
-                    double hours = TimeSpan.FromTicks(pcLogsDict.GetValueOrDefault(d, 0)).TotalHours;
+                    double hours = TimeSpan.FromTicks(pcDailyTotals.GetValueOrDefault(d, 0)).TotalHours;
                     string color = hours <= 0 ? "#161B22" : hours <= 2 ? "#0E4429" : hours <= 5 ? "#006D32" : hours <= 8 ? "#26A641" : "#39D353";
                     HeatmapDays.Add(new HeatmapDay { ColorHex = color, Tooltip = $"{hours:F1} hours on {d.ToString("MMM dd")}" });
                 }
             });
+        }
+
+        // NEW: Command to securely launch default browser to local Web Dashboard
+        [RelayCommand]
+        private void OpenWebDashboard()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    // FIXED: Now points directly to the dashboard file
+                    FileName = "http://127.0.0.1:5050/dashboard.html",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to open web dashboard: {ex.Message}");
+            }
         }
 
         [RelayCommand]
@@ -348,7 +452,9 @@ namespace FastApp.ViewModels
             DetailCategory = dbCategory != null ? dbCategory.Category : "Other";
 
             DateTime today = DateTime.Today;
-            DateTime startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+            // Shift the .NET logic so Monday = 0 days subtracted, and Sunday = 6 days subtracted.
+            int diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
+            DateTime startOfWeek = today.AddDays(-diff);
             DateTime startOfMonth = new DateTime(today.Year, today.Month, 1);
             DateTime startOfYear = new DateTime(today.Year, 1, 1);
             DateTime thirtyDaysAgo = today.AddDays(-30);
@@ -433,6 +539,15 @@ namespace FastApp.ViewModels
         }
 
         private long GetTicks(IEnumerable<DailyUsageLog> logs) => logs.Sum(l => ExcludeAfkTime ? Math.Max(0, (l.TimeSpent - l.AfkTimeSpent).Ticks) : l.TimeSpent.Ticks);
+
+        private long GetEffectiveTicks(IQueryable<DailyUsageLog> query)
+        {
+            long total = query.Sum(l => (long?)l.TimeSpentTicks) ?? 0;
+            if (!ExcludeAfkTime) return total;
+
+            long afk = query.Sum(l => (long?)l.AfkTimeSpentTicks) ?? 0;
+            return Math.Max(0, total - afk);
+        }
 
         private string FormatTime(long ticks)
         {
