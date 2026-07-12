@@ -1,0 +1,105 @@
+/* ==========================================
+   THEME VARIABLES
+   ========================================== */
+:root {
+    /* DEFAULT: Dark Mode */
+    --bg-main: #050810;
+    --card-bg: linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.2) 100%);
+    --text-main: #f8fafc;
+    --border-color: rgba(255, 255, 255, 0.05);
+}
+
+body.light {
+    /* Basic light placeholder (we can make this look better next) */
+    --bg-main: #f1f5f9;
+    --card-bg: #ffffff;
+    --text-main: #0f172a;
+    --border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.ocean {
+    /* Basic ocean placeholder */
+    --bg-main: #081229;
+    --card-bg: linear-gradient(135deg, rgba(15, 30, 70, 0.4) 0%, rgba(10, 20, 50, 0.2) 100%);
+    --text-main: #e0f2fe;
+    --border-color: rgba(56, 189, 248, 0.2);
+}
+
+/* ==========================================
+   BASE STYLES
+   ========================================== */
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.5);
+    border-radius: 4px;
+}
+
+.text-glow-blue {
+    text-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+}
+
+/* ==========================================
+   THEME COLOR FLIPPERS
+   Overrides hardcoded Tailwind classes based on active theme
+   ========================================== */
+
+/* --- LIGHT MODE --- */
+/* Force white/light text to become dark */
+body.light .text-white,
+body.light .text-slate-100,
+body.light .text-slate-200,
+body.light .text-slate-300 {
+    color: #0f172a !important;
+}
+
+/* Force muted text to stay readable */
+body.light .text-slate-400,
+body.light .text-slate-500 {
+    color: #64748b !important;
+}
+
+/* Force dark container backgrounds to become light panels */
+body.light [class*="bg-slate-800"],
+body.light [class*="bg-slate-900"],
+body.light [class*="bg-slate-950"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+}
+
+/* Force dark borders to become light dividers */
+body.light [class*="border-slate-700"],
+body.light [class*="border-slate-600"] {
+    border-color: #e2e8f0 !important;
+}
+
+/* Disable neon glow effects in light mode */
+body.light .text-glow-blue {
+    text-shadow: none !important;
+}
+
+
+/* --- OCEAN MODE --- */
+/* Turn standard dark grays into deep sea blues */
+body.ocean [class*="bg-slate-800"],
+body.ocean [class*="bg-slate-900"] {
+    background-color: rgba(30, 58, 138, 0.2) !important;
+}
+
+/* Turn gray borders into translucent blue borders */
+body.ocean [class*="border-slate-700"],
+body.ocean [class*="border-slate-600"] {
+    border-color: rgba(56, 189, 248, 0.2) !important;
+}

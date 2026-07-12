@@ -1,0 +1,102 @@
+/* ==========================================
+   COMPONENTS
+   ========================================== */
+
+.glass-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 1.25rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+    padding: 1.5rem;
+    color: var(--text-main);
+}
+
+.glass-panel {
+    background: var(--bg-main);
+    border-right: 1px solid var(--border-color);
+}
+
+.glass-input {
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+    .glass-input:focus {
+        border-color: #38bdf8;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+
+.tab-btn {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+    .tab-btn.active {
+        background: rgba(56, 189, 248, 0.1);
+        color: #38bdf8;
+        border-left: 3px solid #38bdf8;
+    }
+
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+}
+
+    .sortable:hover {
+        color: #38bdf8;
+    }
+
+.heatmap-cell {
+    transition: transform 0.1s;
+    border-radius: 4px;
+}
+
+    .heatmap-cell:hover {
+        transform: scale(1.2);
+        z-index: 10;
+        box-shadow: 0 0 10px rgba(255,255,255,0.3);
+    }
+
+.custom-select {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1em;
+    padding-right: 2.5rem !important;
+}
+
+    .custom-select option {
+        background-color: var(--bg-main);
+        color: var(--text-main);
+    }
+
+/* ==========================================
+   TOOLTIPS
+   ========================================== */
+.glass-tooltip {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+    pointer-events: none; /* Prevents flickering when hovering */
+}
+
+    /* Optional: Small triangle pointer at the bottom of the tooltip */
+    .glass-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -6px;
+        border-width: 6px;
+        border-style: solid;
+        border-color: var(--border-color) transparent transparent transparent;
+    }
