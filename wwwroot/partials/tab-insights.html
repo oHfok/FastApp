@@ -1,0 +1,90 @@
+<h2 class="text-3xl font-bold text-white mb-8">Behavioral Insights</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+    <!-- Longest Focus Streak (Fixed Overflow) -->
+    <div class="glass-card border-t-4 border-t-purple-500/80 relative">
+        <div class="absolute inset-0 overflow-hidden rounded-[1.25rem] pointer-events-none">
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        </div>
+        <div class="flex items-center mb-2 relative z-10">
+            <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest">Longest Focus Streak</h3>
+            <div class="relative group inline-block ml-1 cursor-help text-slate-500 hover:text-purple-400 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute top-full left-0 mt-3 w-56 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                    The longest continuous block of time spent in productive applications without switching away or going AFK.
+                </div>
+            </div>
+        </div>
+        <div class="text-5xl font-black text-white relative z-10" id="insight-streak">0m</div>
+    </div>
+
+    <!-- Average Session Span (Fixed Overflow) -->
+    <div class="glass-card border-t-4 border-t-pink-500/80 relative">
+        <div class="absolute inset-0 overflow-hidden rounded-[1.25rem] pointer-events-none">
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        </div>
+        <div class="flex items-center mb-2 relative z-10">
+            <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest">Average Session Span</h3>
+            <div class="relative group inline-block ml-1 cursor-help text-slate-500 hover:text-pink-400 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute top-full left-0 mt-3 w-56 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                    The average duration of a single session before you switch contexts. Lower times indicate highly fragmented focus.
+                </div>
+            </div>
+        </div>
+        <div class="text-5xl font-black text-slate-200 relative z-10" id="insight-avg">0m</div>
+    </div>
+</div>
+
+<div class="glass-card border-l-4 border-l-orange-500/50 mb-8">
+    <div class="mb-6 flex items-start gap-2">
+        <div>
+            <div class="flex items-center">
+                <h3 class="text-xl font-bold text-white">Chronotype Heatmap</h3>
+                <div class="relative group inline-block ml-2 cursor-help text-slate-500 hover:text-orange-400 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div class="glass-tooltip absolute bottom-full left-0 mb-3 w-64 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                        Visualizes your most productive hours. Bright orange blocks indicate hours where you consistently achieve deep focus across the last 30 days.
+                    </div>
+                </div>
+            </div>
+            <p class="text-slate-400 text-sm mt-1">When do you focus the most? (Based on 30 days from selected date)</p>
+        </div>
+    </div>
+    <div class="flex">
+        <div class="flex flex-col justify-between text-xs text-slate-500 pr-6 py-2 font-bold uppercase tracking-wider"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+        <div class="flex-1">
+            <div id="heatmap-grid" class="grid gap-1.5 h-64"></div>
+            <div class="flex justify-between text-xs text-slate-500 mt-4 font-bold uppercase tracking-wider"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>11 PM</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="glass-card border-t-4 border-t-blue-500/50">
+        <div class="flex items-center justify-between mb-1">
+            <h3 class="text-xl font-bold text-white">Productivity Rhythm</h3>
+            <div class="relative group inline-block cursor-help text-slate-500 hover:text-blue-400 transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute bottom-full right-0 mb-3 w-64 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                    Plots your average time spent in "Work" categories vs "Entertainment" categories throughout the 24-hour day to reveal your natural daily cycles.
+                </div>
+            </div>
+        </div>
+        <p class="text-slate-400 text-sm mb-4">Work vs. Play distribution by hour of the day.</p>
+        <div class="relative h-64"><canvas id="rhythmChart"></canvas></div>
+    </div>
+    <div class="glass-card border-t-4 border-t-emerald-500/50">
+        <div class="flex items-center justify-between mb-1">
+            <h3 class="text-xl font-bold text-white">Focus Fatigue Curve</h3>
+            <div class="relative group inline-block cursor-help text-slate-500 hover:text-emerald-400 transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute bottom-full right-0 mb-3 w-64 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                    Tracks how your attention span holds up throughout the week. A downward trend indicates cumulative burnout by Friday.
+                </div>
+            </div>
+        </div>
+        <p class="text-slate-400 text-sm mb-4">Average single session length by day of the week.</p>
+        <div class="relative h-64"><canvas id="fatigueChart"></canvas></div>
+    </div>
+</div>

@@ -54,10 +54,12 @@
   <ItemGroup>
     <None Update="Assets\favicon%281%29.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="wwwroot\dashboard.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    </None>  
+
+	  <!-- CHANGE THIS BLOCK TO USE THE WILDCARD -->
+	  <None Update="wwwroot\**\*">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
   </ItemGroup>
 
 </Project>

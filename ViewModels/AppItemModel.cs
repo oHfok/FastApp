@@ -36,6 +36,14 @@ namespace FastApp.ViewModels
 
         [ObservableProperty] private string _category = "Other"; // Default to Other
 
+        // Add this inside your AppItemModel class
+        private int _orderIndex;
+        public int OrderIndex
+        {
+            get => _orderIndex;
+            set => SetProperty(ref _orderIndex, value);
+        }
+
         // NEW: Custom Display Name
         [ObservableProperty] private string _customName = string.Empty;
 

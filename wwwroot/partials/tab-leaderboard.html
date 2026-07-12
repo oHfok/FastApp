@@ -1,0 +1,61 @@
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+    <!-- LEFT SIDE: Title, Date Range Indicator, & Mode Toggles -->
+    <div>
+        <h2 class="text-3xl font-bold text-white mb-1">App Leaderboards</h2>
+        <div id="leaderboard-date-range" class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]">First Data Record → Today</div>
+
+        <div class="flex items-center gap-2">
+            <div class="flex bg-slate-900/60 p-1.5 rounded-xl border border-slate-700/50 w-max shadow-inner">
+                <button id="btn-mode-focus" onclick="setLeaderboardMode('focus')" class="px-5 py-2 rounded-lg text-sm font-bold bg-blue-500 text-white shadow-[0_0_15px_rgba(56,189,248,0.4)] transition-all">🎯 Focus Mode</button>
+                <button id="btn-mode-runtime" onclick="setLeaderboardMode('runtime')" class="px-5 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white transition-all">⏱️ Runtime Mode</button>
+            </div>
+            <!-- MODE TOOLTIP -->
+            <div class="relative group inline-block cursor-help text-slate-500 hover:text-blue-400 transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute top-full left-0 mt-3 w-64 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal">
+                    <strong class="text-blue-400 block mb-1">Focus Mode:</strong> Ranks apps by active interaction.<br><br>
+                    <strong class="text-slate-300 block mb-1">Runtime Mode:</strong> Ranks apps by total time left open (including background/idle time).
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: Search & Timeframe Filter -->
+    <div class="flex flex-wrap gap-4">
+        <input type="text" id="app-search" onkeyup="handleSearch()" placeholder="🔍 Search apps..." class="glass-input rounded-xl px-4 py-2.5 w-64 text-sm">
+        <select id="timeframe-select" onchange="fetchLeaderboardData()" class="custom-select glass-input rounded-xl px-4 py-2.5 font-medium text-sm">
+            <option value="day">Selected Day</option>
+            <option value="week">Past Week</option>
+            <option value="month">Past Month</option>
+            <option value="year">Past Year</option>
+            <option value="all" selected>All Time</option>
+        </select>
+    </div>
+</div>
+
+<div class="glass-card !bg-transparent !border-0 !shadow-none !p-0">
+    <table class="w-full text-left border-separate" style="border-spacing: 0 12px;">
+        <thead>
+            <tr class="text-slate-400 text-xs border-b border-slate-700/50 uppercase tracking-widest font-bold">
+                <th class="pb-2 px-4 text-center w-24" id="col-trend-header">Rank</th>
+                <th class="pb-2 px-2">Application</th>
+                <th class="pb-2 px-2 w-48">Category</th>
+                <th class="pb-2 px-4 text-right sortable hover:text-blue-400 w-32" onclick="sortLeaderboard('focus')">Focused ↕</th>
+                <th class="pb-2 px-4 text-right sortable hover:text-blue-400 w-32" onclick="sortLeaderboard('runtime')">Running ↕</th>
+                <th class="pb-2 px-4 pl-8 sortable hover:text-blue-400 w-48" onclick="sortLeaderboard('efficiency')">
+                    <div class="flex items-center justify-end">
+                        Efficiency ↕
+                        <!-- EFFICIENCY TOOLTIP -->
+                        <div class="relative group inline-block ml-1 cursor-help text-slate-500 hover:text-emerald-400 transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <div class="glass-tooltip absolute bottom-full right-0 mb-3 w-56 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                                Percentage of time spent actively focused out of the total time the app was running.
+                            </div>
+                        </div>
+                    </div>
+                </th>
+            </tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+    </table>
+</div>

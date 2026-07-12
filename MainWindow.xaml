@@ -24,6 +24,9 @@
 
         <TabControl Grid.Row="1" Margin="20,0,20,20" Background="Transparent" BorderThickness="0" SelectedIndex="{Binding SelectedTabIndex}">
 
+            <!-- ========================================== -->
+            <!-- TAB 1: APPLICATIONS -->
+            <!-- ========================================== -->
             <TabItem Margin="0,0,0,0">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" Margin="5">
@@ -38,157 +41,249 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
+                    <!-- FIX: Define templates as Resources to prevent the WPF Event Compiler Bug -->
+                    <Grid.Resources>
+
+                        <!-- 1. COMPACT ROW TEMPLATE -->
+                        <DataTemplate x:Key="CompactAppTemplate">
+                            <ui:CardAction Command="{Binding DataContext.ExpandCompactAppCommand, ElementName=RootWindow}" CommandParameter="{Binding}">
+                                <Grid Background="Transparent" Cursor="Hand" Height="26">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="⣿" Foreground="#444" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                                    <ui:SymbolIcon Grid.Column="1" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center">
+                                        <ui:SymbolIcon.Style>
+                                            <Style TargetType="ui:SymbolIcon">
+                                                <Setter Property="Symbol" Value="Apps24"/>
+                                                <Setter Property="Foreground" Value="#0078D7"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsAction}" Value="True">
+                                                        <Setter Property="Symbol" Value="Flash24"/>
+                                                        <Setter Property="Foreground" Value="#FF8C00"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ui:SymbolIcon.Style>
+                                    </ui:SymbolIcon>
+
+                                    <TextBlock Grid.Column="2" Text="{Binding DisplayNamePrimary}" FontSize="13" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+
+                                    <TextBlock Grid.Column="3" Text="{Binding HotkeyDisplayText}" FontSize="11" FontWeight="Bold" Foreground="#0078D7" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                </Grid>
+                            </ui:CardAction>
+                        </DataTemplate>
+
+                        <!-- 2. EXPANDED CARD TEMPLATE -->
+                        <DataTemplate x:Key="ExpandedAppTemplate">
+                            <ui:CardExpander IsExpanded="False">
+                                <ui:CardExpander.Header>
+                                    <!-- Use a fixed-width grid to ensure elements don't overlap -->
+                                    <Grid Margin="0,8,0,8" Background="Transparent" Cursor="Hand">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <!-- Drag Handle -->
+                                            <ColumnDefinition Width="Auto"/>
+                                            <!-- Icon -->
+                                            <ColumnDefinition Width="*"/>
+                                            <!-- Name (Takes all remaining space) -->
+                                            <ColumnDefinition Width="Auto"/>
+                                            <!-- Hotkey Border -->
+                                            <ColumnDefinition Width="Auto"/>
+                                            <!-- Auto-Start Toggle -->
+                                            <ColumnDefinition Width="Auto"/>
+                                            <!-- Delete Button -->
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" Text="⣿" Foreground="#444" FontSize="20" VerticalAlignment="Center" Margin="0,0,15,0" ToolTip="Drag to reorder"/>
+
+                                        <ui:SymbolIcon Grid.Column="1" FontSize="22" Margin="0,0,15,0" VerticalAlignment="Center">
+                                            <ui:SymbolIcon.Style>
+                                                <Style TargetType="ui:SymbolIcon">
+                                                    <Setter Property="Symbol" Value="Apps24"/>
+                                                    <Setter Property="Foreground" Value="#0078D7"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsAction}" Value="True">
+                                                            <Setter Property="Symbol" Value="Flash24"/>
+                                                            <Setter Property="Foreground" Value="#FF8C00"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ui:SymbolIcon.Style>
+                                        </ui:SymbolIcon>
+
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,15,0">
+                                            <TextBlock Text="{Binding DisplayNamePrimary}" FontSize="16" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="11" Foreground="#888888" Visibility="{Binding SubtitleVisibility}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+
+                                        <Border Grid.Column="3" Background="#1AFFFFFF" CornerRadius="4" Padding="10,4" Margin="0,0,20,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Symbol="Keyboard24" FontSize="14" Foreground="#0078D7" Margin="0,0,6,0"/>
+                                                <TextBlock Text="{Binding HotkeyDisplayText}" FontSize="13" FontWeight="SemiBold" Foreground="#0078D7" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <ui:ToggleSwitch Grid.Column="4" IsChecked="{Binding LaunchOnStartup}" Content="Auto-Start" Visibility="{Binding AppSettingsVisibility}" VerticalAlignment="Center" Margin="0,0,20,0"/>
+
+                                        <ui:Button Grid.Column="5" Content="Delete" Icon="Delete24" ToolTip="Remove App" Appearance="Danger" VerticalAlignment="Center" 
+                   Command="{Binding ElementName=RootWindow, Path=DataContext.RemoveApplicationCommand}" 
+                   CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </ui:CardExpander.Header>
+
+                                <StackPanel Margin="0,15,0,5">
+                                    <Grid Margin="0,0,0,20">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" Margin="0,0,30,0" Visibility="{Binding ActionSettingsVisibility}">
+                                            <TextBlock Text="System Action Type" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
+                                            <ComboBox SelectedIndex="{Binding ActionSelectionIndex}" Width="220">
+                                                <ComboBoxItem Content="Toggle System Mute"/>
+                                                <ComboBoxItem Content="Center Active Window"/>
+                                                <ComboBoxItem Content="Paste Custom Text"/>
+                                            </ComboBox>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="0" Margin="0,0,30,0" Visibility="{Binding AppSettingsVisibility}">
+                                            <TextBlock Text="Executable Path" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
+                                            <TextBlock Text="{Binding ExecutablePath}" FontSize="13" Foreground="#999999" VerticalAlignment="Center" Margin="0,5,0,0"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Visibility="{Binding ShowTextPayload}">
+                                            <TextBlock Text="Text to Paste" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
+                                            <ui:TextBox Text="{Binding ActionPayload, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Enter text snippet..." MinHeight="32" Margin="0,0,20,0"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                            <TextBlock Text="Custom Display Name" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
+                                            <ui:TextBox Text="{Binding CustomName, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="E.g. Panic Mute" MinHeight="32" Width="180"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" Margin="0,0,40,0">
+                                            <TextBlock Text="Reassign Hotkey" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:TextBox Text="{Binding HotkeyDisplayText}" IsReadOnly="True" GotFocus="HotkeyTextBox_GotFocus" PreviewKeyDown="HotkeyTextBox_PreviewKeyDown" PreviewKeyUp="HotkeyTextBox_PreviewKeyUp" MinHeight="32" Width="180" />
+                                                <ui:Button Content="Clear" Icon="Dismiss24" Click="ClearHotkey_Click" ToolTip="Clear Hotkey" Margin="10,0,0,0" Appearance="Secondary"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Margin="0,0,40,0" Visibility="{Binding AppSettingsVisibility}">
+                                            <TextBlock Text="Daily Limit (Minutes)" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:TextBox Text="{Binding DailyLimitText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="0 = No Limit" MinHeight="32" Width="120" />
+                                                <ui:ToggleSwitch IsChecked="{Binding StrictFocusMode}" Content="Force Close" ToolTip="Kills the app automatically when limit is reached" Margin="15,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" HorizontalAlignment="Right">
+                                            <TextBlock Text="Quick Stats" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <StackPanel Orientation="Horizontal" Visibility="{Binding AppSettingsVisibility}" Margin="0,0,25,0">
+                                                    <ui:SymbolIcon Symbol="Clock24" Foreground="#0078D7" FontSize="16" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding TimeRunning, StringFormat='{}{0:hh\\:mm\\:ss}'}" Foreground="#CCCCCC" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="14"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ui:SymbolIcon Symbol="Flash24" Foreground="#FF8C00" FontSize="16" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding HotkeyTriggerCount, StringFormat='{}Triggered {0}x'}" Foreground="#CCCCCC" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="14"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </ui:CardExpander>
+                        </DataTemplate>
+                    </Grid.Resources>
+
+                    <!-- Header Toolbar -->
                     <Grid Grid.Row="0" Margin="0,0,10,20">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <ui:TextBox Grid.Column="0" Text="{Binding AppSearchText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Search items..." Icon="Search24" Width="250" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <ui:TextBox Grid.Column="0" Text="{Binding AppSearchText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Search your apps..." Icon="Search24" Width="250" HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                            <ui:ToggleSwitch Content="Overlay OSD" IsChecked="{Binding EnableOsd}" VerticalAlignment="Center" Margin="0,0,25,0"/>
-                            <ui:ToggleSwitch Content="Launch on Windows Startup" IsChecked="{Binding LaunchOnSystemStartup}"                 
-                                VerticalAlignment="Center" Margin="0,0,25,0"/>
+                            <ui:ToggleSwitch Content="Compact View" IsChecked="{Binding IsCompactMode}" VerticalAlignment="Center" Margin="0,0,25,0"/>
+
                             <ui:Button Content="Scan PC" Icon="SearchInfo24" Appearance="Secondary" Command="{Binding AddApplicationCommand}" Padding="15,6" Margin="0,0,10,0"/>
                             <ui:Button Content="Browse File" Icon="FolderOpen24" Appearance="Secondary" Command="{Binding AddCustomFileCommand}" Padding="15,6" Margin="0,0,10,0"/>
                             <ui:Button Content="New Action" Icon="Lightning24" Appearance="Primary" Command="{Binding AddCustomActionCommand}" Padding="15,6"/>
                         </StackPanel>
                     </Grid>
 
+                    <!-- App List -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding FilteredManagedApps}">
-                            <ItemsControl.ItemTemplate>
+                        <ListBox ItemsSource="{Binding FilteredManagedApps}" 
+                                 Background="Transparent" BorderThickness="0" 
+                                 HorizontalContentAlignment="Stretch"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 AllowDrop="True" 
+                                 PreviewMouseLeftButtonDown="AppList_PreviewMouseLeftButtonDown"
+                                 PreviewMouseMove="AppList_PreviewMouseMove"
+                                 Drop="AppList_Drop">
+
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0,0,10,12"/>
+                                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter/>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+
+                            <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <ui:CardExpander Margin="0,0,10,12">
-                                        <ui:CardExpander.Header>
-                                            <Grid Margin="0,8,0,8">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-
-                                                <ui:SymbolIcon Grid.Column="0" FontSize="22" Margin="0,0,15,0" VerticalAlignment="Center">
-                                                    <ui:SymbolIcon.Style>
-                                                        <Style TargetType="ui:SymbolIcon">
-                                                            <Setter Property="Symbol" Value="Apps24"/>
-                                                            <Setter Property="Foreground" Value="#0078D7"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsAction}" Value="True">
-                                                                    <Setter Property="Symbol" Value="Flash24"/>
-                                                                    <Setter Property="Foreground" Value="#FF8C00"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </ui:SymbolIcon.Style>
-                                                </ui:SymbolIcon>
-
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding DisplayNamePrimary}" FontSize="16" FontWeight="SemiBold" Foreground="White" />
-                                                    <TextBlock Text="{Binding Name}" FontSize="11" Foreground="#888888" Visibility="{Binding SubtitleVisibility}" Margin="0,2,0,0"/>
-                                                </StackPanel>
-
-                                                <Border Grid.Column="2" Background="#1AFFFFFF" CornerRadius="4" Padding="10,4" Margin="0,0,20,0" VerticalAlignment="Center">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <ui:SymbolIcon Symbol="Keyboard24" FontSize="14" Foreground="#0078D7" Margin="0,0,6,0"/>
-                                                        <TextBlock Text="{Binding HotkeyDisplayText}" FontSize="13" FontWeight="SemiBold" Foreground="#0078D7" />
-                                                    </StackPanel>
-                                                </Border>
-
-                                                <ui:ToggleSwitch Grid.Column="3" IsChecked="{Binding LaunchOnStartup}" Content="Auto-Start" Visibility="{Binding AppSettingsVisibility}" VerticalAlignment="Center" Margin="0,0,20,0"/>
-
-                                                <ui:Button Grid.Column="4" Content="Delete" Icon="Delete24" ToolTip="Remove App" Appearance="Danger" VerticalAlignment="Center" 
-                                                           Command="{Binding ElementName=RootWindow, Path=DataContext.RemoveApplicationCommand}" 
-                                                           CommandParameter="{Binding}"/>
-                                            </Grid>
-                                        </ui:CardExpander.Header>
-
-                                        <StackPanel Margin="0,15,0,5">
-
-                                            <Grid Margin="0,0,0,20">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-
-                                                <StackPanel Grid.Column="0" Margin="0,0,30,0" Visibility="{Binding ActionSettingsVisibility}">
-                                                    <TextBlock Text="System Action Type" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
-                                                    <ComboBox SelectedIndex="{Binding ActionSelectionIndex}" Width="220">
-                                                        <ComboBoxItem Content="Toggle System Mute"/>
-                                                        <ComboBoxItem Content="Center Active Window"/>
-                                                        <ComboBoxItem Content="Paste Custom Text"/>
-                                                    </ComboBox>
-                                                </StackPanel>
-
-                                                <StackPanel Grid.Column="0" Margin="0,0,30,0" Visibility="{Binding AppSettingsVisibility}">
-                                                    <TextBlock Text="Executable Path" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
-                                                    <TextBlock Text="{Binding ExecutablePath}" FontSize="13" Foreground="#999999" VerticalAlignment="Center" Margin="0,5,0,0"/>
-                                                </StackPanel>
-
-                                                <StackPanel Grid.Column="1" Visibility="{Binding ShowTextPayload}">
-                                                    <TextBlock Text="Text to Paste" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
-                                                    <ui:TextBox Text="{Binding ActionPayload, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Enter text snippet..." MinHeight="32" Margin="0,0,20,0"/>
-                                                </StackPanel>
-
-                                                <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                                    <TextBlock Text="Custom Display Name" FontSize="12" Foreground="Gray" Margin="0,0,0,4"/>
-                                                    <ui:TextBox Text="{Binding CustomName, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="E.g. Panic Mute" MinHeight="32" Width="180"/>
-                                                </StackPanel>
-                                            </Grid>
-
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-
-                                                <StackPanel Grid.Column="0" Margin="0,0,40,0">
-                                                    <TextBlock Text="Reassign Hotkey" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <ui:TextBox Text="{Binding HotkeyDisplayText}" IsReadOnly="True" GotFocus="HotkeyTextBox_GotFocus" PreviewKeyDown="HotkeyTextBox_PreviewKeyDown" PreviewKeyUp="HotkeyTextBox_PreviewKeyUp" MinHeight="32" Width="180" />
-                                                        <ui:Button Content="Clear" Icon="Dismiss24" Click="ClearHotkey_Click" ToolTip="Clear Hotkey" Margin="10,0,0,0" Appearance="Secondary"/>
-                                                    </StackPanel>
-                                                </StackPanel>
-
-                                                <StackPanel Grid.Column="1" Margin="0,0,40,0" Visibility="{Binding AppSettingsVisibility}">
-                                                    <TextBlock Text="Daily Limit (Minutes)" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <ui:TextBox Text="{Binding DailyLimitText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="0 = No Limit" MinHeight="32" Width="120" />
-                                                        <ui:ToggleSwitch IsChecked="{Binding StrictFocusMode}" Content="Force Close" ToolTip="Kills the app automatically when limit is reached" Margin="15,0,0,0"/>
-                                                    </StackPanel>
-                                                </StackPanel>
-
-                                                <StackPanel Grid.Column="2" HorizontalAlignment="Right">
-                                                    <TextBlock Text="Quick Stats" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
-                                                    <StackPanel Orientation="Horizontal">
-
-                                                        <StackPanel Orientation="Horizontal" Visibility="{Binding AppSettingsVisibility}" Margin="0,0,25,0">
-                                                            <ui:SymbolIcon Symbol="Clock24" Foreground="#0078D7" FontSize="16" VerticalAlignment="Center"/>
-                                                            <TextBlock Text="{Binding TimeRunning, StringFormat='{}{0:hh\\:mm\\:ss}'}" Foreground="#CCCCCC" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="14"/>
-                                                        </StackPanel>
-
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <ui:SymbolIcon Symbol="Flash24" Foreground="#FF8C00" FontSize="16" VerticalAlignment="Center"/>
-                                                            <TextBlock Text="{Binding HotkeyTriggerCount, StringFormat='{}Triggered {0}x'}" Foreground="#CCCCCC" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="14"/>
-                                                        </StackPanel>
-
-                                                    </StackPanel>
-                                                </StackPanel>
-                                            </Grid>
-                                        </StackPanel>
-                                    </ui:CardExpander>
+                                    <ContentControl Content="{Binding}">
+                                        <ContentControl.Style>
+                                            <Style TargetType="ContentControl">
+                                                <!-- Bind safely to the resources we declared at the top -->
+                                                <Setter Property="ContentTemplate" Value="{StaticResource ExpandedAppTemplate}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DataContext.IsCompactMode, ElementName=RootWindow}" Value="True">
+                                                        <Setter Property="ContentTemplate" Value="{StaticResource CompactAppTemplate}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ContentControl.Style>
+                                    </ContentControl>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </ScrollViewer>
                 </Grid>
             </TabItem>
 
+
+            <!-- ========================================== -->
+            <!-- TAB 2: STATISTICS (Web Redirect) -->
+            <!-- ========================================== -->
             <TabItem DataContext="{Binding StatisticsVM}">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" Margin="5">
@@ -197,489 +292,85 @@
                     </StackPanel>
                 </TabItem.Header>
 
-                <Grid Margin="0,20,0,0">
+                <Grid Background="Transparent">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-50,0,0">
+                        <TextBlock Text="📊" FontSize="80" HorizontalAlignment="Center" Margin="0,0,0,20">
+                            <TextBlock.Effect>
+                                <DropShadowEffect Color="#0078D7" BlurRadius="40" ShadowDepth="0" Opacity="0.6"/>
+                            </TextBlock.Effect>
+                        </TextBlock>
 
-                    <Grid Visibility="{Binding MainViewVisibility}">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                        <TextBlock Text="Your Analytics Have Upgraded" 
+                                   FontSize="28" FontWeight="Bold" Foreground="White" 
+                                   HorizontalAlignment="Center" Margin="0,0,0,10"/>
 
-                        <Grid Grid.Row="0" Margin="0,0,10,15">
-                            <TextBlock Text="PC Uptime Overview" FontSize="18" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <ui:Button Content="Web Dashboard" Icon="Globe24" Appearance="Secondary" Command="{Binding OpenWebDashboardCommand}" Margin="0,0,15,0"/>
-                                <ui:Button Content="Month Wrapped" Icon="Gift24" Appearance="Primary" Command="{Binding GenerateWrappedCommand}" Margin="0,0,15,0"/>
-                                <ui:ToggleSwitch IsChecked="{Binding ExcludeAfkTime}" Content="Exclude AFK Time (5+ min idle)"/>
-                            </StackPanel>
-                        </Grid>
+                        <TextBlock Text="We've moved all charts, insights, and historical data to a brand new, lightning-fast web dashboard. Your Windows app is now purely dedicated to silent, efficient tracking." 
+                                   FontSize="14" Foreground="#888888" TextWrapping="Wrap" 
+                                   TextAlignment="Center" MaxWidth="450" Margin="0,0,0,30" LineHeight="22"/>
 
-                        <StackPanel Grid.Row="1" Margin="0,0,10,25">
-                            <TextBlock Text="Digital Diet (Today)" FontSize="14" Foreground="Gray" Margin="0,0,0,8"/>
-
-                            <Border x:Name="DietContainer" Height="12" CornerRadius="6" Background="#151515" ClipToBounds="True">
-                                <ItemsControl ItemsSource="{Binding DietSegments}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{Binding Color}" ToolTip="{Binding TooltipText}">
-                                                <Border.Width>
-                                                    <MultiBinding Converter="{StaticResource DietWidthConverter}">
-                                                        <Binding Path="Percentage"/>
-                                                        <Binding ElementName="DietContainer" Path="ActualWidth"/>
-                                                    </MultiBinding>
-                                                </Border.Width>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Border>
-
-                            <ItemsControl ItemsSource="{Binding DietSegments}" Margin="0,8,0,0">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,15,5">
-                                            <Ellipse Width="8" Height="8" Fill="{Binding Color}" Margin="0,0,5,0"/>
-                                            <TextBlock Text="{Binding TooltipText}" Foreground="Gray" FontSize="11"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-
-                        <UniformGrid Grid.Row="2" Columns="4" Margin="0,0,10,25">
-                            <ui:CardControl Margin="0,0,15,0" Padding="15">
-                                <ui:CardControl.Header>
-                                    <StackPanel>
-                                        <TextBlock Text="Today" Foreground="Gray" FontSize="13"/>
-                                        <TextBlock Text="{Binding PcTimeToday}" FontSize="24" FontWeight="Bold" Foreground="#0078D7" Margin="0,5,0,0"/>
-                                    </StackPanel>
-                                </ui:CardControl.Header>
-                            </ui:CardControl>
-
-                            <ui:CardControl Margin="0,0,15,0" Padding="15">
-                                <ui:CardControl.Header>
-                                    <StackPanel>
-                                        <TextBlock Text="This Week" Foreground="Gray" FontSize="13"/>
-                                        <TextBlock Text="{Binding PcTimeWeek}" FontSize="24" FontWeight="Bold" Foreground="#0078D7" Margin="0,5,0,0"/>
-                                        <TextBlock Text="{Binding PcDailyAverageWeek, StringFormat='{}Daily Avg: {0}'}" Foreground="#777777" FontSize="11" Margin="0,2,0,0"/>
-                                    </StackPanel>
-                                </ui:CardControl.Header>
-                            </ui:CardControl>
-
-                            <ui:CardControl Margin="0,0,15,0" Padding="15">
-                                <ui:CardControl.Header>
-                                    <StackPanel>
-                                        <TextBlock Text="This Month" Foreground="Gray" FontSize="13"/>
-                                        <TextBlock Text="{Binding PcTimeMonth}" FontSize="24" FontWeight="Bold" Foreground="#0078D7" Margin="0,5,0,0"/>
-                                        <TextBlock Text="{Binding PcDailyAverageMonth, StringFormat='{}Daily Avg: {0}'}" Foreground="#777777" FontSize="11" Margin="0,2,0,0"/>
-                                    </StackPanel>
-                                </ui:CardControl.Header>
-                            </ui:CardControl>
-
-                            <ui:CardControl Padding="15">
-                                <ui:CardControl.Header>
-                                    <StackPanel>
-                                        <TextBlock Text="This Year" Foreground="Gray" FontSize="13"/>
-                                        <TextBlock Text="{Binding PcTimeYear}" FontSize="24" FontWeight="Bold" Foreground="#0078D7" Margin="0,5,0,0"/>
-                                        <TextBlock Text="{Binding PcDailyAverageYear, StringFormat='{}Daily Avg: {0}'}" Foreground="#777777" FontSize="11" Margin="0,2,0,0"/>
-                                    </StackPanel>
-                                </ui:CardControl.Header>
-                            </ui:CardControl>
-                        </UniformGrid>
-
-                        <Grid Grid.Row="3" Margin="0,0,10,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="30"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Activity This Month" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"/>
-                                <Border Background="#151515" CornerRadius="6" Padding="15,15,15,10" HorizontalAlignment="Left">
-                                    <StackPanel>
-                                        <ItemsControl ItemsSource="{Binding HeatmapDays}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <WrapPanel Orientation="Vertical" Height="105"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Width="12" Height="12" Margin="1.5" CornerRadius="2" 
-                                                            Background="{Binding ColorHex}" ToolTip="{Binding Tooltip}" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-
-                                        <StackPanel Orientation="Horizontal" Margin="0,15,0,0" HorizontalAlignment="Right">
-                                            <TextBlock Text="0h" Foreground="Gray" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                            <Border Width="12" Height="12" Margin="1.5" CornerRadius="2" Background="#161B22" ToolTip="0 hours"/>
-                                            <Border Width="12" Height="12" Margin="1.5" CornerRadius="2" Background="#0E4429" ToolTip="Under 2 hours"/>
-                                            <Border Width="12" Height="12" Margin="1.5" CornerRadius="2" Background="#006D32" ToolTip="2 to 5 hours"/>
-                                            <Border Width="12" Height="12" Margin="1.5" CornerRadius="2" Background="#26A641" ToolTip="5 to 8 hours"/>
-                                            <Border Width="12" Height="12" Margin="1.5" CornerRadius="2" Background="#39D353" ToolTip="8+ hours"/>
-                                            <TextBlock Text="8h+" Foreground="Gray" FontSize="11" Margin="5,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-
-                            <Grid Grid.Column="2">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <Grid Grid.Row="0" Margin="0,0,10,10">
-                                    <TextBlock Text="Most Used Applications" FontSize="18" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
-                                    <ui:TextBox Text="{Binding StatsSearchText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Search stats..." Icon="Search24" Width="180" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                </Grid>
-
-                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding FilteredTopApps}"
-                  ScrollViewer.CanContentScroll="True"
-                  VirtualizingPanel.IsVirtualizing="True"
-                  VirtualizingPanel.VirtualizationMode="Recycling"
-                  VirtualizingPanel.ScrollUnit="Pixel">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <VirtualizingStackPanel/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <ui:CardAction Command="{Binding DataContext.StatisticsVM.ShowAppDetailsCommand, ElementName=RootWindow}" 
-                               CommandParameter="{Binding}" 
-                               Margin="0,0,10,12" Padding="15">
-                                                    <Grid>
-
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="60"/>
-                                                            <ColumnDefinition Width="*"/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                        </Grid.ColumnDefinitions>
-
-                                                        <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,10,0">
-
-                                                            <TextBlock Text="{Binding CurrentRank, StringFormat='#{0}'}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center">
-                                                                <TextBlock.Style>
-                                                                    <Style TargetType="TextBlock">
-                                                                        <Setter Property="Foreground" Value="White"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding CurrentRank}" Value="1">
-                                                                                <Setter Property="Foreground" Value="#FFD700"/>
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding CurrentRank}" Value="2">
-                                                                                <Setter Property="Foreground" Value="#C0C0C0"/>
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding CurrentRank}" Value="3">
-                                                                                <Setter Property="Foreground" Value="#CD7F32"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </TextBlock.Style>
-                                                            </TextBlock>
-
-                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
-                                                                <ui:SymbolIcon Symbol="ArrowUp24" Foreground="#39D353" FontSize="10" Visibility="{Binding ShowUpArrow}"/>
-                                                                <ui:SymbolIcon Symbol="ArrowDown24" Foreground="#F85149" FontSize="10" Visibility="{Binding ShowDownArrow}"/>
-                                                                <ui:SymbolIcon Symbol="Subtract24" Foreground="Gray" FontSize="10" Visibility="{Binding ShowDash}"/>
-                                                                <TextBlock Text="{Binding RankChangeDisplay}" FontSize="11" Foreground="Gray" Margin="2,0,0,0"/>
-                                                            </StackPanel>
-                                                        </StackPanel>
-
-                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                                                <TextBlock Text="{Binding AppName}" FontSize="15" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
-                                                                <Ellipse Width="6" Height="6" Fill="{Binding CategoryColor}" Margin="8,0,4,0" VerticalAlignment="Center"/>
-                                                                <TextBlock Text="{Binding Category}" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
-                                                            </StackPanel>
-
-                                                            <ProgressBar Value="{Binding PercentageOfMax}" Maximum="100" Height="2" Margin="0,0,20,0" Background="#2A2A2A" BorderThickness="0">
-                                                                <ProgressBar.Style>
-                                                                    <Style TargetType="ProgressBar">
-                                                                        <Setter Property="Foreground" Value="#0078D7"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding CurrentRank}" Value="1">
-                                                                                <Setter Property="Foreground" Value="#FFD700"/>
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding CurrentRank}" Value="2">
-                                                                                <Setter Property="Foreground" Value="#C0C0C0"/>
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding CurrentRank}" Value="3">
-                                                                                <Setter Property="Foreground" Value="#CD7F32"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </ProgressBar.Style>
-                                                            </ProgressBar>
-                                                        </StackPanel>
-
-                                                        <TextBlock Grid.Column="2" Text="{Binding DisplayTime}" FontSize="16" FontWeight="Bold" Foreground="#AAAAAA" VerticalAlignment="Center"/>
-                                                    </Grid>
-                                                </ui:CardAction>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-
-
-                                <ui:CardExpander Grid.Row="2" Margin="0,10,10,0" VerticalAlignment="Bottom">
-                                    <ui:CardExpander.Header>
-                                        <TextBlock Text="Hidden Applications" FontSize="14" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
-                                    </ui:CardExpander.Header>
-
-                                    <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
-                                        <ItemsControl ItemsSource="{Binding HiddenAppsList}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,0,10,8">
-                                                        <TextBlock Text="{Binding AppName}" Foreground="Gray" VerticalAlignment="Center"/>
-                                                        <ui:Button Content="Restore" Appearance="Transparent" Foreground="#0078D7" HorizontalAlignment="Right" Padding="8,4"
-                                                                   Command="{Binding DataContext.StatisticsVM.UnhideAppCommand, ElementName=RootWindow}" 
-                                                                   CommandParameter="{Binding AppName}" />
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </ScrollViewer>
-                                </ui:CardExpander>
-                            </Grid>
-                        </Grid>
-                    </Grid>
-                    <Grid Visibility="{Binding DetailViewVisibility}" Margin="0,0,10,0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-
-                        <ui:Button Grid.Row="0" Content="Back to Leaderboard" Icon="ArrowLeft24" Appearance="Transparent" 
-                                   Command="{Binding DataContext.StatisticsVM.CloseDetailsCommand, ElementName=RootWindow}" Margin="-10,0,0,15"/>
-
-                        <Grid Grid.Row="1" Margin="0,0,0,25">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <Grid Grid.Row="0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Grid.Column="0" Text="{Binding DetailAppName}" FontSize="36" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <ui:Button Content="Hide" Icon="EyeOff24" Appearance="Danger" Padding="15,8" Margin="0,0,10,0" 
-                                               Command="{Binding DataContext.StatisticsVM.HideAppCommand, ElementName=RootWindow}" />
-                                    <ui:Button Content="Add" Icon="Add24" Appearance="Primary" Padding="15,8" 
-                                               Visibility="{Binding AddButtonVisibility}" 
-                                               Command="{Binding DataContext.StatisticsVM.AddToManagedAppsCommand, ElementName=RootWindow}" />
-                                </StackPanel>
-                            </Grid>
-
-                            <Grid Grid.Row="1" Margin="0,15,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Bottom">
-                                    <TextBlock Text="{Binding DetailExecutablePath}" FontSize="13" Foreground="#888888" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                    <ui:Button Content="Open Location" Icon="FolderOpen24" Appearance="Secondary" FontSize="12" Padding="8,4" 
-                                               Visibility="{Binding OpenExplorerVisibility}" 
-                                               Command="{Binding DataContext.StatisticsVM.OpenInExplorerCommand, ElementName=RootWindow}" />
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="Category:" FontSize="13" Foreground="Gray" VerticalAlignment="Center" Margin="0,0,10,0"/>
-
-                                    <ComboBox ItemsSource="{Binding AvailableCategories}" 
-                                              SelectedItem="{Binding DetailCategory, UpdateSourceTrigger=PropertyChanged}" 
-                                              Width="160" MinHeight="32"/>
-
-                                </StackPanel>
-                            </Grid>
-                        </Grid>
-
-                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
-                            <StackPanel>
-
-                                <Border Background="#101010" BorderBrush="#222222" BorderThickness="1" CornerRadius="8" Padding="25" Margin="0,0,0,20">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="ALL TIME TOTAL" FontSize="14" FontWeight="Bold" Foreground="#0078D7" Margin="0,0,0,5"/>
-                                            <TextBlock Text="{Binding DetailTimeAllTime}" FontSize="48" FontWeight="Black" Foreground="White" Margin="0,0,0,5"/>
-                                            <TextBlock Text="{Binding DetailActiveAllTime, StringFormat='{}Active: {0}'}" Foreground="#FF8C00" FontSize="12" Margin="0,2,0,0"/>
-                                            <Border Background="#1AFFFFFF" CornerRadius="4" Padding="10,4" HorizontalAlignment="Left">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <ui:SymbolIcon Symbol="DataPie24" Foreground="#FFD700" FontSize="14" Margin="0,0,6,0"/>
-                                                    <TextBlock Text="{Binding DetailPercentageOfPc}" FontSize="13" FontWeight="SemiBold" Foreground="#FFD700"/>
-                                                </StackPanel>
-                                            </Border>
-                                        </StackPanel>
-
-                                        <ui:SymbolIcon Grid.Column="1" Symbol="Timer24" FontSize="80" Foreground="#15FFFFFF" VerticalAlignment="Center"/>
-                                    </Grid>
-                                </Border>
-
-                                <TextBlock Text="Time Breakdown" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"/>
-                                <UniformGrid Columns="4" Margin="0,0,0,25">
-                                    <ui:CardControl Margin="0,0,10,0" Padding="15" Background="#151515" BorderThickness="0">
-                                        <ui:CardControl.Header>
-                                            <StackPanel>
-                                                <TextBlock Text="Today" Foreground="Gray" FontSize="13"/>
-                                                <TextBlock Text="{Binding DetailTimeToday}" FontSize="22" FontWeight="Bold" Foreground="White" Margin="0,5,0,0"/>
-                                                <TextBlock Text="{Binding DetailActiveTimeToday, StringFormat='{}Active: {0}'}" Foreground="#FF8C00" FontSize="12" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                        </ui:CardControl.Header>
-                                    </ui:CardControl>
-
-                                    <ui:CardControl Margin="0,0,10,0" Padding="15" Background="#151515" BorderThickness="0">
-                                        <ui:CardControl.Header>
-                                            <StackPanel>
-                                                <TextBlock Text="This Week" Foreground="Gray" FontSize="13"/>
-                                                <TextBlock Text="{Binding DetailTimeWeek}" FontSize="22" FontWeight="Bold" Foreground="White" Margin="0,5,0,0"/>
-                                                <TextBlock Text="{Binding DetailActiveTimeWeek, StringFormat='{}Active: {0}'}" Foreground="#FF8C00" FontSize="12" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                        </ui:CardControl.Header>
-                                    </ui:CardControl>
-
-                                    <ui:CardControl Margin="0,0,10,0" Padding="15" Background="#151515" BorderThickness="0">
-                                        <ui:CardControl.Header>
-                                            <StackPanel>
-                                                <TextBlock Text="This Month" Foreground="Gray" FontSize="13"/>
-                                                <TextBlock Text="{Binding DetailTimeMonth}" FontSize="22" FontWeight="Bold" Foreground="White" Margin="0,5,0,0"/>
-                                                <TextBlock Text="{Binding DetailActiveTimeMonth, StringFormat='{}Active: {0}'}" Foreground="#FF8C00" FontSize="12" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                        </ui:CardControl.Header>
-                                    </ui:CardControl>
-
-                                    <ui:CardControl Padding="15" Background="#151515" BorderThickness="0">
-                                        <ui:CardControl.Header>
-                                            <StackPanel>
-                                                <TextBlock Text="This Year" Foreground="Gray" FontSize="13"/>
-                                                <TextBlock Text="{Binding DetailTimeYear}" FontSize="22" FontWeight="Bold" Foreground="White" Margin="0,5,0,0"/>
-                                                <TextBlock Text="{Binding DetailActiveTimeYear, StringFormat='{}Active: {0}'}" Foreground="#FF8C00" FontSize="12" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                        </ui:CardControl.Header>
-                                    </ui:CardControl>
-                                </UniformGrid>
-
-                                <TextBlock Text="Behavioral Insights" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"/>
-                                <UniformGrid Columns="2" Rows="2" Margin="0,0,0,20">
-
-                                    <Border Background="#151515" CornerRadius="6" Padding="15" Margin="0,0,10,10">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                <ui:SymbolIcon Symbol="Trophy24" Foreground="#FF8C00" FontSize="16" Margin="0,0,8,0"/>
-                                                <TextBlock Text="Personal Record" Foreground="Gray" FontSize="13" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                            <TextBlock Text="{Binding DetailLongestDay}" FontSize="16" FontWeight="SemiBold" Foreground="#E0E0E0"/>
-                                        </StackPanel>
-                                    </Border>
-
-                                    <Border Background="#151515" CornerRadius="6" Padding="15" Margin="0,0,0,10">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                <ui:SymbolIcon Symbol="DataLine24" Foreground="#0078D7" FontSize="16" Margin="0,0,8,0"/>
-                                                <TextBlock Text="Daily Average (When Active)" Foreground="Gray" FontSize="13" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                            <TextBlock Text="{Binding DetailDailyAverage}" FontSize="16" FontWeight="SemiBold" Foreground="#E0E0E0"/>
-                                        </StackPanel>
-                                    </Border>
-
-                                    <Border Background="#151515" CornerRadius="6" Padding="15" Margin="0,0,10,0">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                <ui:SymbolIcon Symbol="DataBarHorizontal24" Foreground="#9D00FF" FontSize="16" Margin="0,0,8,0"/>
-                                                <TextBlock Text="Usage Pattern" Foreground="Gray" FontSize="13" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                            <TextBlock Text="{Binding DetailUsageBias}" FontSize="16" FontWeight="SemiBold" Foreground="#E0E0E0"/>
-                                        </StackPanel>
-                                    </Border>
-
-                                    <Border Background="#151515" CornerRadius="6" Padding="15" Margin="0,0,0,0">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                <ui:SymbolIcon Symbol="Calendar24" Foreground="#26A641" FontSize="16" Margin="0,0,8,0"/>
-                                                <TextBlock Text="30-Day Consistency" Foreground="Gray" FontSize="13" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                            <TextBlock Text="{Binding DetailConsistency}" FontSize="16" FontWeight="SemiBold" Foreground="#E0E0E0"/>
-                                        </StackPanel>
-                                    </Border>
-
-                                </UniformGrid>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </Grid>
-                    <Grid Visibility="{Binding WrappedVisibility}" Background="#F50D0D0D" Panel.ZIndex="100" Margin="-20">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-
-                        <ui:Button Grid.Row="0" Content="Close Recap" Icon="Dismiss24" Appearance="Transparent" Command="{Binding CloseWrappedCommand}" HorizontalAlignment="Right" Margin="15"/>
-
-                        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,-50,0,0">
-                            <TextBlock Text="{Binding WrappedMonthName}" FontSize="48" FontWeight="Black" Foreground="#FFD700" HorizontalAlignment="Center" Margin="0,0,0,5"/>
-                            <TextBlock Text="Your digital life, visualized." FontSize="16" Foreground="Gray" HorizontalAlignment="Center" Margin="0,0,0,40"/>
-
-                            <UniformGrid Columns="2" Rows="2" Width="650" Height="320">
-                                <Border Background="#1AFFFFFF" CornerRadius="12" Margin="10" Padding="20">
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="🏆 Most Used App" Foreground="LightGray" FontSize="14" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="{Binding WrappedTopApp}" FontSize="28" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,10"/>
-                                        <TextBlock Text="{Binding WrappedTopAppTime, StringFormat='{}Time: {0}'}" FontSize="14" Foreground="#0078D7" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#1AFFFFFF" CornerRadius="12" Margin="10" Padding="20">
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="🕹️ Biggest Distraction" Foreground="LightGray" FontSize="14" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="{Binding WrappedDistraction}" FontSize="28" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,10"/>
-                                        <TextBlock Text="{Binding WrappedDistractionTime, StringFormat='{}Time: {0}'}" FontSize="14" Foreground="#FF8C00" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#1AFFFFFF" CornerRadius="12" Margin="10" Padding="20">
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="🔥 Peak Active Day" Foreground="LightGray" FontSize="14" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="{Binding WrappedPeakDayDate}" FontSize="28" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,10"/>
-                                        <TextBlock Text="{Binding WrappedPeakDayTime, StringFormat='{}Time: {0}'}" FontSize="14" Foreground="#39D353" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#1AFFFFFF" CornerRadius="12" Margin="10" Padding="20">
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="⚡ Macros Fired" Foreground="LightGray" FontSize="14" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="{Binding WrappedMacros}" FontSize="36" FontWeight="Black" Foreground="White" HorizontalAlignment="Center" Margin="0,5"/>
-                                        <TextBlock Text="Total time saved!" FontSize="12" Foreground="#9D00FF" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                            </UniformGrid>
-                        </StackPanel>
-                    </Grid>
+                        <ui:Button Command="{Binding OpenWebDashboardCommand}" 
+                                   Content="Open Web Dashboard  ↗" Icon="Globe24" Appearance="Primary" 
+                                   HorizontalAlignment="Center" Padding="40,12" FontSize="15" FontWeight="Bold"/>
+                    </StackPanel>
                 </Grid>
-
             </TabItem>
+
+
+            <!-- ========================================== -->
+            <!-- TAB 3: SETTINGS -->
+            <!-- ========================================== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Margin="5">
+                        <ui:SymbolIcon Symbol="Settings24" FontSize="18" Margin="0,0,8,0"/>
+                        <TextBlock Text="Settings" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Grid Margin="0,20,0,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel MaxWidth="600" HorizontalAlignment="Left">
+
+                            <TextBlock Text="System Behavior" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
+
+                            <ui:CardControl Margin="0,0,0,10" Padding="15">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Launch on Startup" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
+                                        <TextBlock Text="Automatically start FastApp silently in the background when Windows boots." Foreground="#888888" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch IsChecked="{Binding LaunchOnSystemStartup}"/>
+                            </ui:CardControl>
+
+                            <ui:CardControl Margin="0,0,0,30" Padding="15">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Enable On-Screen Display (OSD)" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
+                                        <TextBlock Text="Show a small visual popup when a hotkey is successfully triggered." Foreground="#888888" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch IsChecked="{Binding EnableOsd}"/>
+                            </ui:CardControl>
+
+
+                            <TextBlock Text="Web Server Status" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
+
+                            <ui:CardControl Margin="0,0,0,10" Padding="15">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Dashboard Port" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
+                                        <TextBlock Text="The web interface is currently running on http://127.0.0.1:5050" Foreground="#888888" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:Button Content="Open Browser" Icon="Globe24" Appearance="Secondary" Command="{Binding StatisticsVM.OpenWebDashboardCommand}"/>
+                            </ui:CardControl>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
         </TabControl>
     </Grid>
 </ui:FluentWindow>

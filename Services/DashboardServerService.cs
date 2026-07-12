@@ -55,6 +55,14 @@ namespace FastApp.Services
             return dict;
         }
 
+        private static DateTime GetMondayStartOfWeek(DateTime date)
+        {
+            // C# DayOfWeek: Sunday=0, Monday=1... 
+            // This formula calculates how many days to subtract to always land on the most recent Monday.
+            int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+            return date.Date.AddDays(-1 * diff);
+        }
+
         public static async Task StartAsync()
         {
             string exeFolder = AppContext.BaseDirectory;
@@ -116,8 +124,13 @@ namespace FastApp.Services
                     double focusToday = allSystemLogs.Where(l => l.Date == targetDate).Sum(l => l.TimeFocused.TotalHours);
                     double focusPrevDay = allSystemLogs.Where(l => l.Date == targetDate.AddDays(-1)).Sum(l => l.TimeFocused.TotalHours);
 
-                    double focusWeek = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-7) && l.Date <= targetDate).Sum(l => l.TimeFocused.TotalHours);
-                    double focusPrevWeek = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-14) && l.Date <= targetDate.AddDays(-7)).Sum(l => l.TimeFocused.TotalHours);
+                    DateTime startOfWeek = GetMondayStartOfWeek(targetDate);
+                    DateTime startOfPrevWeek = startOfWeek.AddDays(-7);
+
+                    // "This Week" is Monday up to today
+                    double focusWeek = allSystemLogs.Where(l => l.Date >= startOfWeek && l.Date <= targetDate).Sum(l => l.TimeFocused.TotalHours);
+                    // "Last Week" is the full Mon-Sun of the previous week
+                    double focusPrevWeek = allSystemLogs.Where(l => l.Date >= startOfPrevWeek && l.Date < startOfWeek).Sum(l => l.TimeFocused.TotalHours);
 
                     double focusMonth = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-30) && l.Date <= targetDate).Sum(l => l.TimeFocused.TotalHours);
                     double focusPrevMonth = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-60) && l.Date <= targetDate.AddDays(-30)).Sum(l => l.TimeFocused.TotalHours);
@@ -126,6 +139,14 @@ namespace FastApp.Services
                     double focusPrevYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-730) && l.Date <= targetDate.AddDays(-365)).Sum(l => l.TimeFocused.TotalHours);
 
                     double focusAllTime = allSystemLogs.Sum(l => l.TimeFocused.TotalHours);
+
+                    // --- NEW: 365-DAY HEATMAP DATA ---
+                    var yearlyHeatmap = allSystemLogs
+                        .Where(l => l.Date > targetDate.AddDays(-365) && l.Date <= targetDate)
+                        .Select(l => new {
+                            Date = l.Date.ToString("yyyy-MM-dd"),
+                            FocusedMinutes = Math.Round(l.TimeFocused.TotalMinutes, 1)
+                        }).ToList();
 
                     var payload = new
                     {
@@ -136,6 +157,7 @@ namespace FastApp.Services
                         PrevFocusWeek = focusPrevWeek,
                         FocusMonth = focusMonth,
                         PrevFocusMonth = focusPrevMonth,
+                        YearlyHeatmap = yearlyHeatmap,
                         FocusYear = focusYear,
                         PrevFocusYear = focusPrevYear,
                         FocusAllTime = focusAllTime,
@@ -161,7 +183,12 @@ namespace FastApp.Services
                     var hiddenApps = GetHiddenApps(db);
 
                     if (timeframe == "day") { startDate = targetDate; prevStartDate = targetDate.AddDays(-1); prevEndDate = targetDate.AddDays(-1); }
-                    else if (timeframe == "week") { startDate = targetDate.AddDays(-6); prevStartDate = targetDate.AddDays(-13); prevEndDate = targetDate.AddDays(-7); }
+                    else if (timeframe == "week")
+                    {
+                        startDate = GetMondayStartOfWeek(targetDate);
+                        prevStartDate = startDate.AddDays(-7);
+                        prevEndDate = startDate.AddDays(-1);
+                    }
                     else if (timeframe == "month") { startDate = targetDate.AddDays(-29); prevStartDate = targetDate.AddDays(-59); prevEndDate = targetDate.AddDays(-30); }
                     else if (timeframe == "year") { startDate = targetDate.AddDays(-364); prevStartDate = targetDate.AddDays(-729); prevEndDate = targetDate.AddDays(-365); }
 
@@ -217,15 +244,121 @@ namespace FastApp.Services
                     var hiddenApps = GetHiddenApps(db);
                     var recentSessions = await db.SessionLogs.Where(s => s.StartTime >= targetDate.AddDays(-30) && s.StartTime < targetDate.AddDays(1) && !hiddenApps.Contains(s.AppName)).ToListAsync();
                     var targetDaySessions = recentSessions.Where(s => s.StartTime >= targetDate && s.StartTime < targetDate.AddDays(1)).ToList();
+
                     var longestBlock = targetDaySessions.Any() ? targetDaySessions.Max(s => (s.EndTime - s.StartTime).TotalMinutes) : 0;
                     var avgSpan = targetDaySessions.Any() ? targetDaySessions.Average(s => (s.EndTime - s.StartTime).TotalMinutes) : 0;
                     var heatmap = recentSessions.GroupBy(s => new { s.StartTime.DayOfWeek, s.StartTime.Hour }).Select(g => new { DayIndex = (int)g.Key.DayOfWeek, Hour = g.Key.Hour, TotalMinutes = Math.Round(g.Sum(s => (s.EndTime - s.StartTime).TotalMinutes), 1) }).ToList();
-                    await context.Response.WriteAsJsonAsync(new { LongestBlock = longestBlock, AverageSpan = avgSpan, Heatmap = heatmap });
+
+                    // --- NEW: PRODUCTIVITY RHYTHM & FATIGUE MATH ---
+                    var categoryMap = await GetAppCategoriesSafely(db);
+                    var workCats = new[] { "Development", "Productivity", "Education", "Utilities" };
+                    var playCats = new[] { "Gaming", "Fun", "Media Production", "Music", "Browsing" };
+
+                    // 1. Group the last 30 days of sessions by the Hour of the Day (0-23)
+                    var rhythm = Enumerable.Range(0, 24).Select(hour => {
+                        var hourSessions = recentSessions.Where(s => s.StartTime.Hour == hour).ToList();
+                        return new
+                        {
+                            Hour = hour,
+                            Work = Math.Round(hourSessions.Where(s => workCats.Contains(categoryMap.GetValueOrDefault(s.AppName, "Other"))).Sum(s => (s.EndTime - s.StartTime).TotalMinutes), 1),
+                            Play = Math.Round(hourSessions.Where(s => playCats.Contains(categoryMap.GetValueOrDefault(s.AppName, "Other"))).Sum(s => (s.EndTime - s.StartTime).TotalMinutes), 1)
+                        };
+                    }).ToList();
+
+                    // 2. Group the last 30 days of sessions by Day of the Week
+                    var fatigue = Enumerable.Range(0, 7).Select(d => {
+                        var daySessions = recentSessions.Where(s => (int)s.StartTime.DayOfWeek == d).ToList();
+                        return new
+                        {
+                            Day = ((DayOfWeek)d).ToString().Substring(0, 3), // e.g. "Mon"
+                            DayIndex = d == 0 ? 7 : d, // Shift Sunday (0) to end of week (7) for correct visual sorting
+                            AvgMinutes = daySessions.Any() ? Math.Round(daySessions.Average(s => (s.EndTime - s.StartTime).TotalMinutes), 1) : 0
+                        };
+                    }).OrderBy(x => x.DayIndex).ToList();
+
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        LongestBlock = longestBlock,
+                        AverageSpan = avgSpan,
+                        Heatmap = heatmap,
+                        Rhythm = rhythm,
+                        Fatigue = fatigue
+                    });
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });
 
-            // APP DETAILS - UPGRADED WITH AVERAGES AND PERSONAL RECORDS
+            // --- NEW: TIMELINE ENDPOINT (24-Hour Format) ---
+            app.MapGet("/api/timeline", async (string date, HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    DateTime targetDate = string.IsNullOrEmpty(date) ? DateTime.Today : DateTime.Parse(date).Date;
+                    var hiddenApps = GetHiddenApps(db);
+                    var categoryMap = await GetAppCategoriesSafely(db);
+
+                    var sessions = await db.SessionLogs
+                        .Where(s => s.StartTime >= targetDate && s.StartTime < targetDate.AddDays(1) && s.AppName != "SYSTEM_PC" && !hiddenApps.Contains(s.AppName))
+                        .ToListAsync();
+
+                    var payload = sessions.Select(s => new {
+                        AppName = s.AppName,
+                        Category = categoryMap.GetValueOrDefault(s.AppName, "Other"),
+                        // Force 24-Hour Format (HH instead of hh)
+                        Start = s.StartTime.ToString("HH:mm"),
+                        End = s.EndTime.ToString("HH:mm"),
+                        DurationMinutes = (s.EndTime - s.StartTime).TotalMinutes,
+                        StartMinutes = s.StartTime.TimeOfDay.TotalMinutes
+                    }).OrderBy(s => s.StartMinutes).ToList();
+
+                    await context.Response.WriteAsJsonAsync(payload);
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // --- NEW: ALL APPLICATIONS ENDPOINT (Added Category Support) ---
+            // --- NEW: ALL APPLICATIONS ENDPOINT (Shows Hidden Apps) ---
+            app.MapGet("/api/all-apps", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    var categoryMap = await GetAppCategoriesSafely(db);
+
+                    var logs = await db.DailyLogs
+                        .Where(l => l.AppName != "SYSTEM_PC") // Removed hidden apps filter
+                        .GroupBy(l => l.AppName)
+                        .Select(g => new {
+                            AppName = g.Key,
+                            TotalRuntimeTicks = g.Sum(x => (long?)x.TimeSpentTicks) ?? 0,
+                            TotalFocusTicks = g.Sum(x => (long?)x.TimeFocusedTicks) ?? 0,
+                            TotalAfkTicks = g.Sum(x => (long?)x.AfkTimeSpentTicks) ?? 0
+                        }).ToListAsync();
+
+                    var sessionData = await db.SessionLogs
+                        .Where(s => s.AppName != "SYSTEM_PC") // Removed hidden apps filter
+                        .Select(s => new { s.AppName, s.StartTime, s.EndTime })
+                        .ToListAsync();
+
+                    var maxSessions = sessionData.GroupBy(s => s.AppName)
+                        .ToDictionary(g => g.Key, g => g.Max(s => (s.EndTime - s.StartTime).TotalMinutes));
+
+                    var result = logs.Select(l => new {
+                        AppName = l.AppName,
+                        Category = categoryMap.GetValueOrDefault(l.AppName, "Other"),
+                        TotalFocus = TimeSpan.FromTicks(l.TotalFocusTicks).TotalMinutes,
+                        TotalRuntime = TimeSpan.FromTicks(l.TotalRuntimeTicks).TotalMinutes,
+                        TotalAfk = TimeSpan.FromTicks(l.TotalAfkTicks).TotalMinutes,
+                        LongestSession = maxSessions.GetValueOrDefault(l.AppName, 0)
+                    }).OrderBy(x => x.AppName).ToList();
+
+                    await context.Response.WriteAsJsonAsync(result);
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // APP DETAILS - UPGRADED WITH ALGORITHMS & PATH
             app.MapGet("/api/app-details", async (string appName, HttpContext context) =>
             {
                 try
@@ -235,38 +368,79 @@ namespace FastApp.Services
                     DateTime targetDate = DateTime.Today;
                     var allTimeLogs = await db.DailyLogs.Where(l => l.AppName == appName).ToListAsync();
                     var macroCount = await db.MacroEventLogs.CountAsync(m => m.AppName == appName);
-                    var history = allTimeLogs.Where(l => l.Date >= targetDate.AddDays(-30)).OrderBy(l => l.Date).Select(l => new { Date = l.Date.ToString("MMM dd"), FocusedMinutes = Math.Round(l.TimeFocused.TotalMinutes, 1) }).ToList();
+
+                    var last30DaysLogs = allTimeLogs.Where(l => l.Date >= targetDate.AddDays(-30)).ToList();
+                    var history = last30DaysLogs.OrderBy(l => l.Date).Select(l => new { Date = l.Date.ToString("MMM dd"), FocusedMinutes = Math.Round(l.TimeFocused.TotalMinutes, 1) }).ToList();
                     var sessions = await db.SessionLogs.Where(s => s.AppName == appName && s.StartTime >= targetDate.AddDays(-30)).ToListAsync();
+
                     var avgSession = sessions.Any() ? sessions.Average(s => (s.EndTime - s.StartTime).TotalMinutes) : 0;
                     var maxStreak = sessions.Any() ? sessions.Max(s => (s.EndTime - s.StartTime).TotalMinutes) : 0;
                     var peakHourGroup = sessions.GroupBy(s => s.StartTime.Hour).OrderByDescending(g => g.Sum(s => (s.EndTime - s.StartTime).TotalMinutes)).FirstOrDefault();
 
-                    // Averages Math
-                    double weekAvg = allTimeLogs.Where(l => l.Date > targetDate.AddDays(-7) && l.Date <= targetDate).Sum(l => l.TimeFocused.TotalHours) / 7.0;
-                    double prevWeekAvg = allTimeLogs.Where(l => l.Date > targetDate.AddDays(-14) && l.Date <= targetDate.AddDays(-7)).Sum(l => l.TimeFocused.TotalHours) / 7.0;
+                    // --- NEW: 30-DAY CONSISTENCY ---
+                    int daysActiveInLast30 = last30DaysLogs.Select(l => l.Date).Distinct().Count();
+                    double consistencyPct = Math.Round((daysActiveInLast30 / 30.0) * 100, 1);
 
+                    // --- NEW: USAGE PATTERN ALGORITHM ---
+                    double weekdayFocus = last30DaysLogs.Where(l => l.Date.DayOfWeek >= DayOfWeek.Monday && l.Date.DayOfWeek <= DayOfWeek.Friday).Sum(l => l.TimeFocused.TotalMinutes);
+                    double weekendFocus = last30DaysLogs.Where(l => l.Date.DayOfWeek == DayOfWeek.Saturday || l.Date.DayOfWeek == DayOfWeek.Sunday).Sum(l => l.TimeFocused.TotalMinutes);
+                    double totalPatternFocus = weekdayFocus + weekendFocus;
+
+                    string usagePattern = "Insufficient Data";
+                    if (totalPatternFocus > 0)
+                    {
+                        double weekdayPct = weekdayFocus / totalPatternFocus;
+                        if (weekdayPct >= 0.85) usagePattern = "Heavy Weekday Bias";
+                        else if (weekdayPct >= 0.65) usagePattern = "Weekday Bias";
+                        else if (weekdayPct <= 0.20) usagePattern = "Heavy Weekend Bias";
+                        else if (weekdayPct <= 0.40) usagePattern = "Weekend Bias";
+                        else usagePattern = "Mixed / Balanced";
+                    }
+
+                    // --- PATH LOOKUP ---
+                    // Try to find the path from ManagedApps if available. 
+                    // (If you don't store Path in DB yet, it will return this placeholder until you track it).
+                    // --- PATH LOOKUP (Safe Version) ---
+                    string exePath = "Path not recorded in database.";
+                    try
+                    {
+                        var managedApp = await db.ManagedApps.FirstOrDefaultAsync(m => m.Name == appName);
+                        if (managedApp != null && !string.IsNullOrEmpty(managedApp.ExecutablePath))
+                        {
+                            exePath = managedApp.ExecutablePath;
+                        }
+                    }
+                    catch
+                    {
+                        // Safely catches the SQL error if the ExecutablePath column doesn't exist yet
+                    }
+
+                    // Averages & Personal Records (Unchanged)
+                    DateTime startOfWeek = GetMondayStartOfWeek(targetDate);
+                    DateTime startOfPrevWeek = startOfWeek.AddDays(-7);
+                    double weekAvg = allTimeLogs.Where(l => l.Date >= startOfWeek && l.Date <= targetDate).Sum(l => l.TimeFocused.TotalHours) / 7.0;
+                    double prevWeekAvg = allTimeLogs.Where(l => l.Date >= startOfPrevWeek && l.Date < startOfWeek).Sum(l => l.TimeFocused.TotalHours) / 7.0;
                     double monthAvg = allTimeLogs.Where(l => l.Date > targetDate.AddDays(-30) && l.Date <= targetDate).Sum(l => l.TimeFocused.TotalHours) / 30.0;
                     double prevMonthAvg = allTimeLogs.Where(l => l.Date > targetDate.AddDays(-60) && l.Date <= targetDate.AddDays(-30)).Sum(l => l.TimeFocused.TotalHours) / 30.0;
-
                     double yearAvg = allTimeLogs.Where(l => l.Date > targetDate.AddDays(-365) && l.Date <= targetDate).Sum(l => l.TimeFocused.TotalHours) / 365.0;
                     double prevYearAvg = allTimeLogs.Where(l => l.Date > targetDate.AddDays(-730) && l.Date <= targetDate.AddDays(-365)).Sum(l => l.TimeFocused.TotalHours) / 365.0;
 
-                    // Personal Records Math
                     var maxFocusDay = allTimeLogs.OrderByDescending(l => l.TimeFocused).FirstOrDefault();
                     var maxRunningDay = allTimeLogs.OrderByDescending(l => l.TimeSpent).FirstOrDefault();
-
-                    string maxFocusDayText = maxFocusDay != null && maxFocusDay.TimeFocused.TotalMinutes > 0
-                        ? $"{maxFocusDay.Date:MMM dd} ({Math.Round(maxFocusDay.TimeFocused.TotalHours, 1)}h)" : "N/A";
-                    string maxRunningDayText = maxRunningDay != null && maxRunningDay.TimeSpent.TotalMinutes > 0
-                        ? $"{maxRunningDay.Date:MMM dd} ({Math.Round(maxRunningDay.TimeSpent.TotalHours, 1)}h)" : "N/A";
+                    string maxFocusDayText = maxFocusDay != null && maxFocusDay.TimeFocused.TotalMinutes > 0 ? $"{maxFocusDay.Date:MMM dd} ({Math.Round(maxFocusDay.TimeFocused.TotalHours, 1)}h)" : "N/A";
+                    string maxRunningDayText = maxRunningDay != null && maxRunningDay.TimeSpent.TotalMinutes > 0 ? $"{maxRunningDay.Date:MMM dd} ({Math.Round(maxRunningDay.TimeSpent.TotalHours, 1)}h)" : "N/A";
 
                     await context.Response.WriteAsJsonAsync(new
                     {
                         AppName = appName,
+                        ExecutablePath = exePath, // Added
+                        Consistency = consistencyPct, // Added
+                        UsagePattern = usagePattern, // Added
                         AllTimeFocused = Math.Round(allTimeLogs.Sum(l => l.TimeFocused.TotalHours), 1),
                         AllTimeRunning = Math.Round(allTimeLogs.Sum(l => l.TimeSpent.TotalHours), 1),
                         AllTimeAfk = Math.Round(allTimeLogs.Sum(l => l.AfkTimeSpent.TotalHours), 1),
                         TotalMacros = macroCount,
+                        DaysActive = daysActiveInLast30,
                         AvgSession = Math.Round(avgSession, 1),
                         MaxStreak = Math.Round(maxStreak, 1),
                         PeakHour = peakHourGroup != null ? $"{peakHourGroup.Key}:00" : "N/A",
@@ -280,6 +454,30 @@ namespace FastApp.Services
                         MaxRunningDay = maxRunningDayText,
                         History = history
                     });
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // --- NEW: OPEN FOLDER SECURE ENDPOINT ---
+            app.MapPost("/api/open-folder", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var reader = new StreamReader(context.Request.Body);
+                    string path = await reader.ReadToEndAsync();
+
+                    // Basic security & validation check
+                    if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                    {
+                        // Tells Windows Explorer to open and highlight the specific file
+                        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+                        await context.Response.WriteAsJsonAsync(new { success = true });
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 404;
+                        await context.Response.WriteAsJsonAsync(new { error = "Path not found or invalid." });
+                    }
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });
