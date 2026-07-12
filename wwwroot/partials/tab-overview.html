@@ -105,24 +105,55 @@
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-    <!-- Removed overflow-hidden from all mini cards -->
     <div class="glass-card !p-4 border-t-purple-500/50 border-t-2 relative">
-        <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">This Week</h3>
+        <div class="flex items-center justify-between mb-1">
+            <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">This Week</h3>
+            <div class="relative group inline-block cursor-help text-slate-500 hover:text-purple-400 transition-colors">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute bottom-full right-0 mb-2 w-48 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                    Accumulated focus time from Monday to today.
+                </div>
+            </div>
+        </div>
         <div class="text-2xl font-bold" id="kpi-week">0h 0m</div>
         <div id="kpi-week-trend"></div>
     </div>
     <div class="glass-card !p-4 border-t-emerald-500/50 border-t-2 relative">
-        <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">This Month</h3>
+        <div class="flex items-center justify-between mb-1">
+            <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">This Month</h3>
+            <div class="relative group inline-block cursor-help text-slate-500 hover:text-emerald-400 transition-colors">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute bottom-full right-0 mb-2 w-48 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                    Accumulated focus time for the current calendar month.
+                </div>
+            </div>
+        </div>
         <div class="text-2xl font-bold" id="kpi-month">0h 0m</div>
         <div id="kpi-month-trend"></div>
     </div>
     <div class="glass-card !p-4 border-t-amber-500/50 border-t-2 relative">
-        <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">This Year</h3>
+        <div class="flex items-center justify-between mb-1">
+            <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">This Year</h3>
+            <div class="relative group inline-block cursor-help text-slate-500 hover:text-amber-400 transition-colors">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute bottom-full right-0 mb-2 w-48 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                    Accumulated focus time for the current calendar year.
+                </div>
+            </div>
+        </div>
         <div class="text-2xl font-bold" id="kpi-year">0h 0m</div>
         <div id="kpi-year-trend"></div>
     </div>
     <div class="glass-card !p-4 border-t-slate-500/50 border-t-2 relative">
-        <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">All Time</h3>
+        <div class="flex items-center justify-between mb-1">
+            <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">All Time</h3>
+            <div class="relative group inline-block cursor-help text-slate-500 hover:text-slate-300 transition-colors">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute bottom-full right-0 mb-2 w-48 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                    Your total lifetime focus hours tracked by FastApp.
+                </div>
+            </div>
+        </div>
         <div class="text-2xl font-bold" id="kpi-alltime">0h 0m</div>
         <div class="mt-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Lifetime Record</div>
     </div>
@@ -132,7 +163,6 @@
 <div class="glass-card mb-8">
     <div class="flex items-center mb-4">
         <h3 class="text-sm font-bold uppercase tracking-widest text-slate-300">365-Day Focus History</h3>
-        <!-- TOOLTIP -->
         <div class="relative group inline-block ml-2 cursor-help text-slate-500 hover:text-blue-400 transition-colors">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             <div class="glass-tooltip absolute bottom-full left-0 mb-3 w-64 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal">
@@ -144,8 +174,6 @@
     <!-- Heatmap Grid Container -->
     <div class="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
         <div class="flex w-max mx-auto">
-            <!-- Added mx-auto and w-max for perfect centering -->
-            <!-- Day Labels (Perfectly aligned to the 7 rows) -->
             <div class="grid grid-rows-7 gap-1 text-[9px] font-bold text-slate-500 uppercase pr-3 items-center text-right h-[104px]">
                 <div class="leading-none">Mon</div>
                 <div></div>
@@ -155,13 +183,10 @@
                 <div></div>
                 <div></div>
             </div>
-
-            <!-- The actual grid (JS populates this) -->
             <div id="yearly-heatmap" class="grid grid-rows-7 grid-flow-col gap-1 auto-cols-max h-[104px]"></div>
         </div>
     </div>
 
-    <!-- Legend -->
     <div class="flex justify-end items-center mt-2 text-[10px] text-slate-500 uppercase tracking-widest font-bold gap-2">
         <span>Less</span>
         <div class="w-3 h-3 rounded-sm bg-slate-800/50 border border-slate-700/50"></div>
@@ -177,6 +202,12 @@
 <div class="glass-card mb-8 border-l-4 border-l-indigo-500/50">
     <div class="flex items-center mb-4">
         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Focus by Category</h3>
+        <div class="relative group inline-block ml-2 cursor-help text-slate-500 hover:text-indigo-400 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div class="glass-tooltip absolute bottom-full left-0 mb-3 w-56 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal">
+                Visual breakdown of how your focus time was distributed across different app categories today.
+            </div>
+        </div>
     </div>
     <div class="w-full bg-slate-900/80 rounded-full h-5 flex overflow-hidden shadow-inner border border-slate-700/50" id="category-bar"></div>
     <div class="flex flex-wrap gap-x-6 gap-y-3 mt-5 text-sm" id="category-legend"></div>
@@ -185,11 +216,27 @@
 <!-- CHARTS -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
     <div class="glass-card lg:col-span-2">
-        <h3 class="text-sm font-bold uppercase tracking-widest mb-4 text-slate-300">7-Day Focus Trend</h3>
+        <div class="flex items-center mb-4">
+            <h3 class="text-sm font-bold uppercase tracking-widest text-slate-300">7-Day Focus Trend</h3>
+            <div class="relative group inline-block ml-2 cursor-help text-slate-500 hover:text-blue-400 transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute bottom-full left-0 mb-3 w-56 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal">
+                    Shows your total accumulated focus hours per day over the trailing 7 days.
+                </div>
+            </div>
+        </div>
         <div class="relative h-72"><canvas id="trendChart"></canvas></div>
     </div>
     <div class="glass-card">
-        <h3 class="text-sm font-bold uppercase tracking-widest mb-4 text-slate-300">Top Apps Today</h3>
+        <div class="flex items-center mb-4">
+            <h3 class="text-sm font-bold uppercase tracking-widest text-slate-300">Top Apps Today</h3>
+            <div class="relative group inline-block ml-2 cursor-help text-slate-500 hover:text-purple-400 transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="glass-tooltip absolute bottom-full right-0 mb-3 w-56 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200 z-50 p-3 rounded-xl text-xs font-normal normal-case tracking-normal text-left">
+                    Your top 5 most used applications today based strictly on active focus time.
+                </div>
+            </div>
+        </div>
         <div class="relative h-72 flex justify-center"><canvas id="donutChart"></canvas></div>
     </div>
 </div>

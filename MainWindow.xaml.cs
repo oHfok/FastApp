@@ -4,13 +4,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Wpf.Ui.Controls;
 
 namespace FastApp
 {
     public partial class MainWindow : FluentWindow
     {
+        private System.Windows.Point _dragStartPoint;
+
         private MainViewModel _viewModel;
 
         // NEW: The advanced global hook
@@ -39,6 +43,77 @@ namespace FastApp
 
             // 4. WIRE THE HOOK: Connect the live hook to the loaded ViewModel.
             _keyboardHook.KeysChanged += _viewModel.CheckForHotkeys;
+        }
+
+        // ==========================================
+        // DRAG AND DROP PHYSICS
+        // ==========================================
+        private void AppList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+        }
+
+        private void AppList_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            // Only start dragging if the left mouse button is pressed
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                System.Windows.Point position = e.GetPosition(null);
+
+                // Prevent accidental drags by requiring a minimum distance moved
+                if (Math.Abs(position.X - _dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(position.Y - _dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    if (sender is System.Windows.Controls.ListBox listBox)
+                    {
+                        // Find the visual UI container of the item being dragged
+                        var listBoxItem = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
+                        if (listBoxItem != null)
+                        {
+                            var appItem = (AppItemModel)listBox.ItemContainerGenerator.ItemFromContainer(listBoxItem);
+
+                            // Initialize the native Windows drag-and-drop system
+                            DragDrop.DoDragDrop(listBoxItem, appItem, System.Windows.DragDropEffects.Move);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void AppList_Drop(object sender, System.Windows.DragEventArgs e)
+        {
+            // Did we drop a valid AppItemModel?
+            if (e.Data.GetDataPresent(typeof(AppItemModel)))
+            {
+                var droppedData = (AppItemModel)e.Data.GetData(typeof(AppItemModel));
+                var target = ((FrameworkElement)e.OriginalSource).DataContext as AppItemModel;
+
+                // Ensure we aren't dropping the item onto itself
+                if (target != null && droppedData != null && target != droppedData)
+                {
+                    if (DataContext is MainViewModel vm)
+                    {
+                        int oldIndex = vm.ManagedApps.IndexOf(droppedData);
+                        int newIndex = vm.ManagedApps.IndexOf(target);
+
+                        vm.ReorderApps(oldIndex, newIndex);
+                    }
+                }
+            }
+        }
+
+        // Helper method to traverse the visual tree and find the ListBoxItem
+        private static T FindAncestor<T>(DependencyObject current) where T : DependencyObject
+        {
+            while (current != null)
+            {
+                if (current is T)
+                {
+                    return (T)current;
+                }
+                current = VisualTreeHelper.GetParent(current);
+            }
+            return null;
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

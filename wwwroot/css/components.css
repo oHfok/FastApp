@@ -86,17 +86,43 @@
     border: 1px solid var(--border-color);
     color: var(--text-main);
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-    pointer-events: none; /* Prevents flickering when hovering */
+    pointer-events: none; /* Prevents flickering */
 }
 
-    /* Optional: Small triangle pointer at the bottom of the tooltip */
+    /* Default Pointer (For bottom-full: Tooltip is ABOVE icon, points DOWN) */
     .glass-tooltip::after {
         content: '';
         position: absolute;
         top: 100%;
-        left: 50%;
-        margin-left: -6px;
         border-width: 6px;
         border-style: solid;
         border-color: var(--border-color) transparent transparent transparent;
+    }
+
+    /* Upward Pointer (For top-full: Tooltip is BELOW icon, points UP) */
+    .glass-tooltip.top-full::after {
+        top: auto;
+        bottom: 100%;
+        border-color: transparent transparent var(--border-color) transparent;
+    }
+
+    /* --- Triangle Horizontal Placement --- */
+
+    /* Centered Tooltips */
+    .glass-tooltip.-translate-x-1\/2::after {
+        left: 50%;
+        margin-left: -6px;
+    }
+
+    /* Left-Aligned Tooltips (Triangle shifts to the left) */
+    .glass-tooltip.left-0::after {
+        left: 14px;
+        margin-left: 0;
+    }
+
+    /* Right-Aligned Tooltips (Triangle shifts to the right) */
+    .glass-tooltip.right-0::after {
+        left: auto;
+        right: 14px;
+        margin-left: 0;
     }

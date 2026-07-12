@@ -160,7 +160,7 @@ namespace FastApp.ViewModels
             });
 
             // 1. QUICK LOAD: Read from SQLite
-            var savedApps = _dbContext.ManagedApps.ToList();
+            var savedApps = _dbContext.ManagedApps.OrderBy(a => a.OrderIndex).ToList();
             ManagedApps = new ObservableCollection<AppItemModel>(savedApps);
 
             // 2. COMPILE Caches
@@ -254,6 +254,41 @@ namespace FastApp.ViewModels
                     _suppressStartupToggleHandler = false;
                 });
             });
+        }
+
+        // ==========================================
+        // UI & LAYOUT STATE
+        // ==========================================
+        [ObservableProperty]
+        private bool _isCompactMode = false;
+
+        [RelayCommand]
+        private void ExpandCompactApp(AppItemModel app)
+        {
+            // When a user clicks a tiny row, immediately turn off compact mode 
+            // so they can see the expanded details of the app they just clicked!
+            IsCompactMode = false;
+        }
+
+        // Method to handle DB-backed Drag and Drop Reordering
+        public void ReorderApps(int oldIndex, int newIndex)
+        {
+            if (oldIndex < 0 || oldIndex >= ManagedApps.Count || newIndex < 0 || newIndex >= ManagedApps.Count)
+                return;
+
+            // Move the item in the ObservableCollection
+            var item = ManagedApps[oldIndex];
+            ManagedApps.RemoveAt(oldIndex);
+            ManagedApps.Insert(newIndex, item);
+
+            // Rewrite the OrderIndex for the entire list so the DB remembers
+            for (int i = 0; i < ManagedApps.Count; i++)
+            {
+                ManagedApps[i].OrderIndex = i;
+            }
+
+            _dbContext.SaveChanges();
+            FilteredManagedApps.Refresh();
         }
 
 
