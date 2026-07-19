@@ -22,6 +22,59 @@ const TAB_CONFIG = [
     { id: 'settings', icon: '⚙️', label: 'Settings', partial: 'partials/tab-settings.html' }
 ];
 
+let sparklineData = [];
+
+async function loadSparkline() {
+    try {
+        const res = await fetch('/api/sparkline');
+        sparklineData = await res.json();
+        renderSparkline();
+    } catch (err) { console.error("Failed to load sparkline", err); }
+}
+
+function renderSparkline() {
+    const container = document.getElementById('sparkline-container');
+    if (!container || sparklineData.length === 0) return;
+
+    const selectedDate = getSelectedDate();
+    const maxMins = Math.max(...sparklineData.map(d => d.focusedMinutes), 1);
+
+    let html = '';
+    sparklineData.forEach(day => {
+        const heightPct = Math.max((day.focusedMinutes / maxMins) * 100, 5); // Minimum 5% height
+        const isSelected = day.date === selectedDate;
+        const isToday = day.date === getLocalTodayStr();
+
+        let colorClass = 'bg-slate-700 hover:bg-blue-400/50';
+        if (isSelected) colorClass = 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]';
+        else if (isToday) colorClass = 'bg-slate-500 border-t-2 border-blue-400';
+
+        const tooltip = `${day.displayDay} (${day.date})\n${formatTime(day.focusedMinutes)} focused`;
+
+        html += `<div onclick="selectSparklineDate('${day.date}')" 
+                      class="w-full rounded-[1px] cursor-pointer transition-all duration-200 ${colorClass}" 
+                      style="height: ${heightPct}%" title="${tooltip}"></div>`;
+    });
+    container.innerHTML = html;
+
+    // Update the visual label
+    const labelEl = document.getElementById('current-date-label');
+    if (selectedDate === getLocalTodayStr()) {
+        labelEl.innerText = "Today";
+        labelEl.className = "text-xs font-bold text-blue-400";
+    } else {
+        const selectedDayObj = sparklineData.find(d => d.date === selectedDate);
+        labelEl.innerText = selectedDayObj ? selectedDayObj.displayDay : selectedDate;
+        labelEl.className = "text-xs font-bold text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]";
+    }
+}
+
+function selectSparklineDate(dateStr) {
+    document.getElementById('global-date').value = dateStr;
+    renderSparkline(); // Instantly update the blue highlight
+    refreshCurrentTab(); // Refresh the rest of the dashboard
+}
+
 function getSelectedDate() { return document.getElementById('global-date').value; }
 
 function switchTab(tabId, btnEl) {
@@ -71,13 +124,17 @@ async function loadDrilldownPartial() {
 }
 
 async function initializeDashboard() {
-    document.getElementById('global-date').valueAsDate = new Date();
+    // 1. Set the hidden date using our local time helper
+    document.getElementById('global-date').value = getLocalTodayStr();
 
+    // 2. Load the UI components concurrently
     await Promise.all([
         buildNavAndSections(),
-        loadDrilldownPartial()
+        loadDrilldownPartial(),
+        loadSparkline()
     ]);
 
+    // 3. Fetch real categories or fallback
     try {
         const res = await fetch('/api/categories');
         allCategories = await res.json();
@@ -89,7 +146,10 @@ async function initializeDashboard() {
         allCategories = ['Development', 'Gaming', 'Productivity', 'Browsing', 'Other'];
     }
 
+    // 4. Show the first tab
     activateTab(TAB_CONFIG[0].id);
 }
 
 initializeDashboard();
+
+

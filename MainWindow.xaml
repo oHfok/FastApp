@@ -224,9 +224,10 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                             <ui:ToggleSwitch Content="Compact View" IsChecked="{Binding IsCompactMode}" VerticalAlignment="Center" Margin="0,0,25,0"/>
 
-                            <ui:Button Content="Scan PC" Icon="SearchInfo24" Appearance="Secondary" Command="{Binding AddApplicationCommand}" Padding="15,6" Margin="0,0,10,0"/>
-                            <ui:Button Content="Browse File" Icon="FolderOpen24" Appearance="Secondary" Command="{Binding AddCustomFileCommand}" Padding="15,6" Margin="0,0,10,0"/>
-                            <ui:Button Content="New Action" Icon="Lightning24" Appearance="Primary" Command="{Binding AddCustomActionCommand}" Padding="15,6"/>
+
+                            <ui:Button Content="New Action" Icon="Lightning24" Appearance="Secondary" Command="{Binding AddCustomActionCommand}" Padding="15,6"  Margin="0,0,10,0"/>                            
+                            <ui:Button Content="Browse Files" Icon="FolderOpen24" Appearance="Secondary" Command="{Binding AddCustomFileCommand}" Padding="15,6" Margin="0,0,10,0"/>
+                            <ui:Button Content="Scan PC For Applications" Icon="SearchInfo24" Appearance="Primary" Command="{Binding AddApplicationCommand}" Padding="15,6" Margin="0,0,10,0"/>
                         </StackPanel>
                     </Grid>
 

@@ -12,6 +12,28 @@ async function loadOverview() {
         document.getElementById('kpi-switches').innerText = data.contextSwitches;
 
         document.getElementById('kpi-focus').innerText = formatHours(data.focusToday);
+
+        // --- PHASE 1: CONTEXTUAL BASELINES ---
+        const selectedDate = getSelectedDate();
+        const kpiFocusLabel = document.querySelector('#kpi-focus').parentElement.previousElementSibling.querySelector('h3');
+
+        // If we are looking at the past via the Time Machine
+        if (selectedDate !== getLocalTodayStr() && data.usualDailyFocus !== undefined) {
+            kpiFocusLabel.innerText = "Focus Time (Historical)";
+
+            const diff = data.focusToday - data.usualDailyFocus;
+            if (Math.abs(diff) > (10 / 60)) { // 10 minute threshold
+                const sign = diff > 0 ? '▲' : '▼';
+                const color = diff > 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10';
+                document.getElementById('kpi-focus-trend').innerHTML = `<div class="mt-2 text-xs font-semibold ${color} px-2 py-0.5 rounded w-max border border-current/20">${sign} ${formatTime(Math.abs(diff) * 60)} vs usual</div>`;
+            } else {
+                document.getElementById('kpi-focus-trend').innerHTML = `<div class="mt-2 text-xs font-semibold text-slate-400 bg-slate-500/10 px-2 py-0.5 rounded w-max border border-slate-500/20">▶ Average day</div>`;
+            }
+        } else {
+            // Normal behavior for "Today"
+            kpiFocusLabel.innerText = "Focus Today";
+            document.getElementById('kpi-focus-trend').innerHTML = getBlockTrendHtml(data.focusToday, data.prevFocusToday, "Yesterday");
+        }
         document.getElementById('kpi-focus-trend').innerHTML = getBlockTrendHtml(data.focusToday, data.prevFocusToday, "Yesterday");
 
         document.getElementById('kpi-week').innerText = formatHours(data.focusWeek);

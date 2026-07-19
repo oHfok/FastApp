@@ -577,7 +577,7 @@ namespace FastApp.ViewModels
                     .GroupBy(a => Path.GetFileNameWithoutExtension(a.ExecutablePath).ToLower())
                     .ToDictionary(g => g.Key, g => g.First().Name);
 
-                bool isAfk = Services.SystemIdleTracker.GetIdleTime().TotalMinutes >= 5;
+                bool isAfk = await Services.SystemIdleTracker.IsTrulyAfkAsync(TimeSpan.FromMinutes(5));
                 TimeSpan tickDuration = TimeSpan.FromSeconds(5);
                 DateTime now = DateTime.Now;
 
