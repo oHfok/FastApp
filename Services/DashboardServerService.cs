@@ -80,6 +80,34 @@ namespace FastApp.Services
                 await initDb.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS AppSettings (Key TEXT PRIMARY KEY, Value TEXT);");
                 await initDb.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO AppSettings (Key, Value) VALUES ('RetentionDays', '90');");
             }
+            // --- NEW: PHASE 1 TIMELINE SPARKLINE ---
+            app.MapGet("/api/sparkline", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    DateTime today = DateTime.Today;
+                    DateTime startDate = today.AddDays(-13); // Last 14 days
+
+                    var systemLogs = await db.DailyLogs
+                        .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= startDate && l.Date <= today)
+                        .ToListAsync();
+
+                    var sparkline = Enumerable.Range(0, 14).Select(i => {
+                        var d = startDate.AddDays(i);
+                        var log = systemLogs.FirstOrDefault(l => l.Date == d);
+                        return new
+                        {
+                            Date = d.ToString("yyyy-MM-dd"),
+                            DisplayDay = d.ToString("ddd"), // "Mon", "Tue"
+                            FocusedMinutes = log != null ? Math.Round(log.TimeFocused.TotalMinutes, 1) : 0
+                        };
+                    }).ToList();
+
+                    await context.Response.WriteAsJsonAsync(sparkline);
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
 
             app.MapGet("/api/categories", async (HttpContext context) =>
             {
@@ -124,6 +152,12 @@ namespace FastApp.Services
                     double focusToday = allSystemLogs.Where(l => l.Date == targetDate).Sum(l => l.TimeFocused.TotalHours);
                     double focusPrevDay = allSystemLogs.Where(l => l.Date == targetDate.AddDays(-1)).Sum(l => l.TimeFocused.TotalHours);
 
+                    // --- NEW: Contextual Baseline Calculation ---
+                    // Calculates average focus only on days the PC was actually used over the last 30 days
+                    var past30Logs = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-30) && l.Date < targetDate).ToList();
+                    int activeDays = past30Logs.Select(l => l.Date).Distinct().Count();
+                    double usualDailyFocus = activeDays > 0 ? past30Logs.Sum(l => l.TimeFocused.TotalHours) / activeDays : 0;
+
                     DateTime startOfWeek = GetMondayStartOfWeek(targetDate);
                     DateTime startOfPrevWeek = startOfWeek.AddDays(-7);
 
@@ -152,6 +186,7 @@ namespace FastApp.Services
                     {
                         TotalToday = allSystemLogs.Where(l => l.Date == targetDate).Sum(l => l.TimeSpent.TotalHours),
                         FocusToday = focusToday,
+                        UsualDailyFocus = usualDailyFocus,
                         PrevFocusToday = focusPrevDay,
                         FocusWeek = focusWeek,
                         PrevFocusWeek = focusPrevWeek,
