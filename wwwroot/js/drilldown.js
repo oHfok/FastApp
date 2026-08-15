@@ -56,7 +56,30 @@ async function openDrilldown(appName) {
         // Lifetime stats
         document.getElementById('dd-focus-all').textContent = formatHours(data.allTimeFocused || 0);
         document.getElementById('dd-running-all').textContent = formatHours(data.allTimeRunning || 0);
-        document.getElementById('dd-afk-all').textContent = formatHours(data.allTimeAfk || 0);
+
+        // Daily limit + Strict Focus Mode — actually enforced by the WPF tracker now;
+        // editing here sends a live message to the running app, same as category edits.
+        const dailyLimitMinutes = data.dailyLimitMinutes ?? data.DailyLimitMinutes ?? 0;
+        const strictFocusMode = data.strictFocusMode ?? data.StrictFocusMode ?? false;
+        const todayMinutes = data.todayMinutes ?? data.TodayMinutes ?? 0;
+
+        document.getElementById('dd-limit-input').value = dailyLimitMinutes > 0 ? dailyLimitMinutes : '';
+        document.getElementById('dd-strict-toggle').checked = strictFocusMode;
+
+        const barWrap = document.getElementById('dd-limit-bar-wrap');
+        if (dailyLimitMinutes > 0) {
+            const pct = Math.min(100, (todayMinutes / dailyLimitMinutes) * 100);
+            const overLimit = todayMinutes >= dailyLimitMinutes;
+            barWrap.style.display = 'block';
+            document.getElementById('dd-limit-bar-fill').style.width = `${pct}%`;
+            document.getElementById('dd-limit-bar-fill').style.background = overLimit ? 'var(--rose)' : 'var(--brass)';
+            document.getElementById('dd-limit-bar-caption').textContent =
+                `${formatTime(todayMinutes)} of ${formatTime(dailyLimitMinutes)} today${overLimit ? ' — limit reached' : ''}`;
+        } else {
+            barWrap.style.display = 'none';
+        }
+
+        document.getElementById('dd-limit-save-btn').onclick = () => saveLimitSetting(appName);
 
         // Hide/unhide button
         const hideBtn = document.getElementById('dd-hide-btn');
@@ -66,6 +89,24 @@ async function openDrilldown(appName) {
     } catch (err) {
         console.error('Failed to load app details', err);
     }
+}
+
+async function saveLimitSetting(appName) {
+    const rawValue = document.getElementById('dd-limit-input').value.trim();
+    const dailyLimitMinutes = rawValue === '' ? 0 : Math.max(0, parseInt(rawValue, 10) || 0);
+    const strictFocusMode = document.getElementById('dd-strict-toggle').checked;
+
+    await fetch('/api/update-limit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appName, dailyLimitMinutes, strictFocusMode })
+    });
+
+    const status = document.getElementById('dd-limit-status');
+    status.style.display = 'block';
+    setTimeout(() => { status.style.display = 'none'; }, 2500);
+
+    openDrilldown(appName); // refresh the bar/caption against the new limit
 }
 
 async function updateCategory(appName, category) {

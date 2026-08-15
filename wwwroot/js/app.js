@@ -3,7 +3,7 @@
    Persistent top bar + rail nav + tab activation.
    ========================================================== */
 
-const VIEWS = ['overview', 'periods', 'leaderboard', 'allapps'];
+const VIEWS = ['overview', 'insights', 'periods', 'activity', 'leaderboard', 'allapps'];
 
 function switchView(viewId) {
     document.querySelectorAll('.rail-item').forEach(el => el.classList.toggle('active', el.dataset.view === viewId));
@@ -80,6 +80,8 @@ async function boot() {
     document.getElementById('settings-close').addEventListener('click', closeSettings);
     document.getElementById('dd-overlay').addEventListener('click', closeDrilldown);
     document.getElementById('dd-close').addEventListener('click', closeDrilldown);
+    document.getElementById('cat-overlay').addEventListener('click', closeCategoryDetail);
+    document.getElementById('cat-close').addEventListener('click', closeCategoryDetail);
 
     tickClock();
     setInterval(tickClock, 1000);

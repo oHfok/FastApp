@@ -6,6 +6,20 @@
 
 const Dashboard = { tabs: {} };
 
+// --- HTML escaping ---------------------------------------------------------
+// Window titles are attacker-controllable (any webpage can set its own tab
+// title) and get rendered via innerHTML, so anything sourced from a window
+// title MUST go through this before it touches the DOM.
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // --- Category -> accent color -------------------------------------------
 const categoryColors = {
     'Development': '#8B7CFF',
@@ -18,10 +32,9 @@ const categoryColors = {
     'Fun': '#FF9F6B',
     'Education': '#34D3C4',
     'Utilities': '#5B5F71',
-    'Other': '#3A3D4A',
-    'Uncategorized': '#3A3D4A'
+    'Other': '#3A3D4A'
 };
-function catColor(cat) { return categoryColors[cat] || categoryColors['Uncategorized']; }
+function catColor(cat) { return categoryColors[cat] || categoryColors['Other']; }
 
 // --- Time / number formatting (European: 24h, comma-free) ---------------
 function formatTime(mins) {

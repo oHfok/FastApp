@@ -442,6 +442,15 @@ select.field {
 
 .app-link:hover { color: var(--brass); }
 
+/* ---------- Category link (used everywhere a category label is shown) ---------- */
+.cat-link {
+    cursor: pointer;
+    transition: color 0.12s, filter 0.12s;
+}
+
+.cat-link:hover { color: var(--brass); }
+.cat-bar-seg.cat-link:hover { filter: brightness(1.25); }
+
 /* ---------- Chronometer ring (signature element) ---------- */
 .chrono-ring-wrap {
     position: relative;

@@ -75,6 +75,25 @@ function renderComparisonBlock(scope, ov) {
     heroEl.onmousemove = (e) => showTooltip(e, hoverTip);
     heroEl.onmouseleave = hideTooltip;
 
+    // Total PC uptime (focus + AFK + anything else). Shown alongside Focus/AFK
+    // so those two numbers read as a share of something, not just in isolation.
+    const uptimeMap = {
+        day: { cur: ov.totalToday, prev: ov.prevTotalToday, label: 'yesterday' },
+        week: { cur: ov.totalWeek, prev: ov.prevTotalWeek, label: 'last week' },
+        month: { cur: ov.totalMonth, prev: ov.prevTotalMonth, label: 'last month' },
+        year: { cur: ov.totalYear, prev: ov.prevTotalYear, label: 'last year' }
+    };
+    const { cur: upCur, prev: upPrev, label: upLabel } = uptimeMap[scope];
+
+    document.getElementById('ov-uptime-label').textContent = `Uptime ${scopeLabel}`;
+    document.getElementById('ov-uptime-value').textContent = formatHours(upCur || 0);
+    document.getElementById('ov-uptime-trend').innerHTML = trendPill(upCur || 0, upPrev || 0, upLabel);
+
+    const upHoverTip = `${upLabel.charAt(0).toUpperCase() + upLabel.slice(1)}: ${formatHours(upPrev || 0)}`;
+    const uptimeEl = document.getElementById('ov-uptime-card');
+    uptimeEl.onmousemove = (e) => showTooltip(e, upHoverTip);
+    uptimeEl.onmouseleave = hideTooltip;
+
     // AFK per scope. Backend field names: AfkToday / AfkWeek / AfkMonth / AfkYear
     // (Week/Month/Year require the afk-overview-patch.cs addition — falls back
     // to a dash with an explanatory tooltip if those fields aren't there yet.)
@@ -103,7 +122,7 @@ function renderComparisonBlock(scope, ov) {
 function renderCategoryBar(leaderboard) {
     const totals = {};
     (leaderboard || []).forEach(app => {
-        const cat = app.category || 'Uncategorized';
+        const cat = app.category || 'Other';
         totals[cat] = (totals[cat] || 0) + (app.focusedMinutes || 0);
     });
     const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
@@ -120,12 +139,14 @@ function renderCategoryBar(leaderboard) {
 
     barEl.innerHTML = entries.map(([cat, mins]) => {
         const pct = (mins / totalMins) * 100;
-        return `<div class="cat-bar-seg" style="width:${pct}%;background:${catColor(cat)}" title="${cat}: ${formatTime(mins)}"></div>`;
+        const catAttr = cat.replace(/'/g, "&#39;");
+        return `<div class="cat-bar-seg cat-link" style="width:${pct}%;background:${catColor(cat)}" title="${cat}: ${formatTime(mins)}" onclick="openCategoryDetail('${catAttr}')"></div>`;
     }).join('');
 
     legendEl.innerHTML = entries.map(([cat, mins]) => {
         const pct = Math.round((mins / totalMins) * 100);
-        return `<div class="cat-legend-item"><span class="cat-swatch" style="background:${catColor(cat)}"></span>${cat} <span class="mono" style="color:var(--text-faint)">${pct}% · ${formatTime(mins)}</span></div>`;
+        const catAttr = cat.replace(/'/g, "&#39;");
+        return `<div class="cat-legend-item cat-link" onclick="openCategoryDetail('${catAttr}')"><span class="cat-swatch" style="background:${catColor(cat)}"></span>${cat} <span class="mono" style="color:var(--text-faint)">${pct}% · ${formatTime(mins)}</span></div>`;
     }).join('');
 }
 
@@ -145,7 +166,7 @@ function renderOverviewLeaderboards(leaderboard) {
 
     const catTotals = {};
     (leaderboard || []).forEach(app => {
-        const cat = app.category || 'Uncategorized';
+        const cat = app.category || 'Other';
         catTotals[cat] = (catTotals[cat] || 0) + (app.focusedMinutes || 0);
     });
     const cats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -154,7 +175,7 @@ function renderOverviewLeaderboards(leaderboard) {
         catsEl.innerHTML = `<div class="empty-state">No category activity for this period.</div>`;
     } else {
         catsEl.innerHTML = cats.map(([cat, mins], i) => `
-            <div class="lb-row">
+            <div class="lb-row app-link" onclick="openCategoryDetail('${cat.replace(/'/g, "&#39;")}')">
                 <div class="lb-rank">${i + 1}</div>
                 <div class="lb-name"><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${cat}</div>
                 <div class="lb-time">${formatTime(mins)}</div>
@@ -174,7 +195,7 @@ async function renderActivityBody(scope, dateStr, ov) {
         await renderDayTimeline(dateStr);
     } else if (scope === 'week') {
         body.innerHTML = `<div class="empty-state">Loading…</div>`;
-        await renderWeekHeatmap(dateStr);
+        await renderWeekHeatmap(dateStr, ov);
     } else {
         renderDayHeatmap(scope, dateStr, ov.yearlyHeatmap || ov.YearlyHeatmap || []);
     }
@@ -211,12 +232,30 @@ async function renderDayTimeline(dateStr) {
     } catch (err) { console.error(err); }
 }
 
-// Week scope: hour-by-day heatmap (7 rows x 24 cols) built from the same
-// range the Week focus number covers (Monday of that week -> selected date).
-async function renderWeekHeatmap(dateStr) {
+// Week scope: a per-day focus bar chart (same component the Weeks & Months
+// detail page uses, for visual consistency) on top of an hour-by-day heatmap
+// (7 rows x 24 cols), both built from the same range the Week focus number
+// covers (Monday of that week -> selected date).
+async function renderWeekHeatmap(dateStr, ov) {
     const body = document.getElementById('ov-activity-body');
     const target = parseDateStr(dateStr);
     const monday = mondayOf(target);
+
+    // Day-total bars come straight from the yearly heatmap series /api/overview
+    // already returned — no extra fetch needed, just slice out this week.
+    const yearlyHeatmap = (ov && (ov.yearlyHeatmap || ov.YearlyHeatmap)) || [];
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(monday); d.setDate(monday.getDate() + i);
+        if (d > target) break;
+        const ds = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const match = yearlyHeatmap.find(x => (x.date || x.Date) === ds);
+        weekDays.push({ date: ds, focusedMinutes: match ? (match.focusedMinutes ?? match.FocusedMinutes ?? 0) : 0 });
+    }
+    const dayBarsHtml = weekDays.length ? `
+        <div class="card-label" style="margin-bottom:14px;">Daily Focus</div>
+        ${weekHeatmapHtml(weekDays)}
+        <div class="ov-week-divider"></div>` : '';
 
     const dayDates = [];
     for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); dayDates.push(d); }
@@ -261,6 +300,8 @@ async function renderWeekHeatmap(dateStr) {
     }
 
     body.innerHTML = `
+        ${dayBarsHtml}
+        <div class="card-label" style="margin-bottom:14px;">Hour-by-Hour</div>
         <div class="heat-hours-wrap">
             <div class="heat-day-labels">${DAY_SHORT.map(d => `<span>${d}</span>`).join('')}</div>
             <div class="heat-hours-grid">${cellsHtml}</div>

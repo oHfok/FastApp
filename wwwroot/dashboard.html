@@ -64,9 +64,17 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
                 <span class="label-text">Overview</span>
             </div>
+            <div class="rail-item" data-view="insights">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18.5 8.5 13 14l-3-3-4.5 4.5"></path></svg>
+                <span class="label-text">Insights</span>
+            </div>
             <div class="rail-item" data-view="periods">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18M8 2v4M16 2v4"></path></svg>
                 <span class="label-text">Weeks &amp; Months</span>
+            </div>
+            <div class="rail-item" data-view="activity">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg>
+                <span class="label-text">Activity</span>
             </div>
             <div class="rail-item" data-view="leaderboard">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4z"></path><path d="M17 5h3a1 1 0 011 1 4 4 0 01-4 4M7 5H4a1 1 0 00-1 1 4 4 0 004 4"></path></svg>
@@ -97,6 +105,11 @@
                 </div>
 
                 <div class="stat-row">
+                    <div class="card stat-block" id="ov-uptime-card">
+                        <div class="card-label" id="ov-uptime-label">Uptime Today</div>
+                        <div class="stat-value" id="ov-uptime-value" style="color:var(--teal)">0h 0m</div>
+                        <div id="ov-uptime-trend"></div>
+                    </div>
                     <div class="card stat-block" id="ov-hero-block">
                         <div class="card-label" id="ov-hero-label">Focus Today</div>
                         <div class="stat-value" id="ov-hero-value" style="color:var(--brass)">0h 0m</div>
@@ -131,6 +144,51 @@
                 </div>
             </section>
 
+            <!-- ===== VIEW: INSIGHTS ===== -->
+            <section id="view-insights" class="view">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">Insights</div>
+                        <div class="view-sub">Patterns from your last 30 days of activity.</div>
+                    </div>
+                </div>
+
+                <div class="stat-row" style="margin-bottom:20px;">
+                    <div class="card stat-block">
+                        <div class="card-label">Longest Focus Block</div>
+                        <div class="stat-value" id="in-longest-block" style="color:var(--brass)">0h 0m</div>
+                    </div>
+                    <div class="card stat-block">
+                        <div class="card-label">Average Session Length</div>
+                        <div class="stat-value" id="in-avg-span" style="color:var(--teal)">0h 0m</div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-label" style="margin-bottom:14px;">Work vs. Play by Hour</div>
+                    <div class="view-sub" style="margin:-8px 0 14px;">Which hours of the day skew productive, and which skew leisure.</div>
+                    <div class="chart-wrap"><canvas id="in-rhythm-chart"></canvas></div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-label" style="margin-bottom:14px;">Configure Work vs. Play</div>
+                    <div class="view-sub" style="margin:-8px 0 14px;">Tag each category so the chart above reflects what YOU consider productive — nothing is guessed.</div>
+                    <div id="in-classification-list"></div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-label" style="margin-bottom:14px;">Weekday Fatigue</div>
+                    <div class="view-sub" style="margin:-8px 0 14px;">Average session length by day of the week — are you sharper early in the week?</div>
+                    <div class="chart-wrap chart-wrap-short"><canvas id="in-fatigue-chart"></canvas></div>
+                </div>
+
+                <div class="card" id="in-heatmap-card">
+                    <div class="card-label" style="margin-bottom:14px;">When You're Usually Active</div>
+                    <div class="view-sub" style="margin:-8px 0 14px;">Total activity by day and hour, last 30 days.</div>
+                    <div id="in-heatmap-body"></div>
+                </div>
+            </section>
+
             <!-- ===== VIEW: WEEKS & MONTHS ===== -->
             <section id="view-periods" class="view">
                 <div id="period-list-view">
@@ -158,6 +216,20 @@
                         </div>
                     </div>
                     <div id="period-detail-body"></div>
+                </div>
+            </section>
+
+            <!-- ===== VIEW: ACTIVITY (raw chronological session feed) ===== -->
+            <section id="view-activity" class="view">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">Activity</div>
+                        <div class="view-sub">Every app switch, most recent first.</div>
+                    </div>
+                </div>
+                <div id="activity-list"></div>
+                <div style="text-align:center;margin-top:16px;">
+                    <button class="btn btn-ghost" id="activity-load-more" onclick="loadMoreActivity()">Load More</button>
                 </div>
             </section>
 
@@ -223,6 +295,21 @@
     </div>
 
     <div class="dd-section">
+        <div class="dd-section-label">Window Title Capture</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+            Off by default. When on, the Activity feed also records each window's title (e.g. a browser tab's page name
+            or a document's filename) alongside the app name — so you can tell "coding in VS Code" apart from
+            "watching YouTube in Chrome." Titles can contain anything the page/document author put there, so treat this
+            as more sensitive than plain app-usage tracking.
+        </p>
+        <label class="dd-toggle-label">
+            <input type="checkbox" id="window-titles-toggle" onchange="saveWindowTitlesSetting()">
+            <span>Capture window titles in the Activity feed</span>
+        </label>
+        <div class="retention-status" id="window-titles-status">Saved.</div>
+    </div>
+
+    <div class="dd-section">
         <div class="dd-section-label">Hidden Applications</div>
         <div class="settings-list" id="hidden-apps-list"></div>
     </div>
@@ -249,6 +336,24 @@
     </div>
 
     <div class="dd-section">
+        <div class="dd-section-label">Daily Limit</div>
+        <div class="dd-limit-bar-wrap" id="dd-limit-bar-wrap" style="display:none;">
+            <div class="dd-limit-bar"><div class="dd-limit-bar-fill" id="dd-limit-bar-fill"></div></div>
+            <div class="dd-limit-bar-caption" id="dd-limit-bar-caption">—</div>
+        </div>
+        <div class="dd-limit-row">
+            <input type="text" class="field" id="dd-limit-input" placeholder="0 = No limit" style="width:110px;" inputmode="numeric">
+            <span style="font-size:12px;color:var(--text-faint);">minutes / day</span>
+        </div>
+        <label class="dd-toggle-label">
+            <input type="checkbox" id="dd-strict-toggle">
+            <span>Force close the app when the limit is reached</span>
+        </label>
+        <button class="btn btn-brass" id="dd-limit-save-btn" style="margin-top:12px;width:100%;">Save Limit</button>
+        <div class="retention-status" id="dd-limit-status">Saved.</div>
+    </div>
+
+    <div class="dd-section">
         <div class="dd-section-label">Most Used Day</div>
         <div class="card" style="padding:12px 14px;font-family:var(--font-mono);font-size:13px;" id="dd-max-day">—</div>
     </div>
@@ -270,10 +375,6 @@
                 <div class="card-label">Running</div>
                 <div class="dd-stat-value" id="dd-running-all">0h 0m</div>
             </div>
-            <div class="card dd-stat">
-                <div class="card-label">AFK</div>
-                <div class="dd-stat-value" style="color:var(--rose)" id="dd-afk-all">0h 0m</div>
-            </div>
         </div>
     </div>
 
@@ -282,11 +383,33 @@
     </div>
 </div>
 
+<!-- ============ CATEGORY DETAIL DRAWER ============ -->
+<div class="drawer-overlay" id="cat-overlay"></div>
+<div class="drawer" id="cat-drawer">
+    <button class="drawer-close" id="cat-close">✕</button>
+
+    <div class="dd-head">
+        <div class="dd-icon" id="cat-icon">A</div>
+        <div>
+            <div class="dd-title" id="cat-title">Category</div>
+            <div class="dd-rank" id="cat-sub">—</div>
+        </div>
+    </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Apps in this Category</div>
+        <div class="lb-list" id="cat-app-list"></div>
+    </div>
+</div>
+
 <script src="js/utils.js"></script>
 <script src="js/app.js"></script>
 <script src="js/drilldown.js"></script>
+<script src="js/category.js"></script>
 <script src="js/tabs/overview.js"></script>
+<script src="js/tabs/insights.js"></script>
 <script src="js/tabs/periods.js"></script>
+<script src="js/tabs/activity.js"></script>
 <script src="js/tabs/leaderboard.js"></script>
 <script src="js/tabs/allapps.js"></script>
 <script src="js/tabs/settings.js"></script>

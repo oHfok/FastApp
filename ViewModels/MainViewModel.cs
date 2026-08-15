@@ -34,6 +34,15 @@ namespace FastApp.ViewModels
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
+        // Window-title capture — opt-in only (see CaptureWindowTitles setting), since a
+        // title (browser tab text, document names, etc.) is far more sensitive than a
+        // bare process name.
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern int GetWindowTextLength(IntPtr hWnd);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
         [DllImport("kernel32.dll")]
         private static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
 
@@ -217,6 +226,26 @@ namespace FastApp.ViewModels
                 });
             });
 
+            // Daily limit / Strict Focus Mode, editable from the web dashboard.
+            // Setting these ObservableProperty-backed fields fires PropertyChanged,
+            // which the subscription below already wires up to auto-save.
+            WeakReferenceMessenger.Default.Register<UpdateLimitCommand>(this, (recipient, message) =>
+            {
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+                {
+                    var existingApp = ManagedApps.FirstOrDefault(a =>
+                        a.Name.Equals(message.AppName, StringComparison.OrdinalIgnoreCase));
+
+                    if (existingApp != null)
+                    {
+                        existingApp.DailyLimitMinutes = Math.Max(0, message.DailyLimitMinutes);
+                        existingApp.StrictFocusMode = message.StrictFocusMode;
+                        existingApp.HasNotifiedToday = false; // let a newly-raised limit notify again today
+                        FilteredManagedApps?.Refresh();
+                    }
+                });
+            });
+
 
 
             foreach (var app in ManagedApps)
@@ -317,6 +346,23 @@ namespace FastApp.ViewModels
             }
 
             return null;
+        }
+
+        // Opt-in only (CaptureWindowTitles setting) — reads the raw title text of
+        // whatever window is currently focused, e.g. a browser tab title or a
+        // document name. Called separately from GetActiveProcessName so that
+        // method's other caller (the gaming guard) is unaffected.
+        private string GetActiveWindowTitle()
+        {
+            IntPtr hWnd = GetForegroundWindow();
+            if (hWnd == IntPtr.Zero) return null;
+
+            int length = GetWindowTextLength(hWnd);
+            if (length <= 0) return null;
+
+            var sb = new StringBuilder(length + 1);
+            GetWindowText(hWnd, sb, sb.Capacity);
+            return sb.ToString();
         }
 
 
@@ -554,6 +600,16 @@ namespace FastApp.ViewModels
             var afkCache = new Dictionary<string, TimeSpan>();
             var focusCache = new Dictionary<string, TimeSpan>(); // NEW: Focus Cache
 
+            // Daily-limit enforcement: HasNotifiedToday is in-memory only (never
+            // persisted), so it has to be reset by hand once a day rolls over.
+            DateTime? lastLimitResetDate = null;
+
+            // Window-title capture is opt-in (privacy — a title can contain a
+            // browser tab's page name, a document name, etc., far more sensitive
+            // than a bare process name). Re-checked once per flush, not every
+            // tick, so flipping the setting in the dashboard takes effect within
+            // ~60 seconds without needing an app restart.
+            bool captureWindowTitles = false;
 
             int tickCount = 0;
             const int FlushIntervalTicks = 12; // 60 seconds
@@ -561,6 +617,7 @@ namespace FastApp.ViewModels
             // NEW: Session State Trackers
             string currentFocusedApp = null;
             DateTime? currentSessionStart = null;
+            string currentSessionTitle = null;
 
             while (await timer.WaitForNextTickAsync())
             {
@@ -602,13 +659,18 @@ namespace FastApp.ViewModels
                         {
                             AppName = currentFocusedApp,
                             StartTime = currentSessionStart.Value,
-                            EndTime = now
+                            EndTime = now,
+                            WindowTitle = currentSessionTitle
                         });
                     }
 
-                    // 2. Start the new session
+                    // 2. Start the new session. Title is captured once, at the
+                    // moment focus lands on this app — not re-sampled if the
+                    // title changes later without a window switch (e.g. a tab
+                    // change within the same browser session).
                     currentFocusedApp = activeAppName;
                     currentSessionStart = activeAppName != null ? now : null;
+                    currentSessionTitle = (activeAppName != null && captureWindowTitles) ? GetActiveWindowTitle() : null;
                 }
 
                 // Add to Focus Cache (Only if the user isn't AFK)
@@ -657,6 +719,29 @@ namespace FastApp.ViewModels
                 {
                     DateTime today = DateTime.Today;
 
+                    if (lastLimitResetDate != today)
+                    {
+                        foreach (var a in ManagedApps) a.HasNotifiedToday = false;
+                        lastLimitResetDate = today;
+                    }
+
+                    // Re-read the window-title opt-in each flush. A short-lived,
+                    // separate context (not the shared _dbContext) so this never
+                    // fights the main context's connection/transaction state.
+                    try
+                    {
+                        using var settingsDb = new AppDbContext();
+                        using var settingsCmd = settingsDb.Database.GetDbConnection().CreateCommand();
+                        settingsCmd.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'CaptureWindowTitles'";
+                        settingsDb.Database.OpenConnection();
+                        using var settingsResult = settingsCmd.ExecuteReader();
+                        captureWindowTitles = settingsResult.Read() && settingsResult.GetString(0) == "true";
+                    }
+                    catch
+                    {
+                        captureWindowTitles = false; // opt-in: default closed on any read failure
+                    }
+
                     // 1. Flush Daily Summaries
                     foreach (var kvp in timeCache)
                     {
@@ -679,6 +764,35 @@ namespace FastApp.ViewModels
                         log.TimeSpentTicks = log.TimeSpent.Ticks;
                         log.AfkTimeSpentTicks = log.AfkTimeSpent.Ticks;
                         log.TimeFocusedTicks = log.TimeFocused.Ticks;
+
+                        // --- Daily limit enforcement (DailyLimitMinutes == 0 means "no limit") ---
+                        var limitedApp = ManagedApps.FirstOrDefault(a => a.Name == appName && a.DailyLimitMinutes > 0);
+                        if (limitedApp != null && log.TimeSpent.TotalMinutes >= limitedApp.DailyLimitMinutes)
+                        {
+                            if (!limitedApp.HasNotifiedToday)
+                            {
+                                limitedApp.HasNotifiedToday = true;
+                                try
+                                {
+                                    NotificationService.ShowToast(
+                                        "Daily limit reached",
+                                        $"{limitedApp.Name} has hit its {limitedApp.DailyLimitMinutes}-minute daily limit.");
+                                }
+                                catch { /* Toast failures should never take the tracker down */ }
+                            }
+
+                            if (limitedApp.StrictFocusMode)
+                            {
+                                string exeName = Path.GetFileNameWithoutExtension(limitedApp.ExecutablePath)?.ToLower();
+                                if (!string.IsNullOrEmpty(exeName))
+                                {
+                                    foreach (var proc in allProcesses.Where(p => p.ProcessName.ToLower() == exeName))
+                                    {
+                                        try { proc.Kill(); } catch { /* already exited, access denied, etc. */ }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // 2. Flush Shadow Sessions
@@ -837,5 +951,7 @@ namespace FastApp.ViewModels
     public record CategoryUpdatedMessage(string AppName, string NewCategory);
 
     public record UpdateCategoryCommand(string AppName, string NewCategory);
+
+    public record UpdateLimitCommand(string AppName, int DailyLimitMinutes, bool StrictFocusMode);
 
 }

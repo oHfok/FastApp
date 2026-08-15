@@ -41,7 +41,7 @@ function renderAllApps() {
                     <div class="allapps-icon" style="color:${catColor(cat)}">${name.charAt(0).toUpperCase()}</div>
                     <div style="min-width:0;">
                         <div class="allapps-name">${name}</div>
-                        <div class="allapps-cat">${cat}</div>
+                        <div class="allapps-cat cat-link" onclick="event.stopPropagation(); openCategoryDetail('${cat.replace(/'/g, "&#39;")}')">${cat}</div>
                     </div>
                 </div>
                 <div class="allapps-metrics">
