@@ -1,0 +1,105 @@
+/* ==========================================================
+   TAB: ACTIVITY
+   Raw chronological app-switch feed (ActivityWatch-style),
+   paged newest-first via /api/recent-sessions. Grouped under
+   day dividers (Today / Yesterday / Weekday, Date).
+   ========================================================== */
+
+const ACTIVITY_PAGE_SIZE = 50;
+let activityOffset = 0;
+let activityTotalCount = 0;
+let activityLastDayKey = null;
+
+async function loadActivity() {
+    activityOffset = 0;
+    activityLastDayKey = null;
+    await fetchActivityPage(true);
+}
+
+async function loadMoreActivity() {
+    await fetchActivityPage(false);
+}
+
+async function fetchActivityPage(isFirstPage) {
+    const listEl = document.getElementById('activity-list');
+    const loadMoreBtn = document.getElementById('activity-load-more');
+    if (isFirstPage) listEl.innerHTML = `<div class="empty-state">Loading…</div>`;
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.textContent = 'Loading…';
+
+    try {
+        const res = await fetch(`/api/recent-sessions?limit=${ACTIVITY_PAGE_SIZE}&offset=${activityOffset}`);
+        const data = await res.json();
+        const sessions = data.sessions ?? data.Sessions ?? [];
+        activityTotalCount = data.totalCount ?? data.TotalCount ?? 0;
+
+        if (isFirstPage) listEl.innerHTML = '';
+
+        if (isFirstPage && sessions.length === 0) {
+            listEl.innerHTML = `<div class="empty-state">No activity recorded yet.</div>`;
+        } else {
+            listEl.insertAdjacentHTML('beforeend', renderActivityRows(sessions));
+        }
+
+        activityOffset += sessions.length;
+        const hasMore = activityOffset < activityTotalCount;
+        loadMoreBtn.style.display = hasMore ? 'inline-flex' : 'none';
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.textContent = 'Load More';
+    } catch (err) {
+        console.error('Activity load failed', err);
+        if (isFirstPage) listEl.innerHTML = `<div class="empty-state">Couldn't load activity.</div>`;
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.textContent = 'Load More';
+    }
+}
+
+function renderActivityRows(sessions) {
+    let html = '';
+    sessions.forEach(s => {
+        const appName = s.appName ?? s.AppName;
+        const cat = s.category ?? s.Category ?? 'Other';
+        const start = new Date(s.startTime ?? s.StartTime);
+        const end = new Date(s.endTime ?? s.EndTime);
+        const dur = s.durationMinutes ?? s.DurationMinutes ?? 0;
+        const windowTitle = s.windowTitle ?? s.WindowTitle;
+
+        const dayKey = `${start.getFullYear()}-${start.getMonth()}-${start.getDate()}`;
+        if (dayKey !== activityLastDayKey) {
+            html += `<div class="activity-day-divider">${activityDayLabel(start)}</div>`;
+            activityLastDayKey = dayKey;
+        }
+
+        const timeRange = `${pad(start.getHours())}:${pad(start.getMinutes())} &ndash; ${pad(end.getHours())}:${pad(end.getMinutes())}`;
+        const nameAttr = appName.replace(/'/g, "&#39;");
+        const catAttr = cat.replace(/'/g, "&#39;");
+        // windowTitle is attacker-controllable (any webpage can set its own tab
+        // title) — always through escapeHtml, never raw into innerHTML.
+        const titleLine = windowTitle
+            ? `<div class="activity-title" title="${escapeHtml(windowTitle)}">${escapeHtml(windowTitle)}</div>`
+            : '';
+        html += `
+            <div class="card activity-row" onclick="openDrilldown('${nameAttr}')">
+                <div class="activity-icon" style="color:${catColor(cat)}">${appName.charAt(0).toUpperCase()}</div>
+                <div class="activity-name-col">
+                    <div class="activity-app-name">${appName}</div>
+                    <div class="activity-cat cat-link" onclick="event.stopPropagation(); openCategoryDetail('${catAttr}')">${cat}</div>
+                    ${titleLine}
+                </div>
+                <div class="activity-time-range">${timeRange}</div>
+                <div class="activity-duration">${formatTime(dur)}</div>
+            </div>`;
+    });
+    return html;
+}
+
+function activityDayLabel(date) {
+    const today = parseDateStr(getLocalTodayStr());
+    const dOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.round((today - dOnly) / 86400000);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    return `${DAY_NAMES[isoDow(dOnly)]}, ${fmtDateLong(dOnly)}`;
+}
+
+Dashboard.tabs.activity = { onEnter: loadActivity };

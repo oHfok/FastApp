@@ -3,7 +3,7 @@
    Persistent top bar + rail nav + tab activation.
    ========================================================== */
 
-const VIEWS = ['overview', 'periods', 'leaderboard', 'allapps'];
+const VIEWS = ['overview', 'insights', 'periods', 'activity', 'leaderboard', 'allapps'];
 
 function switchView(viewId) {
     document.querySelectorAll('.rail-item').forEach(el => el.classList.toggle('active', el.dataset.view === viewId));

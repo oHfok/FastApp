@@ -36,6 +36,9 @@ async function loadRetentionSetting() {
         // If the stored value isn't one of the presets, fall back to Keep Forever
         const hasOption = Array.from(select.options).some(o => o.value == val);
         select.value = hasOption ? val : 99999;
+
+        const captureWindowTitles = data.captureWindowTitles ?? data.CaptureWindowTitles ?? false;
+        document.getElementById('window-titles-toggle').checked = captureWindowTitles;
     } catch (err) { console.error(err); }
 }
 
@@ -43,6 +46,14 @@ async function saveRetentionSetting() {
     const val = document.getElementById('retention-select').value;
     await fetch('/api/settings/retention', { method: 'POST', body: val });
     const status = document.getElementById('retention-status');
+    status.style.display = 'block';
+    setTimeout(() => { status.style.display = 'none'; }, 2500);
+}
+
+async function saveWindowTitlesSetting() {
+    const enabled = document.getElementById('window-titles-toggle').checked;
+    await fetch('/api/settings/window-titles', { method: 'POST', body: String(enabled) });
+    const status = document.getElementById('window-titles-status');
     status.style.display = 'block';
     setTimeout(() => { status.style.display = 'none'; }, 2500);
 }

@@ -15,6 +15,67 @@ namespace FastApp.Services
 {
     public static class DashboardServerService
     {
+        private record UpdateLimitRequest(string AppName, int DailyLimitMinutes, bool StrictFocusMode);
+
+        private record CategoryClassificationRequest(string Category, string Classification);
+
+        private static async Task<List<string>> GetAllCategoriesAsync(AppDbContext db)
+        {
+            var wpfHardcodedCategories = new List<string>
+            {
+                "Development", "Gaming", "Productivity", "Browsing", "Communication", "Media Production", "Music", "Fun", "Education", "Utilities", "Other"
+            };
+
+            var mappedCategories = await db.AppCategories.Select(c => c.Category).Where(c => !string.IsNullOrEmpty(c)).ToListAsync();
+            var managedCategories = await db.ManagedApps.Select(m => m.Category).Where(c => !string.IsNullOrEmpty(c)).ToListAsync();
+
+            return wpfHardcodedCategories
+                .Union(mappedCategories)
+                .Union(managedCategories)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList();
+        }
+
+        // Which categories count as "work" vs "play" for the Insights tab's rhythm
+        // chart — user-editable (see /api/settings/category-classification), so it
+        // reflects whatever categories THIS user actually has, not a fixed guess.
+        // Defaults below only apply to a category until the user explicitly sets it.
+        private static Dictionary<string, string> GetCategoryClassification(AppDbContext db)
+        {
+            var classification = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Development"] = "work",
+                ["Productivity"] = "work",
+                ["Education"] = "work",
+                ["Utilities"] = "work",
+                ["Gaming"] = "play",
+                ["Fun"] = "play",
+                ["Media Production"] = "play",
+                ["Music"] = "play",
+                ["Browsing"] = "play"
+            };
+
+            try
+            {
+                using var command = db.Database.GetDbConnection().CreateCommand();
+                command.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'CategoryClassification'";
+                db.Database.OpenConnection();
+                using var result = command.ExecuteReader();
+                if (result.Read())
+                {
+                    var stored = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(result.GetString(0));
+                    if (stored != null)
+                    {
+                        foreach (var kvp in stored) classification[kvp.Key] = kvp.Value;
+                    }
+                }
+            }
+            catch { /* fall back to the defaults above */ }
+
+            return classification;
+        }
+
         private static List<string> GetHiddenApps(AppDbContext db)
         {
             var hidden = new List<string>();
@@ -34,6 +95,15 @@ namespace FastApp.Services
             using var result = command.ExecuteReader();
             if (result.Read() && int.TryParse(result.GetString(0), out int days)) return days;
             return 90; // Default
+        }
+
+        private static bool GetCaptureWindowTitles(AppDbContext db)
+        {
+            using var command = db.Database.GetDbConnection().CreateCommand();
+            command.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'CaptureWindowTitles'";
+            db.Database.OpenConnection();
+            using var result = command.ExecuteReader();
+            return result.Read() && result.GetString(0) == "true";
         }
 
         private static async Task<Dictionary<string, string>> GetAppCategoriesSafely(AppDbContext db)
@@ -89,6 +159,9 @@ namespace FastApp.Services
                 await initDb.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS HiddenApps (AppName TEXT PRIMARY KEY);");
                 await initDb.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS AppSettings (Key TEXT PRIMARY KEY, Value TEXT);");
                 await initDb.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO AppSettings (Key, Value) VALUES ('RetentionDays', '90');");
+                // Window-title capture is privacy-sensitive, so it defaults OFF — the
+                // user has to explicitly opt in from the Settings drawer.
+                await initDb.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO AppSettings (Key, Value) VALUES ('CaptureWindowTitles', 'false');");
             }
             // --- NEW: PHASE 1 TIMELINE SPARKLINE ---
             app.MapGet("/api/sparkline", async (HttpContext context) =>
@@ -122,22 +195,7 @@ namespace FastApp.Services
             app.MapGet("/api/categories", async (HttpContext context) =>
             {
                 using var db = new AppDbContext();
-                var wpfHardcodedCategories = new List<string>
-                {
-                    "Development", "Gaming", "Productivity", "Browsing", "Communication", "Media Production", "Music", "Fun", "Education", "Utilities", "Other"
-                };
-
-                var mappedCategories = await db.AppCategories.Select(c => c.Category).Where(c => !string.IsNullOrEmpty(c)).ToListAsync();
-                var managedCategories = await db.ManagedApps.Select(m => m.Category).Where(c => !string.IsNullOrEmpty(c)).ToListAsync();
-
-                var finalCategories = wpfHardcodedCategories
-                    .Union(mappedCategories)
-                    .Union(managedCategories)
-                    .Distinct()
-                    .OrderBy(c => c)
-                    .ToList();
-
-                await context.Response.WriteAsJsonAsync(finalCategories);
+                await context.Response.WriteAsJsonAsync(await GetAllCategoriesAsync(db));
             });
 
             // OVERVIEW - UPGRADED WITH HEAD-TO-HEAD MATH
@@ -317,6 +375,34 @@ namespace FastApp.Services
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });
 
+            // Daily limit / Strict Focus Mode — editable from the App Detail drawer.
+            // Same remote-control pattern as /api/update-category: send a message
+            // for the live WPF instance to apply (so its own AppDbContext, not a
+            // second one here, is what persists the change).
+            app.MapPost("/api/update-limit", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var reader = new StreamReader(context.Request.Body);
+                    string body = await reader.ReadToEndAsync();
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var data = System.Text.Json.JsonSerializer.Deserialize<UpdateLimitRequest>(body, options);
+
+                    if (data != null && !string.IsNullOrEmpty(data.AppName))
+                    {
+                        WeakReferenceMessenger.Default.Send(new FastApp.ViewModels.UpdateLimitCommand(
+                            data.AppName, Math.Max(0, data.DailyLimitMinutes), data.StrictFocusMode));
+                        await context.Response.WriteAsJsonAsync(new { success = true });
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsJsonAsync(new { error = "appName is required." });
+                    }
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
             app.MapGet("/api/insights", async (string date, HttpContext context) =>
             {
                 try
@@ -331,10 +417,12 @@ namespace FastApp.Services
                     var avgSpan = targetDaySessions.Any() ? targetDaySessions.Average(s => (s.EndTime - s.StartTime).TotalMinutes) : 0;
                     var heatmap = recentSessions.GroupBy(s => new { s.StartTime.DayOfWeek, s.StartTime.Hour }).Select(g => new { DayIndex = (int)g.Key.DayOfWeek, Hour = g.Key.Hour, TotalMinutes = Math.Round(g.Sum(s => (s.EndTime - s.StartTime).TotalMinutes), 1) }).ToList();
 
-                    // --- NEW: PRODUCTIVITY RHYTHM & FATIGUE MATH ---
+                    // --- PRODUCTIVITY RHYTHM & FATIGUE MATH ---
                     var categoryMap = await GetAppCategoriesSafely(db);
-                    var workCats = new[] { "Development", "Productivity", "Education", "Utilities" };
-                    var playCats = new[] { "Gaming", "Fun", "Media Production", "Music", "Browsing" };
+                    // User-editable (see /api/settings/category-classification), not a
+                    // fixed guess — reflects whatever categories this user actually has.
+                    var classification = GetCategoryClassification(db);
+                    string ClassOf(string appName) => classification.GetValueOrDefault(categoryMap.GetValueOrDefault(appName, "Other"), "neutral");
 
                     // 1. Group the last 30 days of sessions by the Hour of the Day (0-23)
                     var rhythm = Enumerable.Range(0, 24).Select(hour => {
@@ -342,8 +430,8 @@ namespace FastApp.Services
                         return new
                         {
                             Hour = hour,
-                            Work = Math.Round(hourSessions.Where(s => workCats.Contains(categoryMap.GetValueOrDefault(s.AppName, "Other"))).Sum(s => (s.EndTime - s.StartTime).TotalMinutes), 1),
-                            Play = Math.Round(hourSessions.Where(s => playCats.Contains(categoryMap.GetValueOrDefault(s.AppName, "Other"))).Sum(s => (s.EndTime - s.StartTime).TotalMinutes), 1)
+                            Work = Math.Round(hourSessions.Where(s => ClassOf(s.AppName) == "work").Sum(s => (s.EndTime - s.StartTime).TotalMinutes), 1),
+                            Play = Math.Round(hourSessions.Where(s => ClassOf(s.AppName) == "play").Sum(s => (s.EndTime - s.StartTime).TotalMinutes), 1)
                         };
                     }).ToList();
 
@@ -395,6 +483,49 @@ namespace FastApp.Services
                     }).OrderBy(s => s.StartMinutes).ToList();
 
                     await context.Response.WriteAsJsonAsync(payload);
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // ---- /api/recent-sessions?limit=&offset= ----------------------------------
+            // Raw chronological app-switch feed (not aggregated by day), paged
+            // newest-first, for the Activity tab's scrollable log.
+            app.MapGet("/api/recent-sessions", async (int? limit, int? offset, HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    var hiddenApps = GetHiddenApps(db);
+                    var categoryMap = await GetAppCategoriesSafely(db);
+                    int take = Math.Clamp(limit ?? 50, 1, 200);
+                    int skip = Math.Max(offset ?? 0, 0);
+
+                    var query = db.SessionLogs.Where(s => s.AppName != "SYSTEM_PC" && !hiddenApps.Contains(s.AppName));
+                    int totalCount = await query.CountAsync();
+
+                    var sessions = await query
+                        .OrderByDescending(s => s.StartTime)
+                        .Skip(skip)
+                        .Take(take)
+                        .ToListAsync();
+
+                    var payload = sessions.Select(s => new
+                    {
+                        AppName = s.AppName,
+                        Category = categoryMap.GetValueOrDefault(s.AppName, "Other"),
+                        StartTime = s.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        EndTime = s.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        DurationMinutes = Math.Round((s.EndTime - s.StartTime).TotalMinutes, 1),
+                        WindowTitle = s.WindowTitle // null unless CaptureWindowTitles was on when this session was recorded
+                    }).ToList();
+
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        Sessions = payload,
+                        TotalCount = totalCount,
+                        Offset = skip,
+                        Limit = take
+                    });
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });
@@ -479,23 +610,28 @@ namespace FastApp.Services
                         else usagePattern = "Mixed / Balanced";
                     }
 
-                    // --- PATH LOOKUP ---
-                    // Try to find the path from ManagedApps if available. 
+                    // --- PATH + DAILY LIMIT LOOKUP (Safe Version) ---
+                    // Try to find the path/limit from ManagedApps if available.
                     // (If you don't store Path in DB yet, it will return this placeholder until you track it).
-                    // --- PATH LOOKUP (Safe Version) ---
                     string exePath = "Path not recorded in database.";
+                    int dailyLimitMinutes = 0;
+                    bool strictFocusMode = false;
                     try
                     {
                         var managedApp = await db.ManagedApps.FirstOrDefaultAsync(m => m.Name == appName);
-                        if (managedApp != null && !string.IsNullOrEmpty(managedApp.ExecutablePath))
+                        if (managedApp != null)
                         {
-                            exePath = managedApp.ExecutablePath;
+                            if (!string.IsNullOrEmpty(managedApp.ExecutablePath)) exePath = managedApp.ExecutablePath;
+                            dailyLimitMinutes = managedApp.DailyLimitMinutes;
+                            strictFocusMode = managedApp.StrictFocusMode;
                         }
                     }
                     catch
                     {
-                        // Safely catches the SQL error if the ExecutablePath column doesn't exist yet
+                        // Safely catches the SQL error if these columns don't exist yet
                     }
+
+                    double todayMinutes = allTimeLogs.FirstOrDefault(l => l.Date == targetDate)?.TimeSpent.TotalMinutes ?? 0;
 
                     // Averages & Personal Records (Unchanged)
                     DateTime startOfWeek = GetMondayStartOfWeek(targetDate);
@@ -534,7 +670,10 @@ namespace FastApp.Services
                         PrevYearAvg = prevYearAvg,
                         MaxFocusDay = maxFocusDayText,
                         MaxRunningDay = maxRunningDayText,
-                        History = history
+                        History = history,
+                        TodayMinutes = Math.Round(todayMinutes, 1),
+                        DailyLimitMinutes = dailyLimitMinutes,
+                        StrictFocusMode = strictFocusMode
                     });
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
@@ -777,8 +916,54 @@ namespace FastApp.Services
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });
 
-            app.MapGet("/api/settings", async (HttpContext context) => { using var db = new AppDbContext(); await context.Response.WriteAsJsonAsync(new { RetentionDays = GetRetentionDays(db) }); });
+            app.MapGet("/api/settings", async (HttpContext context) => { using var db = new AppDbContext(); await context.Response.WriteAsJsonAsync(new { RetentionDays = GetRetentionDays(db), CaptureWindowTitles = GetCaptureWindowTitles(db) }); });
             app.MapPost("/api/settings/retention", async (HttpContext context) => { using var reader = new StreamReader(context.Request.Body); string days = await reader.ReadToEndAsync(); using var db = new AppDbContext(); await db.Database.ExecuteSqlRawAsync("UPDATE AppSettings SET Value = {0} WHERE Key = 'RetentionDays'", days); });
+            app.MapPost("/api/settings/window-titles", async (HttpContext context) => { using var reader = new StreamReader(context.Request.Body); string enabled = (await reader.ReadToEndAsync()).Trim().ToLower() == "true" ? "true" : "false"; using var db = new AppDbContext(); await db.Database.ExecuteSqlRawAsync("UPDATE AppSettings SET Value = {0} WHERE Key = 'CaptureWindowTitles'", enabled); });
+
+            // Work/Play classification behind the Insights tab's rhythm chart —
+            // GET returns every known category (not just ones the user has already
+            // classified) so the UI can render a full editable list.
+            app.MapGet("/api/settings/category-classification", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    var allCategories = await GetAllCategoriesAsync(db);
+                    var classification = GetCategoryClassification(db);
+                    var result = allCategories.ToDictionary(c => c, c => classification.GetValueOrDefault(c, "neutral"), StringComparer.OrdinalIgnoreCase);
+                    await context.Response.WriteAsJsonAsync(result);
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            app.MapPost("/api/settings/category-classification", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var reader = new StreamReader(context.Request.Body);
+                    string body = await reader.ReadToEndAsync();
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var data = System.Text.Json.JsonSerializer.Deserialize<CategoryClassificationRequest>(body, options);
+
+                    var validValues = new[] { "work", "play", "neutral" };
+                    if (data == null || string.IsNullOrEmpty(data.Category) || !validValues.Contains(data.Classification?.ToLower()))
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsJsonAsync(new { error = "category and a valid classification (work/play/neutral) are required." });
+                        return;
+                    }
+
+                    using var db = new AppDbContext();
+                    var current = GetCategoryClassification(db);
+                    current[data.Category] = data.Classification.ToLower();
+                    string json = System.Text.Json.JsonSerializer.Serialize(current);
+                    await db.Database.ExecuteSqlRawAsync("INSERT OR REPLACE INTO AppSettings (Key, Value) VALUES ('CategoryClassification', {0})", json);
+
+                    await context.Response.WriteAsJsonAsync(new { success = true });
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
             app.MapGet("/api/hidden-apps", async (HttpContext context) => { using var db = new AppDbContext(); await context.Response.WriteAsJsonAsync(GetHiddenApps(db)); });
             app.MapPost("/api/hide", async (HttpContext context) => { using var reader = new StreamReader(context.Request.Body); string appName = await reader.ReadToEndAsync(); using var db = new AppDbContext(); await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO HiddenApps (AppName) VALUES ({0})", appName); });
             app.MapPost("/api/unhide", async (HttpContext context) => { using var reader = new StreamReader(context.Request.Body); string appName = await reader.ReadToEndAsync(); using var db = new AppDbContext(); await db.Database.ExecuteSqlRawAsync("DELETE FROM HiddenApps WHERE AppName = {0}", appName); });

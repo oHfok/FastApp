@@ -6,6 +6,20 @@
 
 const Dashboard = { tabs: {} };
 
+// --- HTML escaping ---------------------------------------------------------
+// Window titles are attacker-controllable (any webpage can set its own tab
+// title) and get rendered via innerHTML, so anything sourced from a window
+// title MUST go through this before it touches the DOM.
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // --- Category -> accent color -------------------------------------------
 const categoryColors = {
     'Development': '#8B7CFF',

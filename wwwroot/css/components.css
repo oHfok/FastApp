@@ -290,6 +290,10 @@
 
 .heat-legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
 
+/* ---------- Insights charts ---------- */
+.chart-wrap { position: relative; height: 260px; }
+.chart-wrap-short { height: 200px; }
+
 /* ---------- Timeline ribbon (Day view only) ---------- */
 .timeline-wrap { padding: 8px 4px; }
 
@@ -521,6 +525,59 @@
     margin-top: 8px;
 }
 
+/* ---------- Activity tab (raw chronological session feed) ---------- */
+.activity-day-divider {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    font-weight: 700;
+    margin: 22px 0 10px;
+}
+
+.activity-day-divider:first-child { margin-top: 0; }
+
+.activity-row {
+    display: grid;
+    grid-template-columns: 40px 1fr auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.activity-row:hover { border-color: var(--brass-dim); }
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.activity-name-col { min-width: 0; }
+.activity-app-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity-cat { font-size: 11px; color: var(--text-faint); font-weight: 600; margin-top: 1px; }
+.activity-title { font-size: 11px; color: var(--text-faint); font-style: italic; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.activity-time-range { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.activity-duration { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--brass); text-align: right; white-space: nowrap; }
+
+@media (max-width: 640px) {
+    .activity-row { grid-template-columns: 36px 1fr auto; }
+    .activity-time-range { display: none; }
+}
+
 /* ---------- All Apps tab ---------- */
 .allapps-search-row { margin-bottom: 20px; }
 
@@ -643,6 +700,17 @@
 .dd-stat-value { font-family: var(--font-mono); font-size: 16px; font-weight: 700; margin-top: 4px; }
 
 .dd-actions { display: flex; gap: 10px; margin-top: 4px; }
+
+/* ---------- Daily limit (App Detail drawer) ---------- */
+.dd-limit-bar-wrap { margin-bottom: 14px; }
+.dd-limit-bar { height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg-raised); }
+.dd-limit-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease, background 0.3s ease; }
+.dd-limit-bar-caption { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 6px; }
+
+.dd-limit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+
+.dd-toggle-label { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
+.dd-toggle-label input[type="checkbox"] { accent-color: var(--brass); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
 
 /* ---------- Settings view ---------- */
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
