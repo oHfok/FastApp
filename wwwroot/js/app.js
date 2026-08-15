@@ -80,6 +80,8 @@ async function boot() {
     document.getElementById('settings-close').addEventListener('click', closeSettings);
     document.getElementById('dd-overlay').addEventListener('click', closeDrilldown);
     document.getElementById('dd-close').addEventListener('click', closeDrilldown);
+    document.getElementById('cat-overlay').addEventListener('click', closeCategoryDetail);
+    document.getElementById('cat-close').addEventListener('click', closeCategoryDetail);
 
     tickClock();
     setInterval(tickClock, 1000);

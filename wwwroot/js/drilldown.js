@@ -56,7 +56,6 @@ async function openDrilldown(appName) {
         // Lifetime stats
         document.getElementById('dd-focus-all').textContent = formatHours(data.allTimeFocused || 0);
         document.getElementById('dd-running-all').textContent = formatHours(data.allTimeRunning || 0);
-        document.getElementById('dd-afk-all').textContent = formatHours(data.allTimeAfk || 0);
 
         // Hide/unhide button
         const hideBtn = document.getElementById('dd-hide-btn');

@@ -215,6 +215,8 @@
 .full-lb-eff-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); text-align: right; margin-top: 4px; }
 
 /* ---------- Activity heatmaps (Week/Month/Year scopes) ---------- */
+.ov-week-divider { height: 1px; background: var(--panel-border-soft); margin: 24px 0; }
+
 .heat-hours-wrap { display: flex; gap: 10px; }
 
 .heat-day-labels {
@@ -326,12 +328,15 @@
 
 .period-list { display: flex; flex-direction: column; gap: 12px; }
 
+.period-card {
+    padding: 16px 20px;
+    cursor: pointer;
+}
+
 .period-row {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: 16px 20px;
-    cursor: pointer;
 }
 
 .period-rank-badge {
@@ -372,9 +377,95 @@
     max-width: 100%;
 }
 
+/* Daily-activity: week view — a small bar chart. Height (not just color
+   intensity) carries the comparison, so differences between days read
+   instantly instead of requiring a shade-by-shade squint. */
+.week-heat-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 14px;
+}
+
+.week-heat-day {
+    flex: 1 1 0;
+    max-width: 130px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.week-heat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+}
+
+.week-heat-bar-track {
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.week-heat-bar-fill {
+    width: 100%;
+    border-radius: 8px 8px 3px 3px;
+    background: var(--bg-raised);
+    transition: height 0.3s ease;
+}
+
+.week-heat-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+
+/* Daily-activity: month view — a real Mon-Sun calendar grid */
+.month-heat-weekdays,
+.month-heat-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 52px));
+    justify-content: center;
+    gap: 5px;
+}
+
+.month-heat-weekdays { margin-bottom: 8px; }
+
+.month-heat-weekdays span {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.month-heat-cell {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 5px;
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-border-soft);
+}
+
+.month-heat-cell.is-empty {
+    background: transparent;
+    border: none;
+}
+
 @media (max-width: 760px) {
     .period-row { flex-wrap: wrap; }
     .period-stats { grid-template-columns: repeat(3, 1fr); gap: 14px; width: 100%; padding-left: 56px; }
+    .week-heat-row { flex-wrap: wrap; }
+    .month-heat-weekdays,
+    .month-heat-grid { grid-template-columns: repeat(7, minmax(0, 32px)); }
 }
 
 /* ---------- Period detail subpage ---------- */
@@ -409,6 +500,26 @@
 
 .compare-block { padding: 14px 16px; text-align: center; }
 .compare-block.is-current { border-color: var(--brass-dim); background: rgba(232,163,61,0.06); }
+
+/* Focus/AFK share of Uptime, as a bar instead of two more raw-number lines */
+.compare-bar {
+    display: flex;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--bg-raised);
+    margin-top: 12px;
+}
+
+.compare-bar-seg { height: 100%; }
+
+.compare-bar-caption {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 8px;
+}
 
 /* ---------- All Apps tab ---------- */
 .allapps-search-row { margin-bottom: 20px; }

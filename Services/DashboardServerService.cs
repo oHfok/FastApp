@@ -42,14 +42,14 @@ namespace FastApp.Services
             var appCats = await db.AppCategories.ToListAsync();
             foreach (var c in appCats)
             {
-                if (!string.IsNullOrEmpty(c.AppName)) dict[c.AppName] = c.Category ?? "Uncategorized";
+                if (!string.IsNullOrEmpty(c.AppName)) dict[c.AppName] = c.Category ?? "Other";
             }
             var managedApps = await db.ManagedApps.ToListAsync();
             foreach (var m in managedApps)
             {
                 if (!string.IsNullOrEmpty(m.Name) && !dict.ContainsKey(m.Name))
                 {
-                    dict[m.Name] = m.Category ?? "Uncategorized";
+                    dict[m.Name] = m.Category ?? "Other";
                 }
             }
             return dict;
@@ -154,7 +154,7 @@ namespace FastApp.Services
                     var todaysLogs = await db.DailyLogs.Where(l => l.Date == targetDate && l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName)).ToListAsync();
 
                     var appCategories = await GetAppCategoriesSafely(db);
-                    var categoryTotals = todaysLogs.GroupBy(l => appCategories.ContainsKey(l.AppName) ? appCategories[l.AppName] : "Uncategorized")
+                    var categoryTotals = todaysLogs.GroupBy(l => appCategories.ContainsKey(l.AppName) ? appCategories[l.AppName] : "Other")
                         .Select(g => new { Category = g.Key, FocusedMinutes = g.Sum(x => x.TimeFocused.TotalMinutes) })
                         .OrderByDescending(x => x.FocusedMinutes).ToList();
 
@@ -193,6 +193,19 @@ namespace FastApp.Services
                     double afkYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-365) && l.Date <= targetDate).Sum(l => l.AfkTimeSpent.TotalHours);
                     double afkPrevYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-730) && l.Date <= targetDate.AddDays(-365)).Sum(l => l.AfkTimeSpent.TotalHours);
 
+                    // --- Total PC uptime (TimeSpent, not just focused) per scope, so Focus
+                    // and AFK have something to be read as a share of. ---
+                    double totalToday = allSystemLogs.Where(l => l.Date == targetDate).Sum(l => l.TimeSpent.TotalHours);
+                    double totalPrevDay = allSystemLogs.Where(l => l.Date == targetDate.AddDays(-1)).Sum(l => l.TimeSpent.TotalHours);
+
+                    double totalWeek = allSystemLogs.Where(l => l.Date >= startOfWeek && l.Date <= targetDate).Sum(l => l.TimeSpent.TotalHours);
+                    double totalPrevWeek = allSystemLogs.Where(l => l.Date >= startOfPrevWeek && l.Date < startOfWeek).Sum(l => l.TimeSpent.TotalHours);
+
+                    double totalMonth = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-30) && l.Date <= targetDate).Sum(l => l.TimeSpent.TotalHours);
+                    double totalPrevMonth = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-60) && l.Date <= targetDate.AddDays(-30)).Sum(l => l.TimeSpent.TotalHours);
+
+                    double totalYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-365) && l.Date <= targetDate).Sum(l => l.TimeSpent.TotalHours);
+                    double totalPrevYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-730) && l.Date <= targetDate.AddDays(-365)).Sum(l => l.TimeSpent.TotalHours);
 
                     // --- NEW: 365-DAY HEATMAP DATA ---
                     var yearlyHeatmap = allSystemLogs
@@ -204,7 +217,14 @@ namespace FastApp.Services
 
                     var payload = new
                     {
-                        TotalToday = allSystemLogs.Where(l => l.Date == targetDate).Sum(l => l.TimeSpent.TotalHours),
+                        TotalToday = totalToday,
+                        PrevTotalToday = totalPrevDay,
+                        TotalWeek = totalWeek,
+                        PrevTotalWeek = totalPrevWeek,
+                        TotalMonth = totalMonth,
+                        PrevTotalMonth = totalPrevMonth,
+                        TotalYear = totalYear,
+                        PrevTotalYear = totalPrevYear,
                         FocusToday = focusToday,
                         UsualDailyFocus = usualDailyFocus,
                         PrevFocusToday = focusPrevDay,
@@ -264,7 +284,7 @@ namespace FastApp.Services
                     var leaderboard = currentLogs.GroupBy(l => l.AppName).Select(g => new
                     {
                         AppName = g.Key,
-                        Category = appCategories.ContainsKey(g.Key) ? appCategories[g.Key] : "Uncategorized",
+                        Category = appCategories.ContainsKey(g.Key) ? appCategories[g.Key] : "Other",
                         FocusedMinutes = Math.Round(g.Sum(x => x.TimeFocused.TotalMinutes), 1),
                         TotalMinutes = Math.Round(g.Sum(x => x.TimeSpent.TotalMinutes), 1),
                         ActiveMinutes = Math.Max(0, Math.Round(g.Sum(x => x.ActiveRunningTime.TotalMinutes), 1)),
@@ -648,13 +668,15 @@ namespace FastApp.Services
                         if (!inRange.Any()) return null;
                         double mins = inRange.Sum(l => l.TimeFocused.TotalMinutes);
                         double afkMins = inRange.Sum(l => l.AfkTimeSpent.TotalMinutes);
+                        double uptimeMins = inRange.Sum(l => l.TimeSpent.TotalMinutes);
                         return new
                         {
                             Label = label,
                             StartDate = s.ToString("yyyy-MM-dd"),
                             EndDate = e.ToString("yyyy-MM-dd"),
                             TotalFocusMinutes = Math.Round(mins, 1),
-                            TotalAfkMinutes = Math.Round(afkMins, 1)
+                            TotalAfkMinutes = Math.Round(afkMins, 1),
+                            TotalUptimeMinutes = Math.Round(uptimeMins, 1)
                         };
                     }
 
@@ -666,6 +688,7 @@ namespace FastApp.Services
                     var chosenRange = systemLogs.Where(l => l.Date >= chosenS && l.Date <= chosenE).ToList();
                     double chosenMins = chosenRange.Sum(l => l.TimeFocused.TotalMinutes);
                     double chosenAfkMins = chosenRange.Sum(l => l.AfkTimeSpent.TotalMinutes);
+                    double chosenUptimeMins = chosenRange.Sum(l => l.TimeSpent.TotalMinutes);
 
                     // Rank against every period of this type that has data
                     var allBuckets = new HashSet<string>();
@@ -689,9 +712,22 @@ namespace FastApp.Services
                         .OrderByDescending(x => x.FocusedMinutes).Take(8).ToList();
 
                     var topCategories = appLogs.Where(l => l.Date >= chosenS && l.Date <= chosenE)
-                        .GroupBy(l => appCategories.ContainsKey(l.AppName) ? appCategories[l.AppName] : "Uncategorized")
+                        .GroupBy(l => appCategories.ContainsKey(l.AppName) ? appCategories[l.AppName] : "Other")
                         .Select(g => new { Category = g.Key, FocusedMinutes = Math.Round(g.Sum(x => x.TimeFocused.TotalMinutes), 1) })
                         .OrderByDescending(x => x.FocusedMinutes).Take(8).ToList();
+
+                    // Per-day focus breakdown for the chosen period's heatmap. Clipped at
+                    // today so an in-progress week/month doesn't pad out with empty future days.
+                    var days = new List<object>();
+                    for (var d = chosenS; d <= chosenE && d <= DateTime.Today; d = d.AddDays(1))
+                    {
+                        var dayLog = chosenRange.FirstOrDefault(l => l.Date == d);
+                        days.Add(new
+                        {
+                            Date = d.ToString("yyyy-MM-dd"),
+                            FocusedMinutes = dayLog != null ? Math.Round(dayLog.TimeFocused.TotalMinutes, 1) : 0
+                        });
+                    }
 
                     var payload = new
                     {
@@ -700,13 +736,15 @@ namespace FastApp.Services
                         EndDate = chosenE.ToString("yyyy-MM-dd"),
                         TotalFocusMinutes = Math.Round(chosenMins, 1),
                         TotalAfkMinutes = Math.Round(chosenAfkMins, 1),
+                        TotalUptimeMinutes = Math.Round(chosenUptimeMins, 1),
                         Rank = rank,
                         TotalPeriods = allTotals.Count,
                         Previous = BuildSummary(PrevStart(chosenStart), LabelFor(PrevStart(chosenStart))),
                         Next = BuildSummary(NextStart(chosenStart), LabelFor(NextStart(chosenStart))),
                         Current = chosenStart != todayStart ? BuildSummary(todayStart, LabelFor(todayStart)) : null,
                         TopApps = topApps,
-                        TopCategories = topCategories
+                        TopCategories = topCategories,
+                        Days = days
                     };
 
                     await context.Response.WriteAsJsonAsync(payload);

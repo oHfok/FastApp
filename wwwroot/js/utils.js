@@ -18,10 +18,9 @@ const categoryColors = {
     'Fun': '#FF9F6B',
     'Education': '#34D3C4',
     'Utilities': '#5B5F71',
-    'Other': '#3A3D4A',
-    'Uncategorized': '#3A3D4A'
+    'Other': '#3A3D4A'
 };
-function catColor(cat) { return categoryColors[cat] || categoryColors['Uncategorized']; }
+function catColor(cat) { return categoryColors[cat] || categoryColors['Other']; }
 
 // --- Time / number formatting (European: 24h, comma-free) ---------------
 function formatTime(mins) {

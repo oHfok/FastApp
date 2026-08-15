@@ -97,6 +97,11 @@
                 </div>
 
                 <div class="stat-row">
+                    <div class="card stat-block" id="ov-uptime-card">
+                        <div class="card-label" id="ov-uptime-label">Uptime Today</div>
+                        <div class="stat-value" id="ov-uptime-value" style="color:var(--teal)">0h 0m</div>
+                        <div id="ov-uptime-trend"></div>
+                    </div>
                     <div class="card stat-block" id="ov-hero-block">
                         <div class="card-label" id="ov-hero-label">Focus Today</div>
                         <div class="stat-value" id="ov-hero-value" style="color:var(--brass)">0h 0m</div>
@@ -270,10 +275,6 @@
                 <div class="card-label">Running</div>
                 <div class="dd-stat-value" id="dd-running-all">0h 0m</div>
             </div>
-            <div class="card dd-stat">
-                <div class="card-label">AFK</div>
-                <div class="dd-stat-value" style="color:var(--rose)" id="dd-afk-all">0h 0m</div>
-            </div>
         </div>
     </div>
 
@@ -282,9 +283,29 @@
     </div>
 </div>
 
+<!-- ============ CATEGORY DETAIL DRAWER ============ -->
+<div class="drawer-overlay" id="cat-overlay"></div>
+<div class="drawer" id="cat-drawer">
+    <button class="drawer-close" id="cat-close">✕</button>
+
+    <div class="dd-head">
+        <div class="dd-icon" id="cat-icon">A</div>
+        <div>
+            <div class="dd-title" id="cat-title">Category</div>
+            <div class="dd-rank" id="cat-sub">—</div>
+        </div>
+    </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Apps in this Category</div>
+        <div class="lb-list" id="cat-app-list"></div>
+    </div>
+</div>
+
 <script src="js/utils.js"></script>
 <script src="js/app.js"></script>
 <script src="js/drilldown.js"></script>
+<script src="js/category.js"></script>
 <script src="js/tabs/overview.js"></script>
 <script src="js/tabs/periods.js"></script>
 <script src="js/tabs/leaderboard.js"></script>

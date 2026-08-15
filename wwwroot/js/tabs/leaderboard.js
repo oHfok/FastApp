@@ -92,7 +92,7 @@ function renderFullLeaderboard() {
                     <div class="full-lb-icon">${app.appName.charAt(0).toUpperCase()}</div>
                     <div class="full-lb-name-col">
                         <div class="full-lb-app-name">${app.appName}</div>
-                        <div class="full-lb-cat">${app.category || 'Uncategorized'}</div>
+                        <div class="full-lb-cat cat-link" onclick="event.stopPropagation(); openCategoryDetail('${(app.category || 'Other').replace(/'/g, "&#39;")}')">${app.category || 'Other'}</div>
                     </div>
                 </div>
                 <div class="full-lb-time">${formatTime(app.focusedMinutes)}</div>
