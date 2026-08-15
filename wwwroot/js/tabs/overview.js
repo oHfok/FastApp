@@ -292,8 +292,13 @@ function renderDayHeatmap(scope, dateStr, heatData) {
         cellsHtml += `<div class="heat-day-cell" style="background:${bg}" onmousemove="showTooltip(event, '${tip}')" onmouseleave="hideTooltip()"></div>`;
     }
 
+    // Fixed cell caps (not 1fr) so a low column count (month = 5) doesn't stretch
+    // cells across the full card width and blow the grid apart.
+    const cols = Math.ceil(days / 7);
+    const cellCap = scope === 'month' ? 28 : 13;
+
     body.innerHTML = `
-        <div class="heat-days-grid" style="grid-template-columns:repeat(${Math.ceil(days / 7)}, 1fr);">${cellsHtml}</div>
+        <div class="heat-days-grid" style="grid-template-columns:repeat(${cols}, minmax(0, ${cellCap}px));">${cellsHtml}</div>
         <div class="heat-legend">
             <span>Less</span>
             <span class="heat-legend-swatch" style="background:var(--bg-raised)"></span>
