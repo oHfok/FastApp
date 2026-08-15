@@ -71,8 +71,18 @@ namespace FastApp.Services
 
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { ContentRootPath = exeFolder, WebRootPath = wwwrootPath });
             builder.WebHost.UseUrls("http://127.0.0.1:5050");
-            var app = builder.Build();
+            var app = builder.Build();          
+
             app.UseStaticFiles();
+
+            // Serve the standalone Nova dashboard from wwwroot2 at /nova
+            string novaRootPath = Path.Combine(exeFolder, "wwwroot2");
+            if (!Directory.Exists(novaRootPath)) Directory.CreateDirectory(novaRootPath);
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(novaRootPath),
+                RequestPath = "/nova"
+            });
 
             using (var initDb = new AppDbContext())
             {
@@ -174,6 +184,16 @@ namespace FastApp.Services
 
                     double focusAllTime = allSystemLogs.Sum(l => l.TimeFocused.TotalHours);
 
+                    double afkWeek = allSystemLogs.Where(l => l.Date >= startOfWeek && l.Date <= targetDate).Sum(l => l.AfkTimeSpent.TotalHours);
+                    double afkPrevWeek = allSystemLogs.Where(l => l.Date >= startOfPrevWeek && l.Date < startOfWeek).Sum(l => l.AfkTimeSpent.TotalHours);
+
+                    double afkMonth = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-30) && l.Date <= targetDate).Sum(l => l.AfkTimeSpent.TotalHours);
+                    double afkPrevMonth = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-60) && l.Date <= targetDate.AddDays(-30)).Sum(l => l.AfkTimeSpent.TotalHours);
+
+                    double afkYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-365) && l.Date <= targetDate).Sum(l => l.AfkTimeSpent.TotalHours);
+                    double afkPrevYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-730) && l.Date <= targetDate.AddDays(-365)).Sum(l => l.AfkTimeSpent.TotalHours);
+
+
                     // --- NEW: 365-DAY HEATMAP DATA ---
                     var yearlyHeatmap = allSystemLogs
                         .Where(l => l.Date > targetDate.AddDays(-365) && l.Date <= targetDate)
@@ -197,6 +217,13 @@ namespace FastApp.Services
                         PrevFocusYear = focusPrevYear,
                         FocusAllTime = focusAllTime,
                         AfkToday = allSystemLogs.Where(l => l.Date == targetDate).Sum(l => l.AfkTimeSpent.TotalHours),
+                        AfkWeek = afkWeek,
+                        PrevAfkWeek = afkPrevWeek,
+                        AfkMonth = afkMonth,
+                        PrevAfkMonth = afkPrevMonth,
+                        AfkYear = afkYear,
+                        PrevAfkYear = afkPrevYear,
+
                         ContextSwitches = await db.SessionLogs.CountAsync(s => s.StartTime >= targetDate && s.StartTime < targetDate.AddDays(1) && !hiddenApps.Contains(s.AppName)),
                         TopAppsToday = todaysLogs.OrderByDescending(l => l.TimeFocused).Take(5).Select(l => new { AppName = l.AppName, FocusedMinutes = l.TimeFocused.TotalMinutes }).ToList(),
                         WeeklyTrend = recentLogs.Where(l => l.AppName == "SYSTEM_PC").OrderBy(l => l.Date).Select(l => new { Day = l.Date.ToString("ddd"), FocusedHours = l.TimeFocused.TotalHours }).ToList(),
@@ -492,6 +519,201 @@ namespace FastApp.Services
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });
+
+            app.MapGet("/api/periods", async (string type, HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    var hiddenApps = GetHiddenApps(db);
+                    bool isMonth = string.Equals(type, "month", StringComparison.OrdinalIgnoreCase);
+
+                    var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").ToListAsync();
+                    if (systemLogs.Count == 0)
+                    {
+                        await context.Response.WriteAsJsonAsync(Array.Empty<object>());
+                        return;
+                    }
+
+                    var appLogs = await db.DailyLogs
+                        .Where(l => l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName))
+                        .ToListAsync();
+
+                    // Bucket key -> (start, end) of that week/month
+                    var buckets = new Dictionary<string, (DateTime start, DateTime end, string label)>();
+                    foreach (var log in systemLogs)
+                    {
+                        string key; DateTime start, end; string label;
+                        if (isMonth)
+                        {
+                            start = new DateTime(log.Date.Year, log.Date.Month, 1);
+                            end = start.AddMonths(1).AddDays(-1);
+                            key = start.ToString("yyyy-MM");
+                            label = start.ToString("MMMM yyyy");
+                        }
+                        else
+                        {
+                            start = GetMondayStartOfWeek(log.Date);
+                            end = start.AddDays(6);
+                            key = start.ToString("yyyy-MM-dd");
+                            int weekNo = System.Globalization.ISOWeek.GetWeekOfYear(start);
+                            label = $"Week {weekNo}";
+                        }
+                        buckets[key] = (start, end, label);
+                    }
+
+                    var results = buckets.Select(kvp =>
+                    {
+                        var (start, end, label) = kvp.Value;
+                        var inRange = systemLogs.Where(l => l.Date >= start && l.Date <= end).ToList();
+                        double totalMins = inRange.Sum(l => l.TimeFocused.TotalMinutes);
+                        double afkMins = inRange.Sum(l => l.AfkTimeSpent.TotalMinutes);
+                        var mostUsed = appLogs.Where(l => l.Date >= start && l.Date <= end)
+                            .GroupBy(l => l.AppName)
+                            .Select(g => new { Name = g.Key, Mins = g.Sum(x => x.TimeFocused.TotalMinutes) })
+                            .OrderByDescending(x => x.Mins)
+                            .FirstOrDefault();
+
+                        return new
+                        {
+                            Key = kvp.Key,
+                            Label = label,
+                            StartDate = start.ToString("yyyy-MM-dd"),
+                            EndDate = end.ToString("yyyy-MM-dd"),
+                            TotalFocusMinutes = Math.Round(totalMins, 1),
+                            TotalAfkMinutes = Math.Round(afkMins, 1),
+                            MostUsedApp = mostUsed?.Name ?? "—"
+                        };
+                    })
+                    .Where(p => p.TotalFocusMinutes > 0)
+                    .OrderByDescending(p => p.TotalFocusMinutes)
+                    .ToList();
+
+                    var ranked = results.Select((p, i) => new
+                    {
+                        p.Label,
+                        p.StartDate,
+                        p.EndDate,
+                        p.TotalFocusMinutes,
+                        p.TotalAfkMinutes,
+                        p.MostUsedApp,
+                        Rank = i + 1,
+                        TotalPeriods = results.Count
+                    })
+                    .OrderByDescending(p => p.StartDate) // display most recent first
+                    .ToList();
+
+                    await context.Response.WriteAsJsonAsync(ranked);
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // ---- /api/period-detail?type=week|month&start=yyyy-MM-dd -----------------
+            // Detail for one period: compares it (focus AND AFK) to the period
+            // immediately before, immediately after, and the current (today's) period,
+            // plus top apps and top categories for the chosen range.
+            app.MapGet("/api/period-detail", async (string type, string start, HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    var hiddenApps = GetHiddenApps(db);
+                    var appCategories = await GetAppCategoriesSafely(db);
+                    bool isMonth = string.Equals(type, "month", StringComparison.OrdinalIgnoreCase);
+
+                    DateTime chosenStart = DateTime.Parse(start).Date;
+                    if (!isMonth) chosenStart = GetMondayStartOfWeek(chosenStart);
+                    else chosenStart = new DateTime(chosenStart.Year, chosenStart.Month, 1);
+
+                    (DateTime s, DateTime e) Range(DateTime periodStart) => isMonth
+                        ? (periodStart, periodStart.AddMonths(1).AddDays(-1))
+                        : (periodStart, periodStart.AddDays(6));
+
+                    DateTime PrevStart(DateTime periodStart) => isMonth ? periodStart.AddMonths(-1) : periodStart.AddDays(-7);
+                    DateTime NextStart(DateTime periodStart) => isMonth ? periodStart.AddMonths(1) : periodStart.AddDays(7);
+
+                    DateTime todayStart = isMonth
+                        ? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1)
+                        : GetMondayStartOfWeek(DateTime.Today);
+
+                    var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").ToListAsync();
+                    var appLogs = await db.DailyLogs
+                        .Where(l => l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName))
+                        .ToListAsync();
+
+                    object BuildSummary(DateTime periodStart, string label)
+                    {
+                        var (s, e) = Range(periodStart);
+                        var inRange = systemLogs.Where(l => l.Date >= s && l.Date <= e).ToList();
+                        if (!inRange.Any()) return null;
+                        double mins = inRange.Sum(l => l.TimeFocused.TotalMinutes);
+                        double afkMins = inRange.Sum(l => l.AfkTimeSpent.TotalMinutes);
+                        return new
+                        {
+                            Label = label,
+                            StartDate = s.ToString("yyyy-MM-dd"),
+                            EndDate = e.ToString("yyyy-MM-dd"),
+                            TotalFocusMinutes = Math.Round(mins, 1),
+                            TotalAfkMinutes = Math.Round(afkMins, 1)
+                        };
+                    }
+
+                    string LabelFor(DateTime periodStart) => isMonth
+                        ? periodStart.ToString("MMMM yyyy")
+                        : $"Week {System.Globalization.ISOWeek.GetWeekOfYear(periodStart)}";
+
+                    var (chosenS, chosenE) = Range(chosenStart);
+                    var chosenRange = systemLogs.Where(l => l.Date >= chosenS && l.Date <= chosenE).ToList();
+                    double chosenMins = chosenRange.Sum(l => l.TimeFocused.TotalMinutes);
+                    double chosenAfkMins = chosenRange.Sum(l => l.AfkTimeSpent.TotalMinutes);
+
+                    // Rank against every period of this type that has data
+                    var allBuckets = new HashSet<string>();
+                    foreach (var log in systemLogs)
+                    {
+                        var bs = isMonth ? new DateTime(log.Date.Year, log.Date.Month, 1) : GetMondayStartOfWeek(log.Date);
+                        allBuckets.Add(bs.ToString("yyyy-MM-dd"));
+                    }
+                    var allTotals = allBuckets.Select(k =>
+                    {
+                        var bs = DateTime.Parse(k);
+                        var (s, e) = Range(bs);
+                        return systemLogs.Where(l => l.Date >= s && l.Date <= e).Sum(l => l.TimeFocused.TotalMinutes);
+                    }).Where(m => m > 0).OrderByDescending(m => m).ToList();
+                    int rank = allTotals.FindIndex(m => Math.Abs(m - chosenMins) < 0.01) + 1;
+                    if (rank <= 0) rank = allTotals.Count + 1;
+
+                    var topApps = appLogs.Where(l => l.Date >= chosenS && l.Date <= chosenE)
+                        .GroupBy(l => l.AppName)
+                        .Select(g => new { AppName = g.Key, FocusedMinutes = Math.Round(g.Sum(x => x.TimeFocused.TotalMinutes), 1) })
+                        .OrderByDescending(x => x.FocusedMinutes).Take(8).ToList();
+
+                    var topCategories = appLogs.Where(l => l.Date >= chosenS && l.Date <= chosenE)
+                        .GroupBy(l => appCategories.ContainsKey(l.AppName) ? appCategories[l.AppName] : "Uncategorized")
+                        .Select(g => new { Category = g.Key, FocusedMinutes = Math.Round(g.Sum(x => x.TimeFocused.TotalMinutes), 1) })
+                        .OrderByDescending(x => x.FocusedMinutes).Take(8).ToList();
+
+                    var payload = new
+                    {
+                        Label = LabelFor(chosenStart),
+                        StartDate = chosenS.ToString("yyyy-MM-dd"),
+                        EndDate = chosenE.ToString("yyyy-MM-dd"),
+                        TotalFocusMinutes = Math.Round(chosenMins, 1),
+                        TotalAfkMinutes = Math.Round(chosenAfkMins, 1),
+                        Rank = rank,
+                        TotalPeriods = allTotals.Count,
+                        Previous = BuildSummary(PrevStart(chosenStart), LabelFor(PrevStart(chosenStart))),
+                        Next = BuildSummary(NextStart(chosenStart), LabelFor(NextStart(chosenStart))),
+                        Current = chosenStart != todayStart ? BuildSummary(todayStart, LabelFor(todayStart)) : null,
+                        TopApps = topApps,
+                        TopCategories = topCategories
+                    };
+
+                    await context.Response.WriteAsJsonAsync(payload);
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
 
             // --- NEW: OPEN FOLDER SECURE ENDPOINT ---
             app.MapPost("/api/open-folder", async (HttpContext context) =>

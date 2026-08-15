@@ -1,94 +1,96 @@
-/* ==========================================
-   DRILLDOWN — per-app detail side panel.
-   Shared UI, not tied to any single tab (opened from
-   leaderboard rows). Lives outside the tab system.
-   ========================================== */
+/* ==========================================================
+   APP DETAIL PAGE (drawer)
+   Per spec: name, all-time Focus-time ranking, category + editor,
+   most-used day, 30-day usage stat (X/30 days, %), hide toggle.
+   ========================================================== */
 
 async function openDrilldown(appName) {
-    // 1. Immediately slide the panel open so the user knows it's working
-    document.getElementById('drilldown-panel').classList.remove('translate-x-full');
+    document.getElementById('dd-overlay').classList.add('open');
+    document.getElementById('dd-drawer').classList.add('open');
 
-    document.getElementById('drilldown-title').innerText = appName;
-    document.getElementById('dd-icon').innerText = appName.charAt(0).toUpperCase();
-
-    let row = typeof currentLeaderboardData !== 'undefined' ? currentLeaderboardData.find(a => a.appName === appName) : null;
-    document.getElementById('dd-category').innerText = row ? row.category : 'Details';
+    document.getElementById('dd-title').textContent = appName;
+    document.getElementById('dd-icon').textContent = appName.charAt(0).toUpperCase();
+    document.getElementById('dd-rank').textContent = 'Loading rank…';
 
     try {
-        // 2. Fetch the data (using encodeURIComponent for safe spaces)
-        const res = await fetch(`/api/app-details?appName=${encodeURIComponent(appName)}`);
-        const data = await res.json();
+        const [detailRes, allTimeRes, allAppsRes] = await Promise.all([
+            fetch(`/api/app-details?appName=${encodeURIComponent(appName)}`),
+            fetch(`/api/leaderboard?timeframe=all&date=${getLocalTodayStr()}`),
+            fetch(`/api/all-apps`)
+        ]);
+        const data = await detailRes.json();
+        const allTimeBoard = await allTimeRes.json();
+        const allApps = await allAppsRes.json();
 
-        // 3. Prevent silent freezing if the C# backend throws an error
-        if (data.error) {
-            console.error("Backend Error:", data.error);
-            alert("Backend Error: " + data.error);
-            return;
-        }
+        if (data.error) { console.error(data.error); return; }
 
-        // NEW: Path & Behavioral DNA Bindings
-        document.getElementById('dd-path').innerText = data.executablePath || "Path not recorded";
-        document.getElementById('dd-path').title = data.executablePath || "";
-        document.getElementById('dd-path-btn').onclick = () => openAppFolder(data.executablePath);
+        // All-time ranking
+        const sorted = [...allTimeBoard].sort((a, b) => b.focusedMinutes - a.focusedMinutes);
+        const rankIdx = sorted.findIndex(a => a.appName.toLowerCase() === appName.toLowerCase());
+        document.getElementById('dd-rank').textContent = rankIdx >= 0
+            ? `#${rankIdx + 1} all-time by focus time`
+            : 'Not ranked yet';
 
-        document.getElementById('dd-consistency').innerHTML = `${data.consistency}% <span class="text-sm font-medium text-slate-500 tracking-normal ml-1">(${data.daysActive || 0} of 30 days)</span>`;
-        document.getElementById('dd-pattern').innerText = data.usagePattern;
+        // Category selector — /api/app-details doesn't return a category field, so
+        // read the app's current category from /api/all-apps instead (it includes
+        // hidden apps too, unlike the leaderboard, so this works even for hidden apps).
+        const allAppsMatch = allApps.find(a => (a.appName || a.AppName || '').toLowerCase() === appName.toLowerCase());
+        const currentCategory = (allAppsMatch && (allAppsMatch.category || allAppsMatch.Category)) || 'Other';
 
-        // Existing Bindings
-        document.getElementById('dd-week-avg').innerText = formatHours(data.weekAvg);
-        document.getElementById('dd-week-trend').innerHTML = getInlineTrendHtml(data.weekAvg, data.prevWeekAvg);
+        const catSelect = document.getElementById('dd-category-select');
+        let opts = allCategories.map(c => `<option value="${c}" ${currentCategory === c ? 'selected' : ''}>${c}</option>`).join('');
+        if (currentCategory && !allCategories.includes(currentCategory)) opts += `<option value="${currentCategory}" selected>${currentCategory}</option>`;
+        catSelect.innerHTML = opts;
+        catSelect.onchange = () => updateCategory(appName, catSelect.value);
 
-        document.getElementById('dd-month-avg').innerText = formatHours(data.monthAvg);
-        document.getElementById('dd-month-trend').innerHTML = getInlineTrendHtml(data.monthAvg, data.prevMonthAvg);
+        // Most used day
+        document.getElementById('dd-max-day').textContent = data.maxFocusDay || 'N/A';
 
-        document.getElementById('dd-year-avg').innerText = formatHours(data.yearAvg);
-        document.getElementById('dd-year-trend').innerHTML = getInlineTrendHtml(data.yearAvg, data.prevYearAvg);
+        // 30-day behavior: "used X of last 30 days (Y%)"
+        const daysActive = data.daysActive || 0;
+        const consistency = data.consistency ?? Math.round((daysActive / 30) * 100);
+        document.getElementById('dd-consistency').innerHTML =
+            `Used <strong>${daysActive}</strong> of the last 30 days <span class="mono" style="color:var(--brass)">(${consistency}%)</span>`;
+        document.getElementById('dd-pattern').textContent = data.usagePattern || '—';
 
-        document.getElementById('dd-max-focus').innerText = data.maxFocusDay;
-        document.getElementById('dd-max-running').innerText = data.maxRunningDay;
+        // Lifetime stats
+        document.getElementById('dd-focus-all').textContent = formatHours(data.allTimeFocused || 0);
+        document.getElementById('dd-running-all').textContent = formatHours(data.allTimeRunning || 0);
+        document.getElementById('dd-afk-all').textContent = formatHours(data.allTimeAfk || 0);
 
-        document.getElementById('dd-focus').innerText = formatHours(data.allTimeFocused);
-        document.getElementById('dd-running').innerText = formatHours(data.allTimeRunning);
-        document.getElementById('dd-afk').innerText = formatHours(data.allTimeAfk);
-        document.getElementById('dd-macros').innerText = data.totalMacros;
+        // Hide/unhide button
+        const hideBtn = document.getElementById('dd-hide-btn');
+        hideBtn.textContent = 'Hide from statistics';
+        hideBtn.onclick = () => hideAppFromDetail(appName);
 
-        // Existing Chart
-        if (drillChart) drillChart.destroy();
-        drillChart = new Chart(document.getElementById('drilldownChart'), {
-            type: 'bar',
-            data: {
-                labels: data.history.map(h => h.date),
-                datasets: [{ label: 'Focus Time', data: data.history.map(h => h.focusedMinutes), backgroundColor: '#38bdf8', borderRadius: 4, hoverBackgroundColor: '#60a5fa' }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(15,23,42,0.9)', titleColor: '#38bdf8', padding: 12, cornerRadius: 8, callbacks: { label: function (ctx) { return formatTime(ctx.raw); } } } },
-                scales: { y: { ticks: { font: { weight: 'bold' }, callback: function (val) { return formatTime(val); } }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false }, ticks: { font: { weight: 'bold' } } } }
-            }
-        });
     } catch (err) {
-        console.error("Network or fetch error:", err);
-        alert("Failed to load application details.");
+        console.error('Failed to load app details', err);
     }
+}
+
+async function updateCategory(appName, category) {
+    await fetch('/api/update-category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appName, category })
+    });
+    refreshActiveTab();
+}
+
+async function hideAppFromDetail(appName) {
+    await fetch('/api/hide', { method: 'POST', body: appName });
+    closeDrilldown();
+    refreshActiveTab();
+}
+
+function refreshActiveTab() {
+    const activeRail = document.querySelector('.rail-item.active');
+    if (!activeRail) return;
+    const mod = Dashboard.tabs[activeRail.dataset.view];
+    if (mod && mod.onEnter) mod.onEnter();
 }
 
 function closeDrilldown() {
-    document.getElementById('drilldown-panel').classList.add('translate-x-full');
-}
-
-// NEW: Open Folder Network Request
-async function openAppFolder(filePath) {
-    if (!filePath || filePath === "Path not recorded in database." || filePath === "Path not recorded") {
-        alert("We don't have the file path for this application yet. Ensure it is actively tracked!");
-        return;
-    }
-    try {
-        const res = await fetch('/api/open-folder', { method: 'POST', body: filePath });
-        if (!res.ok) {
-            const errorData = await res.json();
-            alert("Could not open folder: " + (errorData.error || "Unknown error."));
-        }
-    } catch (err) {
-        console.error("Folder open error:", err);
-    }
+    document.getElementById('dd-overlay').classList.remove('open');
+    document.getElementById('dd-drawer').classList.remove('open');
 }
