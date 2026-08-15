@@ -310,6 +310,22 @@
     </div>
 
     <div class="dd-section">
+        <div class="dd-section-label">Parental PIN</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;" id="pin-explainer">
+            Required to extend an app's time past its daily limit for the day. Not stored in plain text — but this
+            isn't a hardened security control, just enough friction to make "just one more round" require asking first.
+        </p>
+        <div id="pin-status-line" style="font-size:12px;color:var(--text-dim);margin-bottom:12px;display:none;">
+            A PIN is currently set. <span class="app-link" onclick="showPinForm()">Change it</span>
+        </div>
+        <div id="pin-form" class="retention-row">
+            <input type="password" class="field" id="pin-input" placeholder="New PIN (min 4 characters)" style="flex:1;" inputmode="numeric">
+            <button class="btn btn-brass" onclick="savePinSetting()">Save</button>
+        </div>
+        <div class="retention-status" id="pin-status">Saved.</div>
+    </div>
+
+    <div class="dd-section">
         <div class="dd-section-label">Hidden Applications</div>
         <div class="settings-list" id="hidden-apps-list"></div>
     </div>
@@ -349,8 +365,29 @@
             <input type="checkbox" id="dd-strict-toggle">
             <span>Force close the app when the limit is reached</span>
         </label>
+        <div class="dd-limit-row" id="dd-limit-pin-row" style="display:none;margin-top:12px;margin-bottom:0;">
+            <input type="password" class="field" id="dd-limit-pin" placeholder="PIN required to change this" style="flex:1;" inputmode="numeric">
+        </div>
         <button class="btn btn-brass" id="dd-limit-save-btn" style="margin-top:12px;width:100%;">Save Limit</button>
         <div class="retention-status" id="dd-limit-status">Saved.</div>
+
+        <div id="dd-extend-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--panel-border-soft);">
+            <div id="dd-extend-controls">
+                <div style="font-size:12px;color:var(--text-faint);margin-bottom:10px;">Need more time today?</div>
+                <div class="dd-limit-row">
+                    <select class="field" id="dd-extend-minutes" style="width:100px;">
+                        <option value="10">+10 min</option>
+                        <option value="15" selected>+15 min</option>
+                        <option value="30">+30 min</option>
+                        <option value="60">+60 min</option>
+                    </select>
+                    <input type="password" class="field" id="dd-extend-pin" placeholder="PIN" style="width:90px;" inputmode="numeric">
+                    <button class="btn btn-ghost" id="dd-extend-btn" style="flex-shrink:0;">Extend</button>
+                </div>
+                <div class="retention-status" id="dd-extend-status">Extended.</div>
+            </div>
+            <div id="dd-extend-no-pin" class="view-sub" style="display:none;margin-top:0;">Set a Parental PIN in Settings to enable time extensions.</div>
+        </div>
     </div>
 
     <div class="dd-section">

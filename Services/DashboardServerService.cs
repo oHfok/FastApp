@@ -15,9 +15,16 @@ namespace FastApp.Services
 {
     public static class DashboardServerService
     {
-        private record UpdateLimitRequest(string AppName, int DailyLimitMinutes, bool StrictFocusMode);
+        private record UpdateLimitRequest(string AppName, int DailyLimitMinutes, bool StrictFocusMode, string Pin);
 
         private record CategoryClassificationRequest(string Category, string Classification);
+
+        private record SetPinRequest(string Pin);
+
+        private record ExtendLimitRequest(string AppName, string Pin, int ExtraMinutes);
+
+        // PIN hashing/verification lives in PinService — shared with the WPF app's
+        // own native Extend Time dialog (tray icon menu) so the two never drift.
 
         private static async Task<List<string>> GetAllCategoriesAsync(AppDbContext db)
         {
@@ -388,17 +395,112 @@ namespace FastApp.Services
                     var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                     var data = System.Text.Json.JsonSerializer.Deserialize<UpdateLimitRequest>(body, options);
 
-                    if (data != null && !string.IsNullOrEmpty(data.AppName))
-                    {
-                        WeakReferenceMessenger.Default.Send(new FastApp.ViewModels.UpdateLimitCommand(
-                            data.AppName, Math.Max(0, data.DailyLimitMinutes), data.StrictFocusMode));
-                        await context.Response.WriteAsJsonAsync(new { success = true });
-                    }
-                    else
+                    if (data == null || string.IsNullOrEmpty(data.AppName))
                     {
                         context.Response.StatusCode = 400;
                         await context.Response.WriteAsJsonAsync(new { error = "appName is required." });
+                        return;
                     }
+
+                    // If a PIN is configured, changing the limit (including
+                    // clearing it back to "no limit") requires it — otherwise the
+                    // whole PIN/extend system is pointless, since anyone could just
+                    // edit the limit directly instead of asking for an extension.
+                    // No PIN configured yet = nothing to protect, edit freely (this
+                    // is also how initial setup works before a PIN ever exists).
+                    using var db = new AppDbContext();
+                    var (hasPin, salt, hash) = PinService.GetPinInfo(db);
+                    if (hasPin && !PinService.VerifyPin(data.Pin, salt, hash))
+                    {
+                        context.Response.StatusCode = 401;
+                        await context.Response.WriteAsJsonAsync(new { error = "Incorrect PIN." });
+                        return;
+                    }
+
+                    WeakReferenceMessenger.Default.Send(new FastApp.ViewModels.UpdateLimitCommand(
+                        data.AppName, Math.Max(0, data.DailyLimitMinutes), data.StrictFocusMode));
+                    await context.Response.WriteAsJsonAsync(new { success = true });
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // Whether a parental PIN is configured — never returns the PIN or its
+            // hash, just a bool the dashboard uses to decide whether to show the
+            // "Extend Today" control at all.
+            app.MapGet("/api/settings/pin", async (HttpContext context) =>
+            {
+                using var db = new AppDbContext();
+                var (hasPin, _, _) = PinService.GetPinInfo(db);
+                await context.Response.WriteAsJsonAsync(new { HasPin = hasPin });
+            });
+
+            // Sets or changes the PIN. Deliberately doesn't require the old PIN to
+            // change it — dashboard access is already the trust boundary here, this
+            // isn't trying to be a hardened security control.
+            app.MapPost("/api/settings/pin", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var reader = new StreamReader(context.Request.Body);
+                    string body = await reader.ReadToEndAsync();
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var data = System.Text.Json.JsonSerializer.Deserialize<SetPinRequest>(body, options);
+
+                    if (data == null || string.IsNullOrEmpty(data.Pin) || data.Pin.Length < 4)
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsJsonAsync(new { error = "PIN must be at least 4 characters." });
+                        return;
+                    }
+
+                    var (salt, hash) = PinService.HashPin(data.Pin);
+                    using var db = new AppDbContext();
+                    await db.Database.ExecuteSqlRawAsync("INSERT OR REPLACE INTO AppSettings (Key, Value) VALUES ('ParentPinSalt', {0})", salt);
+                    await db.Database.ExecuteSqlRawAsync("INSERT OR REPLACE INTO AppSettings (Key, Value) VALUES ('ParentPinHash', {0})", hash);
+
+                    await context.Response.WriteAsJsonAsync(new { success = true });
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // PIN-gated time extension for a blocked (or about-to-be-blocked) app.
+            // Verifies the PIN here (pure data lookup — no live app state needed for
+            // that part), and only messages the live WPF instance once it's confirmed
+            // correct, same remote-control pattern as /api/update-limit.
+            app.MapPost("/api/extend-limit", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var reader = new StreamReader(context.Request.Body);
+                    string body = await reader.ReadToEndAsync();
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var data = System.Text.Json.JsonSerializer.Deserialize<ExtendLimitRequest>(body, options);
+
+                    if (data == null || string.IsNullOrEmpty(data.AppName) || data.ExtraMinutes <= 0)
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsJsonAsync(new { error = "appName and a positive extraMinutes are required." });
+                        return;
+                    }
+
+                    using var db = new AppDbContext();
+                    var (hasPin, salt, hash) = PinService.GetPinInfo(db);
+                    if (!hasPin)
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsJsonAsync(new { error = "No PIN is set yet — set one in Settings first." });
+                        return;
+                    }
+
+                    if (!PinService.VerifyPin(data.Pin, salt, hash))
+                    {
+                        context.Response.StatusCode = 401;
+                        await context.Response.WriteAsJsonAsync(new { error = "Incorrect PIN." });
+                        return;
+                    }
+
+                    WeakReferenceMessenger.Default.Send(new FastApp.ViewModels.GrantExtensionCommand(data.AppName, data.ExtraMinutes));
+                    await context.Response.WriteAsJsonAsync(new { success = true });
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });
@@ -616,6 +718,7 @@ namespace FastApp.Services
                     string exePath = "Path not recorded in database.";
                     int dailyLimitMinutes = 0;
                     bool strictFocusMode = false;
+                    int todayBonusMinutes = 0;
                     try
                     {
                         var managedApp = await db.ManagedApps.FirstOrDefaultAsync(m => m.Name == appName);
@@ -624,6 +727,9 @@ namespace FastApp.Services
                             if (!string.IsNullOrEmpty(managedApp.ExecutablePath)) exePath = managedApp.ExecutablePath;
                             dailyLimitMinutes = managedApp.DailyLimitMinutes;
                             strictFocusMode = managedApp.StrictFocusMode;
+                            // Same self-expiring check the tracker uses: a bonus not
+                            // stamped for today is stale, reads as zero.
+                            todayBonusMinutes = managedApp.BonusMinutesDate?.Date == DateTime.Today ? managedApp.TodayBonusMinutes : 0;
                         }
                     }
                     catch
@@ -673,7 +779,8 @@ namespace FastApp.Services
                         History = history,
                         TodayMinutes = Math.Round(todayMinutes, 1),
                         DailyLimitMinutes = dailyLimitMinutes,
-                        StrictFocusMode = strictFocusMode
+                        StrictFocusMode = strictFocusMode,
+                        TodayBonusMinutes = todayBonusMinutes
                     });
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }

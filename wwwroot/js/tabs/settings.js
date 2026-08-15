@@ -58,9 +58,55 @@ async function saveWindowTitlesSetting() {
     setTimeout(() => { status.style.display = 'none'; }, 2500);
 }
 
+async function loadPinSetting() {
+    try {
+        const res = await fetch('/api/settings/pin');
+        const data = await res.json();
+        const hasPin = data.hasPin ?? data.HasPin ?? false;
+        document.getElementById('pin-status-line').style.display = hasPin ? 'block' : 'none';
+        document.getElementById('pin-form').style.display = hasPin ? 'none' : 'flex';
+    } catch (err) { console.error(err); }
+}
+
+function showPinForm() {
+    document.getElementById('pin-form').style.display = 'flex';
+    document.getElementById('pin-status-line').style.display = 'none';
+}
+
+function flashPinStatus(text, isError) {
+    const status = document.getElementById('pin-status');
+    status.textContent = text;
+    status.style.color = isError ? 'var(--rose)' : 'var(--teal)';
+    status.style.display = 'block';
+    setTimeout(() => { status.style.display = 'none'; }, 2500);
+}
+
+async function savePinSetting() {
+    const pin = document.getElementById('pin-input').value;
+    if (!pin || pin.length < 4) {
+        flashPinStatus('PIN must be at least 4 characters.', true);
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/settings/pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin })
+        });
+        if (!res.ok) throw new Error('save failed');
+        document.getElementById('pin-input').value = '';
+        flashPinStatus('Saved.', false);
+        loadPinSetting();
+    } catch (err) {
+        flashPinStatus('Failed to save PIN.', true);
+    }
+}
+
 Dashboard.tabs.settings = {
     onEnter: () => {
         loadHiddenApps();
         loadRetentionSetting();
+        loadPinSetting();
     }
 };

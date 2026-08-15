@@ -82,6 +82,16 @@ namespace FastApp.ViewModels
         [ObservableProperty] private bool _launchOnSystemStartup;
         [ObservableProperty] private bool _isStartupToggleBusy;
 
+        // Whether a Parental PIN is configured (checked once per tracker flush —
+        // see StartProcessTrackerAsync). When set, the Daily Limit / Force Close
+        // controls in the app's own Settings panel lock: editing them then has to
+        // go through the web dashboard's PIN-gated /api/update-limit instead,
+        // otherwise the PIN system is pointless — anyone could just clear the
+        // limit here with zero friction.
+        [ObservableProperty] private bool _isPinConfigured;
+        public bool CanEditDailyLimit => !IsPinConfigured;
+        partial void OnIsPinConfiguredChanged(bool value) => OnPropertyChanged(nameof(CanEditDailyLimit));
+
         private bool _suppressStartupToggleHandler;
 
         // Search filter for Tab 1
@@ -241,12 +251,38 @@ namespace FastApp.ViewModels
                         existingApp.DailyLimitMinutes = Math.Max(0, message.DailyLimitMinutes);
                         existingApp.StrictFocusMode = message.StrictFocusMode;
                         existingApp.HasNotifiedToday = false; // let a newly-raised limit notify again today
+                        existingApp.HasWarnedToday = false;
                         FilteredManagedApps?.Refresh();
                     }
                 });
             });
 
+            // PIN-gated time extension. The dashboard verifies the PIN itself (pure
+            // data lookup, no live app state needed) and only sends this once it's
+            // confirmed correct — this handler just has to apply the grant.
+            WeakReferenceMessenger.Default.Register<GrantExtensionCommand>(this, (recipient, message) =>
+            {
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+                {
+                    var existingApp = ManagedApps.FirstOrDefault(a =>
+                        a.Name.Equals(message.AppName, StringComparison.OrdinalIgnoreCase));
 
+                    if (existingApp != null)
+                    {
+                        // A bonus from a previous day is stale — start fresh rather
+                        // than stacking on top of a leftover value.
+                        if (existingApp.BonusMinutesDate?.Date != DateTime.Today)
+                        {
+                            existingApp.TodayBonusMinutes = 0;
+                        }
+                        existingApp.TodayBonusMinutes += Math.Max(0, message.ExtraMinutes);
+                        existingApp.BonusMinutesDate = DateTime.Today;
+                        existingApp.HasNotifiedToday = false; // re-arm against the raised effective limit
+                        existingApp.HasWarnedToday = false;
+                        FilteredManagedApps?.Refresh();
+                    }
+                });
+            });
 
             foreach (var app in ManagedApps)
             {
@@ -603,6 +639,23 @@ namespace FastApp.ViewModels
             // Daily-limit enforcement: HasNotifiedToday is in-memory only (never
             // persisted), so it has to be reset by hand once a day rolls over.
             DateTime? lastLimitResetDate = null;
+            const int WarningThresholdMinutes = 5;
+
+            // Live per-tick minutes-today, per app: baseline (what's actually
+            // committed to the DB as of the last flush) + timeCache (accumulated
+            // since that flush). Checking against this every tick, instead of only
+            // the value on disk, is what makes enforcement react within ~5s instead
+            // of ~60s. Seeded from the DB once at startup so a mid-day restart of
+            // FastApp itself doesn't reset anyone's count back to zero.
+            var baselineMinutesToday = new Dictionary<string, double>();
+            try
+            {
+                foreach (var existingLog in _dbContext.DailyLogs.Where(l => l.Date == DateTime.Today))
+                {
+                    baselineMinutesToday[existingLog.AppName] = existingLog.TimeSpent.TotalMinutes;
+                }
+            }
+            catch { /* start from empty; the first flush will populate it anyway */ }
 
             // Window-title capture is opt-in (privacy — a title can contain a
             // browser tab's page name, a document name, etc., far more sensitive
@@ -713,6 +766,58 @@ namespace FastApp.ViewModels
                     }
                 }
 
+                // D. Daily limit enforcement — every tick (~5s), not gated behind
+                // the 60s flush. That's what makes a relaunch of a blocked app get
+                // killed again almost immediately instead of getting up to a
+                // minute of free runway each time.
+                foreach (var limitedApp in ManagedApps.Where(a => a.DailyLimitMinutes > 0 && !string.IsNullOrEmpty(a.ExecutablePath)))
+                {
+                    double liveMinutesToday = baselineMinutesToday.GetValueOrDefault(limitedApp.Name)
+                        + timeCache.GetValueOrDefault(limitedApp.Name).TotalMinutes;
+
+                    int bonusMinutes = limitedApp.BonusMinutesDate?.Date == DateTime.Today ? limitedApp.TodayBonusMinutes : 0;
+                    int effectiveLimit = limitedApp.DailyLimitMinutes + bonusMinutes;
+                    double remaining = effectiveLimit - liveMinutesToday;
+
+                    if (remaining <= 0)
+                    {
+                        if (!limitedApp.HasNotifiedToday)
+                        {
+                            limitedApp.HasNotifiedToday = true;
+                            try
+                            {
+                                NotificationService.ShowToast(
+                                    "Daily limit reached",
+                                    $"{limitedApp.Name} has hit its {effectiveLimit}-minute daily limit.");
+                            }
+                            catch { /* Toast failures should never take the tracker down */ }
+                        }
+
+                        if (limitedApp.StrictFocusMode)
+                        {
+                            string exeName = Path.GetFileNameWithoutExtension(limitedApp.ExecutablePath)?.ToLower();
+                            if (!string.IsNullOrEmpty(exeName))
+                            {
+                                foreach (var proc in allProcesses.Where(p => p.ProcessName.ToLower() == exeName))
+                                {
+                                    try { proc.Kill(); } catch { /* already exited, access denied, etc. */ }
+                                }
+                            }
+                        }
+                    }
+                    else if (remaining <= WarningThresholdMinutes && !limitedApp.HasWarnedToday)
+                    {
+                        limitedApp.HasWarnedToday = true;
+                        try
+                        {
+                            NotificationService.ShowToast(
+                                "Almost at today's limit",
+                                $"{limitedApp.Name} has about {Math.Ceiling(remaining)} minute(s) left today.");
+                        }
+                        catch { /* Toast failures should never take the tracker down */ }
+                    }
+                }
+
                 // --- DATABASE FLUSH ---
                 tickCount++;
                 if (tickCount >= FlushIntervalTicks)
@@ -721,7 +826,13 @@ namespace FastApp.ViewModels
 
                     if (lastLimitResetDate != today)
                     {
-                        foreach (var a in ManagedApps) a.HasNotifiedToday = false;
+                        foreach (var a in ManagedApps)
+                        {
+                            a.HasNotifiedToday = false;
+                            a.HasWarnedToday = false;
+                            if (a.BonusMinutesDate?.Date != today) a.TodayBonusMinutes = 0;
+                        }
+                        baselineMinutesToday.Clear();
                         lastLimitResetDate = today;
                     }
 
@@ -740,6 +851,19 @@ namespace FastApp.ViewModels
                     catch
                     {
                         captureWindowTitles = false; // opt-in: default closed on any read failure
+                    }
+
+                    // Re-read PIN-configured state each flush too, so the Daily
+                    // Limit controls lock (or unlock) within ~60s of setting or
+                    // removing a PIN from the dashboard, no app restart needed.
+                    try
+                    {
+                        using var pinDb = new AppDbContext();
+                        IsPinConfigured = PinService.GetPinInfo(pinDb).HasPin;
+                    }
+                    catch
+                    {
+                        IsPinConfigured = false;
                     }
 
                     // 1. Flush Daily Summaries
@@ -765,34 +889,9 @@ namespace FastApp.ViewModels
                         log.AfkTimeSpentTicks = log.AfkTimeSpent.Ticks;
                         log.TimeFocusedTicks = log.TimeFocused.Ticks;
 
-                        // --- Daily limit enforcement (DailyLimitMinutes == 0 means "no limit") ---
-                        var limitedApp = ManagedApps.FirstOrDefault(a => a.Name == appName && a.DailyLimitMinutes > 0);
-                        if (limitedApp != null && log.TimeSpent.TotalMinutes >= limitedApp.DailyLimitMinutes)
-                        {
-                            if (!limitedApp.HasNotifiedToday)
-                            {
-                                limitedApp.HasNotifiedToday = true;
-                                try
-                                {
-                                    NotificationService.ShowToast(
-                                        "Daily limit reached",
-                                        $"{limitedApp.Name} has hit its {limitedApp.DailyLimitMinutes}-minute daily limit.");
-                                }
-                                catch { /* Toast failures should never take the tracker down */ }
-                            }
-
-                            if (limitedApp.StrictFocusMode)
-                            {
-                                string exeName = Path.GetFileNameWithoutExtension(limitedApp.ExecutablePath)?.ToLower();
-                                if (!string.IsNullOrEmpty(exeName))
-                                {
-                                    foreach (var proc in allProcesses.Where(p => p.ProcessName.ToLower() == exeName))
-                                    {
-                                        try { proc.Kill(); } catch { /* already exited, access denied, etc. */ }
-                                    }
-                                }
-                            }
-                        }
+                        // Baseline for the per-tick enforcement check below — keeps
+                        // it anchored to what's actually committed, not just memory.
+                        baselineMinutesToday[appName] = log.TimeSpent.TotalMinutes;
                     }
 
                     // 2. Flush Shadow Sessions
@@ -953,5 +1052,7 @@ namespace FastApp.ViewModels
     public record UpdateCategoryCommand(string AppName, string NewCategory);
 
     public record UpdateLimitCommand(string AppName, int DailyLimitMinutes, bool StrictFocusMode);
+
+    public record GrantExtensionCommand(string AppName, int ExtraMinutes);
 
 }
