@@ -16,6 +16,7 @@ namespace FastApp
         private System.Windows.Point _dragStartPoint;
 
         private MainViewModel _viewModel;
+        public MainViewModel ViewModel => _viewModel;
 
         // NEW: The advanced global hook
         private AdvancedKeyboardHook _keyboardHook;

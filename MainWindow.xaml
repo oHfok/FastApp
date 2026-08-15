@@ -188,9 +188,10 @@
                                         <StackPanel Grid.Column="1" Margin="0,0,40,0" Visibility="{Binding AppSettingsVisibility}">
                                             <TextBlock Text="Daily Limit (Minutes)" FontSize="12" Foreground="Gray" Margin="0,0,0,8"/>
                                             <StackPanel Orientation="Horizontal">
-                                                <ui:TextBox Text="{Binding DailyLimitText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="0 = No Limit" MinHeight="32" Width="120" />
-                                                <ui:ToggleSwitch IsChecked="{Binding StrictFocusMode}" Content="Force Close" ToolTip="Kills the app automatically when limit is reached" Margin="15,0,0,0"/>
+                                                <ui:TextBox Text="{Binding DailyLimitText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="0 = No Limit" MinHeight="32" Width="120" IsEnabled="{Binding DataContext.CanEditDailyLimit, RelativeSource={RelativeSource AncestorType=ListBox}}" />
+                                                <ui:ToggleSwitch IsChecked="{Binding StrictFocusMode}" Content="Force Close" ToolTip="Kills the app automatically when limit is reached" Margin="15,0,0,0" IsEnabled="{Binding DataContext.CanEditDailyLimit, RelativeSource={RelativeSource AncestorType=ListBox}}"/>
                                             </StackPanel>
+                                            <TextBlock Text="Locked once a Parental PIN is set — change it from the web dashboard instead." FontSize="10" Foreground="Gray" Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="240"/>
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="2" HorizontalAlignment="Right">

@@ -15,9 +15,16 @@ namespace FastApp.Services
 {
     public static class DashboardServerService
     {
-        private record UpdateLimitRequest(string AppName, int DailyLimitMinutes, bool StrictFocusMode);
+        private record UpdateLimitRequest(string AppName, int DailyLimitMinutes, bool StrictFocusMode, string Pin);
 
         private record CategoryClassificationRequest(string Category, string Classification);
+
+        private record SetPinRequest(string Pin);
+
+        private record ExtendLimitRequest(string AppName, string Pin, int ExtraMinutes);
+
+        // PIN hashing/verification lives in PinService — shared with the WPF app's
+        // own native Extend Time dialog (tray icon menu) so the two never drift.
 
         private static async Task<List<string>> GetAllCategoriesAsync(AppDbContext db)
         {
@@ -388,17 +395,112 @@ namespace FastApp.Services
                     var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                     var data = System.Text.Json.JsonSerializer.Deserialize<UpdateLimitRequest>(body, options);
 
-                    if (data != null && !string.IsNullOrEmpty(data.AppName))
-                    {
-                        WeakReferenceMessenger.Default.Send(new FastApp.ViewModels.UpdateLimitCommand(
-                            data.AppName, Math.Max(0, data.DailyLimitMinutes), data.StrictFocusMode));
-                        await context.Response.WriteAsJsonAsync(new { success = true });
-                    }
-                    else
+                    if (data == null || string.IsNullOrEmpty(data.AppName))
                     {
                         context.Response.StatusCode = 400;
                         await context.Response.WriteAsJsonAsync(new { error = "appName is required." });
+                        return;
                     }
+
+                    // If a PIN is configured, changing the limit (including
+                    // clearing it back to "no limit") requires it — otherwise the
+                    // whole PIN/extend system is pointless, since anyone could just
+                    // edit the limit directly instead of asking for an extension.
+                    // No PIN configured yet = nothing to protect, edit freely (this
+                    // is also how initial setup works before a PIN ever exists).
+                    using var db = new AppDbContext();
+                    var (hasPin, salt, hash) = PinService.GetPinInfo(db);
+                    if (hasPin && !PinService.VerifyPin(data.Pin, salt, hash))
+                    {
+                        context.Response.StatusCode = 401;
+                        await context.Response.WriteAsJsonAsync(new { error = "Incorrect PIN." });
+                        return;
+                    }
+
+                    WeakReferenceMessenger.Default.Send(new FastApp.ViewModels.UpdateLimitCommand(
+                        data.AppName, Math.Max(0, data.DailyLimitMinutes), data.StrictFocusMode));
+                    await context.Response.WriteAsJsonAsync(new { success = true });
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // Whether a parental PIN is configured — never returns the PIN or its
+            // hash, just a bool the dashboard uses to decide whether to show the
+            // "Extend Today" control at all.
+            app.MapGet("/api/settings/pin", async (HttpContext context) =>
+            {
+                using var db = new AppDbContext();
+                var (hasPin, _, _) = PinService.GetPinInfo(db);
+                await context.Response.WriteAsJsonAsync(new { HasPin = hasPin });
+            });
+
+            // Sets or changes the PIN. Deliberately doesn't require the old PIN to
+            // change it — dashboard access is already the trust boundary here, this
+            // isn't trying to be a hardened security control.
+            app.MapPost("/api/settings/pin", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var reader = new StreamReader(context.Request.Body);
+                    string body = await reader.ReadToEndAsync();
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var data = System.Text.Json.JsonSerializer.Deserialize<SetPinRequest>(body, options);
+
+                    if (data == null || string.IsNullOrEmpty(data.Pin) || data.Pin.Length < 4)
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsJsonAsync(new { error = "PIN must be at least 4 characters." });
+                        return;
+                    }
+
+                    var (salt, hash) = PinService.HashPin(data.Pin);
+                    using var db = new AppDbContext();
+                    await db.Database.ExecuteSqlRawAsync("INSERT OR REPLACE INTO AppSettings (Key, Value) VALUES ('ParentPinSalt', {0})", salt);
+                    await db.Database.ExecuteSqlRawAsync("INSERT OR REPLACE INTO AppSettings (Key, Value) VALUES ('ParentPinHash', {0})", hash);
+
+                    await context.Response.WriteAsJsonAsync(new { success = true });
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // PIN-gated time extension for a blocked (or about-to-be-blocked) app.
+            // Verifies the PIN here (pure data lookup — no live app state needed for
+            // that part), and only messages the live WPF instance once it's confirmed
+            // correct, same remote-control pattern as /api/update-limit.
+            app.MapPost("/api/extend-limit", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var reader = new StreamReader(context.Request.Body);
+                    string body = await reader.ReadToEndAsync();
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var data = System.Text.Json.JsonSerializer.Deserialize<ExtendLimitRequest>(body, options);
+
+                    if (data == null || string.IsNullOrEmpty(data.AppName) || data.ExtraMinutes <= 0)
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsJsonAsync(new { error = "appName and a positive extraMinutes are required." });
+                        return;
+                    }
+
+                    using var db = new AppDbContext();
+                    var (hasPin, salt, hash) = PinService.GetPinInfo(db);
+                    if (!hasPin)
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsJsonAsync(new { error = "No PIN is set yet — set one in Settings first." });
+                        return;
+                    }
+
+                    if (!PinService.VerifyPin(data.Pin, salt, hash))
+                    {
+                        context.Response.StatusCode = 401;
+                        await context.Response.WriteAsJsonAsync(new { error = "Incorrect PIN." });
+                        return;
+                    }
+
+                    WeakReferenceMessenger.Default.Send(new FastApp.ViewModels.GrantExtensionCommand(data.AppName, data.ExtraMinutes));
+                    await context.Response.WriteAsJsonAsync(new { success = true });
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });
@@ -616,6 +718,7 @@ namespace FastApp.Services
                     string exePath = "Path not recorded in database.";
                     int dailyLimitMinutes = 0;
                     bool strictFocusMode = false;
+                    int todayBonusMinutes = 0;
                     try
                     {
                         var managedApp = await db.ManagedApps.FirstOrDefaultAsync(m => m.Name == appName);
@@ -624,6 +727,9 @@ namespace FastApp.Services
                             if (!string.IsNullOrEmpty(managedApp.ExecutablePath)) exePath = managedApp.ExecutablePath;
                             dailyLimitMinutes = managedApp.DailyLimitMinutes;
                             strictFocusMode = managedApp.StrictFocusMode;
+                            // Same self-expiring check the tracker uses: a bonus not
+                            // stamped for today is stale, reads as zero.
+                            todayBonusMinutes = managedApp.BonusMinutesDate?.Date == DateTime.Today ? managedApp.TodayBonusMinutes : 0;
                         }
                     }
                     catch
@@ -673,7 +779,8 @@ namespace FastApp.Services
                         History = history,
                         TodayMinutes = Math.Round(todayMinutes, 1),
                         DailyLimitMinutes = dailyLimitMinutes,
-                        StrictFocusMode = strictFocusMode
+                        StrictFocusMode = strictFocusMode,
+                        TodayBonusMinutes = todayBonusMinutes
                     });
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
@@ -685,7 +792,7 @@ namespace FastApp.Services
                 {
                     using var db = new AppDbContext();
                     var hiddenApps = GetHiddenApps(db);
-                    bool isMonth = string.Equals(type, "month", StringComparison.OrdinalIgnoreCase);
+                    string periodKind = (type ?? "week").ToLowerInvariant();
 
                     var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").ToListAsync();
                     if (systemLogs.Count == 0)
@@ -698,25 +805,38 @@ namespace FastApp.Services
                         .Where(l => l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName))
                         .ToListAsync();
 
-                    // Bucket key -> (start, end) of that week/month
+                    // Bucket key -> (start, end) of that day/week/month/year
                     var buckets = new Dictionary<string, (DateTime start, DateTime end, string label)>();
                     foreach (var log in systemLogs)
                     {
-                        string key; DateTime start, end; string label;
-                        if (isMonth)
+                        DateTime start, end; string key, label;
+                        switch (periodKind)
                         {
-                            start = new DateTime(log.Date.Year, log.Date.Month, 1);
-                            end = start.AddMonths(1).AddDays(-1);
-                            key = start.ToString("yyyy-MM");
-                            label = start.ToString("MMMM yyyy");
-                        }
-                        else
-                        {
-                            start = GetMondayStartOfWeek(log.Date);
-                            end = start.AddDays(6);
-                            key = start.ToString("yyyy-MM-dd");
-                            int weekNo = System.Globalization.ISOWeek.GetWeekOfYear(start);
-                            label = $"Week {weekNo}";
+                            case "day":
+                                start = log.Date;
+                                end = log.Date;
+                                key = start.ToString("yyyy-MM-dd");
+                                label = start.ToString("d MMMM yyyy");
+                                break;
+                            case "month":
+                                start = new DateTime(log.Date.Year, log.Date.Month, 1);
+                                end = start.AddMonths(1).AddDays(-1);
+                                key = start.ToString("yyyy-MM");
+                                label = start.ToString("MMMM yyyy");
+                                break;
+                            case "year":
+                                start = new DateTime(log.Date.Year, 1, 1);
+                                end = start.AddYears(1).AddDays(-1);
+                                key = start.Year.ToString();
+                                label = start.Year.ToString();
+                                break;
+                            case "week":
+                            default:
+                                start = GetMondayStartOfWeek(log.Date);
+                                end = start.AddDays(6);
+                                key = start.ToString("yyyy-MM-dd");
+                                label = $"Week {System.Globalization.ISOWeek.GetWeekOfYear(start)}";
+                                break;
                         }
                         buckets[key] = (start, end, label);
                     }
@@ -778,22 +898,43 @@ namespace FastApp.Services
                     using var db = new AppDbContext();
                     var hiddenApps = GetHiddenApps(db);
                     var appCategories = await GetAppCategoriesSafely(db);
-                    bool isMonth = string.Equals(type, "month", StringComparison.OrdinalIgnoreCase);
+                    string periodKind = (type ?? "week").ToLowerInvariant();
 
-                    DateTime chosenStart = DateTime.Parse(start).Date;
-                    if (!isMonth) chosenStart = GetMondayStartOfWeek(chosenStart);
-                    else chosenStart = new DateTime(chosenStart.Year, chosenStart.Month, 1);
+                    DateTime NormalizeStart(DateTime d) => periodKind switch
+                    {
+                        "day" => d,
+                        "month" => new DateTime(d.Year, d.Month, 1),
+                        "year" => new DateTime(d.Year, 1, 1),
+                        _ => GetMondayStartOfWeek(d)
+                    };
 
-                    (DateTime s, DateTime e) Range(DateTime periodStart) => isMonth
-                        ? (periodStart, periodStart.AddMonths(1).AddDays(-1))
-                        : (periodStart, periodStart.AddDays(6));
+                    DateTime chosenStart = NormalizeStart(DateTime.Parse(start).Date);
 
-                    DateTime PrevStart(DateTime periodStart) => isMonth ? periodStart.AddMonths(-1) : periodStart.AddDays(-7);
-                    DateTime NextStart(DateTime periodStart) => isMonth ? periodStart.AddMonths(1) : periodStart.AddDays(7);
+                    (DateTime s, DateTime e) Range(DateTime periodStart) => periodKind switch
+                    {
+                        "day" => (periodStart, periodStart),
+                        "month" => (periodStart, periodStart.AddMonths(1).AddDays(-1)),
+                        "year" => (periodStart, periodStart.AddYears(1).AddDays(-1)),
+                        _ => (periodStart, periodStart.AddDays(6))
+                    };
 
-                    DateTime todayStart = isMonth
-                        ? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1)
-                        : GetMondayStartOfWeek(DateTime.Today);
+                    DateTime PrevStart(DateTime periodStart) => periodKind switch
+                    {
+                        "day" => periodStart.AddDays(-1),
+                        "month" => periodStart.AddMonths(-1),
+                        "year" => periodStart.AddYears(-1),
+                        _ => periodStart.AddDays(-7)
+                    };
+
+                    DateTime NextStart(DateTime periodStart) => periodKind switch
+                    {
+                        "day" => periodStart.AddDays(1),
+                        "month" => periodStart.AddMonths(1),
+                        "year" => periodStart.AddYears(1),
+                        _ => periodStart.AddDays(7)
+                    };
+
+                    DateTime todayStart = NormalizeStart(DateTime.Today);
 
                     var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").ToListAsync();
                     var appLogs = await db.DailyLogs
@@ -819,9 +960,13 @@ namespace FastApp.Services
                         };
                     }
 
-                    string LabelFor(DateTime periodStart) => isMonth
-                        ? periodStart.ToString("MMMM yyyy")
-                        : $"Week {System.Globalization.ISOWeek.GetWeekOfYear(periodStart)}";
+                    string LabelFor(DateTime periodStart) => periodKind switch
+                    {
+                        "day" => periodStart.ToString("d MMMM yyyy"),
+                        "month" => periodStart.ToString("MMMM yyyy"),
+                        "year" => periodStart.Year.ToString(),
+                        _ => $"Week {System.Globalization.ISOWeek.GetWeekOfYear(periodStart)}"
+                    };
 
                     var (chosenS, chosenE) = Range(chosenStart);
                     var chosenRange = systemLogs.Where(l => l.Date >= chosenS && l.Date <= chosenE).ToList();
@@ -833,7 +978,7 @@ namespace FastApp.Services
                     var allBuckets = new HashSet<string>();
                     foreach (var log in systemLogs)
                     {
-                        var bs = isMonth ? new DateTime(log.Date.Year, log.Date.Month, 1) : GetMondayStartOfWeek(log.Date);
+                        var bs = NormalizeStart(log.Date);
                         allBuckets.Add(bs.ToString("yyyy-MM-dd"));
                     }
                     var allTotals = allBuckets.Select(k =>
@@ -868,6 +1013,31 @@ namespace FastApp.Services
                         });
                     }
 
+                    // A "day" period's Daily Activity is the Timeline ribbon (individual
+                    // app sessions, hour-by-hour), not a day-by-day breakdown — breaking
+                    // a single day down into "days" would be circular. Same session shape
+                    // /api/timeline already returns, computed here instead of making the
+                    // frontend fire a second request for it.
+                    List<object> daySessions = new List<object>();
+                    if (periodKind == "day")
+                    {
+                        var sessionsForDay = await db.SessionLogs
+                            .Where(s => s.StartTime >= chosenS && s.StartTime < chosenS.AddDays(1) && s.AppName != "SYSTEM_PC" && !hiddenApps.Contains(s.AppName))
+                            .OrderBy(s => s.StartTime)
+                            .ToListAsync();
+
+                        daySessions = sessionsForDay.Select(s => (object)new
+                        {
+                            AppName = s.AppName,
+                            Category = appCategories.GetValueOrDefault(s.AppName, "Other"),
+                            Start = s.StartTime.ToString("HH:mm"),
+                            End = s.EndTime.ToString("HH:mm"),
+                            DurationMinutes = (s.EndTime - s.StartTime).TotalMinutes,
+                            StartMinutes = s.StartTime.TimeOfDay.TotalMinutes,
+                            WindowTitle = s.WindowTitle // null unless CaptureWindowTitles was on when this session was recorded
+                        }).ToList();
+                    }
+
                     var payload = new
                     {
                         Label = LabelFor(chosenStart),
@@ -883,7 +1053,8 @@ namespace FastApp.Services
                         Current = chosenStart != todayStart ? BuildSummary(todayStart, LabelFor(todayStart)) : null,
                         TopApps = topApps,
                         TopCategories = topCategories,
-                        Days = days
+                        Days = days,
+                        DaySessions = daySessions
                     };
 
                     await context.Response.WriteAsJsonAsync(payload);

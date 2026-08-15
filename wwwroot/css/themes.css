@@ -1,0 +1,247 @@
+/* ==========================================================
+   THEMES — alternate visual identities, not just recolors.
+   base.css's :root is "Instrument Panel" (the default). Each
+   theme below redefines the same semantic tokens (so every
+   component that already uses var(--brass) etc. re-themes for
+   free) plus a handful of structural overrides for the things
+   tokens can't express: shape, borders, icon style, texture.
+
+   Applied via [data-theme="..."] on <html>, set by the inline
+   script in dashboard.html's <head> (before first paint, to
+   avoid a flash of the wrong theme) and by the Settings drawer's
+   theme picker (js/tabs/settings.js), persisted to localStorage.
+   ========================================================== */
+
+/* ---------- Terminal / retro-computing ----------------------------------
+   Monospace everywhere (not just numbers), sharp corners, phosphor-green
+   on near-black, flat panels instead of frosted glass, bracket-style nav
+   icons instead of SVGs, a faint CRT scanline overlay. */
+[data-theme="terminal"] {
+    --bg: #050705;
+    --bg-raised: #0A0F0A;
+    --panel: #0D130D;
+    --panel-solid: #0D130D;
+    --panel-border: rgba(66, 255, 120, 0.35);
+    --panel-border-soft: rgba(66, 255, 120, 0.16);
+
+    --text: #C8FFCE;
+    --text-dim: #6FCB7E;
+    --text-faint: #3A6B44;
+
+    --brass: #42FF78;
+    --brass-dim: #21A24A;
+    --brass-glow: rgba(66, 255, 120, 0.35);
+
+    --teal: #3FFFE0;
+    --teal-dim: #1F9985;
+
+    --rose: #FF5C5C;
+    --rose-dim: #A93232;
+
+    --violet: #CFFF3F;
+    --violet-dim: #839920;
+
+    --font-display: 'JetBrains Mono', monospace;
+    --font-body: 'JetBrains Mono', monospace;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --radius: 0px;
+    --radius-sm: 0px;
+
+    --chart-grid: rgba(66, 255, 120, 0.10);
+    --chart-tooltip-bg: rgba(5, 12, 5, 0.96);
+}
+
+/* Sharp corners everywhere — cheaper and safer than hunting down every
+   hardcoded border-radius declaration across components.css by hand. */
+[data-theme="terminal"] * {
+    border-radius: 0 !important;
+}
+
+/* No frosted glass — the terminal aesthetic is flat, not layered. */
+[data-theme="terminal"] body {
+    background-image: none;
+}
+
+[data-theme="terminal"] .topbar {
+    background: var(--bg-raised);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 1px solid var(--panel-border);
+}
+
+[data-theme="terminal"] .drawer {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* Section/card labels read like terminal field names. */
+[data-theme="terminal"] .card-label,
+[data-theme="terminal"] .view-title,
+[data-theme="terminal"] .dd-section-label,
+[data-theme="terminal"] .period-stat-label {
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+}
+
+/* Rail nav: swap the SVG icons for a bracket-prompt glyph. Uniform across
+   items rather than per-icon — keeps this a CSS-only change with no HTML
+   edits, and ">" reads unambiguously as "terminal" on its own. */
+[data-theme="terminal"] .rail-item svg {
+    display: none;
+}
+[data-theme="terminal"] .rail-item::before {
+    content: ">";
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-faint);
+    width: 20px;
+    flex-shrink: 0;
+    text-align: center;
+}
+[data-theme="terminal"] .rail-item.active::before {
+    color: var(--brass);
+}
+
+/* Faint scanline texture over the whole app — the one purely decorative
+   flourish, kept subtle enough not to hurt legibility. */
+[data-theme="terminal"] .app-shell::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0) 0px,
+        rgba(0, 0, 0, 0) 1px,
+        rgba(0, 0, 0, 0.12) 2px
+    );
+    z-index: 999;
+}
+
+/* ---------- Liquid Glass / iOS ------------------------------------------
+   Apple's current name for this material. Dark mode, matching Control
+   Center / Notification Center / macOS menu-bar translucency rather than
+   the lighter Control-Center-in-light-mode look — this app has no
+   light-theme infrastructure at all today, so going dark keeps the same
+   token machinery every other theme already relies on. Heavy backdrop
+   blur + saturation over a colorful blurred "wallpaper," big soft
+   corners, glass edge-highlights, a pill-shaped sliding segmented
+   control, iOS system colors, spring-eased motion, thinner icon strokes. */
+[data-theme="glass"] {
+    --bg: #05060D;
+    --bg-raised: rgba(255, 255, 255, 0.06);
+    --panel: rgba(255, 255, 255, 0.10);
+    --panel-solid: #14161F;
+    --panel-border: rgba(255, 255, 255, 0.20);
+    --panel-border-soft: rgba(255, 255, 255, 0.10);
+
+    --text: #FFFFFF;
+    --text-dim: rgba(255, 255, 255, 0.65);
+    --text-faint: rgba(255, 255, 255, 0.40);
+
+    /* iOS system colors, kept in the same semantic slots as every other
+       theme: brass=focus, teal=active/positive, rose=AFK/attention,
+       violet=category variety. */
+    --brass: #FF9F0A;
+    --brass-dim: #C97A06;
+    --brass-glow: rgba(255, 159, 10, 0.35);
+
+    --teal: #64D2FF;
+    --teal-dim: #3A9CC7;
+
+    --rose: #FF453A;
+    --rose-dim: #A82E27;
+
+    --violet: #BF5AF2;
+    --violet-dim: #7A3A9C;
+
+    /* Falls back gracefully everywhere except Apple devices, where this
+       renders as actual San Francisco — more authentic than a web font
+       trying to imitate it. */
+    --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', monospace;
+
+    --radius: 24px;
+    --radius-sm: 16px;
+
+    --chart-grid: rgba(255, 255, 255, 0.10);
+    --chart-tooltip-bg: rgba(20, 20, 30, 0.85);
+}
+
+/* Colorful blurred "wallpaper" — the glass panels need something vivid
+   behind them to actually reveal via blur/saturate, unlike the other
+   themes' quieter backgrounds. */
+[data-theme="glass"] body {
+    background-image:
+        radial-gradient(circle 800px at 8% 0%, rgba(10, 132, 255, 0.35), transparent 60%),
+        radial-gradient(circle 700px at 92% 12%, rgba(191, 90, 194, 0.30), transparent 60%),
+        radial-gradient(circle 900px at 50% 105%, rgba(255, 69, 58, 0.16), transparent 60%),
+        radial-gradient(circle 650px at 100% 95%, rgba(48, 209, 88, 0.14), transparent 60%);
+}
+
+/* The frosted-glass treatment itself: heavy blur+saturate, a bright inset
+   top edge to catch light like a real glass bevel, soft ambient shadow for
+   depth, and bigger rounding than the other themes use anywhere. */
+[data-theme="glass"] .card,
+[data-theme="glass"] .drawer,
+[data-theme="glass"] .full-lb-row,
+[data-theme="glass"] .activity-row,
+[data-theme="glass"] .period-card,
+[data-theme="glass"] .settings-list-item {
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 8px 32px rgba(0, 0, 0, 0.30);
+    border-radius: 20px !important;
+}
+
+[data-theme="glass"] .field,
+[data-theme="glass"] .btn,
+[data-theme="glass"] .theme-swatch {
+    border-radius: 14px !important;
+}
+
+/* A real iOS segmented control is a pill track with a light, solid "thumb"
+   behind the active option — not a colored pill like the other themes use,
+   which is why this gets its own override instead of just re-coloring
+   var(--brass) into the slot. */
+[data-theme="glass"] .segmented {
+    border-radius: 999px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+[data-theme="glass"] .segmented button {
+    border-radius: 999px;
+}
+[data-theme="glass"] .segmented button.active {
+    background: rgba(255, 255, 255, 0.28);
+    color: var(--text);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="glass"] .topbar {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border-bottom: 1px solid var(--panel-border-soft);
+}
+
+/* Thinner, rounder icon strokes — closer to SF Symbols than the default
+   2px line weight. CSS on stroke-width overrides the SVGs' own attribute. */
+[data-theme="glass"] .rail-item svg,
+[data-theme="glass"] .tb-gear svg,
+[data-theme="glass"] .back-btn svg {
+    stroke-width: 1.5;
+}
+
+/* Springy, slightly overshooting motion instead of the linear/ease-out
+   transitions the other themes use — the closest CSS gets to iOS's spring
+   physics without a JS animation library. */
+[data-theme="glass"] .segmented button,
+[data-theme="glass"] .btn,
+[data-theme="glass"] .rail-item,
+[data-theme="glass"] .card {
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}

@@ -13,14 +13,17 @@ async function openDrilldown(appName) {
     document.getElementById('dd-rank').textContent = 'Loading rank…';
 
     try {
-        const [detailRes, allTimeRes, allAppsRes] = await Promise.all([
+        const [detailRes, allTimeRes, allAppsRes, pinRes] = await Promise.all([
             fetch(`/api/app-details?appName=${encodeURIComponent(appName)}`),
             fetch(`/api/leaderboard?timeframe=all&date=${getLocalTodayStr()}`),
-            fetch(`/api/all-apps`)
+            fetch(`/api/all-apps`),
+            fetch(`/api/settings/pin`)
         ]);
         const data = await detailRes.json();
         const allTimeBoard = await allTimeRes.json();
         const allApps = await allAppsRes.json();
+        const pinData = await pinRes.json();
+        const hasPin = pinData.hasPin ?? pinData.HasPin ?? false;
 
         if (data.error) { console.error(data.error); return; }
 
@@ -62,21 +65,38 @@ async function openDrilldown(appName) {
         const dailyLimitMinutes = data.dailyLimitMinutes ?? data.DailyLimitMinutes ?? 0;
         const strictFocusMode = data.strictFocusMode ?? data.StrictFocusMode ?? false;
         const todayMinutes = data.todayMinutes ?? data.TodayMinutes ?? 0;
+        const todayBonusMinutes = data.todayBonusMinutes ?? data.TodayBonusMinutes ?? 0;
+        const effectiveLimit = dailyLimitMinutes + todayBonusMinutes;
 
         document.getElementById('dd-limit-input').value = dailyLimitMinutes > 0 ? dailyLimitMinutes : '';
         document.getElementById('dd-strict-toggle').checked = strictFocusMode;
 
+        // If a PIN is set, changing the limit at all — including clearing it back
+        // to "no limit" — requires it. Otherwise the PIN/extend system is
+        // pointless: why ask for a time extension when you could just delete the
+        // limit outright with zero friction.
+        document.getElementById('dd-limit-pin-row').style.display = hasPin ? 'flex' : 'none';
+        document.getElementById('dd-limit-pin').value = '';
+
         const barWrap = document.getElementById('dd-limit-bar-wrap');
+        const extendWrap = document.getElementById('dd-extend-wrap');
         if (dailyLimitMinutes > 0) {
-            const pct = Math.min(100, (todayMinutes / dailyLimitMinutes) * 100);
-            const overLimit = todayMinutes >= dailyLimitMinutes;
+            const pct = Math.min(100, (todayMinutes / effectiveLimit) * 100);
+            const overLimit = todayMinutes >= effectiveLimit;
+            const bonusNote = todayBonusMinutes > 0 ? ` (includes +${formatTime(todayBonusMinutes)} extension)` : '';
             barWrap.style.display = 'block';
             document.getElementById('dd-limit-bar-fill').style.width = `${pct}%`;
             document.getElementById('dd-limit-bar-fill').style.background = overLimit ? 'var(--rose)' : 'var(--brass)';
             document.getElementById('dd-limit-bar-caption').textContent =
-                `${formatTime(todayMinutes)} of ${formatTime(dailyLimitMinutes)} today${overLimit ? ' — limit reached' : ''}`;
+                `${formatTime(todayMinutes)} of ${formatTime(effectiveLimit)} today${overLimit ? ' — limit reached' : ''}${bonusNote}`;
+
+            extendWrap.style.display = 'block';
+            document.getElementById('dd-extend-controls').style.display = hasPin ? 'block' : 'none';
+            document.getElementById('dd-extend-no-pin').style.display = hasPin ? 'none' : 'block';
+            document.getElementById('dd-extend-btn').onclick = () => extendLimit(appName);
         } else {
             barWrap.style.display = 'none';
+            extendWrap.style.display = 'none';
         }
 
         document.getElementById('dd-limit-save-btn').onclick = () => saveLimitSetting(appName);
@@ -95,18 +115,66 @@ async function saveLimitSetting(appName) {
     const rawValue = document.getElementById('dd-limit-input').value.trim();
     const dailyLimitMinutes = rawValue === '' ? 0 : Math.max(0, parseInt(rawValue, 10) || 0);
     const strictFocusMode = document.getElementById('dd-strict-toggle').checked;
-
-    await fetch('/api/update-limit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appName, dailyLimitMinutes, strictFocusMode })
-    });
+    const pin = document.getElementById('dd-limit-pin').value;
 
     const status = document.getElementById('dd-limit-status');
-    status.style.display = 'block';
-    setTimeout(() => { status.style.display = 'none'; }, 2500);
+    const flash = (text, isError) => {
+        status.textContent = text;
+        status.style.color = isError ? 'var(--rose)' : 'var(--teal)';
+        status.style.display = 'block';
+        setTimeout(() => { status.style.display = 'none'; }, 2500);
+    };
 
-    openDrilldown(appName); // refresh the bar/caption against the new limit
+    try {
+        const res = await fetch('/api/update-limit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appName, dailyLimitMinutes, strictFocusMode, pin })
+        });
+        const result = await res.json();
+        if (!res.ok) {
+            flash(result.error || 'Incorrect PIN.', true);
+            return;
+        }
+        flash('Saved.', false);
+        openDrilldown(appName); // refresh the bar/caption against the new limit
+    } catch (err) {
+        flash('Could not reach the app.', true);
+    }
+}
+
+async function extendLimit(appName) {
+    const extraMinutes = parseInt(document.getElementById('dd-extend-minutes').value, 10);
+    const pinInput = document.getElementById('dd-extend-pin');
+    const pin = pinInput.value;
+    const status = document.getElementById('dd-extend-status');
+
+    const flash = (text, isError) => {
+        status.textContent = text;
+        status.style.color = isError ? 'var(--rose)' : 'var(--teal)';
+        status.style.display = 'block';
+        setTimeout(() => { status.style.display = 'none'; }, 2500);
+    };
+
+    if (!pin) { flash('Enter your PIN first.', true); return; }
+
+    try {
+        const res = await fetch('/api/extend-limit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appName, pin, extraMinutes })
+        });
+        const result = await res.json();
+        if (!res.ok) {
+            flash(result.error || 'Incorrect PIN.', true);
+            return;
+        }
+        pinInput.value = '';
+        flash(`Extended by ${extraMinutes} min.`, false);
+        openDrilldown(appName); // refresh the bar against the new effective limit
+    } catch (err) {
+        flash('Could not reach the app.', true);
+    }
 }
 
 async function updateCategory(appName, category) {

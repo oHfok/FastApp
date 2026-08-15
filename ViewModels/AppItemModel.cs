@@ -132,6 +132,19 @@ namespace FastApp.ViewModels
         [NotMapped]
         public bool HasNotifiedToday { get; set; }
 
+        // "Nearing limit" warning fires once per day, separately from the
+        // "limit reached" notification above.
+        [NotMapped]
+        public bool HasWarnedToday { get; set; }
+
+        // A same-day-only bonus granted via the dashboard's PIN-gated extension.
+        // Persisted (not [NotMapped]) so the web dashboard — which reads the SQLite
+        // file directly, not the live WPF process — can see and display it too.
+        // BonusMinutesDate makes it self-expiring: if it isn't today, the bonus is
+        // stale and reads as zero, no explicit daily-reset event required.
+        [ObservableProperty] private int _todayBonusMinutes;
+        [ObservableProperty] private DateTime? _bonusMinutesDate;
+
         public AppItemModel() { }
 
         // Constructor to easily create new items

@@ -113,36 +113,131 @@ function chronoRing({ pct, size = 120, stroke = 10, centerHtml = '', mini = fals
 }
 
 // --- Custom fixed-position tooltip -----------------------------------------
-function showTooltip(evt, text) {
-    const box = document.getElementById('tooltip-box');
-    if (!box) return;
-    box.innerHTML = text;
+function positionTooltipBox(box, evt) {
     box.style.display = 'block';
     let x = evt.clientX + 16, y = evt.clientY + 16;
     if (x + 250 > window.innerWidth) x = evt.clientX - 260;
     box.style.left = x + 'px';
     box.style.top = y + 'px';
 }
+// text is trusted HTML (dates/times/labels the app itself generated) — every
+// call site passes a literal template string, never attacker-controlled data.
+// For anything sourced from user/OS input (app names, window titles), use
+// showSessionTooltip instead, which never parses its content as markup.
+function showTooltip(evt, text) {
+    const box = document.getElementById('tooltip-box');
+    if (!box) return;
+    box.innerHTML = text;
+    positionTooltipBox(box, evt);
+}
+// Safe tooltip renderer for content that may be attacker-controlled — window
+// titles are the clearest case (any webpage can set its own tab title) but
+// app names aren't fully trustworthy either. Reads pre-escaped values back
+// out of data-* attributes (safe: a single attribute-decode just recovers the
+// original string as DATA) and builds the tooltip with textContent/createElement
+// instead of innerHTML, so the string is never re-parsed as markup no matter
+// what it contains — unlike showTooltip(), where a value that survives one
+// escape-decode-escape round trip could still land as live HTML.
+function showSessionTooltip(evt, el) {
+    const box = document.getElementById('tooltip-box');
+    if (!box) return;
+    const { name, range, dur, title } = el.dataset;
+    box.innerHTML = '';
+    box.appendChild(document.createTextNode(name));
+    box.appendChild(document.createElement('br'));
+    box.appendChild(document.createTextNode(range));
+    box.appendChild(document.createElement('br'));
+    box.appendChild(document.createTextNode(dur));
+    if (title) {
+        box.appendChild(document.createElement('br'));
+        const span = document.createElement('span');
+        span.style.opacity = '0.75';
+        span.textContent = title;
+        box.appendChild(span);
+    }
+    positionTooltipBox(box, evt);
+}
 function hideTooltip() {
     const box = document.getElementById('tooltip-box');
     if (box) box.style.display = 'none';
 }
 
+// --- Theme-aware heatmap fills -----------------------------------------------
+// Every heatmap (Overview, Insights, Weeks & Months) shades cells by mixing an
+// accent color with a computed alpha — that requires an actual R,G,B triple,
+// not just a CSS variable name, so a hex custom property has to be parsed at
+// runtime rather than hardcoded like it used to be.
+function themeAccentRgb() {
+    const hex = getComputedStyle(document.documentElement).getPropertyValue('--brass').trim();
+    const parts = hex.replace('#', '').match(/.{1,2}/g);
+    if (!parts || parts.length < 3) return '232, 163, 61'; // fallback: default brass
+    return parts.slice(0, 3).map(h => parseInt(h, 16)).join(', ');
+}
+function themeAccentAlpha(alpha) {
+    return `rgba(${themeAccentRgb()}, ${alpha})`;
+}
+function heatColor(intensity, minAlpha = 0.15, alphaRange = 0.75) {
+    return intensity > 0 ? themeAccentAlpha(minAlpha + intensity * alphaRange) : 'var(--bg-raised)';
+}
+
+// --- Timeline ribbon segments ------------------------------------------------
+// Shared between Overview's day view and Weeks & Months' "day" period detail
+// (a day period's Daily Activity is this same ribbon, not a heatmap — breaking
+// a single day down into "days" would be circular). Returns just the inner
+// HTML for a .timeline-track; callers own their own wrapper/ticks markup.
+function timelineSegmentsHtml(sessions) {
+    if (!sessions || sessions.length === 0) {
+        return `<div class="empty-state" style="border:none;background:none;">No sessions recorded for this day.</div>`;
+    }
+    return sessions.map(s => {
+        const name = s.appName || s.AppName;
+        const cat = s.category || s.Category;
+        const startStr = s.start || s.Start;
+        const endStr = s.end || s.End;
+        const dur = s.durationMinutes ?? s.DurationMinutes ?? 0;
+        const startMins = s.startMinutes ?? s.StartMinutes ?? 0;
+        const title = s.windowTitle ?? s.WindowTitle;
+        const left = (startMins / 1440) * 100;
+        const width = Math.max((dur / 1440) * 100, 0.25);
+        // Window titles (and, defensively, app names) are attacker-controllable —
+        // any webpage can set its own tab title — so they're carried as plain data
+        // in data-* attributes and rendered via showSessionTooltip's textContent
+        // builder, never concatenated into an HTML string. escapeHtml here is
+        // just what makes the raw value safe to sit inside the attribute's own
+        // quotes; showSessionTooltip does the one read-and-display step.
+        return `<div class="timeline-seg" style="left:${left}%;width:${width}%;background:${catColor(cat)}"
+                    data-name="${escapeHtml(name)}" data-range="${escapeHtml(startStr + ' – ' + endStr)}"
+                    data-dur="${escapeHtml(formatTime(dur))}" data-title="${title ? escapeHtml(title) : ''}"
+                    onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"
+                    onclick="openDrilldown(this.dataset.name)"></div>`;
+    }).join('');
+}
+
 // --- Chart.js shared theme --------------------------------------------------
-const CHART_THEME = {
-    grid: 'rgba(243,241,234,0.06)',
-    tick: '#9C9FAE',
-    tooltipBg: 'rgba(20,22,31,0.95)',
-    tooltipTitle: '#E8A33D',
-    tooltipBody: '#F3F1EA',
-    brass: '#E8A33D',
-    teal: '#34D3C4',
-    violet: '#8B7CFF',
-    rose: '#FF6B6B',
-    pointBorder: '#0A0B10'
-};
+// A function, not a static object — Chart.js canvases are drawn on a <canvas>,
+// so CSS alone can't re-theme them. Reading the live custom-property values at
+// render time is what lets a theme switch actually recolor the charts instead
+// of leaving them stuck on whatever theme was active on page load.
+function getChartTheme() {
+    const s = getComputedStyle(document.documentElement);
+    const v = (name) => s.getPropertyValue(name).trim();
+    return {
+        grid: v('--chart-grid'),
+        tick: v('--text-dim'),
+        tooltipBg: v('--chart-tooltip-bg'),
+        tooltipTitle: v('--brass'),
+        tooltipBody: v('--text'),
+        brass: v('--brass'),
+        teal: v('--teal'),
+        violet: v('--violet'),
+        rose: v('--rose'),
+        pointBorder: v('--bg'),
+        fontBody: v('--font-body') || "'Inter', sans-serif",
+        fontMono: v('--font-mono') || "'JetBrains Mono', monospace"
+    };
+}
 if (window.Chart) {
-    Chart.defaults.color = CHART_THEME.tick;
+    Chart.defaults.color = getChartTheme().tick;
     Chart.defaults.font.family = "'Inter', sans-serif";
 }
 
