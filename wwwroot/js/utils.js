@@ -1,89 +1,142 @@
-/* ==========================================
-   UTILS — shared helpers, chart defaults, and shared state.
-   Loaded first. Everything below is intentionally left as
-   plain top-level declarations (no IIFE) so every other
-   script file on the page can see them, exactly like the
-   old single-file version where it was all one scope.
-   ========================================== */
+/* ==========================================================
+   UTILS — shared helpers, European locale formatting, the
+   chronometer ring builder, and cross-tab state.
+   Loaded first; plain globals so every tab script can see them.
+   ========================================================== */
 
-// --- Time formatting ---
-function formatTime(t) {
-    if (!t || t <= 0) return '0m';
-    let hrs = Math.floor(t / 60), mins = Math.floor(t % 60);
-    return hrs === 0 ? `${mins}m` : (mins === 0 ? `${hrs}h` : `${hrs}h ${mins}m`);
+const Dashboard = { tabs: {} };
+
+// --- Category -> accent color -------------------------------------------
+const categoryColors = {
+    'Development': '#8B7CFF',
+    'Gaming': '#4E4599',
+    'Productivity': '#E8A33D',
+    'Browsing': '#34D3C4',
+    'Communication': '#1D766D',
+    'Media Production': '#FF6B6B',
+    'Music': '#8C3A3A',
+    'Fun': '#FF9F6B',
+    'Education': '#34D3C4',
+    'Utilities': '#5B5F71',
+    'Other': '#3A3D4A',
+    'Uncategorized': '#3A3D4A'
+};
+function catColor(cat) { return categoryColors[cat] || categoryColors['Uncategorized']; }
+
+// --- Time / number formatting (European: 24h, comma-free) ---------------
+function formatTime(mins) {
+    if (!mins || mins <= 0) return '0m';
+    const hrs = Math.floor(mins / 60), m = Math.round(mins % 60);
+    if (hrs === 0) return `${m}m`;
+    if (m === 0) return `${hrs}h`;
+    return `${hrs}h ${m}m`;
 }
 function formatHours(h) { return formatTime(h * 60); }
 
-// --- Trend badge generators ---
-function getBlockTrendHtml(current, previous, label) {
-    if (previous === 0 && current === 0) return `<div class="mt-2 text-xs font-semibold text-slate-400 bg-slate-500/10 px-2 py-0.5 rounded w-max">- No prior data</div>`;
-    if (previous === 0) return `<div class="mt-2 text-xs font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded w-max">NEW</div>`;
-    let percentChange = ((current - previous) / previous) * 100;
-    let rounded = Math.abs(Math.round(percentChange));
-    if (percentChange > 0) return `<div class="mt-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded w-max">▲ ${rounded}% vs ${label}</div>`;
-    if (percentChange < 0) return `<div class="mt-2 text-xs font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded w-max">▼ ${rounded}% vs ${label}</div>`;
-    return `<div class="mt-2 text-xs font-semibold text-slate-400 bg-slate-500/10 px-2 py-0.5 rounded w-max">▶ No Change</div>`;
-}
+// --- European calendar helpers (weeks start Monday) ----------------------
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-function getInlineTrendHtml(current, previous) {
-    if (previous === 0 && current === 0) return `<span class="text-slate-500 text-[10px] ml-1">-</span>`;
-    if (previous === 0) return `<span class="text-blue-400 text-[10px] ml-1 uppercase bg-blue-500/10 px-1 rounded">New</span>`;
-    let percentChange = ((current - previous) / previous) * 100;
-    let rounded = Math.abs(Math.round(percentChange));
-    if (percentChange > 0) return `<span class="text-emerald-400 text-[10px] ml-1">▲ ${rounded}%</span>`;
-    if (percentChange < 0) return `<span class="text-rose-400 text-[10px] ml-1">▼ ${rounded}%</span>`;
-    return `<span class="text-slate-400 text-[10px] ml-1">▶ 0%</span>`;
-}
-
-// --- Category color map (used by overview + leaderboard) ---
-const categoryColors = {
-    'Development': 'bg-purple-500',
-    'Gaming': 'bg-indigo-500',
-    'Productivity': 'bg-blue-500',
-    'Browsing': 'bg-sky-400',
-    'Communication': 'bg-teal-400',
-    'Media Production': 'bg-amber-400',
-    'Music': 'bg-emerald-500',
-    'Fun': 'bg-pink-500',
-    'Education': 'bg-cyan-400',
-    'Utilities': 'bg-slate-400',
-    'Other': 'bg-stone-500',
-    'Uncategorized': 'bg-gray-600'
-};
-
-// --- Chart.js global defaults ---
-Chart.defaults.color = '#64748b';
-Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
-Chart.defaults.font.weight = '600';
-
-// --- Shared, cross-tab mutable state ---
-let trendChart = null, donutChart = null, drillChart = null;
-let currentLeaderboardData = [], currentLeaderboardMode = 'focus';
-let searchQuery = '';
-let allCategories = [];
-
-// --- Tab registry ---
-// Each tab module (js/tabs/*.js) registers itself here with an onEnter()
-// callback. app.js calls onEnter() whenever that tab becomes active.
-// This is the ONLY namespaced object; every function referenced from
-// inline onclick/onchange attributes in the HTML partials stays a plain
-// global function, exactly like the original single-file version.
-const Dashboard = { tabs: {} };
-
-// --- Theme Handling ---
-function setTheme(themeName) {
-    document.body.className = themeName;
-    localStorage.setItem('fastapp-theme', themeName);
-}
+function pad(n) { return n.toString().padStart(2, '0'); }
 
 function getLocalTodayStr() {
     const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-// Don't use window.onload here, we call it in app.js
-const savedTheme = localStorage.getItem('fastapp-theme') || 'dark';
-document.body.className = savedTheme;
+// Mon=0 ... Sun=6
+function isoDow(date) { return (date.getDay() + 6) % 7; }
+
+function mondayOf(date) {
+    const d = new Date(date);
+    d.setDate(d.getDate() - isoDow(d));
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+function fmtDateEU(date) {
+    return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
+}
+
+function fmtDateLong(date) {
+    return `${date.getDate()} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function parseDateStr(s) {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+// --- Trend pill -----------------------------------------------------------
+function trendPill(current, previous, label) {
+    if (previous === 0 && current === 0) return `<span class="trend-pill trend-flat">No prior data</span>`;
+    if (previous === 0) return `<span class="trend-pill trend-new">NEW</span>`;
+    const pct = ((current - previous) / previous) * 100;
+    const rounded = Math.abs(Math.round(pct));
+    if (pct > 0) return `<span class="trend-pill trend-up">&#9650; ${rounded}%${label ? ' vs ' + label : ''}</span>`;
+    if (pct < 0) return `<span class="trend-pill trend-down">&#9660; ${rounded}%${label ? ' vs ' + label : ''}</span>`;
+    return `<span class="trend-pill trend-flat">No change</span>`;
+}
+
+// --- Chronometer ring (signature element) ---------------------------------
+// Renders an SVG arc dial. pct is 0-100. Returns HTML string.
+function chronoRing({ pct, size = 120, stroke = 10, centerHtml = '', mini = false }) {
+    const r = (size - stroke) / 2;
+    const c = size / 2;
+    const circumference = 2 * Math.PI * r;
+    const clamped = Math.max(0, Math.min(100, pct));
+    const offset = circumference * (1 - clamped / 100);
+    const wrapClass = mini ? 'chrono-ring-wrap chrono-mini' : 'chrono-ring-wrap';
+    return `
+        <div class="${wrapClass}" style="width:${size}px;height:${size}px;">
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+                <circle class="chrono-track" cx="${c}" cy="${c}" r="${r}" stroke-width="${stroke}"></circle>
+                <circle class="chrono-arc" cx="${c}" cy="${c}" r="${r}" stroke-width="${stroke}"
+                    stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"></circle>
+            </svg>
+            <div class="chrono-center">${centerHtml}</div>
+        </div>`;
+}
+
+// --- Custom fixed-position tooltip -----------------------------------------
+function showTooltip(evt, text) {
+    const box = document.getElementById('tooltip-box');
+    if (!box) return;
+    box.innerHTML = text;
+    box.style.display = 'block';
+    let x = evt.clientX + 16, y = evt.clientY + 16;
+    if (x + 250 > window.innerWidth) x = evt.clientX - 260;
+    box.style.left = x + 'px';
+    box.style.top = y + 'px';
+}
+function hideTooltip() {
+    const box = document.getElementById('tooltip-box');
+    if (box) box.style.display = 'none';
+}
+
+// --- Chart.js shared theme --------------------------------------------------
+const CHART_THEME = {
+    grid: 'rgba(243,241,234,0.06)',
+    tick: '#9C9FAE',
+    tooltipBg: 'rgba(20,22,31,0.95)',
+    tooltipTitle: '#E8A33D',
+    tooltipBody: '#F3F1EA',
+    brass: '#E8A33D',
+    teal: '#34D3C4',
+    violet: '#8B7CFF',
+    rose: '#FF6B6B',
+    pointBorder: '#0A0B10'
+};
+if (window.Chart) {
+    Chart.defaults.color = CHART_THEME.tick;
+    Chart.defaults.font.family = "'Inter', sans-serif";
+}
+
+// --- Shared cross-tab state --------------------------------------------------
+let allCategories = [];
+let selectedScope = 'day'; // day | week | month | year (Overview tab)
+let selectedDate = getLocalTodayStr();
+
+function getSelectedDate() { return selectedDate; }
+function getSelectedScope() { return selectedScope; }

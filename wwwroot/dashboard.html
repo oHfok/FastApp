@@ -1,77 +1,294 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FastApp Analytics</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/components.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FastApp Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
 </head>
-<body class="overflow-hidden transition-colors duration-300">
+<body>
 
-    <div class="rainforest-scene" aria-hidden="true">
-        <div class="forest-photo"></div>
-        <canvas id="rain-canvas"></canvas>
-    </div>
+<div class="tooltip-box" id="tooltip-box"></div>
 
-    <!-- MASTER WRAPPER: This absolutely forces the side-by-side layout -->
-    <div class="flex flex-row h-screen w-full">
+<div class="app-shell">
 
-        <!-- LEFT SIDE: Sidebar -->
-        <aside class="w-64 glass-panel flex flex-col z-20 shadow-2xl flex-shrink-0 h-full border-r border-slate-700/30">
-            <!-- FastApp Logo -->
-            <div class="p-6 mb-2">
-                <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 drop-shadow-md">FastApp</h1>
+    <!-- ============ TOP BAR (persistent across all tabs) ============ -->
+    <header class="topbar">
+        <div class="tb-status">
+            <span class="status-dot" id="tb-status-dot"></span>
+            FastApp Dashboard
+        </div>
+
+        <div class="tb-divider"></div>
+
+        <div class="tb-clock">
+            <span class="tb-time" id="tb-time">--:--:--</span>
+            <span class="tb-date" id="tb-date">—</span>
+        </div>
+
+        <div class="tb-divider"></div>
+
+        <div class="tb-metric focus">
+            <div id="tb-ring-host"></div>
+            <div>
+                <div class="tb-metric-label">Focus Today</div>
+                <div class="tb-metric-value" id="tb-focus-value">0h 0m</div>
             </div>
+        </div>
 
-            <!-- Time Machine Sparkline -->
-            <div class="px-6 mb-6">
-                <div class="flex items-center justify-between mb-2">
-                    <label class="text-[10px] opacity-70 font-bold uppercase tracking-widest flex items-center gap-1">
-                        <span class="text-blue-400">⏳</span> Time Machine
-                    </label>
-                    <span id="current-date-label" class="text-xs font-bold text-blue-400">Today</span>
-                </div>
-
-                <!-- Hidden input preserves compatibility with the rest of the app -->
-                <input type="hidden" id="global-date">
-
-                <!-- Sleek 14-Day Sparkline Container -->
-                <div id="sparkline-container" class="h-16 flex items-end justify-between gap-[2px] bg-slate-900/40 p-2 rounded-xl border border-slate-700/50 shadow-inner group">
-                    <!-- Bars injected by JS -->
-                </div>
-                <div class="flex justify-between text-[8px] text-slate-500 font-bold uppercase mt-1 px-1">
-                    <span>14 Days Ago</span>
-                    <span>Today</span>
-                </div>
+        <div class="tb-metric alltime">
+            <div>
+                <div class="tb-metric-label">All-Time Focus</div>
+                <div class="tb-metric-value" id="tb-alltime-value">0h 0m</div>
             </div>
+        </div>
 
-            <!-- Nav Container (This is what was missing!) -->
-            <nav id="tab-nav" class="flex-1 flex flex-col gap-2 px-4 mt-2 overflow-y-auto pb-4"></nav>
-        </aside>
+        <div class="tb-spacer"></div>
 
-        <!-- RIGHT SIDE: Main Content -->
-        <main class="flex-1 min-w-0 h-full overflow-y-auto p-8 relative z-10">
-            <!-- The Javascript injects all the partials here -->
-            <div id="tab-sections"></div>
-            <!-- The Drilldown panel lives here -->
-            <div id="drilldown-container"></div>
+        <button class="tb-gear" id="tb-gear" title="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06A2 2 0 117.04 4.29l.06.06A1.65 1.65 0 008.92 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path>
+            </svg>
+        </button>
+    </header>
+
+    <div class="body-row">
+        <!-- ============ RAIL NAV ============ -->
+        <nav class="rail">
+            <div class="rail-item active" data-view="overview">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                <span class="label-text">Overview</span>
+            </div>
+            <div class="rail-item" data-view="periods">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18M8 2v4M16 2v4"></path></svg>
+                <span class="label-text">Weeks &amp; Months</span>
+            </div>
+            <div class="rail-item" data-view="leaderboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4z"></path><path d="M17 5h3a1 1 0 011 1 4 4 0 01-4 4M7 5H4a1 1 0 00-1 1 4 4 0 004 4"></path></svg>
+                <span class="label-text">Leaderboard</span>
+            </div>
+            <div class="rail-item" data-view="allapps">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+                <span class="label-text">All Applications</span>
+            </div>
+        </nav>
+
+        <!-- ============ MAIN ============ -->
+        <main class="main">
+
+            <!-- ===== VIEW: OVERVIEW ===== -->
+            <section id="view-overview" class="view active">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">Overview</div>
+                        <div class="view-sub mono" id="ov-range-label">—</div>
+                    </div>
+                    <div class="segmented" id="overview-scope">
+                        <button class="active" onclick="setOverviewScope('day', this)">Day</button>
+                        <button onclick="setOverviewScope('week', this)">Week</button>
+                        <button onclick="setOverviewScope('month', this)">Month</button>
+                        <button onclick="setOverviewScope('year', this)">Year</button>
+                    </div>
+                </div>
+
+                <div class="stat-row">
+                    <div class="card stat-block" id="ov-hero-block">
+                        <div class="card-label" id="ov-hero-label">Focus Today</div>
+                        <div class="stat-value" id="ov-hero-value" style="color:var(--brass)">0h 0m</div>
+                        <div id="ov-hero-trend"></div>
+                    </div>
+                    <div class="card stat-block" id="ov-afk-card">
+                        <div class="card-label">AFK Time</div>
+                        <div class="stat-value" id="ov-afk-value" style="color:var(--rose)">0h 0m</div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-label" style="margin-bottom:12px;">Focus by Category</div>
+                    <div class="cat-bar" id="ov-cat-bar"></div>
+                    <div class="cat-legend" id="ov-cat-legend"></div>
+                </div>
+
+                <div class="two-col" style="margin-bottom:20px;">
+                    <div class="card">
+                        <div class="card-label" style="margin-bottom:12px;">Top Applications</div>
+                        <div class="lb-list" id="ov-lb-apps"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label" style="margin-bottom:12px;">Top Categories</div>
+                        <div class="lb-list" id="ov-lb-categories"></div>
+                    </div>
+                </div>
+
+                <div class="card" id="ov-activity-card">
+                    <div class="card-label" style="margin-bottom:14px;" id="ov-activity-label">Today's Timeline</div>
+                    <div id="ov-activity-body"></div>
+                </div>
+            </section>
+
+            <!-- ===== VIEW: WEEKS & MONTHS ===== -->
+            <section id="view-periods" class="view">
+                <div id="period-list-view">
+                    <div class="view-head">
+                        <div>
+                            <div class="view-title">Weeks &amp; Months</div>
+                            <div class="view-sub">Browse and compare your tracked history.</div>
+                        </div>
+                        <div class="segmented period-toggle" id="period-toggle">
+                            <button class="active" onclick="setPeriodType('week', this)">Weeks</button>
+                            <button onclick="setPeriodType('month', this)">Months</button>
+                        </div>
+                    </div>
+                    <div class="period-list" id="period-list"></div>
+                </div>
+
+                <div id="period-detail-view" style="display:none;">
+                    <div class="period-detail-head">
+                        <button class="back-btn" onclick="showPeriodList()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"></path></svg>
+                        </button>
+                        <div>
+                            <div class="view-title" id="period-detail-title" style="font-size:20px;">—</div>
+                            <div class="view-sub" id="period-detail-sub">—</div>
+                        </div>
+                    </div>
+                    <div id="period-detail-body"></div>
+                </div>
+            </section>
+
+            <!-- ===== VIEW: LEADERBOARD ===== -->
+            <section id="view-leaderboard" class="view">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">Leaderboard</div>
+                        <div class="view-sub">Ranked by focus time. Arrows show movement since yesterday.</div>
+                    </div>
+                </div>
+                <div class="lb-toolbar">
+                    <div class="segmented" id="lb-scope" data-value="all">
+                        <button onclick="setLbTimeframe('day', this)">Day</button>
+                        <button onclick="setLbTimeframe('week', this)">Week</button>
+                        <button onclick="setLbTimeframe('month', this)">Month</button>
+                        <button onclick="setLbTimeframe('year', this)">Year</button>
+                        <button class="active" onclick="setLbTimeframe('all', this)">All Time</button>
+                    </div>
+                    <input type="text" id="lb-search" class="field" placeholder="Search apps…" style="width:220px;" onkeyup="handleLbSearch()">
+                </div>
+                <div id="lb-list"></div>
+            </section>
+
+            <!-- ===== VIEW: ALL APPLICATIONS ===== -->
+            <section id="view-allapps" class="view">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">All Applications</div>
+                        <div class="view-sub">Your complete tracked library.</div>
+                    </div>
+                </div>
+                <div class="allapps-search-row">
+                    <input type="text" id="allapps-search" class="field" placeholder="Search your library…" style="width:280px;" onkeyup="handleAllAppsSearch()">
+                </div>
+                <div class="allapps-grid" id="allapps-grid"></div>
+            </section>
+
         </main>
+    </div>
+</div>
 
+<!-- ============ SETTINGS DRAWER ============ -->
+<div class="drawer-overlay" id="settings-overlay"></div>
+<div class="drawer" id="settings-drawer">
+    <button class="drawer-close" id="settings-close">✕</button>
+    <h2 style="font-size:20px;margin-bottom:22px;">Settings</h2>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Database Retention</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">How long detailed logs are kept before being cleared.</p>
+        <div class="retention-row">
+            <select id="retention-select" class="field" style="flex:1;">
+                <option value="30">30 Days</option>
+                <option value="90">90 Days</option>
+                <option value="180">6 Months</option>
+                <option value="365">1 Year</option>
+                <option value="99999" selected>Keep Forever</option>
+            </select>
+            <button class="btn btn-brass" onclick="saveRetentionSetting()">Save</button>
+        </div>
+        <div class="retention-status" id="retention-status">Saved.</div>
     </div>
 
-    <!-- Script loading order (Do not change) -->
-    <script src="js/utils.js"></script>
-    <script src="js/tabs/overview.js"></script>
-    <script src="js/tabs/leaderboard.js"></script>
-    <script src="js/tabs/insights.js"></script>
-    <script src="js/tabs/timeline.js"></script>
-    <script src="js/tabs/allapps.js"></script>
-    <script src="js/tabs/settings.js"></script>
-    <script src="js/drilldown.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/rain-effect.js"></script>
+    <div class="dd-section">
+        <div class="dd-section-label">Hidden Applications</div>
+        <div class="settings-list" id="hidden-apps-list"></div>
+    </div>
+</div>
+
+<!-- ============ APP DETAIL DRAWER ============ -->
+<div class="drawer-overlay" id="dd-overlay"></div>
+<div class="drawer" id="dd-drawer">
+    <button class="drawer-close" id="dd-close">✕</button>
+
+    <div class="dd-head">
+        <div class="dd-icon" id="dd-icon">A</div>
+        <div>
+            <div class="dd-title" id="dd-title">App Name</div>
+            <div class="dd-rank" id="dd-rank">—</div>
+        </div>
+    </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Category</div>
+        <div class="dd-cat-row">
+            <select class="field" id="dd-category-select" style="flex:1;"></select>
+        </div>
+    </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Most Used Day</div>
+        <div class="card" style="padding:12px 14px;font-family:var(--font-mono);font-size:13px;" id="dd-max-day">—</div>
+    </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Last 30 Days</div>
+        <div class="card" style="padding:12px 14px;font-size:13px;" id="dd-consistency">—</div>
+        <div style="font-size:12px;color:var(--text-faint);margin-top:8px;" id="dd-pattern"></div>
+    </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Lifetime Totals</div>
+        <div class="dd-stat-grid">
+            <div class="card dd-stat">
+                <div class="card-label">Focus</div>
+                <div class="dd-stat-value" style="color:var(--brass)" id="dd-focus-all">0h 0m</div>
+            </div>
+            <div class="card dd-stat">
+                <div class="card-label">Running</div>
+                <div class="dd-stat-value" id="dd-running-all">0h 0m</div>
+            </div>
+            <div class="card dd-stat">
+                <div class="card-label">AFK</div>
+                <div class="dd-stat-value" style="color:var(--rose)" id="dd-afk-all">0h 0m</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dd-actions">
+        <button class="btn btn-ghost" id="dd-hide-btn" style="flex:1;">Hide from statistics</button>
+    </div>
+</div>
+
+<script src="js/utils.js"></script>
+<script src="js/app.js"></script>
+<script src="js/drilldown.js"></script>
+<script src="js/tabs/overview.js"></script>
+<script src="js/tabs/periods.js"></script>
+<script src="js/tabs/leaderboard.js"></script>
+<script src="js/tabs/allapps.js"></script>
+<script src="js/tabs/settings.js"></script>
 </body>
 </html>

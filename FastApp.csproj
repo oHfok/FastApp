@@ -49,17 +49,17 @@
 
   <ItemGroup>
     <Folder Include="Views\" />
+    <Folder Include="wwwroot\partials\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="Assets\favicon%281%29.ico">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>  
+	<ItemGroup>
+		<None Update="Assets\favicon%281%29.ico">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
 
-	  <!-- CHANGE THIS BLOCK TO USE THE WILDCARD -->
-	  <None Update="wwwroot\**\*">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-  </ItemGroup>
+		<None Update="wwwroot\**\*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
 </Project>
