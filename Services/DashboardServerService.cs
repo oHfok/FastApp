@@ -792,7 +792,7 @@ namespace FastApp.Services
                 {
                     using var db = new AppDbContext();
                     var hiddenApps = GetHiddenApps(db);
-                    bool isMonth = string.Equals(type, "month", StringComparison.OrdinalIgnoreCase);
+                    string periodKind = (type ?? "week").ToLowerInvariant();
 
                     var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").ToListAsync();
                     if (systemLogs.Count == 0)
@@ -805,25 +805,38 @@ namespace FastApp.Services
                         .Where(l => l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName))
                         .ToListAsync();
 
-                    // Bucket key -> (start, end) of that week/month
+                    // Bucket key -> (start, end) of that day/week/month/year
                     var buckets = new Dictionary<string, (DateTime start, DateTime end, string label)>();
                     foreach (var log in systemLogs)
                     {
-                        string key; DateTime start, end; string label;
-                        if (isMonth)
+                        DateTime start, end; string key, label;
+                        switch (periodKind)
                         {
-                            start = new DateTime(log.Date.Year, log.Date.Month, 1);
-                            end = start.AddMonths(1).AddDays(-1);
-                            key = start.ToString("yyyy-MM");
-                            label = start.ToString("MMMM yyyy");
-                        }
-                        else
-                        {
-                            start = GetMondayStartOfWeek(log.Date);
-                            end = start.AddDays(6);
-                            key = start.ToString("yyyy-MM-dd");
-                            int weekNo = System.Globalization.ISOWeek.GetWeekOfYear(start);
-                            label = $"Week {weekNo}";
+                            case "day":
+                                start = log.Date;
+                                end = log.Date;
+                                key = start.ToString("yyyy-MM-dd");
+                                label = start.ToString("d MMMM yyyy");
+                                break;
+                            case "month":
+                                start = new DateTime(log.Date.Year, log.Date.Month, 1);
+                                end = start.AddMonths(1).AddDays(-1);
+                                key = start.ToString("yyyy-MM");
+                                label = start.ToString("MMMM yyyy");
+                                break;
+                            case "year":
+                                start = new DateTime(log.Date.Year, 1, 1);
+                                end = start.AddYears(1).AddDays(-1);
+                                key = start.Year.ToString();
+                                label = start.Year.ToString();
+                                break;
+                            case "week":
+                            default:
+                                start = GetMondayStartOfWeek(log.Date);
+                                end = start.AddDays(6);
+                                key = start.ToString("yyyy-MM-dd");
+                                label = $"Week {System.Globalization.ISOWeek.GetWeekOfYear(start)}";
+                                break;
                         }
                         buckets[key] = (start, end, label);
                     }
@@ -885,22 +898,43 @@ namespace FastApp.Services
                     using var db = new AppDbContext();
                     var hiddenApps = GetHiddenApps(db);
                     var appCategories = await GetAppCategoriesSafely(db);
-                    bool isMonth = string.Equals(type, "month", StringComparison.OrdinalIgnoreCase);
+                    string periodKind = (type ?? "week").ToLowerInvariant();
 
-                    DateTime chosenStart = DateTime.Parse(start).Date;
-                    if (!isMonth) chosenStart = GetMondayStartOfWeek(chosenStart);
-                    else chosenStart = new DateTime(chosenStart.Year, chosenStart.Month, 1);
+                    DateTime NormalizeStart(DateTime d) => periodKind switch
+                    {
+                        "day" => d,
+                        "month" => new DateTime(d.Year, d.Month, 1),
+                        "year" => new DateTime(d.Year, 1, 1),
+                        _ => GetMondayStartOfWeek(d)
+                    };
 
-                    (DateTime s, DateTime e) Range(DateTime periodStart) => isMonth
-                        ? (periodStart, periodStart.AddMonths(1).AddDays(-1))
-                        : (periodStart, periodStart.AddDays(6));
+                    DateTime chosenStart = NormalizeStart(DateTime.Parse(start).Date);
 
-                    DateTime PrevStart(DateTime periodStart) => isMonth ? periodStart.AddMonths(-1) : periodStart.AddDays(-7);
-                    DateTime NextStart(DateTime periodStart) => isMonth ? periodStart.AddMonths(1) : periodStart.AddDays(7);
+                    (DateTime s, DateTime e) Range(DateTime periodStart) => periodKind switch
+                    {
+                        "day" => (periodStart, periodStart),
+                        "month" => (periodStart, periodStart.AddMonths(1).AddDays(-1)),
+                        "year" => (periodStart, periodStart.AddYears(1).AddDays(-1)),
+                        _ => (periodStart, periodStart.AddDays(6))
+                    };
 
-                    DateTime todayStart = isMonth
-                        ? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1)
-                        : GetMondayStartOfWeek(DateTime.Today);
+                    DateTime PrevStart(DateTime periodStart) => periodKind switch
+                    {
+                        "day" => periodStart.AddDays(-1),
+                        "month" => periodStart.AddMonths(-1),
+                        "year" => periodStart.AddYears(-1),
+                        _ => periodStart.AddDays(-7)
+                    };
+
+                    DateTime NextStart(DateTime periodStart) => periodKind switch
+                    {
+                        "day" => periodStart.AddDays(1),
+                        "month" => periodStart.AddMonths(1),
+                        "year" => periodStart.AddYears(1),
+                        _ => periodStart.AddDays(7)
+                    };
+
+                    DateTime todayStart = NormalizeStart(DateTime.Today);
 
                     var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").ToListAsync();
                     var appLogs = await db.DailyLogs
@@ -926,9 +960,13 @@ namespace FastApp.Services
                         };
                     }
 
-                    string LabelFor(DateTime periodStart) => isMonth
-                        ? periodStart.ToString("MMMM yyyy")
-                        : $"Week {System.Globalization.ISOWeek.GetWeekOfYear(periodStart)}";
+                    string LabelFor(DateTime periodStart) => periodKind switch
+                    {
+                        "day" => periodStart.ToString("d MMMM yyyy"),
+                        "month" => periodStart.ToString("MMMM yyyy"),
+                        "year" => periodStart.Year.ToString(),
+                        _ => $"Week {System.Globalization.ISOWeek.GetWeekOfYear(periodStart)}"
+                    };
 
                     var (chosenS, chosenE) = Range(chosenStart);
                     var chosenRange = systemLogs.Where(l => l.Date >= chosenS && l.Date <= chosenE).ToList();
@@ -940,7 +978,7 @@ namespace FastApp.Services
                     var allBuckets = new HashSet<string>();
                     foreach (var log in systemLogs)
                     {
-                        var bs = isMonth ? new DateTime(log.Date.Year, log.Date.Month, 1) : GetMondayStartOfWeek(log.Date);
+                        var bs = NormalizeStart(log.Date);
                         allBuckets.Add(bs.ToString("yyyy-MM-dd"));
                     }
                     var allTotals = allBuckets.Select(k =>
@@ -975,6 +1013,31 @@ namespace FastApp.Services
                         });
                     }
 
+                    // A "day" period's Daily Activity is the Timeline ribbon (individual
+                    // app sessions, hour-by-hour), not a day-by-day breakdown — breaking
+                    // a single day down into "days" would be circular. Same session shape
+                    // /api/timeline already returns, computed here instead of making the
+                    // frontend fire a second request for it.
+                    List<object> daySessions = new List<object>();
+                    if (periodKind == "day")
+                    {
+                        var sessionsForDay = await db.SessionLogs
+                            .Where(s => s.StartTime >= chosenS && s.StartTime < chosenS.AddDays(1) && s.AppName != "SYSTEM_PC" && !hiddenApps.Contains(s.AppName))
+                            .OrderBy(s => s.StartTime)
+                            .ToListAsync();
+
+                        daySessions = sessionsForDay.Select(s => (object)new
+                        {
+                            AppName = s.AppName,
+                            Category = appCategories.GetValueOrDefault(s.AppName, "Other"),
+                            Start = s.StartTime.ToString("HH:mm"),
+                            End = s.EndTime.ToString("HH:mm"),
+                            DurationMinutes = (s.EndTime - s.StartTime).TotalMinutes,
+                            StartMinutes = s.StartTime.TimeOfDay.TotalMinutes,
+                            WindowTitle = s.WindowTitle // null unless CaptureWindowTitles was on when this session was recorded
+                        }).ToList();
+                    }
+
                     var payload = new
                     {
                         Label = LabelFor(chosenStart),
@@ -990,7 +1053,8 @@ namespace FastApp.Services
                         Current = chosenStart != todayStart ? BuildSummary(todayStart, LabelFor(todayStart)) : null,
                         TopApps = topApps,
                         TopCategories = topCategories,
-                        Days = days
+                        Days = days,
+                        DaySessions = daySessions
                     };
 
                     await context.Response.WriteAsJsonAsync(payload);

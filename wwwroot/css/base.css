@@ -35,6 +35,11 @@
 
     --radius: 14px;
     --radius-sm: 8px;
+
+    /* Chart.js reads these at render time (see getChartTheme() in utils.js) so
+       canvases re-theme along with everything else instead of staying fixed. */
+    --chart-grid: rgba(243, 241, 234, 0.06);
+    --chart-tooltip-bg: rgba(20, 22, 31, 0.95);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }

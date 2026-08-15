@@ -207,28 +207,7 @@ async function renderDayTimeline(dateStr) {
         const sessions = await res.json();
         const track = document.getElementById('ov-timeline-track');
         if (!track) return;
-
-        if (!sessions || sessions.length === 0) {
-            track.innerHTML = `<div class="empty-state" style="border:none;background:none;">No sessions recorded for this day.</div>`;
-            return;
-        }
-
-        const escAttr = (s) => String(s).replace(/'/g, '&#39;');
-
-        track.innerHTML = sessions.map(s => {
-            const name = s.appName || s.AppName;
-            const cat = s.category || s.Category;
-            const startStr = s.start || s.Start;
-            const endStr = s.end || s.End;
-            const dur = s.durationMinutes ?? s.DurationMinutes ?? 0;
-            const startMins = s.startMinutes ?? s.StartMinutes ?? 0;
-            const left = (startMins / 1440) * 100;
-            const width = Math.max((dur / 1440) * 100, 0.25);
-            const tip = `${escAttr(name)}<br>${startStr} &ndash; ${endStr}<br>${formatTime(dur)}`;
-            return `<div class="timeline-seg" style="left:${left}%;width:${width}%;background:${catColor(cat)}"
-                        onmousemove="showTooltip(event, '${tip}')" onmouseleave="hideTooltip()"
-                        onclick="openDrilldown('${escAttr(name)}')"></div>`;
-        }).join('');
+        track.innerHTML = timelineSegmentsHtml(sessions);
     } catch (err) { console.error(err); }
 }
 
@@ -291,9 +270,7 @@ async function renderWeekHeatmap(dateStr, ov) {
         for (let hour = 0; hour < 24; hour++) {
             const mins = grid[day][hour];
             const intensity = mins / maxMins;
-            const bg = intensity > 0
-                ? `rgba(232,163,61,${0.15 + intensity * 0.75})`
-                : 'var(--bg-raised)';
+            const bg = heatColor(intensity);
             const tip = `${DAY_SHORT[day]} at ${pad(hour)}:00<br>${formatTime(mins)} focused`;
             cellsHtml += `<div class="heat-cell" style="background:${bg}" onmousemove="showTooltip(event, '${tip}')" onmouseleave="hideTooltip()"></div>`;
         }
@@ -328,7 +305,7 @@ function renderDayHeatmap(scope, dateStr, heatData) {
         const match = heatData.find(x => (x.date || x.Date) === ds);
         const mins = match ? (match.focusedMinutes ?? match.FocusedMinutes ?? 0) : 0;
         const intensity = mins / maxMins;
-        const bg = intensity > 0 ? `rgba(232,163,61,${0.15 + intensity * 0.75})` : 'var(--bg-raised)';
+        const bg = heatColor(intensity);
         const tip = `${fmtDateEU(d)}<br>${formatTime(mins)} focused`;
         cellsHtml += `<div class="heat-day-cell" style="background:${bg}" onmousemove="showTooltip(event, '${tip}')" onmouseleave="hideTooltip()"></div>`;
     }
@@ -343,9 +320,9 @@ function renderDayHeatmap(scope, dateStr, heatData) {
         <div class="heat-legend">
             <span>Less</span>
             <span class="heat-legend-swatch" style="background:var(--bg-raised)"></span>
-            <span class="heat-legend-swatch" style="background:rgba(232,163,61,0.3)"></span>
-            <span class="heat-legend-swatch" style="background:rgba(232,163,61,0.6)"></span>
-            <span class="heat-legend-swatch" style="background:rgba(232,163,61,0.9)"></span>
+            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.3)}"></span>
+            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.6)}"></span>
+            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.9)}"></span>
             <span>More</span>
         </div>`;
 }

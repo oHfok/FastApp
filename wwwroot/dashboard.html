@@ -9,6 +9,16 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/themes.css">
+<script>
+    // Set the theme before first paint so there's no flash of the default
+    // theme before the saved one applies. Deliberately inline and tiny —
+    // this has to run before the stylesheets above finish, not after.
+    (function () {
+        var saved = localStorage.getItem('fastapp-theme');
+        if (saved) document.documentElement.setAttribute('data-theme', saved);
+    })();
+</script>
 </head>
 <body>
 
@@ -70,7 +80,7 @@
             </div>
             <div class="rail-item" data-view="periods">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18M8 2v4M16 2v4"></path></svg>
-                <span class="label-text">Weeks &amp; Months</span>
+                <span class="label-text">Periods</span>
             </div>
             <div class="rail-item" data-view="activity">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg>
@@ -194,12 +204,14 @@
                 <div id="period-list-view">
                     <div class="view-head">
                         <div>
-                            <div class="view-title">Weeks &amp; Months</div>
+                            <div class="view-title">Periods</div>
                             <div class="view-sub">Browse and compare your tracked history.</div>
                         </div>
                         <div class="segmented period-toggle" id="period-toggle">
+                            <button onclick="setPeriodType('day', this)">Days</button>
                             <button class="active" onclick="setPeriodType('week', this)">Weeks</button>
                             <button onclick="setPeriodType('month', this)">Months</button>
+                            <button onclick="setPeriodType('year', this)">Years</button>
                         </div>
                     </div>
                     <div class="period-list" id="period-list"></div>
@@ -277,6 +289,27 @@
 <div class="drawer" id="settings-drawer">
     <button class="drawer-close" id="settings-close">✕</button>
     <h2 style="font-size:20px;margin-bottom:22px;">Settings</h2>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Dashboard Theme</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+            More than a color swap — typography, shape, and density change too. Applies instantly, saved on this device only.
+        </p>
+        <div class="theme-picker" id="theme-picker">
+            <button class="theme-swatch" data-theme-value="instrument" onclick="setDashboardTheme('instrument')">
+                <span class="theme-swatch-dot" style="background:#E8A33D;"></span>
+                Instrument Panel
+            </button>
+            <button class="theme-swatch" data-theme-value="terminal" onclick="setDashboardTheme('terminal')">
+                <span class="theme-swatch-dot" style="background:#42FF78;"></span>
+                Terminal
+            </button>
+            <button class="theme-swatch" data-theme-value="glass" onclick="setDashboardTheme('glass')">
+                <span class="theme-swatch-dot" style="background:#FF9F0A;"></span>
+                Liquid Glass
+            </button>
+        </div>
+    </div>
 
     <div class="dd-section">
         <div class="dd-section-label">Database Retention</div>

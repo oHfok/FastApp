@@ -31,6 +31,7 @@ function renderRhythmChart(rhythm) {
     if (!ctx || !window.Chart) return;
     if (rhythmChartInstance) rhythmChartInstance.destroy();
 
+    const theme = getChartTheme(); // read fresh each render — themes recolor charts by re-rendering, not by CSS alone
     const labels = rhythm.map(r => `${pad(r.hour ?? r.Hour ?? 0)}:00`);
     const work = rhythm.map(r => Math.round(r.work ?? r.Work ?? 0));
     const play = rhythm.map(r => Math.round(r.play ?? r.Play ?? 0));
@@ -40,23 +41,23 @@ function renderRhythmChart(rhythm) {
         data: {
             labels,
             datasets: [
-                { label: 'Work', data: work, backgroundColor: CHART_THEME.brass, borderRadius: 3, stack: 's' },
-                { label: 'Play', data: play, backgroundColor: CHART_THEME.violet, borderRadius: 3, stack: 's' }
+                { label: 'Work', data: work, backgroundColor: theme.brass, borderRadius: 3, stack: 's' },
+                { label: 'Play', data: play, backgroundColor: theme.violet, borderRadius: 3, stack: 's' }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { stacked: true, grid: { display: false }, ticks: { color: CHART_THEME.tick, font: { family: "'JetBrains Mono', monospace", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
-                y: { stacked: true, grid: { color: CHART_THEME.grid }, ticks: { color: CHART_THEME.tick, callback: (v) => formatTime(v) } }
+                x: { stacked: true, grid: { display: false }, ticks: { color: theme.tick, font: { family: theme.fontMono, size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+                y: { stacked: true, grid: { color: theme.grid }, ticks: { color: theme.tick, callback: (v) => formatTime(v) } }
             },
             plugins: {
-                legend: { labels: { color: CHART_THEME.tick, font: { family: "'Inter', sans-serif", size: 11 } } },
+                legend: { labels: { color: theme.tick, font: { family: theme.fontBody, size: 11 } } },
                 tooltip: {
-                    backgroundColor: CHART_THEME.tooltipBg,
-                    titleColor: CHART_THEME.tooltipTitle,
-                    bodyColor: CHART_THEME.tooltipBody,
+                    backgroundColor: theme.tooltipBg,
+                    titleColor: theme.tooltipTitle,
+                    bodyColor: theme.tooltipBody,
                     callbacks: { label: (item) => `${item.dataset.label}: ${formatTime(item.raw)}` }
                 }
             }
@@ -69,6 +70,7 @@ function renderFatigueChart(fatigue) {
     if (!ctx || !window.Chart) return;
     if (fatigueChartInstance) fatigueChartInstance.destroy();
 
+    const theme = getChartTheme();
     const labels = fatigue.map(f => f.day ?? f.Day ?? '');
     const values = fatigue.map(f => Math.round(f.avgMinutes ?? f.AvgMinutes ?? 0));
 
@@ -76,21 +78,21 @@ function renderFatigueChart(fatigue) {
         type: 'bar',
         data: {
             labels,
-            datasets: [{ label: 'Avg session length', data: values, backgroundColor: CHART_THEME.teal, borderRadius: 4, maxBarThickness: 48 }]
+            datasets: [{ label: 'Avg session length', data: values, backgroundColor: theme.teal, borderRadius: 4, maxBarThickness: 48 }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { grid: { display: false }, ticks: { color: CHART_THEME.tick, font: { family: "'JetBrains Mono', monospace", size: 11 } } },
-                y: { grid: { color: CHART_THEME.grid }, ticks: { color: CHART_THEME.tick, callback: (v) => formatTime(v) } }
+                x: { grid: { display: false }, ticks: { color: theme.tick, font: { family: theme.fontMono, size: 11 } } },
+                y: { grid: { color: theme.grid }, ticks: { color: theme.tick, callback: (v) => formatTime(v) } }
             },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: CHART_THEME.tooltipBg,
-                    titleColor: CHART_THEME.tooltipTitle,
-                    bodyColor: CHART_THEME.tooltipBody,
+                    backgroundColor: theme.tooltipBg,
+                    titleColor: theme.tooltipTitle,
+                    bodyColor: theme.tooltipBody,
                     callbacks: { label: (item) => formatTime(item.raw) }
                 }
             }
@@ -119,7 +121,7 @@ function renderInsightsHeatmap(heatmap) {
         for (let hour = 0; hour < 24; hour++) {
             const mins = grid[day][hour];
             const intensity = mins / maxMins;
-            const bg = intensity > 0 ? `rgba(232,163,61,${0.15 + intensity * 0.75})` : 'var(--bg-raised)';
+            const bg = heatColor(intensity);
             const tip = `${DAY_SHORT[day]} at ${pad(hour)}:00<br>${formatTime(mins)} over the last 30 days`;
             cellsHtml += `<div class="heat-cell" style="background:${bg}" onmousemove="showTooltip(event, '${tip}')" onmouseleave="hideTooltip()"></div>`;
         }

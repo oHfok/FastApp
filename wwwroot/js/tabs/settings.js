@@ -1,8 +1,32 @@
 /* ==========================================================
    SETTINGS
-   1. Hidden apps list + unhide
-   2. Database retention (default: Keep Forever) + save
+   1. Dashboard theme (instant, localStorage-only, no server call)
+   2. Hidden apps list + unhide
+   3. Database retention (default: Keep Forever) + save
    ========================================================== */
+
+const DASHBOARD_THEME_KEY = 'fastapp-theme';
+
+function loadDashboardTheme() {
+    const current = localStorage.getItem(DASHBOARD_THEME_KEY) || 'instrument';
+    updateThemePickerActiveState(current);
+}
+
+function setDashboardTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem(DASHBOARD_THEME_KEY, theme);
+    updateThemePickerActiveState(theme);
+    // Chart.js canvases and the JS-computed heatmap fills only re-theme when
+    // re-rendered, not from the CSS change alone — refresh whatever's behind
+    // this drawer so it's already correct once Settings closes.
+    refreshActiveTab();
+}
+
+function updateThemePickerActiveState(theme) {
+    document.querySelectorAll('#theme-picker .theme-swatch').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.themeValue === theme);
+    });
+}
 
 async function loadHiddenApps() {
     try {
@@ -105,6 +129,7 @@ async function savePinSetting() {
 
 Dashboard.tabs.settings = {
     onEnter: () => {
+        loadDashboardTheme();
         loadHiddenApps();
         loadRetentionSetting();
         loadPinSetting();
