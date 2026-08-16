@@ -52,4 +52,4 @@ function renderAllApps() {
     }).join('');
 }
 
-Dashboard.tabs.allapps = { onEnter: loadAllApps };
+Dashboard.tabs.allapps = { onEnter: loadAllApps, refresh: loadAllApps };

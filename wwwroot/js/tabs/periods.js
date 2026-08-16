@@ -20,6 +20,13 @@ let waSessions = [];
 let waSearch = '';
 let waSort = 'newest'; // 'newest' | 'oldest'
 
+// Identifies whichever period-detail is currently open ("day:2026-04-07"),
+// so a poll refresh can tell "still looking at the same period" (keep
+// Window Activity's search/sort as-is) apart from "just navigated to a new
+// one" (reset them). Includes periodType, not just the date, since a Week
+// and a Day can share the same raw startDate string.
+let currentDetailKey = null;
+
 function setPeriodType(type, btnEl) {
     periodType = type;
     document.querySelectorAll('#period-toggle button').forEach(b => b.classList.toggle('active', b === btnEl));
@@ -32,9 +39,9 @@ function showPeriodList() {
     document.getElementById('period-detail-view').style.display = 'none';
 }
 
-async function loadPeriodList() {
+async function loadPeriodList(silent) {
     const listEl = document.getElementById('period-list');
-    listEl.innerHTML = `<div class="empty-state">Loading…</div>`;
+    if (!silent) listEl.innerHTML = `<div class="empty-state">Loading…</div>`;
     try {
         const res = await fetch(`/api/periods?type=${periodType}`);
         if (!res.ok) throw new Error('endpoint missing');
@@ -84,6 +91,9 @@ async function loadPeriodList() {
                 </div>`;
         }).join('');
     } catch (err) {
+        // A failed silent poll shouldn't blow away an already-valid list with
+        // an error message — just log it and leave what's on screen alone.
+        if (silent) { console.error('Periods poll refresh failed', err); return; }
         listEl.innerHTML = `<div class="empty-state">
             The Weeks &amp; Months backend endpoint isn't set up yet.<br>
             <span style="font-family:var(--font-mono);font-size:11px;">Add the code from periods-endpoint.cs to DashboardServerService.cs</span>
@@ -275,10 +285,15 @@ function setWindowActivitySort(sort, btnEl) {
 // Activity tab's row styling. Renders nothing when the day has no titled
 // sessions — capture off, or just a quiet day — so it never shows as a
 // half-empty card nagging about a setting most people haven't touched.
-function windowActivityHtml(daySessions) {
+// isNewDay=false means this is a poll re-render of the period already on
+// screen — keep whatever search/sort the user had set instead of resetting
+// it out from under them every ~12s.
+function windowActivityHtml(daySessions, isNewDay) {
     waSessions = (daySessions || []).filter(s => s.windowTitle ?? s.WindowTitle);
-    waSearch = '';
-    waSort = 'newest';
+    if (isNewDay) {
+        waSearch = '';
+        waSort = 'newest';
+    }
     if (waSessions.length === 0) return '';
 
     return `
@@ -286,10 +301,10 @@ function windowActivityHtml(daySessions) {
             <div class="wa-head">
                 <div class="card-label">Window Activity</div>
                 <div class="wa-controls">
-                    <input type="text" class="field" id="wa-search" placeholder="Search titles or apps…" oninput="filterWindowActivity(this)">
+                    <input type="text" class="field" id="wa-search" placeholder="Search titles or apps…" value="${escapeHtml(waSearch)}" oninput="filterWindowActivity(this)">
                     <div class="segmented" id="wa-sort-toggle">
-                        <button class="active" onclick="setWindowActivitySort('newest', this)">Newest</button>
-                        <button onclick="setWindowActivitySort('oldest', this)">Oldest</button>
+                        <button class="${waSort === 'newest' ? 'active' : ''}" onclick="setWindowActivitySort('newest', this)">Newest</button>
+                        <button class="${waSort === 'oldest' ? 'active' : ''}" onclick="setWindowActivitySort('oldest', this)">Oldest</button>
                     </div>
                 </div>
             </div>
@@ -297,22 +312,30 @@ function windowActivityHtml(daySessions) {
         </div>`;
 }
 
-async function openPeriodDetail(startDate) {
+async function openPeriodDetail(startDate, silent) {
     document.getElementById('period-list-view').style.display = 'none';
     document.getElementById('period-detail-view').style.display = 'block';
-    document.getElementById('period-detail-body').innerHTML = `<div class="empty-state">Loading…</div>`;
+
+    const key = `${periodType}:${startDate}`;
+    const isNewDay = key !== currentDetailKey;
+    currentDetailKey = key;
+
+    if (!silent) document.getElementById('period-detail-body').innerHTML = `<div class="empty-state">Loading…</div>`;
 
     try {
         const res = await fetch(`/api/period-detail?type=${periodType}&start=${startDate}`);
         if (!res.ok) throw new Error('endpoint missing');
         const d = await res.json();
-        renderPeriodDetail(d);
+        renderPeriodDetail(d, isNewDay);
     } catch (err) {
+        // A failed silent poll shouldn't blow away an already-loaded detail
+        // view with an error message — just log it and leave things be.
+        if (silent) { console.error('Period detail poll refresh failed', err); return; }
         document.getElementById('period-detail-body').innerHTML = `<div class="empty-state">Couldn't load this period's detail.</div>`;
     }
 }
 
-function renderPeriodDetail(d) {
+function renderPeriodDetail(d, isNewDay) {
     const label = d.label ?? d.Label;
     const totalMins = d.totalFocusMinutes ?? d.TotalFocusMinutes ?? 0;
     const rank = d.rank ?? d.Rank;
@@ -394,7 +417,7 @@ function renderPeriodDetail(d) {
             <div class="card-label" style="margin-bottom:14px;">${heatmapCardLabel}</div>
             ${heatmapHtml}
         </div>` : '';
-    const windowActivityCardHtml = periodType === 'day' ? windowActivityHtml(daySessions) : '';
+    const windowActivityCardHtml = periodType === 'day' ? windowActivityHtml(daySessions, isNewDay) : '';
 
     document.getElementById('period-detail-body').innerHTML = `
         <div class="compare-row">${compareHtml}</div>
@@ -412,4 +435,23 @@ function renderPeriodDetail(d) {
         ${windowActivityCardHtml}`;
 }
 
-Dashboard.tabs.periods = { onEnter: () => { showPeriodList(); loadPeriodList(); } };
+// Refreshes whichever half of the tab is actually visible, silently (no
+// "Loading…" flash) and without disturbing state a blind onEnter() would
+// reset — the open detail view, or Window Activity's search/sort. If the
+// user is mid-keystroke in the search box, skip this tick entirely rather
+// than yank their cursor out from under them; the next poll will catch up.
+function refreshPeriods() {
+    const listVisible = document.getElementById('period-list-view').style.display !== 'none';
+    if (listVisible) {
+        loadPeriodList(true);
+        return;
+    }
+    const searchInput = document.getElementById('wa-search');
+    if (searchInput && document.activeElement === searchInput) return;
+    if (currentDetailKey) {
+        const startDate = currentDetailKey.slice(currentDetailKey.indexOf(':') + 1);
+        openPeriodDetail(startDate, true);
+    }
+}
+
+Dashboard.tabs.periods = { onEnter: () => { showPeriodList(); loadPeriodList(); }, refresh: refreshPeriods };

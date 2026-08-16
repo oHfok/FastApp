@@ -102,4 +102,10 @@ function activityDayLabel(date) {
     return `${DAY_NAMES[isoDow(dOnly)]}, ${fmtDateLong(dOnly)}`;
 }
 
-Dashboard.tabs.activity = { onEnter: loadActivity };
+Dashboard.tabs.activity = {
+    onEnter: loadActivity,
+    // loadActivity resets back to page 1 — fine on a fresh tab entry, but
+    // doing that on every poll would erase anyone who's clicked "Load More"
+    // deeper into their history. Only auto-refresh while still on page 1.
+    refresh: () => { if (activityOffset <= ACTIVITY_PAGE_SIZE) loadActivity(); }
+};

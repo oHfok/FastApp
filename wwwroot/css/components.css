@@ -3,11 +3,20 @@
    ========================================== */
 
 /* ---------- Overview: comparison stat blocks ---------- */
+/* Focus is what you actually came here to see — it gets the full-width hero
+   row and the eye-catching treatment. AFK and Uptime share an even 50/50
+   row underneath, AFK at normal weight (still worth knowing) and Uptime
+   shrunk down to a quiet footnote — it's the least useful of the three on
+   its own (it's just focus + AFK), so it doesn't need equal billing. */
 .stat-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
     margin-bottom: 20px;
+    align-items: start; /* let stat-minor genuinely look smaller instead of stretching to match its row-mate's height */
+}
+@media (max-width: 560px) {
+    .stat-row { grid-template-columns: 1fr; }
 }
 
 .stat-block {
@@ -23,6 +32,27 @@
 }
 
 .stat-block .trend-pill { margin-top: 8px; }
+
+.stat-block.stat-hero {
+    padding: 24px 26px;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--brass-glow), transparent 65%);
+    border-color: var(--brass-dim);
+}
+.stat-block.stat-hero .card-label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--brass-dim);
+}
+.stat-block.stat-hero .stat-value { font-size: 44px; line-height: 1.05; }
+
+.stat-block.stat-minor {
+    padding: 12px 16px;
+}
+.stat-block.stat-minor .card-label { font-size: 11px; margin-bottom: 4px; }
+.stat-block.stat-minor .stat-value { font-size: 17px; font-weight: 600; color: var(--text-dim); }
+.stat-block.stat-minor .trend-pill { margin-top: 4px; font-size: 10px; }
 
 /* ---------- Category progress bar ---------- */
 .cat-bar {
@@ -525,6 +555,12 @@
 
 .compare-block { padding: 14px 16px; text-align: center; }
 .compare-block.is-current { border-color: var(--brass-dim); background: rgba(232,163,61,0.06); }
+/* The period being viewed is the number that should catch your eye first —
+   Previous/Next/Current are comparison anchors, not the headline. Uptime
+   never gets its own number here at all (just the bar's caption line),
+   which is already about as minor as it can be. */
+.compare-block.is-current .card-label { color: var(--brass-dim); font-weight: 700; }
+.compare-block.is-current .stat-value { font-size: 36px; }
 
 /* Focus/AFK share of Uptime, as a bar instead of two more raw-number lines */
 .compare-bar {

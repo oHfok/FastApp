@@ -73,6 +73,14 @@ namespace FastApp.ViewModels
         private readonly ConcurrentQueue<ViewModels.SessionLog> _pendingSessions = new();
         private readonly ConcurrentQueue<ViewModels.MacroEventLog> _pendingMacros = new();
 
+        // The tracker only flushes to disk every ~60s (see StartProcessTrackerAsync)
+        // — without this, a normal "Exit" could silently drop up to a minute of the
+        // day's tracking plus whatever session was still open. RequestShutdownFlushAsync
+        // cancels the tracker's wait; the tracker does one last flush in its finally
+        // block and signals _trackerStoppedTcs when it's actually safe to exit.
+        private readonly CancellationTokenSource _trackerCts = new();
+        private readonly TaskCompletionSource<bool> _trackerStoppedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public StatisticsViewModel StatisticsVM { get; }
 
         [ObservableProperty]
@@ -628,6 +636,17 @@ namespace FastApp.ViewModels
             }
         }
 
+        // Called from the tray "Exit" path before the app actually shuts down.
+        // Cancels the tracker's tick wait, which makes it fall into its own
+        // finally block and do one last flush (close the open session, write
+        // whatever's accumulated in the caches since the last 60s flush).
+        // Bounded by a short timeout so a stuck flush can never hang app exit.
+        public async Task RequestShutdownFlushAsync()
+        {
+            _trackerCts.Cancel();
+            await Task.WhenAny(_trackerStoppedTcs.Task, Task.Delay(TimeSpan.FromSeconds(3)));
+        }
+
         private async Task StartProcessTrackerAsync()
         {
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
@@ -672,7 +691,44 @@ namespace FastApp.ViewModels
             DateTime? currentSessionStart = null;
             string currentSessionTitle = null;
 
-            while (await timer.WaitForNextTickAsync())
+            // Shared by the periodic 60s flush and the final flush-on-exit below,
+            // so a normal quit persists exactly the same way a scheduled flush does.
+            void FlushDailySummaries(DateTime today)
+            {
+                foreach (var kvp in timeCache)
+                {
+                    string appName = kvp.Key;
+                    TimeSpan addedTotal = kvp.Value;
+                    TimeSpan addedAfk = afkCache.GetValueOrDefault(appName);
+                    TimeSpan addedFocus = focusCache.GetValueOrDefault(appName);
+
+                    var log = _dbContext.DailyLogs.FirstOrDefault(l => l.Date == today && l.AppName == appName);
+                    if (log == null)
+                    {
+                        log = new ViewModels.DailyUsageLog { Date = today, AppName = appName, TimeSpent = TimeSpan.Zero, AfkTimeSpent = TimeSpan.Zero, TimeFocused = TimeSpan.Zero };
+                        _dbContext.DailyLogs.Add(log);
+                    }
+
+                    log.TimeSpent = log.TimeSpent.Add(addedTotal);
+                    log.AfkTimeSpent = log.AfkTimeSpent.Add(addedAfk);
+                    log.TimeFocused = log.TimeFocused.Add(addedFocus);
+                    log.TimeSpentTicks = log.TimeSpent.Ticks;
+                    log.AfkTimeSpentTicks = log.AfkTimeSpent.Ticks;
+                    log.TimeFocusedTicks = log.TimeFocused.Ticks;
+
+                    baselineMinutesToday[appName] = log.TimeSpent.TotalMinutes;
+                }
+            }
+
+            void FlushPendingQueues()
+            {
+                while (_pendingSessions.TryDequeue(out var session)) _dbContext.SessionLogs.Add(session);
+                while (_pendingMacros.TryDequeue(out var macro)) _dbContext.MacroEventLogs.Add(macro);
+            }
+
+            try
+            {
+            while (await timer.WaitForNextTickAsync(_trackerCts.Token))
             {
                 var allProcesses = Process.GetProcesses();
                 var allProcessNames = allProcesses.Select(p => p.ProcessName.ToLower()).ToHashSet();
@@ -702,8 +758,17 @@ namespace FastApp.ViewModels
                                      : char.ToUpper(rawActiveExe[0]) + rawActiveExe.Substring(1);
                 }
 
-                // Did the user switch windows?
-                if (activeAppName != currentFocusedApp)
+                // Did the user switch windows, or (when title capture is on)
+                // change the title within the same app — e.g. a browser tab
+                // change? Both close out the current session: otherwise a
+                // single long Chrome session would freeze on whatever title
+                // was showing when Chrome first got focus, and everything
+                // after that (every other site visited) would be invisible.
+                string liveTitle = (activeAppName != null && captureWindowTitles) ? GetActiveWindowTitle() : null;
+                bool appChanged = activeAppName != currentFocusedApp;
+                bool titleChanged = !appChanged && activeAppName != null && captureWindowTitles && liveTitle != currentSessionTitle;
+
+                if (appChanged || titleChanged)
                 {
                     // 1. Close the old session and log it
                     if (currentFocusedApp != null && currentSessionStart.HasValue)
@@ -717,13 +782,10 @@ namespace FastApp.ViewModels
                         });
                     }
 
-                    // 2. Start the new session. Title is captured once, at the
-                    // moment focus lands on this app — not re-sampled if the
-                    // title changes later without a window switch (e.g. a tab
-                    // change within the same browser session).
+                    // 2. Start the new session with a freshly-sampled title.
                     currentFocusedApp = activeAppName;
                     currentSessionStart = activeAppName != null ? now : null;
-                    currentSessionTitle = (activeAppName != null && captureWindowTitles) ? GetActiveWindowTitle() : null;
+                    currentSessionTitle = liveTitle;
                 }
 
                 // Add to Focus Cache (Only if the user isn't AFK)
@@ -867,44 +929,10 @@ namespace FastApp.ViewModels
                     }
 
                     // 1. Flush Daily Summaries
-                    foreach (var kvp in timeCache)
-                    {
-                        string appName = kvp.Key;
-                        TimeSpan addedTotal = kvp.Value;
-                        TimeSpan addedAfk = afkCache.GetValueOrDefault(appName);
-                        TimeSpan addedFocus = focusCache.GetValueOrDefault(appName); // Pull from focus cache
+                    FlushDailySummaries(today);
 
-                        var log = _dbContext.DailyLogs.FirstOrDefault(l => l.Date == today && l.AppName == appName);
-                        if (log == null)
-                        {
-                            log = new ViewModels.DailyUsageLog { Date = today, AppName = appName, TimeSpent = TimeSpan.Zero, AfkTimeSpent = TimeSpan.Zero, TimeFocused = TimeSpan.Zero };
-                            _dbContext.DailyLogs.Add(log);
-                        }
-
-                        log.TimeSpent = log.TimeSpent.Add(addedTotal);
-                        log.AfkTimeSpent = log.AfkTimeSpent.Add(addedAfk);
-                        log.TimeFocused = log.TimeFocused.Add(addedFocus); // Save Focus Time
-                                                                           // Keep the fast INTEGER columns in sync so SQL-side SUM() reflects live data
-                        log.TimeSpentTicks = log.TimeSpent.Ticks;
-                        log.AfkTimeSpentTicks = log.AfkTimeSpent.Ticks;
-                        log.TimeFocusedTicks = log.TimeFocused.Ticks;
-
-                        // Baseline for the per-tick enforcement check below — keeps
-                        // it anchored to what's actually committed, not just memory.
-                        baselineMinutesToday[appName] = log.TimeSpent.TotalMinutes;
-                    }
-
-                    // 2. Flush Shadow Sessions
-                    while (_pendingSessions.TryDequeue(out var session))
-                    {
-                        _dbContext.SessionLogs.Add(session);
-                    }
-
-                    // 3. Flush Shadow Macros
-                    while (_pendingMacros.TryDequeue(out var macro))
-                    {
-                        _dbContext.MacroEventLogs.Add(macro);
-                    }
+                    // 2 & 3. Flush Shadow Sessions & Macros
+                    FlushPendingQueues();
 
                     _dbContext.SaveChanges();
                     StatisticsVM?.RefreshStats();
@@ -914,6 +942,39 @@ namespace FastApp.ViewModels
                     focusCache.Clear();
                     tickCount = 0;
                 }
+            }
+            }
+            catch (OperationCanceledException)
+            {
+                // RequestShutdownFlushAsync canceled the wait — fall through to
+                // the final flush below instead of losing whatever's in the
+                // caches, or leaving the in-progress session unrecorded.
+            }
+            finally
+            {
+                try
+                {
+                    // Close out whatever session was still open, same shape as
+                    // the mid-loop "did the user switch windows" close above —
+                    // just triggered by shutdown instead of a window switch.
+                    if (currentFocusedApp != null && currentSessionStart.HasValue)
+                    {
+                        _pendingSessions.Enqueue(new ViewModels.SessionLog
+                        {
+                            AppName = currentFocusedApp,
+                            StartTime = currentSessionStart.Value,
+                            EndTime = DateTime.Now,
+                            WindowTitle = currentSessionTitle
+                        });
+                    }
+
+                    FlushDailySummaries(DateTime.Today);
+                    FlushPendingQueues();
+                    _dbContext.SaveChanges();
+                }
+                catch { /* best-effort — the app is exiting either way */ }
+
+                _trackerStoppedTcs.TrySetResult(true);
             }
         }
 

@@ -107,4 +107,4 @@ function renderFullLeaderboard() {
     container.innerHTML = headerHtml + rowsHtml;
 }
 
-Dashboard.tabs.leaderboard = { onEnter: fetchFullLeaderboard };
+Dashboard.tabs.leaderboard = { onEnter: fetchFullLeaderboard, refresh: fetchFullLeaderboard };
