@@ -28,6 +28,24 @@ function updateThemePickerActiveState(theme) {
     });
 }
 
+// TIMELINE_COLOR_MODE_KEY / getTimelineColorMode() live in utils.js since
+// timelineSegmentsHtml() needs to read the mode at render time — this just
+// owns writing it.
+function loadTimelineColorMode() {
+    const current = getTimelineColorMode();
+    document.querySelectorAll('#timeline-color-toggle button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === current);
+    });
+}
+
+function setTimelineColorMode(mode, btnEl) {
+    localStorage.setItem(TIMELINE_COLOR_MODE_KEY, mode);
+    document.querySelectorAll('#timeline-color-toggle button').forEach(btn => {
+        btn.classList.toggle('active', btn === btnEl);
+    });
+    refreshActiveTab();
+}
+
 async function loadHiddenApps() {
     try {
         const res = await fetch('/api/hidden-apps');
@@ -130,6 +148,7 @@ async function savePinSetting() {
 Dashboard.tabs.settings = {
     onEnter: () => {
         loadDashboardTheme();
+        loadTimelineColorMode();
         loadHiddenApps();
         loadRetentionSetting();
         loadPinSetting();
