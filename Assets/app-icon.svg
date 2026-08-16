@@ -1,0 +1,31 @@
+<!-- Source for Assets/app-icon.ico and the web dashboard's inline favicon
+     (wwwroot/dashboard.html's <link rel="icon">). Brass "F" monogram on the
+     app's near-black panel gradient — matches the --brass/--bg tokens in
+     wwwroot/css/base.css. The chamfered corner on the spine's bottom terminal
+     is the one deliberate "machined instrument" detail; kept otherwise plain
+     and geometric so it stays legible at 16x16 (tray icon size).
+     To regenerate app-icon.ico after editing this file: render to a 512x512
+     PNG, then (with Pillow) Image.open(...).save('app-icon.ico',
+     sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)]).
+     To update the dashboard favicon: base64-encode this file and swap it
+     into the data:image/svg+xml;base64,... href in dashboard.html's <head>. -->
+<svg width="512" height="512" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#181B26"/>
+      <stop offset="1" stop-color="#0A0B10"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x="2" y="2" width="96" height="96" rx="21" fill="url(#bg)" stroke="rgba(232,163,61,0.22)" stroke-width="1"/>
+
+  <path d="M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z"
+        fill="#E8A33D" filter="url(#glow)"/>
+</svg>
