@@ -11,7 +11,7 @@
 	  <TieredCompilation>true</TieredCompilation>
 	  <NoWarn>NU1903</NoWarn>
 	  <StartupObject>FastApp.Program</StartupObject>
-	  <ApplicationIcon>Assets\favicon(1).ico</ApplicationIcon>
+	  <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
 	  <NoWin32Manifest>true</NoWin32Manifest>
   </PropertyGroup>
 
@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\favicon(1).ico">
+    <Resource Include="Assets\app-icon.ico">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>
@@ -53,7 +53,7 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<None Update="Assets\favicon%281%29.ico">
+		<None Update="Assets\app-icon.ico">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 

@@ -7,7 +7,7 @@
                  Title="FastApp" Height="700" Width="950"
                  WindowBackdropType="Mica"
                  ExtendsContentIntoTitleBar="True"
-                 Icon="/Assets/favicon(1).ico">
+                 Icon="/Assets/app-icon.ico">
 
     <Window.Resources>
         <local:PercentageConverter x:Key="PercentageToWidthConverter"/>
@@ -20,7 +20,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Title="FastApp" Grid.Row="0" Icon="/Assets/favicon(1).ico" />
+        <ui:TitleBar Title="FastApp" Grid.Row="0" Icon="/Assets/app-icon.ico" />
 
         <TabControl Grid.Row="1" Margin="20,0,20,20" Background="Transparent" BorderThickness="0" SelectedIndex="{Binding SelectedTabIndex}">
 
