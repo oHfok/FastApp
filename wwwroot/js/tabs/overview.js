@@ -327,4 +327,4 @@ function renderDayHeatmap(scope, dateStr, heatData) {
         </div>`;
 }
 
-Dashboard.tabs.overview = { onEnter: loadOverview };
+Dashboard.tabs.overview = { onEnter: loadOverview, refresh: loadOverview };

@@ -5,14 +5,34 @@
 
 const VIEWS = ['overview', 'insights', 'periods', 'activity', 'leaderboard', 'allapps'];
 
+let currentViewId = null;
+
 function switchView(viewId) {
     document.querySelectorAll('.rail-item').forEach(el => el.classList.toggle('active', el.dataset.view === viewId));
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
     const target = document.getElementById('view-' + viewId);
     if (target) target.classList.add('active');
     closeSettings();
+    currentViewId = viewId;
     const mod = Dashboard.tabs[viewId];
     if (mod && typeof mod.onEnter === 'function') mod.onEnter();
+}
+
+// --- Live polling -------------------------------------------------------
+// This is a single local user hitting localhost, and the tracker itself only
+// flushes to disk every ~60s, so a push/SSE channel would just be extra
+// plumbing for freshness polling already delivers. Each tab exposes an
+// optional `refresh` (distinct from `onEnter`) for tabs where blindly
+// re-running onEnter would discard state a poll shouldn't touch — Periods'
+// open detail view/search/sort, Activity's "Load More" depth. Tabs without
+// a `refresh` just don't auto-update; that's a deliberate omission, not
+// an oversight.
+const POLL_INTERVAL_MS = 12000;
+
+function pollCurrentView() {
+    if (document.hidden) return; // no point fetching for a backgrounded tab
+    const mod = Dashboard.tabs[currentViewId];
+    if (mod && typeof mod.refresh === 'function') mod.refresh();
 }
 
 function initNav() {
@@ -88,6 +108,8 @@ async function boot() {
 
     refreshTopBar();
     setInterval(refreshTopBar, 30000);
+
+    setInterval(pollCurrentView, POLL_INTERVAL_MS);
 
     try {
         const res = await fetch('/api/categories');

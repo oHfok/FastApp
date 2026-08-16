@@ -134,10 +134,19 @@ namespace FastApp
             }
         }
 
-        // This is called ONLY by the "Exit" button in our TrayService's right-click menu
-        public void ForceExit()
+        // This is called ONLY by the "Exit" button in our TrayService's right-click menu.
+        // async void is fine here — it's a terminal UI-triggered action, nothing awaits
+        // its completion. Flushing before Shutdown() is what stops a normal quit from
+        // silently dropping up to 60s of the day's tracking (the tracker's own flush
+        // cadence) plus whatever session was still open.
+        public async void ForceExit()
         {
             _isForceExiting = true;
+            try
+            {
+                await _viewModel.RequestShutdownFlushAsync();
+            }
+            catch { /* best-effort — never block exit on a flush failure */ }
             System.Windows.Application.Current.Shutdown();
         }
 

@@ -185,5 +185,6 @@ Dashboard.tabs.insights = {
     onEnter: () => {
         loadInsights();
         loadCategoryClassification();
-    }
+    },
+    refresh: loadInsights // classification mapping rarely changes; skip re-fetching it every poll
 };
