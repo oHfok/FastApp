@@ -86,12 +86,29 @@ namespace FastApp.Services
             return false;
         }
 
+        // The fullscreen/media exemptions below are meant to stop a video or a
+        // game from getting wrongly marked AFK during the normal few-minutes-of-
+        // no-input window — not to grant indefinite immunity. Without a ceiling,
+        // something like a Discord call left running (which can register as an
+        // active "Playing" media session for as long as it's open) would keep
+        // reporting "not AFK" forever even after you've actually left. Nobody
+        // genuinely engaged produces zero physical input for this long — even
+        // watching a video, people click, scroll, or type in chat sometimes — so
+        // past this point it's AFK regardless of what fullscreen/media state says.
+        private static readonly TimeSpan HardIdleCeiling = TimeSpan.FromMinutes(30);
+
         // --- THE MASTER AFK CHECK ---
         public static async Task<bool> IsTrulyAfkAsync(TimeSpan afkThreshold)
         {
+            TimeSpan idleTime = GetIdleTime();
+
             // 1. Fast Check: Physical mouse/keyboard inputs
-            if (GetIdleTime() < afkThreshold)
+            if (idleTime < afkThreshold)
                 return false;
+
+            // 1.5. Hard ceiling: no exemption survives this long with zero input
+            if (idleTime >= HardIdleCeiling)
+                return true;
 
             // 2. Fast Check: Fullscreen video or DirectX Game
             if (IsUserPassivelyEngaged())

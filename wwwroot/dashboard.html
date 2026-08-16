@@ -313,6 +313,19 @@
     </div>
 
     <div class="dd-section">
+        <div class="dd-section-label">Timeline Colors</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+            "Individual App" gives every app its own color, so a busy day's Timeline ribbon is actually readable at a
+            glance instead of a few apps sharing categories blurring together. "By Category" colors by category instead,
+            like the rest of the dashboard.
+        </p>
+        <div class="segmented" id="timeline-color-toggle">
+            <button class="active" data-mode="app" onclick="setTimelineColorMode('app', this)">Individual App</button>
+            <button data-mode="category" onclick="setTimelineColorMode('category', this)">By Category</button>
+        </div>
+    </div>
+
+    <div class="dd-section">
         <div class="dd-section-label">Database Retention</div>
         <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">How long detailed logs are kept before being cleared.</p>
         <div class="retention-row">

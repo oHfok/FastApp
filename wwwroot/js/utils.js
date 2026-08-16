@@ -36,6 +36,39 @@ const categoryColors = {
 };
 function catColor(cat) { return categoryColors[cat] || categoryColors['Other']; }
 
+// --- Per-app accent color (Timeline ribbon "Individual" mode) --------------
+// Category color alone makes a timeline unreadable once more than one or two
+// apps share a category — they render as one indistinguishable block. This
+// hashes the app name to one of a wide, evenly-spaced set of hues instead, so
+// different apps get visually distinct colors. Deterministic (same app name
+// always gets the same hue, every render, every day) rather than
+// assignment-order-based, so it stays recognizable over time instead of
+// shuffling depending on which apps happen to appear first in a given day.
+function hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = (hash * 31 + str.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash);
+}
+const APP_COLOR_HUE_BUCKETS = 20; // 360/20 = 18° apart — a wide, well-separated spread
+function appColor(name) {
+    if (!name) return catColor('Other');
+    const hue = (hashString(name) % APP_COLOR_HUE_BUCKETS) * (360 / APP_COLOR_HUE_BUCKETS);
+    return `hsl(${hue}, 68%, 60%)`;
+}
+
+// Persisted in Settings ("Timeline Colors"): 'app' colors each session by its
+// own app (the default — this is what people actually asked for), 'category'
+// falls back to the old category-color behavior.
+const TIMELINE_COLOR_MODE_KEY = 'fastapp-timeline-color-mode';
+function getTimelineColorMode() {
+    return localStorage.getItem(TIMELINE_COLOR_MODE_KEY) || 'app';
+}
+function timelineSegColor(name, cat) {
+    return getTimelineColorMode() === 'category' ? catColor(cat) : appColor(name);
+}
+
 // --- Time / number formatting (European: 24h, comma-free) ---------------
 function formatTime(mins) {
     if (!mins || mins <= 0) return '0m';
@@ -205,7 +238,7 @@ function timelineSegmentsHtml(sessions) {
         // builder, never concatenated into an HTML string. escapeHtml here is
         // just what makes the raw value safe to sit inside the attribute's own
         // quotes; showSessionTooltip does the one read-and-display step.
-        return `<div class="timeline-seg" style="left:${left}%;width:${width}%;background:${catColor(cat)}"
+        return `<div class="timeline-seg" style="left:${left}%;width:${width}%;background:${timelineSegColor(name, cat)}"
                     data-name="${escapeHtml(name)}" data-range="${escapeHtml(startStr + ' – ' + endStr)}"
                     data-dur="${escapeHtml(formatTime(dur))}" data-title="${title ? escapeHtml(title) : ''}"
                     onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"
