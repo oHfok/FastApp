@@ -747,7 +747,17 @@
 .dd-title { font-size: 20px; font-weight: 700; line-height: 1.2; }
 .dd-rank { font-family: var(--font-mono); font-size: 11px; color: var(--brass); font-weight: 700; margin-top: 4px; }
 
-.dd-section { margin-bottom: 22px; }
+/* Each section its own boxed card — was just a label + loose fields with
+   nothing marking where one setting ends and the next begins. Applies to
+   every drawer that uses this class (App detail, Settings, Category detail)
+   so they all read the same way, not just the one that prompted this. */
+.dd-section {
+    margin-bottom: 14px;
+    padding: 16px 18px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+}
 .dd-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); font-weight: 700; margin-bottom: 10px; }
 
 .dd-cat-row { display: flex; align-items: center; gap: 10px; }

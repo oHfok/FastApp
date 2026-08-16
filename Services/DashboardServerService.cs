@@ -214,7 +214,15 @@ namespace FastApp.Services
                     DateTime targetDate = string.IsNullOrEmpty(date) ? DateTime.Today : DateTime.Parse(date).Date;
                     var hiddenApps = GetHiddenApps(db);
 
-                    var allSystemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC" && l.Date <= targetDate).ToListAsync();
+                    // Bounded to the furthest any of the below actually looks back
+                    // (prevYear reaches targetDate-730) instead of every SYSTEM_PC row
+                    // since install — that grows forever with no ceiling, and this
+                    // endpoint is polled every ~12s while the Overview tab is open.
+                    // FocusAllTime below still needs the true all-time figure, computed
+                    // separately via a cheap SQL-side SUM() instead of pulling every
+                    // row ever into memory just for that one number.
+                    DateTime historyFloor = targetDate.AddDays(-730);
+                    var allSystemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC" && l.Date >= historyFloor && l.Date <= targetDate).ToListAsync();
                     var recentLogs = await db.DailyLogs.Where(l => l.Date >= targetDate.AddDays(-6) && l.Date <= targetDate).ToListAsync();
                     var todaysLogs = await db.DailyLogs.Where(l => l.Date == targetDate && l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName)).ToListAsync();
 
@@ -247,7 +255,12 @@ namespace FastApp.Services
                     double focusYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-365) && l.Date <= targetDate).Sum(l => l.TimeFocused.TotalHours);
                     double focusPrevYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-730) && l.Date <= targetDate.AddDays(-365)).Sum(l => l.TimeFocused.TotalHours);
 
-                    double focusAllTime = allSystemLogs.Sum(l => l.TimeFocused.TotalHours);
+                    // True all-time — allSystemLogs is now bounded to the last 730
+                    // days, so this can't just sum it. SumAsync translates to a SQL
+                    // SUM() over the integer Ticks column, never materializing the
+                    // individual rows just to add them up in C#.
+                    long focusAllTimeTicks = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").SumAsync(l => (long?)l.TimeFocusedTicks) ?? 0;
+                    double focusAllTime = TimeSpan.FromTicks(focusAllTimeTicks).TotalHours;
 
                     double afkWeek = allSystemLogs.Where(l => l.Date >= startOfWeek && l.Date <= targetDate).Sum(l => l.AfkTimeSpent.TotalHours);
                     double afkPrevWeek = allSystemLogs.Where(l => l.Date >= startOfPrevWeek && l.Date < startOfWeek).Sum(l => l.AfkTimeSpent.TotalHours);
@@ -1085,6 +1098,39 @@ namespace FastApp.Services
                     }
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // Downloads a complete, self-contained snapshot of the tracking database.
+            // Uses SQLite's VACUUM INTO rather than copying the .db file directly —
+            // the DB runs in WAL mode, so a raw file copy could miss recent writes
+            // still sitting in the -wal file. VACUUM INTO produces one consistent,
+            // compacted file in a single atomic step, safe to run alongside the live
+            // tracker without stopping anything.
+            app.MapGet("/api/backup", async (HttpContext context) =>
+            {
+                string tempPath = Path.Combine(Path.GetTempPath(), $"fastapp-backup-{Guid.NewGuid():N}.db");
+                try
+                {
+                    using var db = new AppDbContext();
+                    string escapedPath = tempPath.Replace("'", "''");
+                    await db.Database.ExecuteSqlRawAsync($"VACUUM INTO '{escapedPath}';");
+
+                    string downloadName = $"FastApp-Backup-{DateTime.Now:yyyy-MM-dd}.db";
+                    context.Response.ContentType = "application/octet-stream";
+                    context.Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{downloadName}\"");
+
+                    using var fileStream = File.OpenRead(tempPath);
+                    await fileStream.CopyToAsync(context.Response.Body);
+                }
+                catch (Exception ex)
+                {
+                    context.Response.StatusCode = 500;
+                    await context.Response.WriteAsJsonAsync(new { error = ex.Message });
+                }
+                finally
+                {
+                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort cleanup of the temp snapshot */ }
+                }
             });
 
             app.MapGet("/api/settings", async (HttpContext context) => { using var db = new AppDbContext(); await context.Response.WriteAsJsonAsync(new { RetentionDays = GetRetentionDays(db), CaptureWindowTitles = GetCaptureWindowTitles(db) }); });

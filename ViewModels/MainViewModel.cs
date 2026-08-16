@@ -141,19 +141,35 @@ namespace FastApp.ViewModels
 
             _dbContext.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
 
-            // --- TEMPORARY MIGRATION SCRIPT (Run Once) ---
-            var logsRequiringMigration = _dbContext.DailyLogs.Where(l => l.TimeSpentTicks == null).ToList();
-            if (logsRequiringMigration.Any())
+            // --- ONE-TIME MIGRATION: backfill the fast INTEGER Ticks columns for rows
+            // that predate them. Gated behind a completed-flag in AppSettings — without
+            // it, this was scanning the entire DailyLogs table on every single startup
+            // forever, not just the one time it actually needed to.
+            bool ticksMigrationDone;
+            using (var checkCmd = _dbContext.Database.GetDbConnection().CreateCommand())
             {
-                System.Diagnostics.Debug.WriteLine($"\n[DATABASE] Migrating {logsRequiringMigration.Count} logs to new integer format...");
-                foreach (var log in logsRequiringMigration)
+                checkCmd.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'TicksMigrationComplete'";
+                _dbContext.Database.OpenConnection();
+                using var checkResult = checkCmd.ExecuteReader();
+                ticksMigrationDone = checkResult.Read() && checkResult.GetString(0) == "true";
+            }
+
+            if (!ticksMigrationDone)
+            {
+                var logsRequiringMigration = _dbContext.DailyLogs.Where(l => l.TimeSpentTicks == null).ToList();
+                if (logsRequiringMigration.Any())
                 {
-                    log.TimeSpentTicks = log.TimeSpent.Ticks;
-                    log.AfkTimeSpentTicks = log.AfkTimeSpent.Ticks;
-                    log.TimeFocusedTicks = log.TimeFocused.Ticks;
+                    System.Diagnostics.Debug.WriteLine($"\n[DATABASE] Migrating {logsRequiringMigration.Count} logs to new integer format...");
+                    foreach (var log in logsRequiringMigration)
+                    {
+                        log.TimeSpentTicks = log.TimeSpent.Ticks;
+                        log.AfkTimeSpentTicks = log.AfkTimeSpent.Ticks;
+                        log.TimeFocusedTicks = log.TimeFocused.Ticks;
+                    }
+                    _dbContext.SaveChanges();
+                    System.Diagnostics.Debug.WriteLine("[DATABASE] Migration complete!\n");
                 }
-                _dbContext.SaveChanges();
-                System.Diagnostics.Debug.WriteLine("[DATABASE] Migration complete!\n");
+                _dbContext.Database.ExecuteSqlRaw("INSERT OR IGNORE INTO AppSettings (Key, Value) VALUES ('TicksMigrationComplete', 'true');");
             }
 
 
@@ -294,7 +310,7 @@ namespace FastApp.ViewModels
 
             foreach (var app in ManagedApps)
             {
-                app.PropertyChanged += (s, e) => _dbContext.SaveChanges();
+                app.PropertyChanged += SaveOnAppPropertyChanged;
             }
 
             ManagedApps.CollectionChanged += (s, e) =>
@@ -302,9 +318,9 @@ namespace FastApp.ViewModels
                 if (e.NewItems != null)
                 {
                     foreach (AppItemModel newItem in e.NewItems)
-                        newItem.PropertyChanged += (sender, args) => _dbContext.SaveChanges();
+                        newItem.PropertyChanged += SaveOnAppPropertyChanged;
                 }
-                _dbContext.SaveChanges();
+                lock (_dbContext) { _dbContext.SaveChanges(); }
             };
 
            
@@ -312,11 +328,16 @@ namespace FastApp.ViewModels
             // 5. FIRE AND FORGET: Background tasks
             _ = Task.Run(() =>
             {
-                RunAutoLaunchAsync();
+                // Despite the name, RunAutoLaunchAsync is synchronous (private void) —
+                // it blocks this thread until every auto-launch app has been checked
+                // and started. Kicking off the other three first means the dashboard
+                // server, tracker, and trigger loop all actually start immediately
+                // instead of waiting on auto-launch to finish first; none of them
+                // depend on it.
                 _ = ProcessTriggersAsync();
                 _ = StartProcessTrackerAsync();
                 _ = Services.DashboardServerService.StartAsync();
-
+                RunAutoLaunchAsync();
 
                 // NEW: reflect actual current registration state in the toggle
                 bool isRegistered = StartupTaskService.IsStartupCorrectlyRegistered();
@@ -360,7 +381,7 @@ namespace FastApp.ViewModels
                 ManagedApps[i].OrderIndex = i;
             }
 
-            _dbContext.SaveChanges();
+            lock (_dbContext) { _dbContext.SaveChanges(); }
             FilteredManagedApps.Refresh();
         }
 
@@ -373,7 +394,24 @@ namespace FastApp.ViewModels
             GetWindowThreadProcessId(hWnd, out uint pid);
             IntPtr hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
 
-            if (hProcess == IntPtr.Zero) return null;
+            if (hProcess == IntPtr.Zero)
+            {
+                // Most commonly: the foreground window belongs to a process running
+                // elevated while FastApp isn't (Task Manager, an installer, "Run as
+                // Administrator", etc.) — OpenProcess can't get a handle to it, so
+                // QueryFullProcessImageName below is off the table. The process's
+                // bare name is still readable without a handle, though (the same
+                // reason Task Manager can show an elevated process's name without
+                // itself being elevated) — without this fallback, focus time in
+                // that window silently stopped being tracked at all, rather than
+                // just losing the full executable path.
+                try
+                {
+                    using var proc = Process.GetProcessById((int)pid);
+                    return proc.ProcessName.ToLower();
+                }
+                catch { return null; }
+            }
 
             try
             {
@@ -498,10 +536,14 @@ namespace FastApp.ViewModels
         {
             try
             {
-                var gamingApps = _dbContext.AppCategories
-                    .Where(c => c.Category == "Gaming")
-                    .Select(c => c.AppName)
-                    .ToList();
+                List<string> gamingApps;
+                lock (_dbContext)
+                {
+                    gamingApps = _dbContext.AppCategories
+                        .Where(c => c.Category == "Gaming")
+                        .Select(c => c.AppName)
+                        .ToList();
+                }
 
                 var newCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -517,6 +559,24 @@ namespace FastApp.ViewModels
                 _gamingProcessNames = newCache;
             }
             catch { }
+        }
+
+        // TimeRunning is updated every ~5s by the tracker for every running app —
+        // saving immediately on every tick (per running app) was dozens of avoidable
+        // DB writes a minute. It's still a normal tracked/persisted property, just
+        // not one that needs its own dedicated save: any change to it rides along on
+        // the tracker's next flush (or whatever save happens next for any other
+        // reason) — same tolerance the rest of the tracker's data already has.
+        //
+        // _dbContext is shared between the UI thread (this handler, and the various
+        // RelayCommands below) and the background tracker loop, which is not safe to
+        // touch concurrently from multiple threads — every access is wrapped in
+        // lock (_dbContext), the same convention already used by
+        // OnExcludeAfkTimeChanged in StatisticsViewModel.
+        private void SaveOnAppPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(AppItemModel.TimeRunning)) return;
+            lock (_dbContext) { _dbContext.SaveChanges(); }
         }
 
 
@@ -669,9 +729,15 @@ namespace FastApp.ViewModels
             var baselineMinutesToday = new Dictionary<string, double>();
             try
             {
-                foreach (var existingLog in _dbContext.DailyLogs.Where(l => l.Date == DateTime.Today))
+                // Runs on this background thread as soon as the tracker starts, which
+                // by now can already overlap with UI-thread activity — same _dbContext
+                // sharing concern as everywhere else, so it's locked too.
+                lock (_dbContext)
                 {
-                    baselineMinutesToday[existingLog.AppName] = existingLog.TimeSpent.TotalMinutes;
+                    foreach (var existingLog in _dbContext.DailyLogs.Where(l => l.Date == DateTime.Today))
+                    {
+                        baselineMinutesToday[existingLog.AppName] = existingLog.TimeSpent.TotalMinutes;
+                    }
                 }
             }
             catch { /* start from empty; the first flush will populate it anyway */ }
@@ -811,72 +877,79 @@ namespace FastApp.ViewModels
                     if (isAfk) afkCache[logName] = afkCache.GetValueOrDefault(logName) + tickDuration;
                 }
 
-                // C. Managed Apps Background Check
-                foreach (var app in ManagedApps)
+                // C & D touch properties on the shared, UI-thread-bound ManagedApps
+                // entities (TimeRunning, HasNotifiedToday, etc.) — _dbContext is not
+                // safe to touch concurrently from multiple threads, so both sections
+                // are locked the same way every other _dbContext access in this app is.
+                lock (_dbContext)
                 {
-                    if (string.IsNullOrEmpty(app.ExecutablePath)) continue;
-                    string exeName = Path.GetFileNameWithoutExtension(app.ExecutablePath).ToLower();
-
-                    if (allProcessNames.Contains(exeName))
+                    // C. Managed Apps Background Check
+                    foreach (var app in ManagedApps)
                     {
-                        app.TimeRunning = app.TimeRunning.Add(tickDuration);
-                        if (!visibleProcessNames.Contains(exeName))
+                        if (string.IsNullOrEmpty(app.ExecutablePath)) continue;
+                        string exeName = Path.GetFileNameWithoutExtension(app.ExecutablePath).ToLower();
+
+                        if (allProcessNames.Contains(exeName))
                         {
-                            timeCache[app.Name] = timeCache.GetValueOrDefault(app.Name) + tickDuration;
-                            if (isAfk) afkCache[app.Name] = afkCache.GetValueOrDefault(app.Name) + tickDuration;
+                            app.TimeRunning = app.TimeRunning.Add(tickDuration);
+                            if (!visibleProcessNames.Contains(exeName))
+                            {
+                                timeCache[app.Name] = timeCache.GetValueOrDefault(app.Name) + tickDuration;
+                                if (isAfk) afkCache[app.Name] = afkCache.GetValueOrDefault(app.Name) + tickDuration;
+                            }
                         }
                     }
-                }
 
-                // D. Daily limit enforcement — every tick (~5s), not gated behind
-                // the 60s flush. That's what makes a relaunch of a blocked app get
-                // killed again almost immediately instead of getting up to a
-                // minute of free runway each time.
-                foreach (var limitedApp in ManagedApps.Where(a => a.DailyLimitMinutes > 0 && !string.IsNullOrEmpty(a.ExecutablePath)))
-                {
-                    double liveMinutesToday = baselineMinutesToday.GetValueOrDefault(limitedApp.Name)
-                        + timeCache.GetValueOrDefault(limitedApp.Name).TotalMinutes;
-
-                    int bonusMinutes = limitedApp.BonusMinutesDate?.Date == DateTime.Today ? limitedApp.TodayBonusMinutes : 0;
-                    int effectiveLimit = limitedApp.DailyLimitMinutes + bonusMinutes;
-                    double remaining = effectiveLimit - liveMinutesToday;
-
-                    if (remaining <= 0)
+                    // D. Daily limit enforcement — every tick (~5s), not gated behind
+                    // the 60s flush. That's what makes a relaunch of a blocked app get
+                    // killed again almost immediately instead of getting up to a
+                    // minute of free runway each time.
+                    foreach (var limitedApp in ManagedApps.Where(a => a.DailyLimitMinutes > 0 && !string.IsNullOrEmpty(a.ExecutablePath)))
                     {
-                        if (!limitedApp.HasNotifiedToday)
-                        {
-                            limitedApp.HasNotifiedToday = true;
-                            try
-                            {
-                                NotificationService.ShowToast(
-                                    "Daily limit reached",
-                                    $"{limitedApp.Name} has hit its {effectiveLimit}-minute daily limit.");
-                            }
-                            catch { /* Toast failures should never take the tracker down */ }
-                        }
+                        double liveMinutesToday = baselineMinutesToday.GetValueOrDefault(limitedApp.Name)
+                            + timeCache.GetValueOrDefault(limitedApp.Name).TotalMinutes;
 
-                        if (limitedApp.StrictFocusMode)
+                        int bonusMinutes = limitedApp.BonusMinutesDate?.Date == DateTime.Today ? limitedApp.TodayBonusMinutes : 0;
+                        int effectiveLimit = limitedApp.DailyLimitMinutes + bonusMinutes;
+                        double remaining = effectiveLimit - liveMinutesToday;
+
+                        if (remaining <= 0)
                         {
-                            string exeName = Path.GetFileNameWithoutExtension(limitedApp.ExecutablePath)?.ToLower();
-                            if (!string.IsNullOrEmpty(exeName))
+                            if (!limitedApp.HasNotifiedToday)
                             {
-                                foreach (var proc in allProcesses.Where(p => p.ProcessName.ToLower() == exeName))
+                                limitedApp.HasNotifiedToday = true;
+                                try
                                 {
-                                    try { proc.Kill(); } catch { /* already exited, access denied, etc. */ }
+                                    NotificationService.ShowToast(
+                                        "Daily limit reached",
+                                        $"{limitedApp.Name} has hit its {effectiveLimit}-minute daily limit.");
+                                }
+                                catch { /* Toast failures should never take the tracker down */ }
+                            }
+
+                            if (limitedApp.StrictFocusMode)
+                            {
+                                string exeName = Path.GetFileNameWithoutExtension(limitedApp.ExecutablePath)?.ToLower();
+                                if (!string.IsNullOrEmpty(exeName))
+                                {
+                                    foreach (var proc in allProcesses.Where(p => p.ProcessName.ToLower() == exeName))
+                                    {
+                                        try { proc.Kill(); } catch { /* already exited, access denied, etc. */ }
+                                    }
                                 }
                             }
                         }
-                    }
-                    else if (remaining <= WarningThresholdMinutes && !limitedApp.HasWarnedToday)
-                    {
-                        limitedApp.HasWarnedToday = true;
-                        try
+                        else if (remaining <= WarningThresholdMinutes && !limitedApp.HasWarnedToday)
                         {
-                            NotificationService.ShowToast(
-                                "Almost at today's limit",
-                                $"{limitedApp.Name} has about {Math.Ceiling(remaining)} minute(s) left today.");
+                            limitedApp.HasWarnedToday = true;
+                            try
+                            {
+                                NotificationService.ShowToast(
+                                    "Almost at today's limit",
+                                    $"{limitedApp.Name} has about {Math.Ceiling(remaining)} minute(s) left today.");
+                            }
+                            catch { /* Toast failures should never take the tracker down */ }
                         }
-                        catch { /* Toast failures should never take the tracker down */ }
                     }
                 }
 
@@ -886,16 +959,32 @@ namespace FastApp.ViewModels
                 {
                     DateTime today = DateTime.Today;
 
-                    if (lastLimitResetDate != today)
+                    // Locked as one unit: FlushDailySummaries/FlushPendingQueues/
+                    // SaveChanges all touch the shared _dbContext, and RefreshStats
+                    // (which internally re-enters this same lock — safe, lock is
+                    // reentrant per-thread) queries it too.
+                    lock (_dbContext)
                     {
-                        foreach (var a in ManagedApps)
+                        if (lastLimitResetDate != today)
                         {
-                            a.HasNotifiedToday = false;
-                            a.HasWarnedToday = false;
-                            if (a.BonusMinutesDate?.Date != today) a.TodayBonusMinutes = 0;
+                            foreach (var a in ManagedApps)
+                            {
+                                a.HasNotifiedToday = false;
+                                a.HasWarnedToday = false;
+                                if (a.BonusMinutesDate?.Date != today) a.TodayBonusMinutes = 0;
+                            }
+                            baselineMinutesToday.Clear();
+                            lastLimitResetDate = today;
                         }
-                        baselineMinutesToday.Clear();
-                        lastLimitResetDate = today;
+
+                        // 1. Flush Daily Summaries
+                        FlushDailySummaries(today);
+
+                        // 2 & 3. Flush Shadow Sessions & Macros
+                        FlushPendingQueues();
+
+                        _dbContext.SaveChanges();
+                        StatisticsVM?.RefreshStats();
                     }
 
                     // Re-read the window-title opt-in each flush. A short-lived,
@@ -928,15 +1017,6 @@ namespace FastApp.ViewModels
                         IsPinConfigured = false;
                     }
 
-                    // 1. Flush Daily Summaries
-                    FlushDailySummaries(today);
-
-                    // 2 & 3. Flush Shadow Sessions & Macros
-                    FlushPendingQueues();
-
-                    _dbContext.SaveChanges();
-                    StatisticsVM?.RefreshStats();
-
                     timeCache.Clear();
                     afkCache.Clear();
                     focusCache.Clear();
@@ -968,9 +1048,12 @@ namespace FastApp.ViewModels
                         });
                     }
 
-                    FlushDailySummaries(DateTime.Today);
-                    FlushPendingQueues();
-                    _dbContext.SaveChanges();
+                    lock (_dbContext)
+                    {
+                        FlushDailySummaries(DateTime.Today);
+                        FlushPendingQueues();
+                        _dbContext.SaveChanges();
+                    }
                 }
                 catch { /* best-effort — the app is exiting either way */ }
 
@@ -1004,7 +1087,7 @@ namespace FastApp.ViewModels
 
         public void SaveDatabase()
         {
-            _dbContext.SaveChanges();
+            lock (_dbContext) { _dbContext.SaveChanges(); }
         }
 
         [RelayCommand]
@@ -1058,10 +1141,15 @@ namespace FastApp.ViewModels
                     LaunchOnStartup = false
                 };
 
-                _dbContext.ManagedApps.Add(newApp);
-                _dbContext.SaveChanges();
+                lock (_dbContext)
+                {
+                    _dbContext.ManagedApps.Add(newApp);
+                    _dbContext.SaveChanges();
+                }
 
-                newApp.PropertyChanged += (s, e) => _dbContext.SaveChanges();
+                // ManagedApps.Add below fires the constructor's CollectionChanged
+                // handler, which wires SaveOnAppPropertyChanged for us — no need to
+                // do it again here.
                 ManagedApps.Add(newApp);
             }
         }
@@ -1077,10 +1165,14 @@ namespace FastApp.ViewModels
                 LaunchOnStartup = false
             };
 
-            _dbContext.ManagedApps.Add(newAction);
-            _dbContext.SaveChanges();
+            lock (_dbContext)
+            {
+                _dbContext.ManagedApps.Add(newAction);
+                _dbContext.SaveChanges();
+            }
 
-            newAction.PropertyChanged += (s, e) => _dbContext.SaveChanges();
+            // Same as AddCustomFile — ManagedApps.Add below wires the auto-save
+            // handler via the constructor's CollectionChanged subscription.
             ManagedApps.Add(newAction);
         }
 
@@ -1089,8 +1181,11 @@ namespace FastApp.ViewModels
         {
             if (appToSave == null) return;
 
-            _dbContext.ManagedApps.Add(appToSave);
-            _dbContext.SaveChanges();
+            lock (_dbContext)
+            {
+                _dbContext.ManagedApps.Add(appToSave);
+                _dbContext.SaveChanges();
+            }
 
             ManagedApps.Add(appToSave);
             DetectedApps.Remove(appToSave);
@@ -1101,8 +1196,11 @@ namespace FastApp.ViewModels
         {
             if (appToRemove == null) return;
 
-            _dbContext.ManagedApps.Remove(appToRemove);
-            _dbContext.SaveChanges();
+            lock (_dbContext)
+            {
+                _dbContext.ManagedApps.Remove(appToRemove);
+                _dbContext.SaveChanges();
+            }
 
             ManagedApps.Remove(appToRemove);
         }

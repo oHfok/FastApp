@@ -50,6 +50,15 @@ namespace FastApp.Services
             // 3. Index Macro logs by Timestamp
             modelBuilder.Entity<MacroEventLog>()
                 .HasIndex(m => m.Timestamp);
+
+            // 4. DailyLogs had no index at all — unlike SessionLogs/MacroEventLogs,
+            // it's never pruned by retention, so it's the one table whose size (and
+            // therefore full-table-scan cost) grows for the lifetime of the install.
+            // It's queried by AppName (usually equality, e.g. "SYSTEM_PC") far more
+            // than by Date alone, so AppName leads — same ordering reasoning as the
+            // SessionLog composite index above.
+            modelBuilder.Entity<DailyUsageLog>()
+                .HasIndex(l => new { l.AppName, l.Date });
         }
 
         // Tell Entity Framework to use SQLite and point it to our file
