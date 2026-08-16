@@ -137,31 +137,38 @@ namespace FastApp.ViewModels
             {
                 System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
                 {
-                    // 1. Force the Statistics Database to update its internal category mapping
-                    // FIX: Use .ToLower() for database queries instead of StringComparison!
-                    var dbCat = _dbContext.AppCategories.FirstOrDefault(c => c.AppName.ToLower() == message.AppName.ToLower());
+                    // Runs on the UI thread (BeginInvoke callback), so locking here
+                    // can't deadlock against RefreshStats/UpdateGamingProcessCache's
+                    // own reentrant locks below — see RefreshStats for why this
+                    // matters at all.
+                    lock (_dbContext)
+                    {
+                        // 1. Force the Statistics Database to update its internal category mapping
+                        // FIX: Use .ToLower() for database queries instead of StringComparison!
+                        var dbCat = _dbContext.AppCategories.FirstOrDefault(c => c.AppName.ToLower() == message.AppName.ToLower());
 
-                    if (dbCat != null)
-                    {
-                        dbCat.Category = message.NewCategory;
-                    }
-                    else
-                    {
-                        _dbContext.AppCategories.Add(new AppCategoryMapping { AppName = message.AppName, Category = message.NewCategory });
-                    }
-                    _dbContext.SaveChanges(); // Save it so the UI redraws correctly!
+                        if (dbCat != null)
+                        {
+                            dbCat.Category = message.NewCategory;
+                        }
+                        else
+                        {
+                            _dbContext.AppCategories.Add(new AppCategoryMapping { AppName = message.AppName, Category = message.NewCategory });
+                        }
+                        _dbContext.SaveChanges(); // Save it so the UI redraws correctly!
 
-                    // 2. If the details panel is open for this exact app, update the ComboBox visually
-                    if (!string.IsNullOrEmpty(DetailAppName) && DetailAppName.Equals(message.AppName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Setting this automatically triggers the UI redraw and updates the charts
-                        DetailCategory = message.NewCategory;
-                    }
-                    else
-                    {
-                        // 3. If the details panel is NOT open, we still need to refresh the Top Apps list manually
-                        RefreshStats();
-                        _mainVM.UpdateGamingProcessCache();
+                        // 2. If the details panel is open for this exact app, update the ComboBox visually
+                        if (!string.IsNullOrEmpty(DetailAppName) && DetailAppName.Equals(message.AppName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Setting this automatically triggers the UI redraw and updates the charts
+                            DetailCategory = message.NewCategory;
+                        }
+                        else
+                        {
+                            // 3. If the details panel is NOT open, we still need to refresh the Top Apps list manually
+                            RefreshStats();
+                            _mainVM.UpdateGamingProcessCache();
+                        }
                     }
                 });
             });
@@ -173,20 +180,26 @@ namespace FastApp.ViewModels
         {
             if (string.IsNullOrEmpty(DetailAppName) || string.IsNullOrEmpty(value)) return;
 
-            // Save the clean category independently for this specific app in the Stats Database
-            var dbCat = _dbContext.AppCategories.FirstOrDefault(c => c.AppName == DetailAppName);
-            if (dbCat != null)
+            // This is a UI-thread property-changed callback, so locking here can't
+            // deadlock against RefreshStats/UpdateGamingProcessCache's own reentrant
+            // locks below.
+            lock (_dbContext)
             {
-                dbCat.Category = value;
-            }
-            else
-            {
-                _dbContext.AppCategories.Add(new AppCategoryMapping { AppName = DetailAppName, Category = value });
-            }
+                // Save the clean category independently for this specific app in the Stats Database
+                var dbCat = _dbContext.AppCategories.FirstOrDefault(c => c.AppName == DetailAppName);
+                if (dbCat != null)
+                {
+                    dbCat.Category = value;
+                }
+                else
+                {
+                    _dbContext.AppCategories.Add(new AppCategoryMapping { AppName = DetailAppName, Category = value });
+                }
 
-            _dbContext.SaveChanges();
-            RefreshStats();
-            _mainVM.UpdateGamingProcessCache();
+                _dbContext.SaveChanges();
+                RefreshStats();
+                _mainVM.UpdateGamingProcessCache();
+            }
         }
 
         partial void OnStatsSearchTextChanged(string value)
@@ -202,6 +215,15 @@ namespace FastApp.ViewModels
             }
             _hasLoadedOnce = true;
 
+            // _dbContext is shared with MainViewModel's background tracker loop,
+            // which is not safe to touch concurrently from multiple threads — this
+            // wraps the whole method (including the Dispatcher.Invoke blocks below,
+            // which still run on this same locked call) so every caller, on any
+            // thread, is automatically protected without having to remember to lock
+            // at each call site. Safe to call while already holding this lock
+            // (e.g. from OnExcludeAfkTimeChanged below) — lock is reentrant per-thread.
+            lock (_dbContext)
+            {
             DateTime today = DateTime.Today;
             int diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
             DateTime startOfWeek = today.AddDays(-diff);
@@ -364,6 +386,7 @@ namespace FastApp.ViewModels
                     HeatmapDays.Add(new HeatmapDay { ColorHex = color, Tooltip = $"{hours:F1} hours on {d.ToString("MMM dd")}" });
                 }
             });
+            }
         }
 
         // NEW: Command to securely launch default browser to local Web Dashboard
@@ -392,10 +415,15 @@ namespace FastApp.ViewModels
             DateTime startOfMonth = new DateTime(today.Year, today.Month, 1);
             WrappedMonthName = today.ToString("MMMM").ToUpper() + " WRAPPED";
 
-            var hiddenAppNames = _dbContext.HiddenApps.Select(h => h.AppName).ToHashSet();
-            var categoryMap = _dbContext.AppCategories.ToDictionary(c => c.AppName, c => c.Category);
-
-            var monthLogs = _dbContext.DailyLogs.Where(l => l.Date >= startOfMonth).ToList();
+            HashSet<string> hiddenAppNames;
+            Dictionary<string, string> categoryMap;
+            List<DailyUsageLog> monthLogs;
+            lock (_dbContext)
+            {
+                hiddenAppNames = _dbContext.HiddenApps.Select(h => h.AppName).ToHashSet();
+                categoryMap = _dbContext.AppCategories.ToDictionary(c => c.AppName, c => c.Category);
+                monthLogs = _dbContext.DailyLogs.Where(l => l.Date >= startOfMonth).ToList();
+            }
 
             // 1. Total PC Time
             long pcTicks = monthLogs.Where(l => l.AppName == "SYSTEM_PC").Sum(l => GetTicks(new[] { l }));
@@ -448,7 +476,8 @@ namespace FastApp.ViewModels
             // Set current category from the app definition
             var managedApp = _mainVM.ManagedApps.FirstOrDefault(a => a.Name == app.AppName);
             // Set current category from the dedicated Stats Database (Defaults to "Other")
-            var dbCategory = _dbContext.AppCategories.FirstOrDefault(c => c.AppName == app.AppName);
+            AppCategoryMapping dbCategory;
+            lock (_dbContext) { dbCategory = _dbContext.AppCategories.FirstOrDefault(c => c.AppName == app.AppName); }
             DetailCategory = dbCategory != null ? dbCategory.Category : "Other";
 
             DateTime today = DateTime.Today;
@@ -459,7 +488,8 @@ namespace FastApp.ViewModels
             DateTime startOfYear = new DateTime(today.Year, 1, 1);
             DateTime thirtyDaysAgo = today.AddDays(-30);
 
-            var appLogs = _dbContext.DailyLogs.Where(l => l.AppName == app.AppName).ToList();
+            List<DailyUsageLog> appLogs;
+            lock (_dbContext) { appLogs = _dbContext.DailyLogs.Where(l => l.AppName == app.AppName).ToList(); }
 
             // 1. Zwykły Czas (Total)
             DetailTimeToday = FormatTime(appLogs.Where(l => l.Date == today).Sum(l => l.TimeSpent.Ticks));
@@ -478,7 +508,8 @@ namespace FastApp.ViewModels
             DetailActiveTimeAllTime = FormatTime(appLogs.Sum(l => Math.Max(0, (l.TimeSpent - l.AfkTimeSpent).Ticks)));
 
             // 3. Procent życia komputera
-            long totalPcTicks = _dbContext.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").AsEnumerable().Sum(l => l.TimeSpent.Ticks);
+            long totalPcTicks;
+            lock (_dbContext) { totalPcTicks = _dbContext.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").AsEnumerable().Sum(l => l.TimeSpent.Ticks); }
             double pct = totalPcTicks > 0 ? ((double)allTimeTicks / totalPcTicks) * 100 : 0;
             DetailPercentageOfPc = $"{pct:F1}% of Total PC Time";
 
@@ -562,10 +593,13 @@ namespace FastApp.ViewModels
         [RelayCommand]
         private void HideApp()
         {
-            if (!_dbContext.HiddenApps.Any(h => h.AppName == DetailAppName))
+            lock (_dbContext)
             {
-                _dbContext.HiddenApps.Add(new HiddenApp { AppName = DetailAppName });
-                _dbContext.SaveChanges();
+                if (!_dbContext.HiddenApps.Any(h => h.AppName == DetailAppName))
+                {
+                    _dbContext.HiddenApps.Add(new HiddenApp { AppName = DetailAppName });
+                    _dbContext.SaveChanges();
+                }
             }
             CloseDetails();
             RefreshStats();
@@ -574,13 +608,18 @@ namespace FastApp.ViewModels
         [RelayCommand]
         private void UnhideApp(string appName)
         {
-            var appToUnhide = _dbContext.HiddenApps.FirstOrDefault(h => h.AppName == appName);
-            if (appToUnhide != null)
+            bool removed;
+            lock (_dbContext)
             {
-                _dbContext.HiddenApps.Remove(appToUnhide);
-                _dbContext.SaveChanges();
-                RefreshStats();
+                var appToUnhide = _dbContext.HiddenApps.FirstOrDefault(h => h.AppName == appName);
+                removed = appToUnhide != null;
+                if (removed)
+                {
+                    _dbContext.HiddenApps.Remove(appToUnhide);
+                    _dbContext.SaveChanges();
+                }
             }
+            if (removed) RefreshStats();
         }
 
         [RelayCommand]
