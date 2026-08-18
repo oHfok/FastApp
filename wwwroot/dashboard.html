@@ -251,7 +251,7 @@
                 <div class="view-head">
                     <div>
                         <div class="view-title">Leaderboard</div>
-                        <div class="view-sub">Ranked by focus time. Arrows show movement since yesterday.</div>
+                        <div class="view-sub" id="lb-view-sub">Ranked by focus time. Arrows show movement since yesterday.</div>
                     </div>
                 </div>
                 <div class="lb-toolbar">
@@ -261,6 +261,10 @@
                         <button onclick="setLbTimeframe('month', this)">Month</button>
                         <button onclick="setLbTimeframe('year', this)">Year</button>
                         <button class="active" onclick="setLbTimeframe('all', this)">All Time</button>
+                    </div>
+                    <div class="segmented" id="lb-rankby" data-value="focus">
+                        <button class="active" onclick="setLbRankBy('focus', this)">Focus Time</button>
+                        <button onclick="setLbRankBy('uptime', this)">Uptime</button>
                     </div>
                     <input type="text" id="lb-search" class="field" placeholder="Search apps…" style="width:220px;" onkeyup="handleLbSearch()">
                 </div>
@@ -389,7 +393,7 @@
 
 <!-- ============ APP DETAIL DRAWER ============ -->
 <div class="drawer-overlay" id="dd-overlay"></div>
-<div class="drawer" id="dd-drawer">
+<div class="drawer drawer-wide" id="dd-drawer">
     <button class="drawer-close" id="dd-close">✕</button>
 
     <div class="dd-head">
@@ -400,74 +404,131 @@
         </div>
     </div>
 
-    <div class="dd-section">
-        <div class="dd-section-label">Category</div>
-        <div class="dd-cat-row">
-            <select class="field" id="dd-category-select" style="flex:1;"></select>
-        </div>
+    <div class="segmented" id="dd-tab-toggle" style="margin-bottom:20px;">
+        <button class="active" data-tab="overview" onclick="setDrilldownTab('overview', this)">Overview</button>
+        <button data-tab="limits" onclick="setDrilldownTab('limits', this)">Limits</button>
     </div>
 
-    <div class="dd-section">
-        <div class="dd-section-label">Most Used Day</div>
-        <div style="font-family:var(--font-mono);font-size:14px;font-weight:600;" id="dd-max-day">—</div>
-    </div>
-
-    <div class="dd-section">
-        <div class="dd-section-label">Last 30 Days</div>
-        <div style="font-size:14px;font-weight:600;" id="dd-consistency">—</div>
-        <div style="font-size:12px;color:var(--text-faint);margin-top:6px;" id="dd-pattern"></div>
-    </div>
-
-    <div class="dd-section">
-        <div class="dd-section-label">Lifetime Totals</div>
-        <div class="dd-stat-grid">
-            <div class="card dd-stat">
-                <div class="card-label">Focus</div>
-                <div class="dd-stat-value" style="color:var(--brass)" id="dd-focus-all">0h 0m</div>
-            </div>
-            <div class="card dd-stat">
-                <div class="card-label">Running</div>
-                <div class="dd-stat-value" id="dd-running-all">0h 0m</div>
+    <div id="dd-tab-panel-overview">
+        <div class="dd-section">
+            <div class="dd-section-label">Category</div>
+            <div class="dd-cat-row">
+                <select class="field" id="dd-category-select" style="flex:1;"></select>
             </div>
         </div>
-    </div>
 
-    <div class="dd-section">
-        <div class="dd-section-label">Daily Limit</div>
-        <div class="dd-limit-bar-wrap" id="dd-limit-bar-wrap" style="display:none;">
-            <div class="dd-limit-bar"><div class="dd-limit-bar-fill" id="dd-limit-bar-fill"></div></div>
-            <div class="dd-limit-bar-caption" id="dd-limit-bar-caption">—</div>
-        </div>
-        <div class="dd-limit-row">
-            <input type="text" class="field" id="dd-limit-input" placeholder="0 = No limit" style="width:110px;" inputmode="numeric">
-            <span style="font-size:12px;color:var(--text-faint);">minutes / day</span>
-        </div>
-        <label class="dd-toggle-label">
-            <input type="checkbox" id="dd-strict-toggle">
-            <span>Force close the app when the limit is reached</span>
-        </label>
-        <div class="dd-limit-row" id="dd-limit-pin-row" style="display:none;margin-top:12px;margin-bottom:0;">
-            <input type="password" class="field" id="dd-limit-pin" placeholder="PIN required to change this" style="flex:1;" inputmode="numeric">
-        </div>
-        <button class="btn btn-brass" id="dd-limit-save-btn" style="margin-top:12px;width:100%;">Save Limit</button>
-        <div class="retention-status" id="dd-limit-status">Saved.</div>
-
-        <div id="dd-extend-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--panel-border-soft);">
-            <div id="dd-extend-controls">
-                <div style="font-size:12px;color:var(--text-faint);margin-bottom:10px;">Need more time today?</div>
-                <div class="dd-limit-row">
-                    <select class="field" id="dd-extend-minutes" style="width:100px;">
-                        <option value="10">+10 min</option>
-                        <option value="15" selected>+15 min</option>
-                        <option value="30">+30 min</option>
-                        <option value="60">+60 min</option>
-                    </select>
-                    <input type="password" class="field" id="dd-extend-pin" placeholder="PIN" style="width:90px;" inputmode="numeric">
-                    <button class="btn btn-ghost" id="dd-extend-btn" style="flex-shrink:0;">Extend</button>
+        <div class="dd-section">
+            <div class="dd-section-label">Streaks</div>
+            <div class="dd-stat-grid">
+                <div class="card dd-stat">
+                    <div class="card-label">Longest Streak</div>
+                    <div class="dd-stat-value" id="dd-longest-streak">—</div>
+                    <div class="dd-stat-sub" id="dd-longest-streak-range"></div>
                 </div>
-                <div class="retention-status" id="dd-extend-status">Extended.</div>
+                <div class="card dd-stat" id="dd-current-streak-tile">
+                    <div class="card-label">Current Streak</div>
+                    <div class="dd-stat-value" style="color:var(--brass)" id="dd-current-streak">—</div>
+                    <div class="dd-stat-sub" id="dd-current-streak-start"></div>
+                </div>
             </div>
-            <div id="dd-extend-no-pin" class="view-sub" style="display:none;margin-top:0;">Set a Parental PIN in Settings to enable time extensions.</div>
+        </div>
+
+        <div class="dd-section">
+            <div class="dd-section-label">Most Used Day</div>
+            <div style="font-family:var(--font-mono);font-size:14px;font-weight:600;" id="dd-max-day">—</div>
+        </div>
+
+        <div class="dd-section">
+            <div class="dd-section-label">Last 30 Days</div>
+            <div style="font-size:14px;font-weight:600;" id="dd-consistency">—</div>
+            <div style="font-size:12px;color:var(--text-faint);margin-top:6px;" id="dd-pattern"></div>
+        </div>
+
+        <div class="dd-section">
+            <div class="dd-section-label">Period Comparison</div>
+            <div class="dd-compare-list" id="dd-period-compare"></div>
+        </div>
+
+        <div class="dd-section">
+            <div class="dd-section-label">Usage Trend</div>
+            <div class="segmented" id="dd-trend-toggle" style="margin-bottom:14px;">
+                <button class="active" data-granularity="day" onclick="setTrendGranularity('day', this)">Last 12 Days</button>
+                <button data-granularity="week" onclick="setTrendGranularity('week', this)">Last 12 Weeks</button>
+                <button data-granularity="month" onclick="setTrendGranularity('month', this)">Last 12 Months</button>
+            </div>
+            <div class="dd-trend-chart-wrap">
+                <canvas id="dd-trend-canvas"></canvas>
+            </div>
+            <div class="dd-trend-numbers" id="dd-trend-numbers"></div>
+        </div>
+
+        <div class="dd-section">
+            <div class="dd-section-label">Lifetime Totals</div>
+            <div class="dd-stat-grid">
+                <div class="card dd-stat">
+                    <div class="card-label">Focus</div>
+                    <div class="dd-stat-value" style="color:var(--brass)" id="dd-focus-all">0h 0m</div>
+                </div>
+                <div class="card dd-stat">
+                    <div class="card-label">Running</div>
+                    <div class="dd-stat-value" id="dd-running-all">0h 0m</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dd-section">
+            <div class="dd-section-label">First &amp; Last Opened</div>
+            <div class="dd-stat-grid">
+                <div class="card dd-stat">
+                    <div class="card-label">First Opened</div>
+                    <div class="dd-stat-value dd-stat-value-date" id="dd-first-seen">—</div>
+                </div>
+                <div class="card dd-stat">
+                    <div class="card-label">Last Opened</div>
+                    <div class="dd-stat-value dd-stat-value-date" id="dd-last-seen">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dd-tab-panel-limits" style="display:none;">
+        <div class="dd-section">
+            <div class="dd-section-label">Daily Limit</div>
+            <div class="dd-limit-bar-wrap" id="dd-limit-bar-wrap" style="display:none;">
+                <div class="dd-limit-bar"><div class="dd-limit-bar-fill" id="dd-limit-bar-fill"></div></div>
+                <div class="dd-limit-bar-caption" id="dd-limit-bar-caption">—</div>
+            </div>
+            <div class="dd-limit-row">
+                <input type="text" class="field" id="dd-limit-input" placeholder="0 = No limit" style="width:110px;" inputmode="numeric">
+                <span style="font-size:12px;color:var(--text-faint);">minutes / day</span>
+            </div>
+            <label class="dd-toggle-label">
+                <input type="checkbox" id="dd-strict-toggle">
+                <span>Force close the app when the limit is reached</span>
+            </label>
+            <div class="dd-limit-row" id="dd-limit-pin-row" style="display:none;margin-top:12px;margin-bottom:0;">
+                <input type="password" class="field" id="dd-limit-pin" placeholder="PIN required to change this" style="flex:1;" inputmode="numeric">
+            </div>
+            <button class="btn btn-brass" id="dd-limit-save-btn" style="margin-top:12px;width:100%;">Save Limit</button>
+            <div class="retention-status" id="dd-limit-status">Saved.</div>
+
+            <div id="dd-extend-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--panel-border-soft);">
+                <div id="dd-extend-controls">
+                    <div style="font-size:12px;color:var(--text-faint);margin-bottom:10px;">Need more time today?</div>
+                    <div class="dd-limit-row">
+                        <select class="field" id="dd-extend-minutes" style="width:100px;">
+                            <option value="10">+10 min</option>
+                            <option value="15" selected>+15 min</option>
+                            <option value="30">+30 min</option>
+                            <option value="60">+60 min</option>
+                        </select>
+                        <input type="password" class="field" id="dd-extend-pin" placeholder="PIN" style="width:90px;" inputmode="numeric">
+                        <button class="btn btn-ghost" id="dd-extend-btn" style="flex-shrink:0;">Extend</button>
+                    </div>
+                    <div class="retention-status" id="dd-extend-status">Extended.</div>
+                </div>
+                <div id="dd-extend-no-pin" class="view-sub" style="display:none;margin-top:0;">Set a Parental PIN in Settings to enable time extensions.</div>
+            </div>
         </div>
     </div>
 
