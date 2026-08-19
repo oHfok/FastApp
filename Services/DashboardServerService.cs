@@ -1028,6 +1028,9 @@ namespace FastApp.Services
                     var labels = new List<string>();
                     var values = new List<double>();
 
+                    // Label formats match the Periods tab exactly (day: "d MMMM yyyy",
+                    // week: "Week N", month: "MMMM yyyy") so a bucket here can be found
+                    // by the same name over in Periods instead of needing translation.
                     if (gran == "day")
                     {
                         DateTime start = today.AddDays(-11);
@@ -1036,7 +1039,7 @@ namespace FastApp.Services
                         for (int i = 0; i < 12; i++)
                         {
                             DateTime d = start.AddDays(i);
-                            labels.Add(d.ToString("MMM d"));
+                            labels.Add(d.ToString("d MMMM yyyy"));
                             values.Add(Math.Round(byDate.GetValueOrDefault(d), 1));
                         }
                     }
@@ -1049,7 +1052,7 @@ namespace FastApp.Services
                         {
                             DateTime weekStart = rangeStart.AddDays(i * 7);
                             DateTime weekEnd = weekStart.AddDays(7);
-                            labels.Add(weekStart.ToString("MMM d"));
+                            labels.Add($"Week {System.Globalization.ISOWeek.GetWeekOfYear(weekStart)}");
                             values.Add(Math.Round(logs.Where(l => l.Date >= weekStart && l.Date < weekEnd).Sum(l => l.TimeFocused.TotalMinutes), 1));
                         }
                     }
@@ -1062,7 +1065,7 @@ namespace FastApp.Services
                         {
                             DateTime monthStart = rangeStart.AddMonths(i);
                             DateTime monthEnd = monthStart.AddMonths(1);
-                            labels.Add(monthStart.ToString("MMM yy"));
+                            labels.Add(monthStart.ToString("MMMM yyyy"));
                             values.Add(Math.Round(logs.Where(l => l.Date >= monthStart && l.Date < monthEnd).Sum(l => l.TimeFocused.TotalMinutes), 1));
                         }
                     }

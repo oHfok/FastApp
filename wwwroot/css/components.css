@@ -758,7 +758,11 @@
 }
 .dd-trend-cell {
     flex: 1;
-    min-width: 40px;
+    /* Wide enough for the longest label these buckets ever produce -- a full
+       Periods-matching day date like "19 August 2026". Rows that overflow
+       the drawer at this width fall back to .dd-trend-numbers' existing
+       horizontal scroll rather than clipping text. */
+    min-width: 82px;
     text-align: center;
     padding: 6px 2px;
     background: var(--bg-raised);
