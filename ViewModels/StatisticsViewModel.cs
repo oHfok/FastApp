@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FastApp.Services;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -240,7 +241,12 @@ namespace FastApp.ViewModels
             // ==========================================
             // PC UPTIME — ONE QUERY INSTEAD OF SEVEN
             // ==========================================
-            var pcRows = _dbContext.DailyLogs
+            // AsNoTracking on every DailyLogs read below: these are pure read-only
+            // aggregations (nothing found here is ever mutated and saved back), and
+            // this method runs every ~60s off the tracker flush — without it, every
+            // row ever returned stays cached in _dbContext's change tracker for the
+            // life of the process, growing without bound the longer FastApp stays open.
+            var pcRows = _dbContext.DailyLogs.AsNoTracking()
                 .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= startOfYear)
                 .Select(l => new { l.Date, l.TimeSpentTicks, l.AfkTimeSpentTicks })
                 .ToList();
@@ -275,7 +281,7 @@ namespace FastApp.ViewModels
 
             // SQLite groups by AppName and sums both tick columns; only per-app
             // aggregates (today's apps — a few dozen rows at most) come back.
-            var rawDietTotals = _dbContext.DailyLogs
+            var rawDietTotals = _dbContext.DailyLogs.AsNoTracking()
                 .Where(l => l.Date == today && l.AppName != "SYSTEM_PC" && !hiddenAppNames.Contains(l.AppName))
                 .GroupBy(l => l.AppName)
                 .Select(g => new {
@@ -314,7 +320,7 @@ namespace FastApp.ViewModels
             // ==========================================
             var yesterday = today.AddDays(-1);
 
-            var yesterdayRawTotals = _dbContext.DailyLogs
+            var yesterdayRawTotals = _dbContext.DailyLogs.AsNoTracking()
                 .Where(l => l.AppName != "SYSTEM_PC" && !hiddenAppNames.Contains(l.AppName) && l.Date <= yesterday)
                 .GroupBy(l => l.AppName)
                 .Select(g => new {
@@ -331,7 +337,7 @@ namespace FastApp.ViewModels
                 .ToDictionary(x => x.AppName, x => x.Rank);
 
             // One row per distinct app, ever — not one row per day per app
-            var rawAppTotals = _dbContext.DailyLogs
+            var rawAppTotals = _dbContext.DailyLogs.AsNoTracking()
                .Where(l => l.AppName != "SYSTEM_PC" && !hiddenAppNames.Contains(l.AppName))
                .GroupBy(l => l.AppName)
                .Select(g => new {
@@ -373,7 +379,7 @@ namespace FastApp.ViewModels
                 // Heatmap still needs per-day PC totals, so this stays a targeted 30-row query
                 HeatmapDays.Clear();
                 DateTime heatmapStart = today.AddDays(-29);
-                var pcDailyTotals = _dbContext.DailyLogs
+                var pcDailyTotals = _dbContext.DailyLogs.AsNoTracking()
                     .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= heatmapStart)
                     .Select(l => new { l.Date, Ticks = l.TimeSpentTicks ?? 0 })
                     .ToDictionary(x => x.Date, x => x.Ticks);
@@ -422,7 +428,7 @@ namespace FastApp.ViewModels
             {
                 hiddenAppNames = _dbContext.HiddenApps.Select(h => h.AppName).ToHashSet();
                 categoryMap = _dbContext.AppCategories.ToDictionary(c => c.AppName, c => c.Category);
-                monthLogs = _dbContext.DailyLogs.Where(l => l.Date >= startOfMonth).ToList();
+                monthLogs = _dbContext.DailyLogs.AsNoTracking().Where(l => l.Date >= startOfMonth).ToList();
             }
 
             // 1. Total PC Time
@@ -489,7 +495,7 @@ namespace FastApp.ViewModels
             DateTime thirtyDaysAgo = today.AddDays(-30);
 
             List<DailyUsageLog> appLogs;
-            lock (_dbContext) { appLogs = _dbContext.DailyLogs.Where(l => l.AppName == app.AppName).ToList(); }
+            lock (_dbContext) { appLogs = _dbContext.DailyLogs.AsNoTracking().Where(l => l.AppName == app.AppName).ToList(); }
 
             // 1. Zwykły Czas (Total)
             DetailTimeToday = FormatTime(appLogs.Where(l => l.Date == today).Sum(l => l.TimeSpent.Ticks));
@@ -509,7 +515,7 @@ namespace FastApp.ViewModels
 
             // 3. Procent życia komputera
             long totalPcTicks;
-            lock (_dbContext) { totalPcTicks = _dbContext.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").AsEnumerable().Sum(l => l.TimeSpent.Ticks); }
+            lock (_dbContext) { totalPcTicks = _dbContext.DailyLogs.AsNoTracking().Where(l => l.AppName == "SYSTEM_PC").AsEnumerable().Sum(l => l.TimeSpent.Ticks); }
             double pct = totalPcTicks > 0 ? ((double)allTimeTicks / totalPcTicks) * 100 : 0;
             DetailPercentageOfPc = $"{pct:F1}% of Total PC Time";
 

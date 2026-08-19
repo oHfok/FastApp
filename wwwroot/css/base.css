@@ -171,6 +171,9 @@ h1, h2, h3, .num-display {
 
 .tb-metric.focus .tb-metric-value { color: var(--brass); }
 .tb-metric.alltime .tb-metric-value { color: var(--text-dim); }
+.tb-metric.mostused .tb-metric-value { color: var(--teal); }
+.tb-metric.mostused { cursor: pointer; }
+.tb-metric.mostused:hover .tb-metric-value { text-decoration: underline; }
 
 .tb-spacer { flex: 1; }
 

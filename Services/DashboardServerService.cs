@@ -1089,7 +1089,11 @@ namespace FastApp.Services
                     var hiddenApps = GetHiddenApps(db);
                     string periodKind = (type ?? "week").ToLowerInvariant();
 
-                    var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").ToListAsync();
+                    // Same 730-day floor as /api/overview — without it this pulls every
+                    // SYSTEM_PC row since install on every open of (and every ~12s poll
+                    // on) the Periods tab, growing forever with no ceiling.
+                    DateTime historyFloor = DateTime.Today.AddDays(-730);
+                    var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC" && l.Date >= historyFloor).ToListAsync();
                     if (systemLogs.Count == 0)
                     {
                         await context.Response.WriteAsJsonAsync(Array.Empty<object>());
@@ -1097,7 +1101,7 @@ namespace FastApp.Services
                     }
 
                     var appLogs = await db.DailyLogs
-                        .Where(l => l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName))
+                        .Where(l => l.AppName != "SYSTEM_PC" && l.Date >= historyFloor && !hiddenApps.Contains(l.AppName))
                         .ToListAsync();
 
                     // Bucket key -> (start, end) of that day/week/month/year
@@ -1231,9 +1235,13 @@ namespace FastApp.Services
 
                     DateTime todayStart = NormalizeStart(DateTime.Today);
 
-                    var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC").ToListAsync();
+                    // Same 730-day floor as /api/periods (whose list is now bounded the
+                    // same way, so ranking within this same window stays consistent with
+                    // what that list actually shows) and /api/overview.
+                    DateTime historyFloor = DateTime.Today.AddDays(-730);
+                    var systemLogs = await db.DailyLogs.Where(l => l.AppName == "SYSTEM_PC" && l.Date >= historyFloor).ToListAsync();
                     var appLogs = await db.DailyLogs
-                        .Where(l => l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName))
+                        .Where(l => l.AppName != "SYSTEM_PC" && l.Date >= historyFloor && !hiddenApps.Contains(l.AppName))
                         .ToListAsync();
 
                     object BuildSummary(DateTime periodStart, string label)

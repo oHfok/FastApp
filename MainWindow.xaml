@@ -14,6 +14,7 @@
         <local:DietWidthConverter x:Key="DietWidthConverter"/>
         <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <local:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
     </Window.Resources>
 
     <Grid>
@@ -235,8 +236,26 @@
                     </Grid>
 
                     <!-- App List -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <ListBox ItemsSource="{Binding FilteredManagedApps}" 
+                    <Grid Grid.Row="1">
+                        <!-- First-run onboarding: nothing configured yet, so the list
+                             below would otherwise just render as a blank panel with no
+                             indication of what to do next. Only the count matters here
+                             (ManagedApps, not the search-filtered view) — a search that
+                             matches nothing has its own "no results" empty state inside
+                             the ItemsControl below, and shouldn't also show this one. -->
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="380"
+                                    Visibility="{Binding ManagedApps.Count, Converter={StaticResource CountToVisibilityConverter}}">
+                            <ui:SymbolIcon Symbol="AppsList24" FontSize="42" Foreground="#555555" HorizontalAlignment="Center"/>
+                            <TextBlock Text="No apps tracked yet" FontSize="18" FontWeight="SemiBold" Foreground="White"
+                                       HorizontalAlignment="Center" Margin="0,16,0,6"/>
+                            <TextBlock Text="Scan your PC to find installed apps and start tracking your time automatically." FontSize="13" Foreground="#888888"
+                                       TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,20"/>
+                            <ui:Button Content="Scan PC For Applications" Icon="SearchInfo24" Appearance="Primary" Command="{Binding AddApplicationCommand}"
+                                       Padding="18,8" HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ListBox ItemsSource="{Binding FilteredManagedApps}"
                                  Background="Transparent" BorderThickness="0" 
                                  HorizontalContentAlignment="Stretch"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -280,7 +299,8 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                    </ScrollViewer>
+                        </ScrollViewer>
+                    </Grid>
                 </Grid>
             </TabItem>
 

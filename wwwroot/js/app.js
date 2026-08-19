@@ -51,6 +51,13 @@ function tickClock() {
 }
 
 // --- Top bar: online status, focus today, all-time -----------------------
+// Read by the "Most Used Today" metric's onclick in dashboard.html — a
+// module-level variable instead of splicing the app name into the inline
+// onclick string, since it's untrusted (attacker-controllable process/window
+// names) and HTML-escaping doesn't survive the browser's attribute-decode
+// step for inline handlers.
+let tbMostUsedAppName = null;
+
 async function refreshTopBar() {
     const dotEl = document.getElementById('tb-status-dot');
     try {
@@ -68,6 +75,23 @@ async function refreshTopBar() {
 
         const allTimeEl = document.getElementById('tb-alltime-value');
         if (allTimeEl) allTimeEl.textContent = formatHours(allTime);
+
+        const topAppsToday = data.topAppsToday ?? data.TopAppsToday ?? [];
+        const mostUsedEl = document.getElementById('tb-mostused');
+        const mostUsedValueEl = document.getElementById('tb-mostused-value');
+        if (mostUsedEl && mostUsedValueEl) {
+            if (topAppsToday.length > 0) {
+                const top = topAppsToday[0];
+                const name = top.appName ?? top.AppName;
+                const mins = top.focusedMinutes ?? top.FocusedMinutes ?? 0;
+                tbMostUsedAppName = name;
+                mostUsedValueEl.textContent = `${name} · ${formatTime(mins)}`;
+                mostUsedEl.style.display = '';
+            } else {
+                tbMostUsedAppName = null;
+                mostUsedEl.style.display = 'none';
+            }
+        }
 
         // Mini chronometer ring: today's focus vs the usual daily amount (caps at 100%)
         const ringHost = document.getElementById('tb-ring-host');
