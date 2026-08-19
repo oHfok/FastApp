@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Windows;
+using Velopack;
 
 namespace FastApp
 {
@@ -11,6 +12,15 @@ namespace FastApp
         [STAThread] // THIS IS THE MAGIC LINE
         public static void Main(string[] args)
         {
+            // ==========================================================
+            // MUST BE ABSOLUTE FIRST, before even the elevated-relaunch check
+            // below: on a freshly installed/updated/uninstalled build, Velopack
+            // launches the exe with special --veloapp-* args to run its own
+            // install/update/uninstall hooks, then exits the process itself.
+            // On a normal launch (no such args) this just returns immediately.
+            // ==========================================================
+            VelopackApp.Build().Run();
+
             // ==========================================================
             // MUST BE FIRST: handle the brief, elevated, UI-less relaunch
             // used purely to register/unregister the scheduled task.

@@ -67,12 +67,47 @@ namespace FastApp.Services
             // 1. Find the safe Windows AppData/Local folder
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-            // 2. Create a dedicated folder for your app
-            string folder = System.IO.Path.Combine(appData, "FastApp");
+            // 2. Create a dedicated folder for your app -- deliberately NOT
+            // named "FastApp". Velopack installs the app itself into
+            // %LocalAppData%\FastApp\, and on 2026-08-19 a fresh install of
+            // v1.0.0 wiped that exact folder (and the database that used to
+            // live in it) because they collided. A differently-named folder
+            // means the installer can never again touch our data.
+            string folder = System.IO.Path.Combine(appData, "FastAppData");
             System.IO.Directory.CreateDirectory(folder);
 
             // 3. Point the database there!
             string dbPath = System.IO.Path.Combine(folder, "appmanager.db");
+
+            // One-time self-heal for anyone whose data still sits at the old,
+            // collision-prone path from before this fix -- copies it over the
+            // first time this runs and never touches it again afterward.
+            if (!File.Exists(dbPath))
+            {
+                string oldDbPath = System.IO.Path.Combine(appData, "FastApp", "appmanager.db");
+                if (File.Exists(oldDbPath))
+                {
+                    try
+                    {
+                        // Checkpoint the old WAL into the main file first so the
+                        // copy is self-contained, instead of leaving committed
+                        // data stranded in a -wal file that doesn't get copied.
+                        using (var oldConn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={oldDbPath}"))
+                        {
+                            oldConn.Open();
+                            using var cmd = oldConn.CreateCommand();
+                            cmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+                            cmd.ExecuteNonQuery();
+                        }
+                        File.Copy(oldDbPath, dbPath);
+                    }
+                    catch
+                    {
+                        // Best-effort -- if this fails, Migrate() below just
+                        // creates a fresh empty database as it always has.
+                    }
+                }
+            }
 
             optionsBuilder.UseSqlite($"Data Source={dbPath}");
         }

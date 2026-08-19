@@ -12,6 +12,8 @@
     <Window.Resources>
         <local:PercentageConverter x:Key="PercentageToWidthConverter"/>
         <local:DietWidthConverter x:Key="DietWidthConverter"/>
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
     </Window.Resources>
 
     <Grid>
@@ -366,6 +368,25 @@
                                     </StackPanel>
                                 </ui:CardControl.Header>
                                 <ui:Button Content="Open Browser" Icon="Globe24" Appearance="Secondary" Command="{Binding StatisticsVM.OpenWebDashboardCommand}"/>
+                            </ui:CardControl>
+
+                            <TextBlock Text="Application" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,15,0,15"/>
+
+                            <ui:CardControl Margin="0,0,0,10" Padding="15">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding UpdateVersionText}" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
+                                        <TextBlock Text="{Binding UpdateStatusText}" Foreground="#888888" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:Button Content="Check for Updates" Icon="ArrowSync24" Appearance="Secondary"
+                                               Command="{Binding CheckForUpdatesCommand}" IsEnabled="{Binding IsCheckingForUpdates, Converter={StaticResource InverseBooleanConverter}}"
+                                               Visibility="{Binding IsUpdateReadyToApply, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                                    <ui:Button Content="Restart to Update" Icon="ArrowClockwise24" Appearance="Primary"
+                                               Command="{Binding ApplyPendingUpdateCommand}"
+                                               Visibility="{Binding IsUpdateReadyToApply, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </StackPanel>
                             </ui:CardControl>
 
                         </StackPanel>
