@@ -127,6 +127,40 @@ namespace FastApp.ViewModels
         // Global OSD Toggle
         [ObservableProperty] private bool _enableOsd;
 
+        // App updates (Velopack) — CurrentVersionText is set once at construction
+        // since it never changes for the lifetime of the process; a real update
+        // restarts into a new process entirely rather than mutating this one.
+        [ObservableProperty] private string _updateVersionText = Services.UpdateService.CurrentVersionText;
+        [ObservableProperty] private string _updateStatusText = string.Empty;
+        [ObservableProperty] private bool _isCheckingForUpdates;
+        [ObservableProperty] private bool _isUpdateReadyToApply;
+        private Velopack.UpdateInfo? _pendingUpdateInfo;
+
+        [RelayCommand]
+        private async Task CheckForUpdatesAsync()
+        {
+            if (IsCheckingForUpdates) return;
+
+            IsCheckingForUpdates = true;
+            IsUpdateReadyToApply = false;
+            UpdateStatusText = "Checking for updates…";
+
+            var result = await Services.UpdateService.CheckForUpdatesAsync();
+
+            UpdateStatusText = result.Message;
+            _pendingUpdateInfo = result.UpdateInfo;
+            IsUpdateReadyToApply = result.Success && result.UpdateInfo != null;
+            IsCheckingForUpdates = false;
+        }
+
+        [RelayCommand]
+        private void ApplyPendingUpdate()
+        {
+            if (_pendingUpdateInfo == null) return;
+            UpdateStatusText = "Restarting to apply update…";
+            Services.UpdateService.ApplyAndRestart(_pendingUpdateInfo);
+        }
+
 
         // ==========================================
         // INITIALIZATION
@@ -140,6 +174,16 @@ namespace FastApp.ViewModels
             _dbContext.Database.Migrate();
 
             _dbContext.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+
+            // AppSettings/HiddenApps aren't EF-migration-tracked tables — they're
+            // normally created by DashboardServerService.StartAsync()'s own raw-SQL
+            // init. That runs fire-and-forget from the background-tasks block further
+            // down this constructor, so on a genuinely fresh install (first launch
+            // ever, no existing db) it hasn't run yet by the time the synchronous
+            // AppSettings read just below fires — "no such table: AppSettings".
+            // Creating them here too, before that read, closes the race.
+            _dbContext.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS HiddenApps (AppName TEXT PRIMARY KEY);");
+            _dbContext.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS AppSettings (Key TEXT PRIMARY KEY, Value TEXT);");
 
             // --- ONE-TIME MIGRATION: backfill the fast INTEGER Ticks columns for rows
             // that predate them. Gated behind a completed-flag in AppSettings — without
@@ -337,6 +381,7 @@ namespace FastApp.ViewModels
                 _ = ProcessTriggersAsync();
                 _ = StartProcessTrackerAsync();
                 _ = Services.DashboardServerService.StartAsync();
+                _ = Services.UpdateService.CheckAndApplyOnStartupAsync();
                 RunAutoLaunchAsync();
 
                 // NEW: reflect actual current registration state in the toggle

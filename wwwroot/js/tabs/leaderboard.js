@@ -6,11 +6,25 @@
 
 let lbData = [];
 let lbSearch = '';
+let lbRankBy = 'focus';
 
 function setLbTimeframe(tf, btnEl) {
     document.querySelectorAll('#lb-scope button').forEach(b => b.classList.toggle('active', b === btnEl));
     document.getElementById('lb-scope').dataset.value = tf;
     fetchFullLeaderboard();
+}
+
+function setLbRankBy(mode, btnEl) {
+    document.querySelectorAll('#lb-rankby button').forEach(b => b.classList.toggle('active', b === btnEl));
+    document.getElementById('lb-rankby').dataset.value = mode;
+    lbRankBy = mode;
+    const sub = document.getElementById('lb-view-sub');
+    if (sub) {
+        sub.textContent = mode === 'uptime'
+            ? 'Ranked by uptime. Arrows show movement since yesterday.'
+            : 'Ranked by focus time. Arrows show movement since yesterday.';
+    }
+    renderFullLeaderboard();
 }
 
 function handleLbSearch() {
@@ -34,11 +48,14 @@ function renderFullLeaderboard() {
         return;
     }
 
-    const filtered = lbData.filter(a => a.appName.toLowerCase().includes(lbSearch));
-    const sorted = [...filtered].sort((a, b) => b.focusedMinutes - a.focusedMinutes);
+    const primaryMins = a => lbRankBy === 'uptime' ? (a.totalMinutes || 0) : (a.focusedMinutes || 0);
+    const prevPrimaryMins = a => lbRankBy === 'uptime' ? (a.prevTotalMinutes || 0) : (a.prevFocusedMinutes || 0);
 
-    // Rank yesterday's data (by prevFocusedMinutes) to compute the day-over-day delta.
-    const prevSorted = [...filtered].sort((a, b) => (b.prevFocusedMinutes || 0) - (a.prevFocusedMinutes || 0));
+    const filtered = lbData.filter(a => a.appName.toLowerCase().includes(lbSearch));
+    const sorted = [...filtered].sort((a, b) => primaryMins(b) - primaryMins(a));
+
+    // Rank yesterday's data (by the same metric) to compute the day-over-day delta.
+    const prevSorted = [...filtered].sort((a, b) => prevPrimaryMins(b) - prevPrimaryMins(a));
     const prevRankOf = {};
     prevSorted.forEach((a, i) => { prevRankOf[a.appName] = i + 1; });
 
@@ -47,13 +64,18 @@ function renderFullLeaderboard() {
         return;
     }
 
+    const primaryLabel = lbRankBy === 'uptime' ? 'Uptime' : 'Focused';
+    const primaryTitle = lbRankBy === 'uptime'
+        ? 'Total time the app was open, focused or not'
+        : 'Time actively interacting with the app';
+
     // Column header row — describes what each column represents.
     const headerHtml = `
         <div class="full-lb-header">
             <span title="Rank, or movement vs. yesterday's ranking">Rank</span>
             <span></span>
             <span>Application</span>
-            <span title="Time actively interacting with the app">Focused</span>
+            <span title="${primaryTitle}">${primaryLabel}</span>
             <span title="Time the app was open but you were away from the keyboard">AFK</span>
             <span title="Focused time as a share of total time the app was open">Efficiency</span>
         </div>`;
@@ -75,7 +97,7 @@ function renderFullLeaderboard() {
 
         let trendHtml = `<span class="trend-pill trend-flat">–</span>`;
         const prevRank = prevRankOf[app.appName];
-        if (!app.prevFocusedMinutes) {
+        if (!prevPrimaryMins(app)) {
             trendHtml = `<span class="trend-pill trend-new">NEW</span>`;
         } else if (prevRank !== undefined) {
             const delta = prevRank - rank;
@@ -95,7 +117,7 @@ function renderFullLeaderboard() {
                         <div class="full-lb-cat cat-link" onclick="event.stopPropagation(); openCategoryDetail('${(app.category || 'Other').replace(/'/g, "&#39;")}')">${app.category || 'Other'}</div>
                     </div>
                 </div>
-                <div class="full-lb-time">${formatTime(app.focusedMinutes)}</div>
+                <div class="full-lb-time">${formatTime(primaryMins(app))}</div>
                 <div class="full-lb-afk">${formatTime(afkMins)}</div>
                 <div>
                     <div class="full-lb-eff-bar"><div class="full-lb-eff-fill" style="width:${efficiency}%;background:${effColor}"></div></div>

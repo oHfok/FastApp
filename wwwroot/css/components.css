@@ -709,6 +709,65 @@
 
 .drawer.open { transform: translateX(0); }
 
+/* App Detail drawer specifically — enough room for the internal Overview/
+   Limits tabs (Streaks, Period Comparison, etc.) without cramming, while
+   Settings/Category detail stay at the normal .drawer width. */
+.drawer-wide { width: 640px; }
+
+/* ---------- Period Comparison (App Detail drawer, Overview tab) ---------- */
+.dd-compare-list { display: flex; flex-direction: column; gap: 10px; }
+.dd-compare-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-border-soft);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+.dd-compare-row:hover { border-color: var(--panel-border); }
+.dd-compare-label { flex: 1; font-size: 12px; color: var(--text-dim); font-weight: 600; }
+.dd-compare-value { font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+.dd-compare-chevron {
+    color: var(--text-faint);
+    font-size: 10px;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+.dd-compare-row.is-open .dd-compare-chevron { transform: rotate(180deg); }
+
+.dd-compare-chart-wrap {
+    padding: 14px 12px 4px;
+    margin-top: -4px;
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-border-soft);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+.dd-compare-chart-wrap canvas { max-height: 130px; }
+
+/* ---------- Usage Trend (App Detail drawer, Overview tab) ---------- */
+.dd-trend-chart-wrap { height: 140px; margin-bottom: 12px; }
+.dd-trend-numbers {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+}
+.dd-trend-cell {
+    flex: 1;
+    min-width: 40px;
+    text-align: center;
+    padding: 6px 2px;
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-border-soft);
+    border-radius: 6px;
+}
+.dd-trend-cell-label { font-size: 9px; color: var(--text-faint); white-space: nowrap; }
+.dd-trend-cell-value { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text); margin-top: 2px; white-space: nowrap; }
+
 .drawer-close {
     position: absolute;
     top: 20px;
@@ -765,6 +824,29 @@
 .dd-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dd-stat { padding: 12px 14px; }
 .dd-stat-value { font-family: var(--font-mono); font-size: 16px; font-weight: 700; margin-top: 4px; }
+
+/* Dates ("Aug 16, 2026") are wider than the short numeric values (e.g.
+   "12h 30m") these tiles were sized for — a touch smaller so they don't wrap. */
+.dd-stat-value-date { font-size: 13px; white-space: nowrap; }
+
+.dd-stat-sub { font-size: 10px; color: var(--text-faint); margin-top: 5px; min-height: 12px; }
+
+/* Current streak == longest streak ever — the record is happening right now.
+   Same brass-glow treatment Overview's hero Focus card uses, so it reads as
+   "this number is the one that matters" rather than just another stat tile. */
+.dd-stat.is-personal-best {
+    background: linear-gradient(135deg, var(--brass-glow), transparent 70%);
+    border-color: var(--brass-dim);
+}
+.dd-personal-best-badge {
+    display: inline-block;
+    margin-top: 5px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--brass);
+}
 
 .dd-actions { display: flex; gap: 10px; margin-top: 4px; }
 

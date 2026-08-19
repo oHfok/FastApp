@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -13,6 +13,9 @@
 	  <StartupObject>FastApp.Program</StartupObject>
 	  <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
 	  <NoWin32Manifest>true</NoWin32Manifest>
+	  <!-- Bumped by scripts/release.ps1 on each release — Velopack reads this to
+	       know what version it's packaging and what to offer as an update. -->
+	  <Version>1.0.1</Version>
   </PropertyGroup>
 
 	<ItemGroup>
@@ -45,6 +48,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>
