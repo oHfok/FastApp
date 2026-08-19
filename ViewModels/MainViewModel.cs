@@ -779,7 +779,7 @@ namespace FastApp.ViewModels
                 // sharing concern as everywhere else, so it's locked too.
                 lock (_dbContext)
                 {
-                    foreach (var existingLog in _dbContext.DailyLogs.Where(l => l.Date == DateTime.Today))
+                    foreach (var existingLog in _dbContext.DailyLogs.AsNoTracking().Where(l => l.Date == DateTime.Today))
                     {
                         baselineMinutesToday[existingLog.AppName] = existingLog.TimeSpent.TotalMinutes;
                     }
