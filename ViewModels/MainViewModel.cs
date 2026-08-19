@@ -352,6 +352,17 @@ namespace FastApp.ViewModels
                 });
             });
 
+            // Restoring from a backup, triggered from the web dashboard's
+            // Settings tab. Fire-and-forget from this handler (not awaited
+            // inline) since WeakReferenceMessenger.Send runs handlers
+            // synchronously on the calling thread -- awaiting here would
+            // block /api/restore's request thread for the whole flush+copy
+            // sequence instead of letting it return immediately.
+            WeakReferenceMessenger.Default.Register<RestoreBackupCommand>(this, (recipient, message) =>
+            {
+                _ = PerformRestoreAsync(message.StagingFilePath);
+            });
+
             foreach (var app in ManagedApps)
             {
                 app.PropertyChanged += SaveOnAppPropertyChanged;
@@ -772,6 +783,63 @@ namespace FastApp.ViewModels
                 }
             }
             catch { /* best-effort -- never block shutdown/restart on this */ }
+        }
+
+        // Swaps in a validated backup and restarts into it. stagingFilePath has
+        // already passed SQLite-header, integrity, and table-shape checks in
+        // /api/restore -- this method's job is just to do the swap safely, not
+        // to re-validate the file.
+        //
+        // Order matters here: the safety copy of the CURRENT database happens
+        // BEFORE the tracker is stopped, so if anything fails before that
+        // point, the app is untouched and just keeps running normally instead
+        // of being left with a permanently-stopped tracker and no restart to
+        // recover from (RequestShutdownFlushAsync cancels a CancellationTokenSource
+        // that can't be un-cancelled).
+        private async Task PerformRestoreAsync(string stagingFilePath)
+        {
+            string dbPath = AppDbContext.GetDbPath();
+            string folder = Path.GetDirectoryName(dbPath);
+
+            void RestartAndExit()
+            {
+                var restartArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = Environment.ProcessPath,
+                    Arguments = string.Join(" ", restartArgs),
+                    UseShellExecute = true
+                });
+                Environment.Exit(0);
+            }
+
+            try
+            {
+                string safetyDir = Path.Combine(folder, "pre-restore-backups");
+                Directory.CreateDirectory(safetyDir);
+                string safetyPath = Path.Combine(safetyDir, $"appmanager-before-restore-{DateTime.Now:yyyyMMdd-HHmmss}.db");
+                if (File.Exists(dbPath)) File.Copy(dbPath, safetyPath, overwrite: true);
+
+                // Only stop the tracker once the safety copy has actually succeeded.
+                await RequestShutdownFlushAsync();
+
+                if (File.Exists(dbPath + "-wal")) File.Delete(dbPath + "-wal");
+                if (File.Exists(dbPath + "-shm")) File.Delete(dbPath + "-shm");
+                File.Copy(stagingFilePath, dbPath, overwrite: true);
+                try { File.Delete(stagingFilePath); } catch { /* best-effort cleanup of the staging copy */ }
+
+                RestartAndExit();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RESTORE] Failed: {ex}");
+                // If the tracker was already stopped (past the point above) but
+                // something after that failed, restarting -- into whatever state
+                // the db file ends up in, restored or not -- is still safer than
+                // leaving the app running with its tracker permanently cancelled
+                // and no way to resurrect it in-place.
+                try { RestartAndExit(); } catch { /* truly best-effort at this point */ }
+            }
         }
 
         private async Task StartProcessTrackerAsync()
@@ -1280,5 +1348,9 @@ namespace FastApp.ViewModels
     public record UpdateLimitCommand(string AppName, int DailyLimitMinutes, bool StrictFocusMode);
 
     public record GrantExtensionCommand(string AppName, int ExtraMinutes);
+
+    // StagingFilePath has already been validated (SQLite header, integrity
+    // check, has the right tables) by /api/restore before this is ever sent.
+    public record RestoreBackupCommand(string StagingFilePath);
 
 }

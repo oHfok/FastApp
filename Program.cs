@@ -45,8 +45,23 @@ namespace FastApp
             // normal app to run at the same time. Even if some future bug
             // causes an unexpected relaunch, this stops it from spiraling
             // into dozens/hundreds of running processes.
+            //
+            // Retries a few times before giving up: both the auto-updater and
+            // the backup-restore feature self-restart by launching a new
+            // instance and then calling Environment.Exit() on the old one.
+            // Windows releases a named mutex as soon as its owning process
+            // exits, but there's no guarantee the new process won't reach
+            // this check before that's happened — a single failed attempt
+            // here isn't proof another real instance is running.
             // ==========================================================
-            using var singleInstanceMutex = new Mutex(initiallyOwned: true, name: "FastApp_SingleInstance_Mutex", createdNew: out bool isNewInstance);
+            Mutex singleInstanceMutex = null;
+            bool isNewInstance = false;
+            for (int attempt = 0; attempt < 10 && !isNewInstance; attempt++)
+            {
+                if (attempt > 0) Thread.Sleep(200);
+                singleInstanceMutex?.Dispose();
+                singleInstanceMutex = new Mutex(initiallyOwned: true, name: "FastApp_SingleInstance_Mutex", createdNew: out isNewInstance);
+            }
             if (!isNewInstance)
             {
                 // Another full instance is already running — just exit quietly.

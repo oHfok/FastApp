@@ -100,6 +100,65 @@ async function saveWindowTitlesSetting() {
     setTimeout(() => { status.style.display = 'none'; }, 2500);
 }
 
+async function loadDbStats() {
+    try {
+        const res = await fetch('/api/db-stats');
+        const data = await res.json();
+
+        const sizeBytes = data.dbSizeBytes ?? data.DbSizeBytes ?? 0;
+        const firstDate = data.firstTrackedDate ?? data.FirstTrackedDate;
+        const p90 = data.projected90Days ?? data.Projected90Days ?? 0;
+        const p365 = data.projected365Days ?? data.Projected365Days ?? 0;
+
+        document.getElementById('dbsize-current').textContent = formatBytes(sizeBytes);
+        document.getElementById('dbsize-since').textContent = firstDate ? fmtDateEU(parseDateStr(firstDate)) : 'No data yet';
+        document.getElementById('dbsize-90').textContent = formatBytes(p90);
+        document.getElementById('dbsize-365').textContent = formatBytes(p365);
+    } catch (err) { console.error(err); }
+}
+
+// --- Restore from backup -----------------------------------------------------
+function handleRestoreFileSelected(inputEl) {
+    const file = inputEl.files?.[0];
+    if (!file) return;
+
+    const confirmed = confirm(
+        `Restore FastApp from "${file.name}"?\n\n` +
+        `This REPLACES everything currently tracked with this backup's contents and restarts FastApp.\n\n` +
+        `Your current data is saved first (in case this was a mistake), but this can't be casually undone. Continue?`
+    );
+    inputEl.value = ''; // reset so selecting the same file again still fires onchange
+    if (!confirmed) return;
+
+    restoreBackupFile(file);
+}
+
+async function restoreBackupFile(file) {
+    const status = document.getElementById('restore-status');
+    status.style.display = 'block';
+    status.style.color = 'var(--text-dim)';
+    status.textContent = 'Uploading and validating…';
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/restore', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+            status.style.color = 'var(--rose)';
+            status.textContent = data.error || 'Restore failed.';
+            return;
+        }
+
+        status.style.color = 'var(--teal)';
+        status.textContent = data.message || 'Restoring — FastApp will restart in a few seconds.';
+    } catch (err) {
+        status.style.color = 'var(--rose)';
+        status.textContent = "Couldn't reach FastApp to restore.";
+    }
+}
+
 async function loadPinSetting() {
     try {
         const res = await fetch('/api/settings/pin');
@@ -152,5 +211,6 @@ Dashboard.tabs.settings = {
         loadHiddenApps();
         loadRetentionSetting();
         loadPinSetting();
+        loadDbStats();
     }
 };

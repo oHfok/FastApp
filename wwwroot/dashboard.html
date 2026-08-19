@@ -380,12 +380,49 @@
     </div>
 
     <div class="dd-section">
-        <div class="dd-section-label">Backup</div>
+        <div class="dd-section-label">Database Size</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+            Everything lives in one SQLite file. This is a rough estimate (total size ÷ days tracked, projected forward) —
+            not an exact model of retention or usage trends.
+        </p>
+        <div class="dd-stat-grid" style="margin-bottom:10px;">
+            <div class="card dd-stat">
+                <div class="card-label">Current Size</div>
+                <div class="dd-stat-value" id="dbsize-current">—</div>
+            </div>
+            <div class="card dd-stat">
+                <div class="card-label">Tracked Since</div>
+                <div class="dd-stat-value dd-stat-value-date" id="dbsize-since">—</div>
+            </div>
+        </div>
+        <div class="dd-stat-grid">
+            <div class="card dd-stat">
+                <div class="card-label">Projected · 90 Days</div>
+                <div class="dd-stat-value" id="dbsize-90">—</div>
+            </div>
+            <div class="card dd-stat">
+                <div class="card-label">Projected · 1 Year</div>
+                <div class="dd-stat-value" id="dbsize-365">—</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Backup &amp; Restore</div>
         <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
             Download a complete copy of your tracked history as a single file. Everything lives in one file on this PC —
             worth keeping a copy of that somewhere else too.
         </p>
-        <a class="btn btn-brass" href="/api/backup" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box;">Download Backup</a>
+        <a class="btn btn-brass" href="/api/backup" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">Download Backup</a>
+
+        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+            Restoring <strong style="color:var(--rose);">replaces everything currently tracked</strong> with the backup
+            file's contents, and restarts FastApp. Your current data is saved first, just in case — but this isn't
+            something to click through by accident.
+        </p>
+        <input type="file" id="restore-file-input" accept=".db" style="display:none;" onchange="handleRestoreFileSelected(this)">
+        <button class="btn" style="display:block;width:100%;text-align:center;box-sizing:border-box;" onclick="document.getElementById('restore-file-input').click()">Restore From Backup&hellip;</button>
+        <div class="retention-status" id="restore-status">Saved.</div>
     </div>
 
     <div class="dd-section">
