@@ -7,6 +7,13 @@
 
 const DASHBOARD_THEME_KEY = 'fastapp-theme';
 
+function setSettingsTab(tab, btnEl) {
+    document.querySelectorAll('#settings-tab-toggle button').forEach(b => b.classList.toggle('active', b === btnEl));
+    document.querySelectorAll('.settings-tab-panel').forEach(panel => {
+        panel.style.display = panel.dataset.tab === tab ? 'block' : 'none';
+    });
+}
+
 function loadDashboardTheme() {
     const current = localStorage.getItem(DASHBOARD_THEME_KEY) || 'instrument';
     updateThemePickerActiveState(current);

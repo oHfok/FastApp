@@ -109,6 +109,9 @@ async function refreshTopBar() {
 function openSettings() {
     document.getElementById('settings-overlay').classList.add('open');
     document.getElementById('settings-drawer').classList.add('open');
+    // Always land back on Appearance — reopening Settings while still on a
+    // different tab from last time would be a surprising place to land.
+    setSettingsTab('appearance', document.querySelector('#settings-tab-toggle button[data-tab="appearance"]'));
     if (Dashboard.tabs.settings) Dashboard.tabs.settings.onEnter();
 }
 function closeSettings() {
