@@ -67,6 +67,19 @@
 
         <div class="tb-spacer"></div>
 
+        <div class="tb-wrapped-wrap">
+            <button class="tb-wrapped-btn" id="tb-wrapped-btn" onclick="toggleWrappedPanel()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                Wrapped
+                <span class="tb-wrapped-ready-dot" id="tb-wrapped-ready-dot" style="display:none;"></span>
+            </button>
+            <div class="wrapped-panel" id="wrapped-panel" style="display:none;">
+                <div class="wrapped-panel-title">Wrapped</div>
+                <div id="wrapped-panel-cards"><div class="empty-state" style="padding:16px;">Loading…</div></div>
+                <div class="wrapped-panel-footer">Come back once each period wraps up for the full recap</div>
+            </div>
+        </div>
+
         <button class="tb-gear" id="tb-gear" title="Settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
@@ -74,6 +87,20 @@
             </svg>
         </button>
     </header>
+
+    <!-- ============ WRAPPED STORY OVERLAY ============ -->
+    <div class="wrapped-overlay" id="wrapped-overlay" style="display:none;" onclick="handleWrappedOverlayClick(event)">
+        <button class="wrapped-close" id="wrapped-close" onclick="closeWrappedStory()">&times;</button>
+        <div class="wrapped-stage">
+            <div class="wrapped-slide" id="wrapped-slide">
+                <div class="progress-row" id="wrapped-progress-row"></div>
+                <div class="eyebrow"><span id="wrapped-slide-eyebrow"></span><strong id="wrapped-slide-counter"></strong></div>
+                <div id="wrapped-slide-body"></div>
+            </div>
+            <div class="wrapped-nav-zone wrapped-nav-prev" onclick="event.stopPropagation(); wrappedPrevSlide();"></div>
+            <div class="wrapped-nav-zone wrapped-nav-next" onclick="event.stopPropagation(); wrappedNextSlide();"></div>
+        </div>
+    </div>
 
     <div class="body-row">
         <!-- ============ RAIL NAV ============ -->
@@ -566,6 +593,7 @@
 <script src="js/utils.js"></script>
 <script src="js/app.js"></script>
 <script src="js/drilldown.js"></script>
+<script src="js/wrapped.js"></script>
 <script src="js/category.js"></script>
 <script src="js/tabs/overview.js"></script>
 <script src="js/tabs/insights.js"></script>

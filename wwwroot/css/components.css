@@ -917,3 +917,203 @@
 
 .retention-row { display: flex; gap: 10px; align-items: center; }
 .retention-status { color: var(--teal); font-size: 12px; font-weight: 600; margin-top: 10px; display: none; }
+
+/* ==========================================================
+   WRAPPED — top bar entry, its 3-card panel, and the story
+   overlay. Kept visually distinct from the rest of the flat,
+   data-table dashboard on purpose: this is a small "event",
+   not another page, matching the approved mockup exactly.
+   ========================================================== */
+.tb-wrapped-wrap { position: relative; }
+
+.tb-wrapped-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px 7px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(232, 163, 61, 0.4);
+    background: linear-gradient(180deg, rgba(232, 163, 61, 0.16), rgba(232, 163, 61, 0.05));
+    color: var(--brass);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.tb-wrapped-btn:hover { background: linear-gradient(180deg, rgba(232, 163, 61, 0.24), rgba(232, 163, 61, 0.08)); }
+.tb-wrapped-btn svg { width: 15px; height: 15px; }
+.tb-wrapped-ready-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--teal); box-shadow: 0 0 6px var(--teal);
+    position: absolute; top: -2px; right: -2px;
+}
+
+.wrapped-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 320px;
+    border-radius: 14px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel-solid);
+    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.55);
+    padding: 16px;
+    z-index: 40;
+}
+.wrapped-panel-title { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+.wrapped-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border-soft);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.wrapped-card:hover { background: rgba(232, 163, 61, 0.08); border-color: var(--brass-dim); }
+.wrapped-card:last-of-type { margin-bottom: 0; }
+.wrapped-card-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+.wrapped-card-teaser { font-size: 13px; color: var(--text); margin-top: 3px; }
+.wrapped-card-teaser strong { color: var(--brass); font-family: var(--font-mono); }
+.wrapped-card-chev { color: var(--text-faint); }
+.wrapped-panel-footer {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--panel-border-soft);
+    font-size: 11.5px;
+    color: var(--text-faint);
+    text-align: center;
+}
+
+/* --- Story overlay --- */
+.wrapped-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 6, 9, 0.82);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+}
+.wrapped-close {
+    position: absolute;
+    top: 20px; right: 24px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--panel-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-dim);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+}
+.wrapped-stage { position: relative; width: 380px; max-width: calc(100vw - 40px); }
+.wrapped-nav-zone { position: absolute; top: 0; bottom: 0; width: 33%; cursor: pointer; }
+.wrapped-nav-prev { left: 0; }
+.wrapped-nav-next { right: 0; }
+
+.wrapped-slide {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    max-height: 82vh;
+    margin: 0 auto;
+    border-radius: 22px;
+    border: 1px solid var(--panel-border);
+    background:
+        radial-gradient(circle at 50% 30%, var(--brass-glow) 0%, transparent 55%),
+        linear-gradient(180deg, #0D0E14 0%, #08090D 100%);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 26px 22px;
+    box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
+    pointer-events: none; /* the nav zones above handle clicks; content is decorative */
+}
+.wrapped-slide::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 14px 14px;
+    mask-image: radial-gradient(circle at 50% 35%, black 0%, transparent 70%);
+}
+
+.wrapped-slide .progress-row { display: flex; gap: 5px; margin-bottom: 20px; }
+.wrapped-slide .progress-seg { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); }
+.wrapped-slide .progress-seg.done { background: var(--brass-dim); }
+.wrapped-slide .progress-seg.active { background: var(--brass); }
+
+.wrapped-slide .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+.wrapped-slide .eyebrow strong { color: var(--brass); font-weight: 600; }
+
+.wrapped-slide .headline {
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 600;
+    line-height: 1.25;
+    text-wrap: balance;
+    color: var(--text);
+    margin: 18px 0 0;
+}
+.wrapped-slide .headline em { color: var(--brass); font-style: normal; }
+
+.wrapped-slide .hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
+    min-height: 0;
+}
+.wrapped-slide .hero-number {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 96px;
+    line-height: 0.9;
+    color: var(--brass);
+    letter-spacing: -0.02em;
+    text-shadow: 0 0 60px var(--brass-glow);
+    font-variant-numeric: tabular-nums;
+}
+.wrapped-slide .hero-number sup { font-size: 40px; font-weight: 600; top: -0.5em; }
+.wrapped-slide .hero-caption { font-size: 14px; color: var(--text-dim); max-width: 240px; }
+
+.wrapped-slide .delta-chip {
+    margin-top: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(52, 211, 196, 0.12);
+    border: 1px solid rgba(52, 211, 196, 0.3);
+    color: var(--teal);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+.wrapped-slide .delta-chip.is-down { background: rgba(255, 107, 107, 0.1); border-color: rgba(255, 107, 107, 0.28); color: var(--rose); }
+
+.wrapped-slide .foot { display: grid; gap: 10px; margin-top: 22px; }
+.wrapped-slide .foot-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--panel-border-soft); border-radius: 12px; padding: 12px 14px; }
+.wrapped-slide .foot-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
+.wrapped-slide .foot-value { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.wrapped-slide .foot-value.teal { color: var(--teal); }
