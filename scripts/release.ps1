@@ -14,6 +14,9 @@
        on launch and will pick it up automatically. Without -Publish, the
        release is only built locally so you can test Releases\Setup.exe
        yourself first.
+    5. With -Publish and -NotesFile, sets the GitHub release's body from that
+       markdown file afterward (vpk upload github itself doesn't take notes,
+       so this is a separate `gh release edit` call).
 
     Requires: Visual Studio (for MSBuild), the `vpk` global tool
     (dotnet tool install -g vpk), and `gh` authenticated (gh auth login)
@@ -24,15 +27,19 @@
     Builds and packs v1.0.1 locally without publishing anything.
 
 .EXAMPLE
-    .\scripts\release.ps1 -Version 1.0.1 -Publish
-    Builds, packs, and publishes v1.0.1 live to GitHub Releases.
+    .\scripts\release.ps1 -Version 1.0.1 -Publish -NotesFile notes.md
+    Builds, packs, publishes v1.0.1 live, and sets its GitHub release notes.
 #>
 param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^\d+\.\d+\.\d+$')]
     [string]$Version,
 
-    [switch]$Publish
+    [switch]$Publish,
+
+    # Path to a markdown file to use as the GitHub release's body. Only takes
+    # effect with -Publish; ignored otherwise.
+    [string]$NotesFile
 )
 
 $ErrorActionPreference = "Stop"
@@ -96,6 +103,15 @@ if ($Publish) {
         --publish true `
         --releaseName "v$Version"
     if ($LASTEXITCODE -ne 0) { throw "vpk upload github failed." }
+
+    if ($NotesFile) {
+        if (-not (Test-Path $NotesFile)) { throw "NotesFile not found: $NotesFile" }
+        Write-Host "==> Setting release notes from $NotesFile..." -ForegroundColor Cyan
+        # Velopack tags releases by the raw version number (no "v" prefix),
+        # confirmed against this repo's actual tags -- e.g. "1.0.5", not "v1.0.5".
+        gh release edit $Version --repo oHfok/FastApp --notes-file $NotesFile
+        if ($LASTEXITCODE -ne 0) { throw "gh release edit failed." }
+    }
 
     Write-Host "==> v$Version is live. Installed copies of FastApp will pick it up automatically on next launch." -ForegroundColor Green
 } else {
