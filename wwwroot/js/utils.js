@@ -79,6 +79,14 @@ function formatTime(mins) {
 }
 function formatHours(h) { return formatTime(h * 60); }
 
+function formatBytes(bytes) {
+    if (!bytes || bytes <= 0) return '0 KB';
+    const units = ['bytes', 'KB', 'MB', 'GB'];
+    let val = bytes, i = 0;
+    while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
+    return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
 // --- European calendar helpers (weeks start Monday) ----------------------
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

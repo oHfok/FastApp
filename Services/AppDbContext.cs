@@ -23,16 +23,23 @@ namespace FastApp.Services
 
         public AppDbContext()
         {
-            // Find the user's hidden AppData/Local folder
-            var folder = Environment.SpecialFolder.LocalApplicationData;
-            var path = Environment.GetFolderPath(folder);
+            DbPath = GetDbPath();
+        }
 
-            // Create a specific folder just for our app: AppData/Local/NexusAppManager
-            var appFolder = Path.Combine(path, "NexusAppManager");
-            Directory.CreateDirectory(appFolder);
+        // Single source of truth for where the database actually lives, so
+        // anything that needs the path (backup/restore, size reporting) reads
+        // the same value OnConfiguring below connects to, instead of each
+        // recomputing it separately and risking drift. This property used to
+        // be dead code pointing at a stale, pre-FastAppData-fix folder that
+        // nothing actually connected to -- see OnConfiguring for the real story.
+        public static string GetDbPath() => Path.Combine(GetDbFolder(), "appmanager.db");
 
-            // Define the database file name
-            DbPath = Path.Combine(appFolder, "appmanager.db");
+        public static string GetDbFolder()
+        {
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string folder = Path.Combine(appData, "FastAppData");
+            Directory.CreateDirectory(folder);
+            return folder;
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -64,26 +71,20 @@ namespace FastApp.Services
         // Tell Entity Framework to use SQLite and point it to our file
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            // 1. Find the safe Windows AppData/Local folder
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-
-            // 2. Create a dedicated folder for your app -- deliberately NOT
-            // named "FastApp". Velopack installs the app itself into
-            // %LocalAppData%\FastApp\, and on 2026-08-19 a fresh install of
-            // v1.0.0 wiped that exact folder (and the database that used to
-            // live in it) because they collided. A differently-named folder
-            // means the installer can never again touch our data.
-            string folder = System.IO.Path.Combine(appData, "FastAppData");
-            System.IO.Directory.CreateDirectory(folder);
-
-            // 3. Point the database there!
-            string dbPath = System.IO.Path.Combine(folder, "appmanager.db");
+            // Deliberately NOT a folder named "FastApp". Velopack installs the
+            // app itself into %LocalAppData%\FastApp\, and on 2026-08-19 a
+            // fresh install of v1.0.0 wiped that exact folder (and the
+            // database that used to live in it) because they collided. A
+            // differently-named folder means the installer can never again
+            // touch our data.
+            string dbPath = GetDbPath();
 
             // One-time self-heal for anyone whose data still sits at the old,
             // collision-prone path from before this fix -- copies it over the
             // first time this runs and never touches it again afterward.
             if (!File.Exists(dbPath))
             {
+                string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 string oldDbPath = System.IO.Path.Combine(appData, "FastApp", "appmanager.db");
                 if (File.Exists(oldDbPath))
                 {
