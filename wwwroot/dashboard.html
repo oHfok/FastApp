@@ -327,8 +327,16 @@
 <div class="drawer-overlay" id="settings-overlay"></div>
 <div class="drawer" id="settings-drawer">
     <button class="drawer-close" id="settings-close">✕</button>
-    <h2 style="font-size:20px;margin-bottom:22px;">Settings</h2>
+    <h2 style="font-size:20px;margin-bottom:16px;">Settings</h2>
 
+    <div class="segmented" id="settings-tab-toggle" style="margin-bottom:20px;">
+        <button class="active" data-tab="appearance" onclick="setSettingsTab('appearance', this)">Appearance</button>
+        <button data-tab="data" onclick="setSettingsTab('data', this)">Data</button>
+        <button data-tab="privacy" onclick="setSettingsTab('privacy', this)">Privacy</button>
+        <button data-tab="security" onclick="setSettingsTab('security', this)">Security</button>
+    </div>
+
+    <div class="settings-tab-panel" data-tab="appearance">
     <div class="dd-section">
         <div class="dd-section-label">Dashboard Theme</div>
         <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
@@ -362,7 +370,9 @@
             <button data-mode="category" onclick="setTimelineColorMode('category', this)">By Category</button>
         </div>
     </div>
+    </div>
 
+    <div class="settings-tab-panel" data-tab="data" style="display:none;">
     <div class="dd-section">
         <div class="dd-section-label">Database Retention</div>
         <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">How long detailed logs are kept before being cleared.</p>
@@ -424,7 +434,9 @@
         <button class="btn" style="display:block;width:100%;text-align:center;box-sizing:border-box;" onclick="document.getElementById('restore-file-input').click()">Restore From Backup&hellip;</button>
         <div class="retention-status" id="restore-status">Saved.</div>
     </div>
+    </div>
 
+    <div class="settings-tab-panel" data-tab="privacy" style="display:none;">
     <div class="dd-section">
         <div class="dd-section-label">Window Title Capture</div>
         <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
@@ -441,6 +453,13 @@
     </div>
 
     <div class="dd-section">
+        <div class="dd-section-label">Hidden Applications</div>
+        <div class="settings-list" id="hidden-apps-list"></div>
+    </div>
+    </div>
+
+    <div class="settings-tab-panel" data-tab="security" style="display:none;">
+    <div class="dd-section">
         <div class="dd-section-label">Parental PIN</div>
         <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;" id="pin-explainer">
             Required to extend an app's time past its daily limit for the day. Not stored in plain text — but this
@@ -455,10 +474,6 @@
         </div>
         <div class="retention-status" id="pin-status">Saved.</div>
     </div>
-
-    <div class="dd-section">
-        <div class="dd-section-label">Hidden Applications</div>
-        <div class="settings-list" id="hidden-apps-list"></div>
     </div>
 </div>
 
