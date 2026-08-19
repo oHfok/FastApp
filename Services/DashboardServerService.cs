@@ -134,10 +134,230 @@ namespace FastApp.Services
 
         private static DateTime GetMondayStartOfWeek(DateTime date)
         {
-            // C# DayOfWeek: Sunday=0, Monday=1... 
+            // C# DayOfWeek: Sunday=0, Monday=1...
             // This formula calculates how many days to subtract to always land on the most recent Monday.
             int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
             return date.Date.AddDays(-1 * diff);
+        }
+
+        // Backing type for /api/wrapped and /api/wrapped/available — see BuildWrappedAsync.
+        private class WrappedData
+        {
+            public string Type { get; set; }
+            public string Label { get; set; }
+            public string Teaser { get; set; }
+            public string DateRange { get; set; }
+            public bool IsInProgress { get; set; }
+            public string ElapsedLabel { get; set; }
+            public object TimeOnPc { get; set; }
+            public object FocusQuality { get; set; }
+            public object TopApp { get; set; }
+            public object PeakDay { get; set; }
+            public double TotalFocusedHours { get; set; }
+        }
+
+        // Builds a Wrapped recap for the *current* week/month/year (never a past one — see
+        // the endpoint comments for why). "Live but labeled": an in-progress period is
+        // always compared to the same elapsed number of days in the previous period, not
+        // the previous period's full total, so a Tuesday check never reads as a decline
+        // just because the week isn't over yet. The headline "% of your week" figure is
+        // the one exception -- it's elapsed time over the FULL period length (not just the
+        // elapsed portion), so it naturally builds toward the final number as the period
+        // progresses, matching how the feature was mocked up and approved.
+        private static async Task<WrappedData> BuildWrappedAsync(AppDbContext db, List<string> hiddenApps, Dictionary<string, string> appCategories, string periodKind)
+        {
+            DateTime today = DateTime.Today;
+
+            DateTime periodStart = periodKind switch
+            {
+                "month" => new DateTime(today.Year, today.Month, 1),
+                "year" => new DateTime(today.Year, 1, 1),
+                _ => GetMondayStartOfWeek(today)
+            };
+            DateTime periodEnd = periodKind switch
+            {
+                "month" => periodStart.AddMonths(1).AddDays(-1),
+                "year" => periodStart.AddYears(1).AddDays(-1),
+                _ => periodStart.AddDays(6)
+            };
+            DateTime prevStart = periodKind switch
+            {
+                "month" => periodStart.AddMonths(-1),
+                "year" => periodStart.AddYears(-1),
+                _ => periodStart.AddDays(-7)
+            };
+
+            double periodTotalHours = periodKind switch
+            {
+                "month" => DateTime.DaysInMonth(today.Year, today.Month) * 24.0,
+                "year" => (DateTime.IsLeapYear(today.Year) ? 366 : 365) * 24.0,
+                _ => 168.0
+            };
+
+            // Elapsed day-count so far in the current period (inclusive of today) --
+            // naturally equals the full period length on the period's last day, so no
+            // separate "is this period actually over" branch is needed anywhere below.
+            int elapsedDays = (int)(today - periodStart).TotalDays + 1;
+            DateTime prevElapsedEnd = prevStart.AddDays(elapsedDays - 1);
+
+            // Same 730-day floor used everywhere else DailyLogs gets scanned without a
+            // tight date filter -- also doubles as the ranking pool below.
+            DateTime historyFloor = today.AddDays(-730);
+
+            var allSystemLogs = await db.DailyLogs.AsNoTracking()
+                .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= historyFloor && l.Date <= today)
+                .ToListAsync();
+
+            var currentSystemLogs = allSystemLogs.Where(l => l.Date >= periodStart && l.Date <= today).ToList();
+            if (currentSystemLogs.Count == 0) return null; // nothing to wrap yet
+
+            var prevSystemLogs = allSystemLogs.Where(l => l.Date >= prevStart && l.Date <= prevElapsedEnd).ToList();
+
+            double currentUptimeHours = currentSystemLogs.Sum(l => l.TimeSpent.TotalHours);
+            double currentFocusedHours = currentSystemLogs.Sum(l => l.TimeFocused.TotalHours);
+            double prevUptimeHours = prevSystemLogs.Sum(l => l.TimeSpent.TotalHours);
+
+            double pctOfPeriod = Math.Round(currentUptimeHours / periodTotalHours * 100, 1);
+            double? deltaPct = prevUptimeHours > 0.01 ? Math.Round((currentUptimeHours - prevUptimeHours) / prevUptimeHours * 100, 1) : null;
+
+            double pctFocused = currentUptimeHours > 0.01 ? Math.Round(currentFocusedHours / currentUptimeHours * 100, 1) : 0;
+
+            // Rank this period's elapsed-so-far total against every other period of this
+            // type's total over the SAME elapsed day-count -- comparing a partial week to
+            // other weeks' full totals would make it impossible to ever rank well early on.
+            var bucketStarts = new HashSet<DateTime>();
+            foreach (var log in allSystemLogs)
+            {
+                DateTime bStart = periodKind switch
+                {
+                    "month" => new DateTime(log.Date.Year, log.Date.Month, 1),
+                    "year" => new DateTime(log.Date.Year, 1, 1),
+                    _ => GetMondayStartOfWeek(log.Date)
+                };
+                bucketStarts.Add(bStart);
+            }
+            var rankTotals = bucketStarts.Select(bStart =>
+                allSystemLogs.Where(l => l.Date >= bStart && l.Date <= bStart.AddDays(elapsedDays - 1)).Sum(l => l.TimeFocused.TotalHours)
+            ).Where(h => h > 0).OrderByDescending(h => h).ToList();
+            int rank = rankTotals.FindIndex(h => Math.Abs(h - currentFocusedHours) < 0.001) + 1;
+            if (rank <= 0) rank = rankTotals.Count + 1;
+
+            var appLogs = await db.DailyLogs.AsNoTracking()
+                .Where(l => l.AppName != "SYSTEM_PC" && l.Date >= prevStart && l.Date <= today && !hiddenApps.Contains(l.AppName))
+                .ToListAsync();
+
+            var currentAppTotals = appLogs.Where(l => l.Date >= periodStart && l.Date <= today)
+                .GroupBy(l => l.AppName)
+                .Select(g => new { AppName = g.Key, Minutes = g.Sum(x => x.TimeFocused.TotalMinutes) })
+                .OrderByDescending(x => x.Minutes).ToList();
+
+            var prevAppTotals = appLogs.Where(l => l.Date >= prevStart && l.Date <= prevElapsedEnd)
+                .GroupBy(l => l.AppName)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.TimeFocused.TotalMinutes));
+
+            var topAppRow = currentAppTotals.FirstOrDefault();
+            object topApp = null;
+            if (topAppRow != null)
+            {
+                double prevTopMinutes = prevAppTotals.GetValueOrDefault(topAppRow.AppName, 0);
+                bool isSameAsLastPeriod = prevAppTotals.Count > 0 &&
+                    prevAppTotals.OrderByDescending(kv => kv.Value).FirstOrDefault().Key == topAppRow.AppName;
+
+                // Biggest mover: largest absolute-minutes swing (up or down) among apps
+                // with at least 10 minutes on one side of the comparison -- filters out
+                // noise like a one-off app going from 0.1 to 2 minutes reading as a "mover".
+                var moverCandidates = currentAppTotals.Select(a => a.AppName)
+                    .Union(prevAppTotals.Keys)
+                    .Select(name =>
+                    {
+                        double cur = currentAppTotals.FirstOrDefault(a => a.AppName == name)?.Minutes ?? 0;
+                        double prev = prevAppTotals.GetValueOrDefault(name, 0);
+                        return new { AppName = name, Cur = cur, Prev = prev, Delta = cur - prev };
+                    })
+                    .Where(x => x.Cur >= 10 || x.Prev >= 10)
+                    .OrderByDescending(x => Math.Abs(x.Delta))
+                    .FirstOrDefault();
+
+                object mover = null;
+                if (moverCandidates != null && Math.Abs(moverCandidates.Delta) > 0.5)
+                {
+                    mover = new
+                    {
+                        AppName = moverCandidates.AppName,
+                        Direction = moverCandidates.Delta > 0 ? "up" : "down",
+                        DeltaMinutes = Math.Round(Math.Abs(moverCandidates.Delta), 1),
+                        DeltaPct = moverCandidates.Prev > 0.01 ? Math.Round(Math.Abs(moverCandidates.Delta) / moverCandidates.Prev * 100, 0) : (double?)null
+                    };
+                }
+
+                topApp = new
+                {
+                    AppName = topAppRow.AppName,
+                    Category = appCategories.GetValueOrDefault(topAppRow.AppName, "Other"),
+                    Minutes = Math.Round(topAppRow.Minutes, 1),
+                    IsSameAsLastPeriod = isSameAsLastPeriod,
+                    Mover = mover
+                };
+            }
+
+            var peakDayRow = currentSystemLogs.OrderByDescending(l => l.TimeFocused).FirstOrDefault();
+            object peakDay = peakDayRow == null ? null : new
+            {
+                Date = peakDayRow.Date.ToString("yyyy-MM-dd"),
+                DayName = peakDayRow.Date.ToString("dddd"),
+                Hours = Math.Round(peakDayRow.TimeFocused.TotalHours, 1)
+            };
+
+            string label = periodKind switch
+            {
+                "month" => periodStart.ToString("MMMM yyyy"),
+                "year" => periodStart.Year.ToString(),
+                _ => $"Week {System.Globalization.ISOWeek.GetWeekOfYear(periodStart)}"
+            };
+            string dateRange = periodKind switch
+            {
+                "month" => periodStart.ToString("MMMM yyyy"),
+                "year" => periodStart.Year.ToString(),
+                _ => periodStart.Month == periodEnd.Month
+                    ? $"{periodStart:MMM d}–{periodEnd:d}"
+                    : $"{periodStart:MMM d}–{periodEnd:MMM d}"
+            };
+            string teaser = periodKind switch
+            {
+                "month" => deltaPct == null ? $"{Math.Round(currentFocusedHours, 0)}h focused so far"
+                    : deltaPct >= 0 ? $"Up {deltaPct}% vs {prevStart:MMMM}" : $"Down {Math.Abs(deltaPct.Value)}% vs {prevStart:MMMM}",
+                "year" => $"{Math.Round(currentFocusedHours, 0)}h focused so far",
+                _ => $"PC on {pctOfPeriod}% of your week"
+            };
+
+            bool isInProgress = today < periodEnd;
+
+            return new WrappedData
+            {
+                Type = periodKind,
+                Label = label,
+                Teaser = teaser,
+                DateRange = dateRange,
+                IsInProgress = isInProgress,
+                ElapsedLabel = isInProgress ? $"as of {today:dddd}" : null,
+                TimeOnPc = new
+                {
+                    Hours = Math.Round(currentUptimeHours, 1),
+                    PctOfPeriod = pctOfPeriod,
+                    PeriodTotalHours = periodTotalHours,
+                    DeltaPct = deltaPct
+                },
+                FocusQuality = new
+                {
+                    PctFocused = pctFocused,
+                    FocusedHours = Math.Round(currentFocusedHours, 1),
+                    Rank = rank,
+                    TotalPeriods = rankTotals.Count
+                },
+                TopApp = topApp,
+                PeakDay = peakDay,
+                TotalFocusedHours = Math.Round(currentFocusedHours, 1)
+            };
         }
 
         public static async Task StartAsync()
@@ -1361,6 +1581,60 @@ namespace FastApp.Services
                     };
 
                     await context.Response.WriteAsJsonAsync(payload);
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            // ---- /api/wrapped/available and /api/wrapped?type=week|month|year --------
+            // A Spotify-Wrapped-style recap of the *current* week/month/year, always live
+            // (never a one-time reveal) — an in-progress period is compared to the same
+            // elapsed portion of the previous one, not its full total, so checking on a
+            // Tuesday doesn't read as a huge decline against a completed prior week.
+            // Deliberately no historical browsing here (no `start` param): Wrapped is a
+            // small, curated "here's what's ready" moment, not another way to page through
+            // old periods — that's what the Periods tab is for.
+            app.MapGet("/api/wrapped/available", async (HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    var hiddenApps = GetHiddenApps(db);
+                    var appCategories = await GetAppCategoriesSafely(db);
+
+                    var entries = new List<object>();
+                    foreach (var kind in new[] { "week", "month", "year" })
+                    {
+                        var w = await BuildWrappedAsync(db, hiddenApps, appCategories, kind);
+                        if (w == null) continue;
+                        entries.Add(new { Type = kind, Label = w.Label, Teaser = w.Teaser });
+                    }
+                    await context.Response.WriteAsJsonAsync(entries);
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
+            app.MapGet("/api/wrapped", async (string type, HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    var hiddenApps = GetHiddenApps(db);
+                    var appCategories = await GetAppCategoriesSafely(db);
+                    string periodKind = (type ?? "week").ToLowerInvariant();
+                    if (periodKind != "week" && periodKind != "month" && periodKind != "year")
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsJsonAsync(new { error = "type must be week, month, or year." });
+                        return;
+                    }
+
+                    var wrapped = await BuildWrappedAsync(db, hiddenApps, appCategories, periodKind);
+                    if (wrapped == null)
+                    {
+                        await context.Response.WriteAsJsonAsync(new { error = "No data yet for this period." });
+                        return;
+                    }
+                    await context.Response.WriteAsJsonAsync(wrapped);
                 }
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });

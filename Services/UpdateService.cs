@@ -37,7 +37,15 @@ namespace FastApp.Services
         // if one exists. Any failure (offline, GitHub unreachable, no release yet)
         // is swallowed: this is a background nicety, never allowed to block or
         // interrupt normal app startup.
-        public static async Task CheckAndApplyOnStartupAsync()
+        //
+        // beforeRestart lets the caller (MainViewModel, via RequestShutdownFlushAsync)
+        // stop the tracker and flush/checkpoint the database before Velopack hard-kills
+        // this process to install the update -- ApplyUpdatesAndRestart has no idea this
+        // app even has a background tracker or an open DB connection, so without this
+        // the process gets killed while both are still live. This gap is what's
+        // suspected to have corrupted the database on 2026-08-19; see the comment on
+        // RequestShutdownFlushAsync for the full story.
+        public static async Task CheckAndApplyOnStartupAsync(Func<Task> beforeRestart = null)
         {
             try
             {
@@ -48,6 +56,8 @@ namespace FastApp.Services
                 if (newVersion == null) return;
 
                 await mgr.DownloadUpdatesAsync(newVersion);
+
+                if (beforeRestart != null) await beforeRestart();
 
                 // Preserve whatever args this process actually launched with (e.g.
                 // "--minimized" from the startup task) so an update landing during
@@ -84,8 +94,10 @@ namespace FastApp.Services
             }
         }
 
-        public static void ApplyAndRestart(UpdateInfo updateInfo)
+        public static async Task ApplyAndRestartAsync(UpdateInfo updateInfo, Func<Task> beforeRestart = null)
         {
+            if (beforeRestart != null) await beforeRestart();
+
             var mgr = CreateManager();
             var restartArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
             mgr.ApplyUpdatesAndRestart(updateInfo, restartArgs);

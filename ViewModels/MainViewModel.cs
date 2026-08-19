@@ -154,11 +154,11 @@ namespace FastApp.ViewModels
         }
 
         [RelayCommand]
-        private void ApplyPendingUpdate()
+        private async Task ApplyPendingUpdate()
         {
             if (_pendingUpdateInfo == null) return;
             UpdateStatusText = "Restarting to apply update…";
-            Services.UpdateService.ApplyAndRestart(_pendingUpdateInfo);
+            await Services.UpdateService.ApplyAndRestartAsync(_pendingUpdateInfo, RequestShutdownFlushAsync);
         }
 
 
@@ -381,7 +381,7 @@ namespace FastApp.ViewModels
                 _ = ProcessTriggersAsync();
                 _ = StartProcessTrackerAsync();
                 _ = Services.DashboardServerService.StartAsync();
-                _ = Services.UpdateService.CheckAndApplyOnStartupAsync();
+                _ = Services.UpdateService.CheckAndApplyOnStartupAsync(RequestShutdownFlushAsync);
                 RunAutoLaunchAsync();
 
                 // NEW: reflect actual current registration state in the toggle
@@ -741,15 +741,37 @@ namespace FastApp.ViewModels
             }
         }
 
-        // Called from the tray "Exit" path before the app actually shuts down.
-        // Cancels the tracker's tick wait, which makes it fall into its own
-        // finally block and do one last flush (close the open session, write
-        // whatever's accumulated in the caches since the last 60s flush).
-        // Bounded by a short timeout so a stuck flush can never hang app exit.
+        // Called from the tray "Exit" path, and from UpdateService before an
+        // auto-update restarts the process, so both go through the exact same
+        // shutdown sequence. Cancels the tracker's tick wait, which makes it
+        // fall into its own finally block and do one last flush (close the
+        // open session, write whatever's accumulated since the last 60s
+        // flush). Bounded by a short timeout so a stuck flush can never hang
+        // app exit or delay an update.
+        //
+        // Also checkpoints the WAL afterward: an update restart means Velopack
+        // is about to hard-kill this process on purpose (it has no way to know
+        // about this app's own shutdown sequence) to free the files it's
+        // replacing. SQLite's WAL mode is meant to tolerate a kill at any
+        // point without corruption, but on 2026-08-19 the live database ended
+        // up corrupted anyway shortly after an auto-update restart -- most
+        // likely third-party software on this machine (anti-cheat/RGB tools
+        // routinely hook other processes' I/O) violating an assumption WAL
+        // mode depends on. Checkpointing first can't fully close that gap,
+        // but it minimizes the window where a kill could land mid-write.
         public async Task RequestShutdownFlushAsync()
         {
             _trackerCts.Cancel();
             await Task.WhenAny(_trackerStoppedTcs.Task, Task.Delay(TimeSpan.FromSeconds(3)));
+
+            try
+            {
+                lock (_dbContext)
+                {
+                    _dbContext.Database.ExecuteSqlRaw("PRAGMA wal_checkpoint(TRUNCATE);");
+                }
+            }
+            catch { /* best-effort -- never block shutdown/restart on this */ }
         }
 
         private async Task StartProcessTrackerAsync()

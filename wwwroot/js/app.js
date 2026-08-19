@@ -133,6 +133,9 @@ async function boot() {
     refreshTopBar();
     setInterval(refreshTopBar, 30000);
 
+    loadWrappedAvailable();
+    initWrappedPanelOutsideClick();
+
     setInterval(pollCurrentView, POLL_INTERVAL_MS);
 
     try {
