@@ -1107,7 +1107,7 @@
     line-height: 1.25;
     text-wrap: balance;
     color: var(--text);
-    margin: 18px 0 0;
+    margin: 18px 0 10px;
 }
 .wrapped-slide .headline em { color: var(--brass); font-style: normal; }
 
@@ -1118,7 +1118,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    gap: 4px;
+    gap: 14px;
     min-height: 0;
 }
 .wrapped-slide .hero-number {
@@ -1130,28 +1130,65 @@
     letter-spacing: -0.02em;
     text-shadow: 0 0 60px var(--brass-glow);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
-.wrapped-slide .hero-number sup { font-size: 40px; font-weight: 600; top: -0.5em; }
-.wrapped-slide .hero-caption { font-size: 14px; color: var(--text-dim); max-width: 240px; }
-
-.wrapped-slide .delta-chip {
-    margin-top: 14px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 999px;
-    background: rgba(52, 211, 196, 0.12);
-    border: 1px solid rgba(52, 211, 196, 0.3);
-    color: var(--teal);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 600;
-}
-.wrapped-slide .delta-chip.is-down { background: rgba(255, 107, 107, 0.1); border-color: rgba(255, 107, 107, 0.28); color: var(--rose); }
+.wrapped-slide .hero-number sup,
+.wrapped-slide .hero-number .unit { font-size: 40px; font-weight: 600; vertical-align: super; }
+.wrapped-slide .hero-caption { font-size: 14px; color: var(--text-dim); max-width: 260px; }
 
 .wrapped-slide .foot { display: grid; gap: 10px; margin-top: 22px; }
 .wrapped-slide .foot-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--panel-border-soft); border-radius: 12px; padding: 12px 14px; }
 .wrapped-slide .foot-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
 .wrapped-slide .foot-value { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .wrapped-slide .foot-value.teal { color: var(--teal); }
+
+/* --- Rhythm slide: a small bar chart (day-by-day / week-by-week /
+   month-by-month, whichever fits the period) standing in for the giant
+   hero-number the other slides use -- this one is about a shape, not a
+   single figure. */
+.wrapped-slide .rhythm-caption { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); text-align: center; margin-bottom: 10px; }
+.wrapped-slide .bar-row { flex: 1; display: flex; align-items: flex-end; gap: 6px; min-height: 0; padding: 0 4px; }
+.wrapped-slide .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+.wrapped-slide .bar-track { width: 100%; flex: 1; display: flex; align-items: flex-end; }
+.wrapped-slide .bar-fill { width: 100%; min-height: 3px; border-radius: 4px 4px 2px 2px; background: var(--brass-dim); transition: height 0.3s ease; }
+.wrapped-slide .bar-fill.is-peak { background: var(--brass); box-shadow: 0 0 20px var(--brass-glow); }
+.wrapped-slide .bar-fill.is-future { background: rgba(255, 255, 255, 0.06); }
+.wrapped-slide .bar-label { font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); }
+
+/* --- Category breakdown: dominant category as the hero stat, the rest of
+   the split listed underneath so the whole picture is visible at a glance. */
+.wrapped-slide .cat-list { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+.wrapped-slide .cat-row { display: flex; align-items: center; gap: 10px; }
+.wrapped-slide .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.wrapped-slide .cat-name { flex: 1; font-size: 12px; color: var(--text-dim); }
+.wrapped-slide .cat-pct { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* --- Milestones this month/year: a compact list, one row per tier crossed --
+   reuses the same medal colors as the App Detail drawer's tier ladder. */
+.wrapped-slide .ms-list { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; overflow-y: auto; }
+.wrapped-slide .ms-row { display: flex; align-items: center; gap: 12px; }
+.wrapped-slide .ms-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.wrapped-slide .ms-app { font-size: 14px; font-weight: 600; color: var(--text); }
+.wrapped-slide .ms-tier { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+
+/* --- Top apps, plural (Year only): a small ranked list instead of one hero. */
+.wrapped-slide .rank-list { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+.wrapped-slide .rank-row { display: flex; align-items: center; gap: 14px; }
+.wrapped-slide .rank-num { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--brass); width: 32px; flex-shrink: 0; }
+.wrapped-slide .rank-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.wrapped-slide .rank-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+
+/* --- Archetype ("Your Type" / "This week's vibe"): the payoff slide, a short
+   bespoke label instead of a number. Light weight (Week) is deliberately
+   smaller and less ornamented -- one week isn't enough data to crown a
+   permanent identity, so it reads as a passing observation, not a title. */
+.wrapped-slide .archetype-hero .archetype-label {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 34px;
+    line-height: 1.15;
+    color: var(--brass);
+    text-shadow: 0 0 40px var(--brass-glow);
+    text-wrap: balance;
+}
+.wrapped-slide .archetype-hero.is-light .archetype-label { font-size: 24px; text-shadow: none; }
