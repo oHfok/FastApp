@@ -149,11 +149,21 @@ namespace FastApp.Services
             public string DateRange { get; set; }
             public bool IsInProgress { get; set; }
             public string ElapsedLabel { get; set; }
-            public object TimeOnPc { get; set; }
-            public object FocusQuality { get; set; }
+            public double PctFocused { get; set; }
             public object TopApp { get; set; }
-            public object PeakDay { get; set; }
             public double TotalFocusedHours { get; set; }
+            // --- Per-period-shape fields added for the narrative-arc redesign.
+            // Which of these the frontend actually uses depends on Type: week
+            // gets RhythmBuckets (day-by-day) + a light Archetype; month gets
+            // RhythmBuckets (week-by-week) + Milestones + a full Archetype;
+            // year gets RhythmBuckets (month-by-month) + Milestones + TopApps
+            // (plural) + the full Archetype as the closing slide. ---
+            public string RhythmLabel { get; set; }
+            public object RhythmBuckets { get; set; }
+            public object CategoryBreakdown { get; set; }
+            public object Milestones { get; set; }
+            public object TopApps { get; set; }
+            public object Archetype { get; set; }
         }
 
         // Builds a Wrapped recap for the *current* week/month/year (never a past one — see
@@ -187,60 +197,24 @@ namespace FastApp.Services
                 _ => periodStart.AddDays(-7)
             };
 
-            double periodTotalHours = periodKind switch
-            {
-                "month" => DateTime.DaysInMonth(today.Year, today.Month) * 24.0,
-                "year" => (DateTime.IsLeapYear(today.Year) ? 366 : 365) * 24.0,
-                _ => 168.0
-            };
-
             // Elapsed day-count so far in the current period (inclusive of today) --
             // naturally equals the full period length on the period's last day, so no
             // separate "is this period actually over" branch is needed anywhere below.
             int elapsedDays = (int)(today - periodStart).TotalDays + 1;
             DateTime prevElapsedEnd = prevStart.AddDays(elapsedDays - 1);
 
-            // Same 730-day floor used everywhere else DailyLogs gets scanned without a
-            // tight date filter -- also doubles as the ranking pool below.
-            DateTime historyFloor = today.AddDays(-730);
-
-            var allSystemLogs = await db.DailyLogs.AsNoTracking()
-                .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= historyFloor && l.Date <= today)
+            var currentSystemLogs = await db.DailyLogs.AsNoTracking()
+                .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= periodStart && l.Date <= today)
                 .ToListAsync();
-
-            var currentSystemLogs = allSystemLogs.Where(l => l.Date >= periodStart && l.Date <= today).ToList();
             if (currentSystemLogs.Count == 0) return null; // nothing to wrap yet
-
-            var prevSystemLogs = allSystemLogs.Where(l => l.Date >= prevStart && l.Date <= prevElapsedEnd).ToList();
 
             double currentUptimeHours = currentSystemLogs.Sum(l => l.TimeSpent.TotalHours);
             double currentFocusedHours = currentSystemLogs.Sum(l => l.TimeFocused.TotalHours);
-            double prevUptimeHours = prevSystemLogs.Sum(l => l.TimeSpent.TotalHours);
 
-            double pctOfPeriod = Math.Round(currentUptimeHours / periodTotalHours * 100, 1);
-            double? deltaPct = prevUptimeHours > 0.01 ? Math.Round((currentUptimeHours - prevUptimeHours) / prevUptimeHours * 100, 1) : null;
-
+            // Used as a secondary caption on the Cover slide (e.g. "72% of that
+            // was actually focused") and as an input to the Archetype's focus
+            // flourish below -- not a standalone slide anymore.
             double pctFocused = currentUptimeHours > 0.01 ? Math.Round(currentFocusedHours / currentUptimeHours * 100, 1) : 0;
-
-            // Rank this period's elapsed-so-far total against every other period of this
-            // type's total over the SAME elapsed day-count -- comparing a partial week to
-            // other weeks' full totals would make it impossible to ever rank well early on.
-            var bucketStarts = new HashSet<DateTime>();
-            foreach (var log in allSystemLogs)
-            {
-                DateTime bStart = periodKind switch
-                {
-                    "month" => new DateTime(log.Date.Year, log.Date.Month, 1),
-                    "year" => new DateTime(log.Date.Year, 1, 1),
-                    _ => GetMondayStartOfWeek(log.Date)
-                };
-                bucketStarts.Add(bStart);
-            }
-            var rankTotals = bucketStarts.Select(bStart =>
-                allSystemLogs.Where(l => l.Date >= bStart && l.Date <= bStart.AddDays(elapsedDays - 1)).Sum(l => l.TimeFocused.TotalHours)
-            ).Where(h => h > 0).OrderByDescending(h => h).ToList();
-            int rank = rankTotals.FindIndex(h => Math.Abs(h - currentFocusedHours) < 0.001) + 1;
-            if (rank <= 0) rank = rankTotals.Count + 1;
 
             var appLogs = await db.DailyLogs.AsNoTracking()
                 .Where(l => l.AppName != "SYSTEM_PC" && l.Date >= prevStart && l.Date <= today && !hiddenApps.Contains(l.AppName))
@@ -300,13 +274,190 @@ namespace FastApp.Services
                 };
             }
 
-            var peakDayRow = currentSystemLogs.OrderByDescending(l => l.TimeFocused).FirstOrDefault();
-            object peakDay = peakDayRow == null ? null : new
+            // Peak day/week/month is no longer computed separately here -- the
+            // RhythmBuckets built below cover every period type generically, and
+            // the frontend derives "which bucket was best" straight from those
+            // (max non-future entry) instead of needing a special-cased field.
+
+            // --- CATEGORY BREAKDOWN: where the period's focused time actually went.
+            // Categories are tracked per app but Wrapped never touched that data
+            // before -- this is real, previously-unused signal, not a rehash of
+            // a number already on Overview. ---
+            var categoryTotals = currentAppTotals
+                .GroupBy(a => appCategories.GetValueOrDefault(a.AppName, "Other"))
+                .Select(g => new { Category = g.Key, Minutes = g.Sum(a => a.Minutes) })
+                .OrderByDescending(x => x.Minutes)
+                .ToList();
+            double totalCategoryMinutes = categoryTotals.Sum(c => c.Minutes);
+            object categoryBreakdown = categoryTotals.Count == 0 ? null : new
             {
-                Date = peakDayRow.Date.ToString("yyyy-MM-dd"),
-                DayName = peakDayRow.Date.ToString("dddd"),
-                Hours = Math.Round(peakDayRow.TimeFocused.TotalHours, 1)
+                Top = new
+                {
+                    Category = categoryTotals[0].Category,
+                    Minutes = Math.Round(categoryTotals[0].Minutes, 1),
+                    Pct = totalCategoryMinutes > 0.01 ? Math.Round(categoryTotals[0].Minutes / totalCategoryMinutes * 100, 1) : 0
+                },
+                All = categoryTotals.Take(4).Select(c => new
+                {
+                    Category = c.Category,
+                    Minutes = Math.Round(c.Minutes, 1),
+                    Pct = totalCategoryMinutes > 0.01 ? Math.Round(c.Minutes / totalCategoryMinutes * 100, 1) : 0
+                }).ToList()
             };
+
+            // --- RHYTHM BUCKETS: the "when" story, at whatever grain actually fits
+            // the period -- individual days for a week (only 7, showing all of them
+            // works), weeks for a month, months for a year. All built from the
+            // SYSTEM_PC rows already fetched above, no extra query needed. ---
+            string rhythmLabel;
+            List<object> rhythmBuckets;
+            if (periodKind == "week")
+            {
+                rhythmLabel = "Day by day";
+                var byDate = currentSystemLogs.ToDictionary(l => l.Date.Date, l => Math.Round(l.TimeFocused.TotalHours, 1));
+                rhythmBuckets = new List<object>();
+                for (DateTime d = periodStart; d <= periodEnd; d = d.AddDays(1))
+                {
+                    rhythmBuckets.Add(new { Label = d.ToString("ddd"), Hours = byDate.GetValueOrDefault(d.Date, 0), IsFuture = d > today });
+                }
+            }
+            else if (periodKind == "month")
+            {
+                rhythmLabel = "Week by week";
+                rhythmBuckets = currentSystemLogs
+                    .GroupBy(l => GetMondayStartOfWeek(l.Date))
+                    .OrderBy(g => g.Key)
+                    .Select((g, i) => (object)new { Label = $"Wk {i + 1}", Hours = Math.Round(g.Sum(x => x.TimeFocused.TotalHours), 1), IsFuture = false })
+                    .ToList();
+            }
+            else
+            {
+                rhythmLabel = "Month by month";
+                rhythmBuckets = currentSystemLogs
+                    .GroupBy(l => new DateTime(l.Date.Year, l.Date.Month, 1))
+                    .OrderBy(g => g.Key)
+                    .Select(g => (object)new { Label = g.Key.ToString("MMM"), Hours = Math.Round(g.Sum(x => x.TimeFocused.TotalHours), 1), IsFuture = false })
+                    .ToList();
+            }
+
+            // --- ARCHETYPE: the closing-slide payoff. Deterministic, not AI --
+            // combines dominant category + weekday/weekend bias + focus quality
+            // into a short label and a one-line reason, using real numbers from
+            // this same response rather than a generic stock phrase. Week gets
+            // "light" weight (a vibe, not a crowned identity -- one week isn't
+            // enough data to call it your "type"); month/year get "full". ---
+            double weekdayFocusPeriod = currentSystemLogs.Where(l => l.Date.DayOfWeek >= DayOfWeek.Monday && l.Date.DayOfWeek <= DayOfWeek.Friday).Sum(l => l.TimeFocused.TotalHours);
+            double weekendFocusPeriod = currentSystemLogs.Where(l => l.Date.DayOfWeek == DayOfWeek.Saturday || l.Date.DayOfWeek == DayOfWeek.Sunday).Sum(l => l.TimeFocused.TotalHours);
+            double totalRhythmFocus = weekdayFocusPeriod + weekendFocusPeriod;
+            // Weekdays are 5/7 of the week, so a perfectly proportional week
+            // already puts ~71% of time on weekdays -- thresholds are set around
+            // that baseline rather than 50/50, so an even week doesn't misread as
+            // "weekday-biased" just because there are more weekdays to fill.
+            string rhythmBias = "Everyday";
+            if (totalRhythmFocus > 0.01)
+            {
+                double weekdayShare = weekdayFocusPeriod / totalRhythmFocus;
+                if (weekdayShare >= 0.85) rhythmBias = "Weekday";
+                else if (weekdayShare <= 0.40) rhythmBias = "Weekend";
+            }
+
+            object archetype = null;
+            string archetypeLabel = null; // captured separately so the Teaser below can reuse it without unboxing `archetype`
+            if (categoryTotals.Count > 0)
+            {
+                string topCat = categoryTotals[0].Category;
+                string catNoun = topCat switch
+                {
+                    "Development" => "Developer",
+                    "Gaming" => "Gamer",
+                    "Productivity" => "Organizer",
+                    "Browsing" => "Explorer",
+                    "Communication" => "Connector",
+                    "Media Production" => "Creator",
+                    "Music" => "Curator",
+                    "Fun" => "Player",
+                    "Education" => "Student",
+                    "Utilities" => "Tinkerer",
+                    _ => "Wanderer"
+                };
+                double topCatPct = totalCategoryMinutes > 0.01 ? Math.Round(categoryTotals[0].Minutes / totalCategoryMinutes * 100, 0) : 0;
+                string focusFlourish = pctFocused >= 60 ? "and when you're in, you're really in"
+                    : pctFocused >= 35 ? "steady and consistent"
+                    : "more time open than truly locked in";
+                string rhythmPhrase = rhythmBias == "Weekday" ? "mostly on weekdays"
+                    : rhythmBias == "Weekend" ? "mostly on weekends"
+                    : "spread evenly across the week";
+                archetypeLabel = $"The {rhythmBias} {catNoun}";
+                archetype = new
+                {
+                    Label = archetypeLabel,
+                    Description = $"{topCatPct}% of your focus went to {topCat} this {periodKind}, {rhythmPhrase} — {focusFlourish}.",
+                    Weight = periodKind == "week" ? "light" : "full"
+                };
+            }
+
+            // --- MILESTONES THIS PERIOD (month/year only): any app whose all-time
+            // cumulative focused hours crossed a tier threshold within this period's
+            // date range. Needs each app's FULL history (not just this period) to
+            // compute the running total correctly -- an app can carry 40h in from
+            // before the period and cross Silver (50h) three days into it. Same
+            // thresholds/names as the milestone tier ladder in the App Detail
+            // drawer -- kept in sync by hand with MILESTONE_TIERS in utils.js. ---
+            object milestonesThisPeriod = null;
+            if (periodKind == "month" || periodKind == "year")
+            {
+                var allAppLogsAllTime = await db.DailyLogs.AsNoTracking()
+                    .Where(l => l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName))
+                    .ToListAsync();
+
+                var tierDefs = new (double Hours, string Name)[]
+                {
+                    (10, "Bronze"), (50, "Silver"), (150, "Gold"), (500, "Platinum")
+                };
+
+                var crossings = new List<(string AppName, string TierName, DateTime SortDate)>();
+                foreach (var appGroup in allAppLogsAllTime.GroupBy(l => l.AppName))
+                {
+                    double running = 0;
+                    int tierIdx = 0;
+                    foreach (var log in appGroup.OrderBy(l => l.Date))
+                    {
+                        running += log.TimeFocused.TotalHours;
+                        while (tierIdx < tierDefs.Length && running >= tierDefs[tierIdx].Hours)
+                        {
+                            if (log.Date >= periodStart && log.Date <= today)
+                            {
+                                crossings.Add((appGroup.Key, tierDefs[tierIdx].Name, log.Date));
+                            }
+                            tierIdx++;
+                        }
+                    }
+                }
+
+                milestonesThisPeriod = crossings
+                    .OrderByDescending(c => c.SortDate)
+                    .Select(c => new { c.AppName, c.TierName, Date = c.SortDate.ToString("MMM d") })
+                    .ToList();
+            }
+
+            // --- TOP APPS (plural, year only): a whole year earns more than one
+            // headline app. Week/month keep the single TopApp+Mover slide below. ---
+            object topAppsResult = null;
+            if (periodKind == "year")
+            {
+                topAppsResult = currentAppTotals.Take(3).Select(a =>
+                {
+                    double prevMinutes = prevAppTotals.GetValueOrDefault(a.AppName, 0);
+                    double? topDeltaPct = prevMinutes > 0.01 ? Math.Round((a.Minutes - prevMinutes) / prevMinutes * 100, 0) : (double?)null;
+                    return new
+                    {
+                        AppName = a.AppName,
+                        Category = appCategories.GetValueOrDefault(a.AppName, "Other"),
+                        Minutes = Math.Round(a.Minutes, 1),
+                        DeltaPct = topDeltaPct
+                    };
+                }).ToList();
+            }
 
             string label = periodKind switch
             {
@@ -322,13 +473,12 @@ namespace FastApp.Services
                     ? $"{periodStart:MMM d}–{periodEnd:d}"
                     : $"{periodStart:MMM d}–{periodEnd:MMM d}"
             };
-            string teaser = periodKind switch
-            {
-                "month" => deltaPct == null ? $"{Math.Round(currentFocusedHours, 0)}h focused so far"
-                    : deltaPct >= 0 ? $"Up {deltaPct}% vs {prevStart:MMMM}" : $"Down {Math.Abs(deltaPct.Value)}% vs {prevStart:MMMM}",
-                "year" => $"{Math.Round(currentFocusedHours, 0)}h focused so far",
-                _ => $"PC on {pctOfPeriod}% of your week"
-            };
+            // The archetype label makes a punchier panel-preview teaser than a raw
+            // hour count -- falls back to hours if there wasn't enough data to
+            // build one (categoryTotals empty).
+            string teaser = archetypeLabel != null
+                ? archetypeLabel
+                : $"{Math.Round(currentFocusedHours, 0)}h focused so far";
 
             bool isInProgress = today < periodEnd;
 
@@ -340,23 +490,15 @@ namespace FastApp.Services
                 DateRange = dateRange,
                 IsInProgress = isInProgress,
                 ElapsedLabel = isInProgress ? $"as of {today:dddd}" : null,
-                TimeOnPc = new
-                {
-                    Hours = Math.Round(currentUptimeHours, 1),
-                    PctOfPeriod = pctOfPeriod,
-                    PeriodTotalHours = periodTotalHours,
-                    DeltaPct = deltaPct
-                },
-                FocusQuality = new
-                {
-                    PctFocused = pctFocused,
-                    FocusedHours = Math.Round(currentFocusedHours, 1),
-                    Rank = rank,
-                    TotalPeriods = rankTotals.Count
-                },
+                PctFocused = pctFocused,
                 TopApp = topApp,
-                PeakDay = peakDay,
-                TotalFocusedHours = Math.Round(currentFocusedHours, 1)
+                TotalFocusedHours = Math.Round(currentFocusedHours, 1),
+                RhythmLabel = rhythmLabel,
+                RhythmBuckets = rhythmBuckets,
+                CategoryBreakdown = categoryBreakdown,
+                Milestones = milestonesThisPeriod,
+                TopApps = topAppsResult,
+                Archetype = archetype
             };
         }
 

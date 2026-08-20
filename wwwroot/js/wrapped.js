@@ -154,9 +154,14 @@ function renderWrappedSlide() {
     document.getElementById('wrapped-slide-body').innerHTML = slide.body;
 }
 
-// Each builder returns { eyebrow, body } for one slide. All five share the
-// same shape (headline, big hero number, optional caption/chip/foot cards)
-// established by the approved mockup, just with different content per slide.
+// Each builder returns { eyebrow, body } for one slide. Unlike the old
+// version, the slide SET itself now differs by type -- Week is tactical
+// (day-by-day, a light "vibe"), Month is about trajectory (week-by-week,
+// milestones crossed), Year is the retrospective (month-by-month, every
+// milestone crossed all year, top 3 apps, and the full "Your Type" payoff).
+// Shared pieces (category breakdown, the rhythm bar chart, the archetype
+// card) are built by the render* helpers below and reused across periods
+// with different data, not different markup.
 function buildWrappedSlides(type, data) {
     const noun = WRAPPED_TYPE_NOUN[type] || 'Period';
     // CSS handles the uppercase styling (.wrapped-slide .eyebrow) -- doing it
@@ -165,131 +170,228 @@ function buildWrappedSlides(type, data) {
     const eyebrow = `${data.label ?? data.Label} &middot; ${(data.dateRange ?? data.DateRange) || ''}`;
     const elapsedSuffix = (data.isInProgress ?? data.IsInProgress) ? ' so far' : '';
 
-    const timeOnPc = data.timeOnPc ?? data.TimeOnPc ?? {};
-    const focusQuality = data.focusQuality ?? data.FocusQuality ?? {};
-    const topApp = data.topApp ?? data.TopApp;
-    const peakDay = data.peakDay ?? data.PeakDay;
     const totalFocusedHours = data.totalFocusedHours ?? data.TotalFocusedHours ?? 0;
+    const pctFocused = data.pctFocused ?? data.PctFocused ?? 0;
+    const topApp = data.topApp ?? data.TopApp;
+    const topApps = data.topApps ?? data.TopApps;
+    const archetype = data.archetype ?? data.Archetype;
+    const categoryBreakdown = data.categoryBreakdown ?? data.CategoryBreakdown;
+    const milestones = data.milestones ?? data.Milestones;
 
     const slides = [];
 
-    // 1. Cover
+    // 1. Cover -- one clean rounded number, not "Xh Ym" crammed into one
+    // 96px line (that's what wrapped into two cramped stacked lines before).
+    // Exact minutes aren't lost, just moved down to caption-sized text.
     slides.push({
         eyebrow,
         body: `
             <div class="headline">Your <em>${noun}</em>, Wrapped.</div>
             <div class="hero">
-                <div class="hero-number">${formatHoursWhole(totalFocusedHours)}</div>
-                <div class="hero-caption">hours focused${elapsedSuffix}</div>
+                <div class="hero-number">${Math.round(totalFocusedHours)}<span class="unit">h</span></div>
+                <div class="hero-caption">hours focused${elapsedSuffix}${pctFocused ? ` &middot; ${pctFocused}% of that truly focused` : ''}</div>
             </div>`
     });
 
-    // 2. Time on PC
-    const pctOfPeriod = timeOnPc.pctOfPeriod ?? timeOnPc.PctOfPeriod ?? 0;
-    const hours = timeOnPc.hours ?? timeOnPc.Hours ?? 0;
-    const periodTotalHours = timeOnPc.periodTotalHours ?? timeOnPc.PeriodTotalHours ?? 0;
-    const deltaPct = timeOnPc.deltaPct ?? timeOnPc.DeltaPct;
-    const deltaChip = deltaPct == null ? '' : `<div class="delta-chip ${deltaPct < 0 ? 'is-down' : ''}">${deltaPct >= 0 ? '&#9650;' : '&#9660;'} ${Math.abs(deltaPct)}% vs last ${noun.toLowerCase()}</div>`;
-    slides.push({
-        eyebrow,
-        body: `
-            <div class="headline">This ${noun.toLowerCase()}, your PC was on for <em>${pctOfPeriod}%</em> of your life.</div>
-            <div class="hero">
-                <div class="hero-number">${pctOfPeriod}<sup>%</sup></div>
-                <div class="hero-caption">${formatTime(hours * 60)} of the ${noun.toLowerCase()}'s ${Math.round(periodTotalHours)} hours</div>
-                ${deltaChip}
-            </div>`
-    });
+    // 2. Rhythm -- day-by-day for Week, week-by-week for Month, month-by-month
+    // for Year. Same component, different grain, because that's the level of
+    // detail that's actually meaningful at each timescale.
+    slides.push({ eyebrow, body: renderRhythmBody(type, noun, data) });
 
-    // 3. Focus quality
-    const pctFocused = focusQuality.pctFocused ?? focusQuality.PctFocused ?? 0;
-    const focusedHours = focusQuality.focusedHours ?? focusQuality.FocusedHours ?? 0;
-    const rank = focusQuality.rank ?? focusQuality.Rank;
-    const totalPeriods = focusQuality.totalPeriods ?? focusQuality.TotalPeriods;
-    slides.push({
-        eyebrow,
-        body: `
-            <div class="headline">Of that time, <em>${pctFocused}%</em> was spent actually focused.</div>
-            <div class="hero">
-                <div class="hero-number">${pctFocused}<sup>%</sup></div>
-                <div class="hero-caption">${formatTime(focusedHours * 60)} actively focused</div>
-            </div>
-            <div class="foot" style="grid-template-columns:1fr;">
-                <div class="foot-card">
-                    <div class="foot-label">Rank this ${type === 'week' ? 'year' : 'span'}</div>
-                    <div class="foot-value">#${rank ?? '—'} of ${totalPeriods ?? '—'} ${noun.toLowerCase()}s</div>
-                </div>
-            </div>`
-    });
+    // 3. Where your time went -- category breakdown, real data Wrapped never
+    // used to touch at all.
+    slides.push({ eyebrow, body: renderCategoryBreakdownBody(noun, categoryBreakdown) });
 
-    // 4. Top app
-    if (topApp) {
-        const appName = topApp.appName ?? topApp.AppName;
-        const minutes = topApp.minutes ?? topApp.Minutes ?? 0;
-        const mover = topApp.mover ?? topApp.Mover;
-        let moverHtml = '';
-        if (mover) {
-            const moverName = mover.appName ?? mover.AppName;
-            const direction = mover.direction ?? mover.Direction;
-            const moverDeltaPct = mover.deltaPct ?? mover.DeltaPct;
-            const moverText = moverDeltaPct != null
-                ? `${direction === 'up' ? '&#9650;' : '&#9660;'} ${moverDeltaPct}% vs last ${noun.toLowerCase()}`
-                : (direction === 'up' ? 'New this ' + noun.toLowerCase() : 'Quiet this ' + noun.toLowerCase());
-            moverHtml = `
-                <div class="foot" style="grid-template-columns:1fr;">
-                    <div class="foot-card">
-                        <div class="foot-label">Biggest Mover</div>
-                        <div class="foot-value ${direction === 'up' ? 'teal' : ''}">${escapeHtml(moverName)} &middot; ${moverText}</div>
-                    </div>
-                </div>`;
-        }
-        slides.push({
-            eyebrow,
-            body: `
-                <div class="headline"><em>${escapeHtml(appName)}</em> was your top app.</div>
-                <div class="hero">
-                    <div class="hero-number" style="font-size:56px;">${escapeHtml(appName.charAt(0).toUpperCase())}</div>
-                    <div class="hero-caption">${formatTime(minutes)} focused</div>
-                </div>
-                ${moverHtml}`
-        });
+    if (type === 'week') {
+        slides.push({ eyebrow, body: renderTopAppBody(noun, topApp) });
+        slides.push({ eyebrow, body: renderArchetypeBody(noun, archetype) });
+    } else if (type === 'month') {
+        slides.push({ eyebrow, body: renderMilestonesBody(noun, milestones) });
+        slides.push({ eyebrow, body: renderTopAppBody(noun, topApp) });
+        slides.push({ eyebrow, body: renderArchetypeBody(noun, archetype) });
     } else {
-        slides.push({ eyebrow, body: `<div class="headline">No standout app this ${noun.toLowerCase()} yet.</div>` });
-    }
-
-    // 5. Close
-    if (peakDay) {
-        const dayName = peakDay.dayName ?? peakDay.DayName;
-        const peakHours = peakDay.hours ?? peakDay.Hours ?? 0;
-        slides.push({
-            eyebrow,
-            body: `
-                <div class="headline">Your peak day was <em>${dayName}</em>.</div>
-                <div class="hero">
-                    <div class="hero-number">${formatHoursWhole(peakHours)}</div>
-                    <div class="hero-caption">focused that day</div>
-                </div>
-                <div class="foot" style="grid-template-columns:1fr;">
-                    <div class="foot-card">
-                        <div class="foot-label">Total This ${noun}</div>
-                        <div class="foot-value">${formatTime(totalFocusedHours * 60)}</div>
-                    </div>
-                </div>`
-        });
-    } else {
-        slides.push({
-            eyebrow,
-            body: `
-                <div class="headline">That's your ${noun.toLowerCase()} so far.</div>
-                <div class="hero"><div class="hero-number">${formatHoursWhole(totalFocusedHours)}</div><div class="hero-caption">hours focused</div></div>`
-        });
+        slides.push({ eyebrow, body: renderMilestonesBody(noun, milestones) });
+        slides.push({ eyebrow, body: renderTopAppsBody(topApps) });
+        slides.push({ eyebrow, body: renderArchetypeBody(noun, archetype) });
     }
 
     return slides;
 }
 
-function formatHoursWhole(hours) {
-    const h = Math.floor(hours);
-    const m = Math.round((hours - h) * 60);
-    return m > 0 ? `${h}<span style="font-size:0.4em;">h</span> ${m}<span style="font-size:0.4em;">m</span>` : `${h}<span style="font-size:0.4em;">h</span>`;
+// --- Rhythm: a small bar chart standing in for the giant hero-number the
+// other slides use -- this one's about a shape across days/weeks/months, not
+// a single figure. The headline names the strongest bucket explicitly so the
+// story reads even before you look at the bars.
+function renderRhythmBody(type, noun, data) {
+    const buckets = (data.rhythmBuckets ?? data.RhythmBuckets ?? []).map(b => ({
+        label: b.label ?? b.Label ?? '',
+        hours: b.hours ?? b.Hours ?? 0,
+        isFuture: b.isFuture ?? b.IsFuture ?? false
+    }));
+    const rhythmLabel = data.rhythmLabel ?? data.RhythmLabel ?? '';
+    const unitWord = type === 'week' ? 'day' : type === 'month' ? 'week' : 'month';
+
+    const real = buckets.filter(b => !b.isFuture && b.hours > 0);
+    const peak = real.length > 0 ? real.reduce((a, b) => (b.hours > a.hours ? b : a)) : null;
+    const headline = peak
+        ? `<em>${escapeHtml(peak.label)}</em> was your strongest ${unitWord}.`
+        : `Here's your ${noun.toLowerCase()} so far.`;
+
+    const maxHours = Math.max(0.01, ...real.map(b => b.hours));
+    const barsHtml = buckets.map(b => {
+        const pct = b.isFuture ? 4 : Math.max(4, Math.min(100, (b.hours / maxHours) * 100));
+        const isPeak = peak && b.label === peak.label && b.hours === peak.hours;
+        return `
+            <div class="bar-col">
+                <div class="bar-track"><div class="bar-fill ${isPeak ? 'is-peak' : ''} ${b.isFuture ? 'is-future' : ''}" style="height:${pct}%"></div></div>
+                <div class="bar-label">${escapeHtml(b.label)}</div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="headline">${headline}</div>
+        <div class="rhythm-caption">${escapeHtml(rhythmLabel)}</div>
+        <div class="bar-row">${barsHtml}</div>`;
+}
+
+// --- Where your time went: dominant category as the hero stat, the rest of
+// the split listed underneath so the whole picture is visible at a glance.
+function renderCategoryBreakdownBody(noun, categoryBreakdown) {
+    if (!categoryBreakdown) {
+        return `<div class="headline">Not enough data yet to see where your time went.</div>`;
+    }
+    const top = categoryBreakdown.top ?? categoryBreakdown.Top;
+    const all = categoryBreakdown.all ?? categoryBreakdown.All ?? [];
+    const topCat = top.category ?? top.Category;
+    const topPct = top.pct ?? top.Pct ?? 0;
+
+    const listHtml = all.map(c => {
+        const cat = c.category ?? c.Category;
+        const pct = c.pct ?? c.Pct ?? 0;
+        return `
+            <div class="cat-row">
+                <div class="cat-dot" style="background:${catColor(cat)}"></div>
+                <div class="cat-name">${escapeHtml(cat)}</div>
+                <div class="cat-pct">${pct}%</div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="headline">Most of your time went to <em>${escapeHtml(topCat)}</em>.</div>
+        <div class="hero" style="flex:0.55;">
+            <div class="hero-number">${topPct}<sup>%</sup></div>
+            <div class="hero-caption">of your tracked time this ${noun.toLowerCase()}</div>
+        </div>
+        <div class="cat-list">${listHtml}</div>`;
+}
+
+// --- Top app (Week/Month): unchanged from the original design -- this one
+// already did real comparison-to-last-period work and reads fine.
+function renderTopAppBody(noun, topApp) {
+    if (!topApp) return `<div class="headline">No standout app this ${noun.toLowerCase()} yet.</div>`;
+
+    const appName = topApp.appName ?? topApp.AppName;
+    const minutes = topApp.minutes ?? topApp.Minutes ?? 0;
+    const mover = topApp.mover ?? topApp.Mover;
+    let moverHtml = '';
+    if (mover) {
+        const moverName = mover.appName ?? mover.AppName;
+        const direction = mover.direction ?? mover.Direction;
+        const moverDeltaPct = mover.deltaPct ?? mover.DeltaPct;
+        const moverText = moverDeltaPct != null
+            ? `${direction === 'up' ? '&#9650;' : '&#9660;'} ${moverDeltaPct}% vs last ${noun.toLowerCase()}`
+            : (direction === 'up' ? 'New this ' + noun.toLowerCase() : 'Quiet this ' + noun.toLowerCase());
+        moverHtml = `
+            <div class="foot" style="grid-template-columns:1fr;">
+                <div class="foot-card">
+                    <div class="foot-label">Biggest Mover</div>
+                    <div class="foot-value ${direction === 'up' ? 'teal' : ''}">${escapeHtml(moverName)} &middot; ${moverText}</div>
+                </div>
+            </div>`;
+    }
+    return `
+        <div class="headline"><em>${escapeHtml(appName)}</em> was your top app.</div>
+        <div class="hero">
+            <div class="hero-number" style="font-size:56px;">${escapeHtml(appName.charAt(0).toUpperCase())}</div>
+            <div class="hero-caption">${formatTime(minutes)} focused</div>
+        </div>
+        ${moverHtml}`;
+}
+
+// --- Top apps, plural (Year only): a whole year earns more than a single
+// hero app -- a small ranked list instead.
+function renderTopAppsBody(topApps) {
+    const list = topApps ?? [];
+    if (list.length === 0) return `<div class="headline">No standout apps yet this year.</div>`;
+
+    const rows = list.map((a, i) => {
+        const appName = a.appName ?? a.AppName;
+        const minutes = a.minutes ?? a.Minutes ?? 0;
+        const deltaPct = a.deltaPct ?? a.DeltaPct;
+        const deltaText = deltaPct == null ? '' : ` &middot; ${deltaPct >= 0 ? '&#9650;' : '&#9660;'} ${Math.abs(deltaPct)}% vs last year`;
+        return `
+            <div class="rank-row">
+                <div class="rank-num">#${i + 1}</div>
+                <div>
+                    <div class="rank-name">${escapeHtml(appName)}</div>
+                    <div class="rank-sub">${formatTime(minutes)}${deltaText}</div>
+                </div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="headline">Your top apps this year.</div>
+        <div class="rank-list">${rows}</div>`;
+}
+
+// --- Milestones this period (Month/Year): pulls from the same tier ladder
+// shown in the App Detail drawer -- any app that crossed Bronze/Silver/Gold/
+// Platinum within this window shows up here. Real cross-feature payoff, not
+// filler: this is data the app already tracks that a period recap should
+// obviously surface.
+function renderMilestonesBody(noun, milestones) {
+    const list = milestones ?? [];
+    if (list.length === 0) {
+        return `
+            <div class="headline">No milestones crossed this ${noun.toLowerCase()} yet.</div>
+            <div class="hero"><div class="hero-caption">Tiers are Bronze (10h), Silver (50h), Gold (150h), Platinum (500h) per app -- keep going.</div></div>`;
+    }
+    const rows = list.map(m => {
+        const appName = m.appName ?? m.AppName;
+        const tierName = m.tierName ?? m.TierName;
+        const date = m.date ?? m.Date;
+        const tier = MILESTONE_TIERS.find(t => t.name === tierName);
+        return `
+            <div class="ms-row">
+                <div class="ms-dot" style="background:${tier ? tier.color : '#999'}"></div>
+                <div>
+                    <div class="ms-app">${escapeHtml(appName)}</div>
+                    <div class="ms-tier">${escapeHtml(tierName)} &middot; ${escapeHtml(date)}</div>
+                </div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="headline">${list.length} milestone${list.length === 1 ? '' : 's'} reached this ${noun.toLowerCase()}.</div>
+        <div class="ms-list">${rows}</div>`;
+}
+
+// --- Archetype ("Your Type" / "This week's vibe"): the actual payoff slide.
+// Week gets the light-weight "vibe" framing (smaller, no permanent label --
+// one week isn't enough data to crown an identity); Month/Year get the full
+// treatment as the story's closing beat.
+function renderArchetypeBody(noun, archetype) {
+    if (!archetype) return `<div class="headline">Not enough data yet for a read on your ${noun.toLowerCase()}.</div>`;
+
+    const label = archetype.label ?? archetype.Label;
+    const description = archetype.description ?? archetype.Description;
+    const weight = archetype.weight ?? archetype.Weight ?? 'full';
+    const titleText = weight === 'light' ? `This ${noun.toLowerCase()}'s vibe` : 'Your Type';
+
+    return `
+        <div class="headline">${titleText}</div>
+        <div class="hero archetype-hero ${weight === 'light' ? 'is-light' : ''}">
+            <div class="archetype-label">${escapeHtml(label)}</div>
+            <div class="hero-caption">${escapeHtml(description)}</div>
+        </div>`;
 }
