@@ -278,7 +278,7 @@ function renderCategoryBreakdownBody(noun, categoryBreakdown) {
 
     return `
         <div class="headline">Most of your time went to <em>${escapeHtml(topCat)}</em>.</div>
-        <div class="hero" style="flex:0.55;">
+        <div class="hero">
             <div class="hero-number">${topPct}<sup>%</sup></div>
             <div class="hero-caption">of your tracked time this ${noun.toLowerCase()}</div>
         </div>
