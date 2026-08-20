@@ -1083,6 +1083,14 @@
     mask-image: radial-gradient(circle at 50% 35%, black 0%, transparent 70%);
 }
 
+/* #wrapped-slide-body is the plain <div> renderWrappedSlide() injects each
+   slide's HTML into -- without this, it's a normal block element, so every
+   flex:1/justify-content:center on .hero/.bar-row/.ms-list/.rank-list below
+   (all direct children of it) has no effect: those properties only do
+   anything when the PARENT is a flex container. That's why everything sat
+   crammed under the headline instead of centered in the card. */
+.wrapped-slide #wrapped-slide-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
 .wrapped-slide .progress-row { display: flex; gap: 5px; margin-bottom: 20px; }
 .wrapped-slide .progress-seg { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); }
 .wrapped-slide .progress-seg.done { background: var(--brass-dim); }
