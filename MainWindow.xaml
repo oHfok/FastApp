@@ -367,7 +367,7 @@
                                 <ui:ToggleSwitch IsChecked="{Binding LaunchOnSystemStartup}"/>
                             </ui:CardControl>
 
-                            <ui:CardControl Margin="0,0,0,30" Padding="15">
+                            <ui:CardControl Margin="0,0,0,10" Padding="15">
                                 <ui:CardControl.Header>
                                     <StackPanel>
                                         <TextBlock Text="Enable On-Screen Display (OSD)" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
@@ -375,6 +375,16 @@
                                     </StackPanel>
                                 </ui:CardControl.Header>
                                 <ui:ToggleSwitch IsChecked="{Binding EnableOsd}"/>
+                            </ui:CardControl>
+
+                            <ui:CardControl Margin="0,0,0,30" Padding="15">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Show Auto-Launch Progress" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
+                                        <TextBlock Text="Show a centered popup with live progress while startup apps are being opened." Foreground="#888888" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch IsChecked="{Binding ShowAutoLaunchProgress}"/>
                             </ui:CardControl>
 
 

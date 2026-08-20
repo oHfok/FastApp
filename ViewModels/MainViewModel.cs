@@ -127,6 +127,9 @@ namespace FastApp.ViewModels
         // Global OSD Toggle
         [ObservableProperty] private bool _enableOsd;
 
+        // Centered "Opening X of Y" popup shown while auto-launch apps are starting
+        [ObservableProperty] private bool _showAutoLaunchProgress;
+
         // App updates (Velopack) — CurrentVersionText is set once at construction
         // since it never changes for the lifetime of the process; a real update
         // restarts into a new process entirely rather than mutating this one.
@@ -168,6 +171,7 @@ namespace FastApp.ViewModels
         public MainViewModel()
         {
             LoadOsdSetting();
+            LoadAutoLaunchProgressSetting();
 
             // After
             _dbContext = new AppDbContext();
@@ -381,19 +385,18 @@ namespace FastApp.ViewModels
            
 
             // 5. FIRE AND FORGET: Background tasks
-            _ = Task.Run(() =>
+            _ = Task.Run(async () =>
             {
-                // Despite the name, RunAutoLaunchAsync is synchronous (private void) —
-                // it blocks this thread until every auto-launch app has been checked
-                // and started. Kicking off the other three first means the dashboard
-                // server, tracker, and trigger loop all actually start immediately
-                // instead of waiting on auto-launch to finish first; none of them
-                // depend on it.
+                // RunAutoLaunchAsync is awaited so the toggle-sync code below still runs
+                // after every auto-launch app has been checked and started. Kicking off
+                // the other three first means the dashboard server, tracker, and trigger
+                // loop all actually start immediately instead of waiting on auto-launch
+                // to finish first; none of them depend on it.
                 _ = ProcessTriggersAsync();
                 _ = StartProcessTrackerAsync();
                 _ = Services.DashboardServerService.StartAsync();
                 _ = Services.UpdateService.CheckAndApplyOnStartupAsync(RequestShutdownFlushAsync);
-                RunAutoLaunchAsync();
+                await RunAutoLaunchAsync();
 
                 // NEW: reflect actual current registration state in the toggle
                 bool isRegistered = StartupTaskService.IsStartupCorrectlyRegistered();
@@ -535,6 +538,18 @@ namespace FastApp.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"Failed to save OSD setting: {ex.Message}");
+            }
+        }
+
+        partial void OnShowAutoLaunchProgressChanged(bool value)
+        {
+            try
+            {
+                File.WriteAllText(GetAutoLaunchProgressSettingsPath(), value.ToString());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to save auto-launch progress setting: {ex.Message}");
             }
         }
 
@@ -721,34 +736,78 @@ namespace FastApp.ViewModels
         // ==========================================
         // BACKGROUND SERVICES
         // ==========================================
-        private void RunAutoLaunchAsync()
+        private async Task RunAutoLaunchAsync()
         {
-            var runningProcesses = Process.GetProcesses()
-                                          .Select(p => p.ProcessName.ToLower())
-                                          .ToHashSet();
+            var appsToLaunch = ManagedApps
+                .Where(app => app.LaunchOnStartup && !string.IsNullOrEmpty(app.ExecutablePath))
+                .ToList();
 
-            foreach (var app in ManagedApps)
+            if (appsToLaunch.Count == 0) return;
+
+            bool showProgress = ShowAutoLaunchProgress;
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            int succeeded = 0;
+
+            for (int i = 0; i < appsToLaunch.Count; i++)
             {
-                if (app.LaunchOnStartup && !string.IsNullOrEmpty(app.ExecutablePath))
-                {
-                    string exeName = Path.GetFileNameWithoutExtension(app.ExecutablePath).ToLower();
+                var app = appsToLaunch[i];
 
-                    if (!runningProcesses.Contains(exeName))
+                if (showProgress)
+                {
+                    Services.AutoLaunchProgressService.ShowProgress(i + 1, appsToLaunch.Count, app.Name);
+                }
+
+                // Re-checked fresh each iteration rather than snapshotted once before the
+                // loop, so an app launched earlier in this same pass (or by something else
+                // in the meantime) is correctly seen as already running.
+                var runningProcesses = Process.GetProcesses()
+                                              .Select(p => p.ProcessName.ToLower())
+                                              .ToHashSet();
+                string exeName = Path.GetFileNameWithoutExtension(app.ExecutablePath).ToLower();
+
+                if (runningProcesses.Contains(exeName))
+                {
+                    succeeded++;
+                }
+                else if (!File.Exists(app.ExecutablePath))
+                {
+                    Debug.WriteLine($"Skipped auto-launch of {app.Name}: executable not found at {app.ExecutablePath}");
+                }
+                else
+                {
+                    try
                     {
-                        try
+                        Process.Start(new ProcessStartInfo
                         {
-                            Process.Start(new ProcessStartInfo
-                            {
-                                FileName = app.ExecutablePath,
-                                UseShellExecute = true
-                            });
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"Failed to auto-launch {app.Name}: {ex.Message}");
-                        }
+                            FileName = app.ExecutablePath,
+                            WorkingDirectory = Path.GetDirectoryName(app.ExecutablePath),
+                            UseShellExecute = true
+                        });
+                        succeeded++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Failed to auto-launch {app.Name}: {ex.Message}");
                     }
                 }
+
+                // Small stagger so launches don't all fire in the same instant (reduces
+                // launch-storm/race risk) and so the progress window is actually readable.
+                if (i < appsToLaunch.Count - 1)
+                {
+                    await Task.Delay(350);
+                }
+            }
+
+            stopwatch.Stop();
+
+            if (showProgress)
+            {
+                double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+                string summary = succeeded == appsToLaunch.Count
+                    ? $"Opened {succeeded} app{(succeeded == 1 ? "" : "s")} in {elapsedSeconds:F1}s"
+                    : $"Opened {succeeded} of {appsToLaunch.Count} apps in {elapsedSeconds:F1}s";
+                Services.AutoLaunchProgressService.ShowSummary(summary);
             }
         }
 
@@ -1217,6 +1276,30 @@ namespace FastApp.ViewModels
             else
             {
                 EnableOsd = true;
+            }
+        }
+
+        // Uses AppDbContext.GetDbFolder() (FastAppData) rather than the OSD
+        // setting's %LocalAppData%\FastApp folder — that folder is Velopack's
+        // install-managed root, which caused real DB corruption earlier when
+        // app data collided with it. New settings go in the known-safe folder.
+        private string GetAutoLaunchProgressSettingsPath()
+        {
+            string folder = AppDbContext.GetDbFolder();
+            Directory.CreateDirectory(folder);
+            return Path.Combine(folder, "autolaunch_progress_setting.txt");
+        }
+
+        private void LoadAutoLaunchProgressSetting()
+        {
+            string path = GetAutoLaunchProgressSettingsPath();
+            if (File.Exists(path))
+            {
+                ShowAutoLaunchProgress = File.ReadAllText(path) == "True";
+            }
+            else
+            {
+                ShowAutoLaunchProgress = true;
             }
         }
 
