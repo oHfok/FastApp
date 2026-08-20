@@ -1328,16 +1328,41 @@ namespace FastApp.ViewModels
         // ==========================================
         // COMMANDS & UTILITIES
         // ==========================================
+        // Both settings files live in FastAppData (AppDbContext.GetDbFolder()),
+        // never in %LocalAppData%\FastApp — that one is Velopack's install-managed
+        // root, and an install wiping it is exactly what destroyed the database on
+        // 2026-08-19. osd_setting.txt used to sit there and was one reinstall away
+        // from silently resetting itself.
         private string GetSettingsPath()
         {
-            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FastApp");
-            Directory.CreateDirectory(folder);
-            return Path.Combine(folder, "osd_setting.txt");
+            return Path.Combine(AppDbContext.GetDbFolder(), "osd_setting.txt");
         }
 
         private void LoadOsdSetting()
         {
             string path = GetSettingsPath();
+
+            // One-time move of the value from the old, Velopack-owned location so
+            // the toggle doesn't silently flip back to its default for anyone who
+            // had already set it. Read-and-rewrite rather than File.Move: the old
+            // copy may be gone, locked, or already migrated, and none of those are
+            // worth failing startup over.
+            if (!File.Exists(path))
+            {
+                try
+                {
+                    string legacyPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "FastApp", "osd_setting.txt");
+                    if (File.Exists(legacyPath))
+                    {
+                        File.WriteAllText(path, File.ReadAllText(legacyPath));
+                        try { File.Delete(legacyPath); } catch { /* leaving a stale copy behind is harmless */ }
+                    }
+                }
+                catch { /* fall through to the default below */ }
+            }
+
             if (File.Exists(path))
             {
                 EnableOsd = File.ReadAllText(path) == "True";
@@ -1348,15 +1373,9 @@ namespace FastApp.ViewModels
             }
         }
 
-        // Uses AppDbContext.GetDbFolder() (FastAppData) rather than the OSD
-        // setting's %LocalAppData%\FastApp folder — that folder is Velopack's
-        // install-managed root, which caused real DB corruption earlier when
-        // app data collided with it. New settings go in the known-safe folder.
         private string GetAutoLaunchProgressSettingsPath()
         {
-            string folder = AppDbContext.GetDbFolder();
-            Directory.CreateDirectory(folder);
-            return Path.Combine(folder, "autolaunch_progress_setting.txt");
+            return Path.Combine(AppDbContext.GetDbFolder(), "autolaunch_progress_setting.txt");
         }
 
         private void LoadAutoLaunchProgressSetting()

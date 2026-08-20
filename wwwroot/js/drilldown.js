@@ -98,18 +98,25 @@ async function openDrilldown(appName) {
         // toward whichever tier is next. No unlock notification for this first
         // version; it just reflects current state whenever the drawer opens.
         const milestoneDates = data.milestoneDates ?? data.MilestoneDates ?? [];
-        const { tier, next, hoursToNext } = getMilestoneProgress(allTimeFocusedHours);
+        // Ladder definition comes from the backend (Services/MilestoneTiers.cs) so
+        // this renders exactly the tiers it scored against, never a local copy.
+        const milestoneTiers = (data.milestoneTiers ?? data.MilestoneTiers ?? []).map(t => ({
+            name: t.name ?? t.Name,
+            hours: t.hours ?? t.Hours ?? 0
+        }));
+        const { tier, next, hoursToNext } = getMilestoneProgress(allTimeFocusedHours, milestoneTiers);
 
-        document.getElementById('dd-tier-ladder').innerHTML = MILESTONE_TIERS.map((t, i) => {
+        document.getElementById('dd-tier-ladder').innerHTML = milestoneTiers.map((t, i) => {
             const reached = allTimeFocusedHours >= t.hours;
             const isCurrent = tier === t;
             const dateReached = milestoneDates[i];
+            const color = milestoneTierColor(t.name);
             return `
-                <div class="dd-tier-item ${reached ? 'reached' : ''} ${isCurrent ? 'current' : ''}" style="${isCurrent ? `border-color:${t.color}` : ''}">
-                    <div class="dd-tier-dot" style="${reached ? `background:${t.color}` : ''}"></div>
-                    <div class="dd-tier-name" style="${reached ? `color:${t.color}` : ''}">${t.name}</div>
+                <div class="dd-tier-item ${reached ? 'reached' : ''} ${isCurrent ? 'current' : ''}" style="${isCurrent ? `border-color:${color}` : ''}">
+                    <div class="dd-tier-dot" style="${reached ? `background:${color}` : ''}"></div>
+                    <div class="dd-tier-name" style="${reached ? `color:${color}` : ''}">${escapeHtml(t.name)}</div>
                     <div class="dd-tier-req">${t.hours}h</div>
-                    <div class="dd-tier-date">${reached && dateReached ? `since ${dateReached}` : ''}</div>
+                    <div class="dd-tier-date">${reached && dateReached ? `since ${escapeHtml(dateReached)}` : ''}</div>
                 </div>`;
         }).join('');
 
@@ -119,12 +126,16 @@ async function openDrilldown(appName) {
             const bracketStart = tier ? tier.hours : 0;
             const pct = Math.min(100, Math.max(0, ((allTimeFocusedHours - bracketStart) / (next.hours - bracketStart)) * 100));
             barFill.style.width = `${pct}%`;
-            barFill.style.background = next.color;
+            barFill.style.background = milestoneTierColor(next.name);
             barCaption.textContent = `${formatHours(allTimeFocusedHours - bracketStart)} of ${formatHours(next.hours - bracketStart)} to ${next.name}`;
-        } else {
+        } else if (tier) {
             barFill.style.width = '100%';
-            barFill.style.background = tier.color;
-            barCaption.textContent = `Max tier reached — Platinum since ${milestoneDates[milestoneDates.length - 1] || '—'}`;
+            barFill.style.background = milestoneTierColor(tier.name);
+            barCaption.textContent = `Max tier reached — ${tier.name} since ${milestoneDates[milestoneDates.length - 1] || '—'}`;
+        } else {
+            // No ladder came back at all — leave the bar empty rather than throwing.
+            barFill.style.width = '0%';
+            barCaption.textContent = '—';
         }
 
         // First/last opened — from DailyLogs' MIN/MAX Date for this app, which

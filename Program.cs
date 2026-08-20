@@ -64,10 +64,28 @@ namespace FastApp
             }
             if (!isNewInstance)
             {
-                // Another full instance is already running — just exit quietly.
+                // Another full instance is already running. Exiting silently here
+                // meant launching FastApp from the desktop/Start menu while it sat
+                // minimized in the tray did visibly nothing at all, which reads as
+                // the app being broken. Poke the running instance so it brings its
+                // window up, which is what clicking the icon was asking for.
+                try
+                {
+                    if (EventWaitHandle.TryOpenExisting(ShowWindowEventName, out var showEvent))
+                    {
+                        using (showEvent) showEvent.Set();
+                    }
+                }
+                catch { /* the other instance may be mid-exit — nothing useful to do */ }
+
                 Environment.Exit(0);
                 return;
             }
+
+            // Owned by this (the only) instance: later launches set it to ask for
+            // the window. Created before App so a launch racing ours still finds it.
+            using var showWindowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowWindowEventName);
+            StartShowWindowListener(showWindowEvent);
 
             App app = new App();
             app.InitializeComponent();
@@ -75,6 +93,46 @@ namespace FastApp
 
             // Keep the mutex alive for the entire lifetime of the app.
             GC.KeepAlive(singleInstanceMutex);
+        }
+
+        private const string ShowWindowEventName = "FastApp_ShowWindow_Event";
+
+        // Background, IsBackground so it can never keep the process alive on exit.
+        private static void StartShowWindowListener(EventWaitHandle showWindowEvent)
+        {
+            var listener = new Thread(() =>
+            {
+                while (true)
+                {
+                    try
+                    {
+                        showWindowEvent.WaitOne();
+
+                        var current = System.Windows.Application.Current;
+                        if (current == null) continue; // not up yet (or already gone)
+
+                        current.Dispatcher.Invoke(() =>
+                        {
+                            var window = current.MainWindow;
+                            if (window == null) return;
+                            window.Show();
+                            window.WindowState = WindowState.Normal;
+                            window.Activate();
+                        });
+                    }
+                    catch
+                    {
+                        // Shutting down mid-wait, or the dispatcher is gone. Either
+                        // way there's no window left to raise.
+                        return;
+                    }
+                }
+            })
+            {
+                IsBackground = true,
+                Name = "FastApp show-window listener"
+            };
+            listener.Start();
         }
     }
 }

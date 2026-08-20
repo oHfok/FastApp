@@ -411,9 +411,9 @@ namespace FastApp.Services
             // cumulative focused hours crossed a tier threshold within this period's
             // date range. Needs each app's FULL history (not just this period) to
             // compute the running total correctly -- an app can carry 40h in from
-            // before the period and cross Silver (50h) three days into it. Same
-            // thresholds/names as the milestone tier ladder in the App Detail
-            // drawer -- kept in sync by hand with MILESTONE_TIERS in utils.js. ---
+            // before the period and cross Silver (50h) three days into it. Shares
+            // the one ladder definition with the App Detail drawer, so the two can
+            // no longer disagree about the same app on the same day. ---
             object milestonesThisPeriod = null;
             if (periodKind == "month" || periodKind == "year")
             {
@@ -421,10 +421,7 @@ namespace FastApp.Services
                     .Where(l => l.AppName != "SYSTEM_PC" && !hiddenApps.Contains(l.AppName))
                     .ToListAsync();
 
-                var tierDefs = new (double Hours, string Name)[]
-                {
-                    (10, "Bronze"), (50, "Silver"), (150, "Gold"), (500, "Platinum")
-                };
+                var tierDefs = MilestoneTiers.All;
 
                 var crossings = new List<(string AppName, string TierName, DateTime SortDate)>();
                 foreach (var appGroup in allAppLogsAllTime.GroupBy(l => l.AppName))
@@ -605,14 +602,10 @@ namespace FastApp.Services
 
             app.UseStaticFiles();
 
-            // Serve the standalone Nova dashboard from wwwroot2 at /nova
-            string novaRootPath = Path.Combine(exeFolder, "wwwroot2");
-            if (!Directory.Exists(novaRootPath)) Directory.CreateDirectory(novaRootPath);
-            app.UseStaticFiles(new StaticFileOptions
-            {
-                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(novaRootPath),
-                RequestPath = "/nova"
-            });
+            // A second static-file mount served a "Nova" dashboard from wwwroot2 at
+            // /nova. That folder does not exist in the repo and is not packaged, so
+            // the only thing the route ever did was create an empty directory inside
+            // the install folder on every launch and serve nothing out of it.
 
             using (var initDb = new AppDbContext())
             {
@@ -1331,19 +1324,20 @@ namespace FastApp.Services
                     double lastYearFocusH = allTimeLogs.Where(l => l.Date > targetDate.AddDays(-730) && l.Date <= targetDate.AddDays(-365)).Sum(l => l.TimeFocused.TotalHours);
 
                     // --- MILESTONE TIERS: the day cumulative focused hours first crossed
-                    // each threshold. Thresholds (10/50/150/500) must match MILESTONE_TIERS
-                    // in wwwroot/js/utils.js — kept in sync by hand, not a shared constant,
-                    // since this is the only other place they're needed. Null entries mean
-                    // that tier hasn't been reached yet.
-                    double[] milestoneThresholds = { 10, 50, 150, 500 };
-                    string?[] milestoneDates = new string?[milestoneThresholds.Length];
+                    // each threshold. Ladder comes from MilestoneTiers.All (the single
+                    // definition) and is sent to the frontend alongside these dates, so
+                    // the drawer renders whatever the backend actually scored rather
+                    // than a hardcoded copy that could disagree with it. Null entries
+                    // mean that tier hasn't been reached yet.
+                    var milestoneTiers = MilestoneTiers.All;
+                    string?[] milestoneDates = new string?[milestoneTiers.Length];
                     {
                         double runningHours = 0;
                         int thresholdIdx = 0;
                         foreach (var log in allTimeLogs.OrderBy(l => l.Date))
                         {
                             runningHours += log.TimeFocused.TotalHours;
-                            while (thresholdIdx < milestoneThresholds.Length && runningHours >= milestoneThresholds[thresholdIdx])
+                            while (thresholdIdx < milestoneTiers.Length && runningHours >= milestoneTiers[thresholdIdx].Hours)
                             {
                                 milestoneDates[thresholdIdx] = log.Date.ToString("MMM d, yyyy");
                                 thresholdIdx++;
@@ -1354,6 +1348,7 @@ namespace FastApp.Services
                     await context.Response.WriteAsJsonAsync(new
                     {
                         AppName = appName,
+                        MilestoneTiers = milestoneTiers, // ladder definition, so the frontend keeps no copy of its own
                         Consistency = consistencyPct, // Added
                         UsagePattern = usagePattern, // Added
                         MilestoneDates = milestoneDates,

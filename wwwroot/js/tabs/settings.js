@@ -85,6 +85,9 @@ async function loadRetentionSetting() {
         // If the stored value isn't one of the presets, fall back to Keep Forever
         const hasOption = Array.from(select.options).some(o => o.value == val);
         select.value = hasOption ? val : 99999;
+        // Remembered so saveRetentionSetting() can tell a shortening (destructive,
+        // needs confirmation) from a lengthening (deletes nothing).
+        select.dataset.savedValue = select.value;
 
         const captureWindowTitles = data.captureWindowTitles ?? data.CaptureWindowTitles ?? false;
         document.getElementById('window-titles-toggle').checked = captureWindowTitles;
@@ -92,9 +95,41 @@ async function loadRetentionSetting() {
 }
 
 async function saveRetentionSetting() {
-    const val = document.getElementById('retention-select').value;
-    await fetch('/api/settings/retention', { method: 'POST', body: val });
+    const select = document.getElementById('retention-select');
+    const val = select.value;
     const status = document.getElementById('retention-status');
+
+    // Shortening retention destroys data on next launch with no undo, so it gets
+    // an explicit confirmation naming the cutoff. Lengthening it (or Keep Forever)
+    // deletes nothing, so it saves without interruption.
+    const previous = parseInt(select.dataset.savedValue || '99999', 10);
+    const next = parseInt(val, 10);
+    if (next < previous) {
+        const label = select.options[select.selectedIndex].textContent.trim();
+        const confirmed = confirm(
+            `Keep only the last ${label}?\n\n` +
+            `Session and macro logs older than that will be permanently deleted the next time ` +
+            `FastApp starts. This can't be undone without a backup.\n\n` +
+            `Your daily totals and per-app history are not affected.`
+        );
+        if (!confirmed) {
+            select.value = String(previous); // put the dropdown back where it was
+            return;
+        }
+    }
+
+    const res = await fetch('/api/settings/retention', { method: 'POST', body: val });
+    if (!res.ok) {
+        status.textContent = 'Could not save that value.';
+        status.style.color = 'var(--rose)';
+        status.style.display = 'block';
+        setTimeout(() => { status.style.display = 'none'; }, 2500);
+        return;
+    }
+
+    select.dataset.savedValue = val;
+    status.textContent = 'Saved.';
+    status.style.color = '';
     status.style.display = 'block';
     setTimeout(() => { status.style.display = 'none'; }, 2500);
 }
