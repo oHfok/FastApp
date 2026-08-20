@@ -89,8 +89,27 @@ async function openDrilldown(appName) {
         document.getElementById('dd-pattern').textContent = data.usagePattern || '—';
 
         // Lifetime stats
-        document.getElementById('dd-focus-all').textContent = formatHours(data.allTimeFocused || 0);
+        const allTimeFocusedHours = data.allTimeFocused || 0;
+        document.getElementById('dd-focus-all').textContent = formatHours(allTimeFocusedHours);
         document.getElementById('dd-running-all').textContent = formatHours(data.allTimeRunning || 0);
+
+        // Milestone badge — tier reached (if any) based on cumulative focused
+        // hours, plus how far to the next one. No unlock notification for this
+        // first version; it just appears next time you open the drawer.
+        const badgeEl = document.getElementById('dd-milestone-badge');
+        const { tier, next, hoursToNext } = getMilestoneProgress(allTimeFocusedHours);
+        if (tier) {
+            badgeEl.style.display = 'flex';
+            badgeEl.style.borderColor = tier.color;
+            document.getElementById('dd-milestone-icon').textContent = tier.icon;
+            const nameEl = document.getElementById('dd-milestone-name');
+            nameEl.textContent = tier.name;
+            nameEl.style.color = tier.color;
+            document.getElementById('dd-milestone-next').textContent =
+                next ? `${formatHours(hoursToNext)} to ${next.name}` : 'Max tier reached';
+        } else {
+            badgeEl.style.display = 'none';
+        }
 
         // First/last opened — from DailyLogs' MIN/MAX Date for this app, which
         // (unlike SessionLogs) is never pruned by retention, so this covers the

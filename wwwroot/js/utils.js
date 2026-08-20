@@ -36,6 +36,29 @@ const categoryColors = {
 };
 function catColor(cat) { return categoryColors[cat] || categoryColors['Other']; }
 
+// --- Milestone badges (App Detail drawer) -----------------------------------
+// Tiered per-app badges based on cumulative all-time focused hours. Fixed
+// medal colors on purpose (not theme tokens) — bronze/silver/gold/platinum
+// need to read as "medal metal", not shift with the dashboard's color theme.
+const MILESTONE_TIERS = [
+    { name: 'Bronze', hours: 10, color: '#CD7F32', icon: '🥉' },
+    { name: 'Silver', hours: 50, color: '#C0C0C0', icon: '🥈' },
+    { name: 'Gold', hours: 150, color: '#FFD700', icon: '🥇' },
+    { name: 'Platinum', hours: 500, color: '#8FE3FF', icon: '💎' }
+];
+// Returns { tier, next, hoursToNext } — tier is null below the first threshold,
+// next/hoursToNext are null once Platinum is reached (nothing further to show).
+function getMilestoneProgress(allTimeHours) {
+    const hours = allTimeHours || 0;
+    let tier = null;
+    let next = null;
+    for (const t of MILESTONE_TIERS) {
+        if (hours >= t.hours) tier = t;
+        else { next = t; break; }
+    }
+    return { tier, next, hoursToNext: next ? Math.max(0, next.hours - hours) : null };
+}
+
 // --- Per-app accent color (Timeline ribbon "Individual" mode) --------------
 // Category color alone makes a timeline unreadable once more than one or two
 // apps share a category — they render as one indistinguishable block. This
