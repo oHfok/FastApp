@@ -792,27 +792,43 @@
 
 .dd-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; padding-right: 40px; }
 
-/* Milestone badge — pushed to the far side of the header (margin-left:auto)
-   so it reads as a status indicator next to the app identity, not another
-   stat competing with rank/streak for attention lower in the drawer. */
-.dd-milestone-badge {
-    margin-left: auto;
+/* Milestone tier ladder — every tier shown at once (not just the one reached)
+   so the drawer actually explains what the tiers are and what it takes to
+   earn each one, not just the current status in isolation. Reached tiers get
+   their medal color; the current tier gets a highlighted ring; anything not
+   reached yet stays dim so the eye goes straight to "where am I". */
+.dd-tier-ladder { display: flex; gap: 8px; }
+.dd-tier-item {
+    flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
+    gap: 5px;
+    padding: 10px 6px;
     border-radius: var(--radius-sm, 8px);
     background: var(--bg-raised);
     border: 1px solid var(--panel-border);
+    opacity: 0.45;
+    transition: opacity 0.2s ease, border-color 0.2s ease;
 }
-.dd-milestone-icon { font-size: 22px; line-height: 1; }
-.dd-milestone-name {
+.dd-tier-item.reached { opacity: 1; }
+.dd-tier-item.current { border-width: 1.5px; }
+.dd-tier-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--text-faint);
+    background: transparent;
+}
+.dd-tier-item.reached .dd-tier-dot { border-color: transparent; }
+.dd-tier-name {
     font-family: var(--font-display);
     font-weight: 800;
-    font-size: 13px;
-    letter-spacing: 0.03em;
+    font-size: 12px;
+    letter-spacing: 0.02em;
 }
-.dd-milestone-next { font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+.dd-tier-req { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
+.dd-tier-date { font-size: 9px; color: var(--text-faint); }
 
 .dd-icon {
     width: 52px;

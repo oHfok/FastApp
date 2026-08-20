@@ -93,22 +93,38 @@ async function openDrilldown(appName) {
         document.getElementById('dd-focus-all').textContent = formatHours(allTimeFocusedHours);
         document.getElementById('dd-running-all').textContent = formatHours(data.allTimeRunning || 0);
 
-        // Milestone badge — tier reached (if any) based on cumulative focused
-        // hours, plus how far to the next one. No unlock notification for this
-        // first version; it just appears next time you open the drawer.
-        const badgeEl = document.getElementById('dd-milestone-badge');
+        // Milestone — a ladder showing every tier (name + hour requirement, so
+        // it's actually clear what each one takes to earn) plus a progress bar
+        // toward whichever tier is next. No unlock notification for this first
+        // version; it just reflects current state whenever the drawer opens.
+        const milestoneDates = data.milestoneDates ?? data.MilestoneDates ?? [];
         const { tier, next, hoursToNext } = getMilestoneProgress(allTimeFocusedHours);
-        if (tier) {
-            badgeEl.style.display = 'flex';
-            badgeEl.style.borderColor = tier.color;
-            document.getElementById('dd-milestone-icon').textContent = tier.icon;
-            const nameEl = document.getElementById('dd-milestone-name');
-            nameEl.textContent = tier.name;
-            nameEl.style.color = tier.color;
-            document.getElementById('dd-milestone-next').textContent =
-                next ? `${formatHours(hoursToNext)} to ${next.name}` : 'Max tier reached';
+
+        document.getElementById('dd-tier-ladder').innerHTML = MILESTONE_TIERS.map((t, i) => {
+            const reached = allTimeFocusedHours >= t.hours;
+            const isCurrent = tier === t;
+            const dateReached = milestoneDates[i];
+            return `
+                <div class="dd-tier-item ${reached ? 'reached' : ''} ${isCurrent ? 'current' : ''}" style="${isCurrent ? `border-color:${t.color}` : ''}">
+                    <div class="dd-tier-dot" style="${reached ? `background:${t.color}` : ''}"></div>
+                    <div class="dd-tier-name" style="${reached ? `color:${t.color}` : ''}">${t.name}</div>
+                    <div class="dd-tier-req">${t.hours}h</div>
+                    <div class="dd-tier-date">${reached && dateReached ? `since ${dateReached}` : ''}</div>
+                </div>`;
+        }).join('');
+
+        const barFill = document.getElementById('dd-milestone-bar-fill');
+        const barCaption = document.getElementById('dd-milestone-bar-caption');
+        if (next) {
+            const bracketStart = tier ? tier.hours : 0;
+            const pct = Math.min(100, Math.max(0, ((allTimeFocusedHours - bracketStart) / (next.hours - bracketStart)) * 100));
+            barFill.style.width = `${pct}%`;
+            barFill.style.background = next.color;
+            barCaption.textContent = `${formatHours(allTimeFocusedHours - bracketStart)} of ${formatHours(next.hours - bracketStart)} to ${next.name}`;
         } else {
-            badgeEl.style.display = 'none';
+            barFill.style.width = '100%';
+            barFill.style.background = tier.color;
+            barCaption.textContent = `Max tier reached — Platinum since ${milestoneDates[milestoneDates.length - 1] || '—'}`;
         }
 
         // First/last opened — from DailyLogs' MIN/MAX Date for this app, which

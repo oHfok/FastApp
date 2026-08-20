@@ -1076,12 +1076,34 @@ namespace FastApp.Services
                     double thisYearFocusH = allTimeLogs.Where(l => l.Date > targetDate.AddDays(-365) && l.Date <= targetDate).Sum(l => l.TimeFocused.TotalHours);
                     double lastYearFocusH = allTimeLogs.Where(l => l.Date > targetDate.AddDays(-730) && l.Date <= targetDate.AddDays(-365)).Sum(l => l.TimeFocused.TotalHours);
 
+                    // --- MILESTONE TIERS: the day cumulative focused hours first crossed
+                    // each threshold. Thresholds (10/50/150/500) must match MILESTONE_TIERS
+                    // in wwwroot/js/utils.js — kept in sync by hand, not a shared constant,
+                    // since this is the only other place they're needed. Null entries mean
+                    // that tier hasn't been reached yet.
+                    double[] milestoneThresholds = { 10, 50, 150, 500 };
+                    string?[] milestoneDates = new string?[milestoneThresholds.Length];
+                    {
+                        double runningHours = 0;
+                        int thresholdIdx = 0;
+                        foreach (var log in allTimeLogs.OrderBy(l => l.Date))
+                        {
+                            runningHours += log.TimeFocused.TotalHours;
+                            while (thresholdIdx < milestoneThresholds.Length && runningHours >= milestoneThresholds[thresholdIdx])
+                            {
+                                milestoneDates[thresholdIdx] = log.Date.ToString("MMM d, yyyy");
+                                thresholdIdx++;
+                            }
+                        }
+                    }
+
                     await context.Response.WriteAsJsonAsync(new
                     {
                         AppName = appName,
                         ExecutablePath = exePath, // Added
                         Consistency = consistencyPct, // Added
                         UsagePattern = usagePattern, // Added
+                        MilestoneDates = milestoneDates,
                         AllTimeFocused = Math.Round(allTimeLogs.Sum(l => l.TimeFocused.TotalHours), 1),
                         AllTimeRunning = Math.Round(allTimeLogs.Sum(l => l.TimeSpent.TotalHours), 1),
                         AllTimeAfk = Math.Round(allTimeLogs.Sum(l => l.AfkTimeSpent.TotalHours), 1),
