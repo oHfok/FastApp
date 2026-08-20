@@ -527,7 +527,27 @@ namespace FastApp.Services
             {
                 await initDb.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS HiddenApps (AppName TEXT PRIMARY KEY);");
                 await initDb.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS AppSettings (Key TEXT PRIMARY KEY, Value TEXT);");
-                await initDb.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO AppSettings (Key, Value) VALUES ('RetentionDays', '90');");
+                // Keep Forever (99999) is the default, matching what the Settings UI
+                // has always presented as the default. This used to seed '90', which
+                // meant a user who never opened Settings had their SessionLogs and
+                // MacroEventLogs permanently deleted at 90 days -- silently, on every
+                // launch, without ever having chosen it.
+                await initDb.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO AppSettings (Key, Value) VALUES ('RetentionDays', '99999');");
+
+                // One-time repair for installs created while '90' was the seeded
+                // default. A stored 90 is far more likely to be that old default than
+                // a deliberate choice, and the two are indistinguishable here -- so
+                // this errs toward KEEPING data, since guessing wrong in that
+                // direction is recoverable and guessing wrong the other way is not.
+                // The marker key makes it strictly one-time: anyone who genuinely
+                // wants 90 days can set it again and it will stick.
+                bool retentionAlreadyRepaired = PinService.GetSettingValue(initDb, "RetentionDefaultRepaired") == "true";
+                if (!retentionAlreadyRepaired)
+                {
+                    await initDb.Database.ExecuteSqlRawAsync("UPDATE AppSettings SET Value = '99999' WHERE Key = 'RetentionDays' AND Value = '90';");
+                    await initDb.Database.ExecuteSqlRawAsync("INSERT OR REPLACE INTO AppSettings (Key, Value) VALUES ('RetentionDefaultRepaired', 'true');");
+                }
+
                 // Window-title capture is privacy-sensitive, so it defaults OFF — the
                 // user has to explicitly opt in from the Settings drawer.
                 await initDb.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO AppSettings (Key, Value) VALUES ('CaptureWindowTitles', 'false');");
@@ -2000,7 +2020,23 @@ namespace FastApp.Services
             });
 
             app.MapGet("/api/settings", async (HttpContext context) => { using var db = new AppDbContext(); await context.Response.WriteAsJsonAsync(new { RetentionDays = GetRetentionDays(db), CaptureWindowTitles = GetCaptureWindowTitles(db) }); });
-            app.MapPost("/api/settings/retention", async (HttpContext context) => { using var reader = new StreamReader(context.Request.Body); string days = await reader.ReadToEndAsync(); using var db = new AppDbContext(); await db.Database.ExecuteSqlRawAsync("UPDATE AppSettings SET Value = {0} WHERE Key = 'RetentionDays'", days); });
+            // Validated before storing: this value drives an irreversible DELETE on
+            // every app start, so an unparseable or nonsensical entry landing in the
+            // DB is not something to discover later. Anything invalid is rejected
+            // rather than written, leaving the previous setting untouched.
+            app.MapPost("/api/settings/retention", async (HttpContext context) =>
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                string raw = (await reader.ReadToEndAsync()).Trim();
+                if (!int.TryParse(raw, out int days) || days < 1 || days > 99999)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Retention must be a whole number of days between 1 and 99999." });
+                    return;
+                }
+                using var db = new AppDbContext();
+                await db.Database.ExecuteSqlRawAsync("UPDATE AppSettings SET Value = {0} WHERE Key = 'RetentionDays'", days.ToString());
+            });
             app.MapPost("/api/settings/window-titles", async (HttpContext context) => { using var reader = new StreamReader(context.Request.Body); string enabled = (await reader.ReadToEndAsync()).Trim().ToLower() == "true" ? "true" : "false"; using var db = new AppDbContext(); await db.Database.ExecuteSqlRawAsync("UPDATE AppSettings SET Value = {0} WHERE Key = 'CaptureWindowTitles'", enabled); });
 
             // Work/Play classification behind the Insights tab's rhythm chart —

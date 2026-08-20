@@ -78,8 +78,16 @@ namespace FastApp.ViewModels
         // day's tracking plus whatever session was still open. RequestShutdownFlushAsync
         // cancels the tracker's wait; the tracker does one last flush in its finally
         // block and signals _trackerStoppedTcs when it's actually safe to exit.
-        private readonly CancellationTokenSource _trackerCts = new();
-        private readonly TaskCompletionSource<bool> _trackerStoppedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        //
+        // Not readonly, because the flush is no longer always terminal: Windows can
+        // raise SessionEnding and then have the shutdown vetoed by another app, which
+        // would otherwise leave this process alive with a permanently dead tracker.
+        // RestartTrackerIfStopped swaps in a fresh pair to recover from exactly that.
+        private CancellationTokenSource _trackerCts = new();
+        private TaskCompletionSource<bool> _trackerStoppedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Guards against ever running two tracker loops at once (they share
+        // _dbContext and the pending queues, so a duplicate would double-count).
+        private readonly object _trackerLifecycleLock = new();
 
         public StatisticsViewModel StatisticsVM { get; }
 
@@ -228,7 +236,13 @@ namespace FastApp.ViewModels
                 try
                 {
                     using var cleanupDb = new AppDbContext();
-                    int retentionDays = 90;
+                    // Keep Forever unless the setting says otherwise. This fallback
+                    // is used when the setting can't be read at all -- including on a
+                    // first run, where this task can race ahead of the dashboard
+                    // server's seeding of AppSettings. It must therefore be the
+                    // SAFE value: a 90 here meant "couldn't read the setting, so
+                    // permanently delete three-month-old history anyway."
+                    int retentionDays = 99999;
                     using var command = cleanupDb.Database.GetDbConnection().CreateCommand();
                     command.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'RetentionDays'";
                     cleanupDb.Database.OpenConnection();
@@ -842,6 +856,34 @@ namespace FastApp.ViewModels
                 }
             }
             catch { /* best-effort -- never block shutdown/restart on this */ }
+        }
+
+        // Recovery path for a shutdown that didn't actually happen. Windows raises
+        // SessionEnding before the shutdown is final, and any app can still veto it
+        // (the user then sees the "app is preventing shutdown" screen and can back
+        // out). We've already flushed and stopped the tracker by that point, so
+        // without this the app would sit there looking fine while silently recording
+        // nothing until its next restart.
+        //
+        // No-ops unless the tracker has actually stopped, so calling it when nothing
+        // was wrong is harmless.
+        public void RestartTrackerIfStopped()
+        {
+            lock (_trackerLifecycleLock)
+            {
+                if (!_trackerCts.IsCancellationRequested) return; // still running — nothing to do
+
+                // Only once the previous loop has actually reached its finally block
+                // and signalled. Cancellation alone isn't proof it's finished, and
+                // starting a second loop alongside one that's still winding down
+                // would double-count everything they both flush.
+                if (!_trackerStoppedTcs.Task.IsCompleted) return;
+
+                _trackerCts.Dispose();
+                _trackerCts = new CancellationTokenSource();
+                _trackerStoppedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _ = StartProcessTrackerAsync();
+            }
         }
 
         // Swaps in a validated backup and restarts into it. stagingFilePath has
