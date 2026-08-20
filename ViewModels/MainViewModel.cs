@@ -138,6 +138,11 @@ namespace FastApp.ViewModels
         // Centered "Opening X of Y" popup shown while auto-launch apps are starting
         [ObservableProperty] private bool _showAutoLaunchProgress;
 
+        // Mirrors DashboardServerService's real state into the Settings card, which
+        // previously hardcoded "The web interface is currently running on ..." and
+        // said so even when the server had failed to bind its port.
+        [ObservableProperty] private string _dashboardStatusText = "Starting the dashboard server…";
+
         // App updates (Velopack) — CurrentVersionText is set once at construction
         // since it never changes for the lifetime of the process; a real update
         // restarts into a new process entirely rather than mutating this one.
@@ -410,6 +415,7 @@ namespace FastApp.ViewModels
                 _ = StartProcessTrackerAsync();
                 _ = Services.DashboardServerService.StartAsync();
                 _ = Services.UpdateService.CheckAndApplyOnStartupAsync(RequestShutdownFlushAsync);
+                _ = PublishDashboardStatusAsync();
                 await RunAutoLaunchAsync();
 
                 // NEW: reflect actual current registration state in the toggle
@@ -856,6 +862,27 @@ namespace FastApp.ViewModels
                 }
             }
             catch { /* best-effort -- never block shutdown/restart on this */ }
+        }
+
+        // The dashboard server is started fire-and-forget and settles a moment
+        // later (bind succeeds, or fails because something else holds the port),
+        // so its outcome is polled briefly rather than awaited -- awaiting
+        // StartAsync directly would mean waiting for the server's entire lifetime,
+        // since it only returns once the host shuts down.
+        private async Task PublishDashboardStatusAsync()
+        {
+            for (int i = 0; i < 20; i++) // ~10s, well past a normal bind
+            {
+                await Task.Delay(500);
+                if (Services.DashboardServerService.IsRunning ||
+                    !Services.DashboardServerService.StatusMessage.StartsWith("Starting", StringComparison.Ordinal))
+                {
+                    break;
+                }
+            }
+
+            string status = Services.DashboardServerService.StatusMessage;
+            System.Windows.Application.Current?.Dispatcher.Invoke(() => DashboardStatusText = status);
         }
 
         // Recovery path for a shutdown that didn't actually happen. Windows raises

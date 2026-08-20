@@ -394,7 +394,7 @@
                                 <ui:CardControl.Header>
                                     <StackPanel>
                                         <TextBlock Text="Dashboard Port" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
-                                        <TextBlock Text="The web interface is currently running on http://127.0.0.1:5050" Foreground="#888888" FontSize="12" Margin="0,2,0,0"/>
+                                        <TextBlock Text="{Binding DashboardStatusText}" Foreground="#888888" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" MaxWidth="380"/>
                                     </StackPanel>
                                 </ui:CardControl.Header>
                                 <ui:Button Content="Open Browser" Icon="Globe24" Appearance="Secondary" Command="{Binding StatisticsVM.OpenWebDashboardCommand}"/>

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,6 +16,15 @@ namespace FastApp.Services
 {
     public static class DashboardServerService
     {
+        public const string DashboardUrl = "http://127.0.0.1:5050/dashboard.html";
+
+        // Live state of the embedded web server, so the UI can report what is
+        // actually true instead of a hardcoded "it's running" string. Set to
+        // running optimistically at bind time and corrected if RunAsync throws;
+        // a bind failure is by far the likeliest cause (port already taken).
+        public static bool IsRunning { get; private set; }
+        public static string StatusMessage { get; private set; } = "Starting the dashboard server…";
+
         private record UpdateLimitRequest(string AppName, int DailyLimitMinutes, bool StrictFocusMode, string Pin);
 
         private record CategoryClassificationRequest(string Category, string Classification);
@@ -510,7 +520,88 @@ namespace FastApp.Services
 
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { ContentRootPath = exeFolder, WebRootPath = wwwrootPath });
             builder.WebHost.UseUrls("http://127.0.0.1:5050");
-            var app = builder.Build();          
+            var app = builder.Build();
+
+            // ==========================================================
+            // LOCAL-ONLY GUARD
+            //
+            // Binding to 127.0.0.1 keeps this off the network, but it does NOT
+            // make the server private to this app: anything running in a browser
+            // on this machine can reach it too. Without the checks below, any
+            // website the user happened to have open could POST here.
+            //
+            // The endpoints read raw string bodies, which makes them "simple
+            // requests" under CORS -- no preflight, so the browser just sends
+            // them. The attacker cannot read the response (no CORS headers are
+            // ever set, which is deliberate), but a blind write is more than
+            // enough: retention could be set to its minimum and take the user's
+            // history with it on next launch, or window-title capture -- a
+            // privacy setting -- could be switched on.
+            //
+            // Two layers:
+            //  * Host  -- checked on EVERY request, including GET. This is what
+            //    stops DNS rebinding, where a hostile domain re-resolves to
+            //    127.0.0.1 so the browser treats our responses as same-origin
+            //    and can finally read them. Such a request still carries the
+            //    attacker's hostname in Host, so it fails here.
+            //  * Origin/Referer -- checked on state-changing verbs. Browsers
+            //    always attach Origin to cross-origin POSTs (form submissions
+            //    included), so a mismatch is a reliable CSRF signal. A request
+            //    with neither header is not something a page can produce, so it
+            //    is allowed through for local scripting/curl.
+            // ==========================================================
+            string[] allowedHosts = { "127.0.0.1:5050", "localhost:5050", "[::1]:5050" };
+            string[] allowedOrigins = { "http://127.0.0.1:5050", "http://localhost:5050", "http://[::1]:5050" };
+
+            app.Use(async (context, next) =>
+            {
+                string host = context.Request.Host.Value ?? string.Empty;
+                if (!allowedHosts.Contains(host, StringComparer.OrdinalIgnoreCase))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Unrecognized Host header." });
+                    return;
+                }
+
+                string method = context.Request.Method;
+                bool isStateChanging = !HttpMethods.IsGet(method)
+                                    && !HttpMethods.IsHead(method)
+                                    && !HttpMethods.IsOptions(method);
+
+                if (isStateChanging)
+                {
+                    string origin = context.Request.Headers.Origin.ToString();
+                    string referer = context.Request.Headers.Referer.ToString();
+
+                    bool allowed;
+                    if (!string.IsNullOrEmpty(origin))
+                    {
+                        allowed = allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase);
+                    }
+                    else if (!string.IsNullOrEmpty(referer))
+                    {
+                        // Compared against origin + "/" so a lookalike host like
+                        // "http://127.0.0.1:5050.example.com/" cannot satisfy a
+                        // plain prefix match.
+                        allowed = allowedOrigins.Any(o =>
+                            referer.Equals(o, StringComparison.OrdinalIgnoreCase) ||
+                            referer.StartsWith(o + "/", StringComparison.OrdinalIgnoreCase));
+                    }
+                    else
+                    {
+                        allowed = true; // no browser context — not reachable from a web page
+                    }
+
+                    if (!allowed)
+                    {
+                        context.Response.StatusCode = 403;
+                        await context.Response.WriteAsJsonAsync(new { error = "Cross-origin request rejected." });
+                        return;
+                    }
+                }
+
+                await next();
+            });
 
             app.UseStaticFiles();
 
@@ -1108,10 +1199,12 @@ namespace FastApp.Services
                         else usagePattern = "Mixed / Balanced";
                     }
 
-                    // --- PATH + DAILY LIMIT LOOKUP (Safe Version) ---
-                    // Try to find the path/limit from ManagedApps if available.
-                    // (If you don't store Path in DB yet, it will return this placeholder until you track it).
-                    string exePath = "Path not recorded in database.";
+                    // --- DAILY LIMIT LOOKUP (Safe Version) ---
+                    // ExecutablePath used to be read here and returned in the
+                    // response. Nothing in wwwroot/ ever displayed it (the feature
+                    // it was added for was dropped), so it was handing full local
+                    // filesystem paths to every caller of this endpoint for no
+                    // reason. Dropped along with /api/open-folder.
                     int dailyLimitMinutes = 0;
                     bool strictFocusMode = false;
                     int todayBonusMinutes = 0;
@@ -1120,7 +1213,6 @@ namespace FastApp.Services
                         var managedApp = await db.ManagedApps.FirstOrDefaultAsync(m => m.Name == appName);
                         if (managedApp != null)
                         {
-                            if (!string.IsNullOrEmpty(managedApp.ExecutablePath)) exePath = managedApp.ExecutablePath;
                             dailyLimitMinutes = managedApp.DailyLimitMinutes;
                             strictFocusMode = managedApp.StrictFocusMode;
                             // Same self-expiring check the tracker uses: a bonus not
@@ -1262,7 +1354,6 @@ namespace FastApp.Services
                     await context.Response.WriteAsJsonAsync(new
                     {
                         AppName = appName,
-                        ExecutablePath = exePath, // Added
                         Consistency = consistencyPct, // Added
                         UsagePattern = usagePattern, // Added
                         MilestoneDates = milestoneDates,
@@ -1824,29 +1915,13 @@ namespace FastApp.Services
             });
 
 
-            // --- NEW: OPEN FOLDER SECURE ENDPOINT ---
-            app.MapPost("/api/open-folder", async (HttpContext context) =>
-            {
-                try
-                {
-                    using var reader = new StreamReader(context.Request.Body);
-                    string path = await reader.ReadToEndAsync();
-
-                    // Basic security & validation check
-                    if (!string.IsNullOrEmpty(path) && File.Exists(path))
-                    {
-                        // Tells Windows Explorer to open and highlight the specific file
-                        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
-                        await context.Response.WriteAsJsonAsync(new { success = true });
-                    }
-                    else
-                    {
-                        context.Response.StatusCode = 404;
-                        await context.Response.WriteAsJsonAsync(new { error = "Path not found or invalid." });
-                    }
-                }
-                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
-            });
+            // /api/open-folder used to live here: it took an arbitrary filesystem
+            // path from the request body and handed it to explorer.exe. It was
+            // built for a reveal-in-Explorer feature that was never shipped, so
+            // nothing in wwwroot/ ever called it -- leaving a process-launching
+            // endpoint permanently exposed for no benefit. Removed rather than
+            // hardened, since the right amount of attack surface for a feature
+            // that does not exist is none.
 
             // Downloads a complete, self-contained snapshot of the tracking database.
             // Uses SQLite's VACUUM INTO rather than copying the .db file directly —
@@ -2087,7 +2162,36 @@ namespace FastApp.Services
             app.MapPost("/api/hide", async (HttpContext context) => { using var reader = new StreamReader(context.Request.Body); string appName = await reader.ReadToEndAsync(); using var db = new AppDbContext(); await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO HiddenApps (AppName) VALUES ({0})", appName); });
             app.MapPost("/api/unhide", async (HttpContext context) => { using var reader = new StreamReader(context.Request.Body); string appName = await reader.ReadToEndAsync(); using var db = new AppDbContext(); await db.Database.ExecuteSqlRawAsync("DELETE FROM HiddenApps WHERE AppName = {0}", appName); });
 
-            await app.RunAsync();
+            // RunAsync is where a failed port bind actually surfaces. This used to
+            // be uncaught in a fire-and-forget task, so if anything else on the
+            // machine already held 5050 the exception vanished into an unobserved
+            // Task and the dashboard simply never worked -- with the Settings card
+            // still cheerfully claiming it was "currently running", and the tray
+            // button opening a browser tab to a connection error. Failing loudly
+            // into a status the UI can read is the whole point here.
+            // Split rather than RunAsync() so a failed bind is caught precisely at
+            // startup, instead of having to assume that any exception out of a
+            // combined start-and-run call meant the server never came up.
+            try
+            {
+                await app.StartAsync();
+                IsRunning = true;
+                StatusMessage = "Running on http://127.0.0.1:5050";
+            }
+            catch (Exception ex)
+            {
+                IsRunning = false;
+                StatusMessage = ex is IOException
+                    ? "Port 5050 is already in use by another program, so the dashboard could not start. Close whatever is using it, then restart FastApp."
+                    : $"The dashboard failed to start: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"Dashboard server failed to start: {ex}");
+                return;
+            }
+
+            await app.WaitForShutdownAsync();
+
+            IsRunning = false;
+            StatusMessage = "The dashboard server has stopped.";
         }
     }
 }
