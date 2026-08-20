@@ -37,26 +37,37 @@ const categoryColors = {
 function catColor(cat) { return categoryColors[cat] || categoryColors['Other']; }
 
 // --- Milestone badges (App Detail drawer) -----------------------------------
-// Tiered per-app badges based on cumulative all-time focused hours. Fixed
-// medal colors on purpose (not theme tokens) — bronze/silver/gold/platinum
-// need to read as "medal metal", not shift with the dashboard's color theme.
-const MILESTONE_TIERS = [
-    { name: 'Bronze', hours: 10, color: '#CD7F32', icon: '🥉' },
-    { name: 'Silver', hours: 50, color: '#C0C0C0', icon: '🥈' },
-    { name: 'Gold', hours: 150, color: '#FFD700', icon: '🥇' },
-    { name: 'Platinum', hours: 500, color: '#8FE3FF', icon: '💎' }
-];
-// Returns { tier, next, hoursToNext } — tier is null below the first threshold,
-// next/hoursToNext are null once Platinum is reached (nothing further to show).
-function getMilestoneProgress(allTimeHours) {
+// The tier ladder itself (names + hour thresholds) is owned by the backend and
+// arrives with /api/app-details — see Services/MilestoneTiers.cs. It used to be
+// duplicated here, which meant the drawer and Wrapped could silently disagree
+// about the same app if either copy was edited alone.
+//
+// Only the colors live here, because they're presentation. Fixed medal values
+// on purpose (not theme tokens): bronze/silver/gold/platinum need to read as
+// "medal metal" rather than shift with the dashboard's color theme.
+const MILESTONE_TIER_COLORS = {
+    Bronze: '#CD7F32',
+    Silver: '#C0C0C0',
+    Gold: '#FFD700',
+    Platinum: '#8FE3FF'
+};
+function milestoneTierColor(name) { return MILESTONE_TIER_COLORS[name] || 'var(--text-faint)'; }
+
+// Returns { tier, next, hoursToNext } for a ladder supplied by the caller.
+// tier is null below the first threshold; next/hoursToNext are null once the
+// top tier is reached (nothing further to show).
+function getMilestoneProgress(allTimeHours, tiers) {
     const hours = allTimeHours || 0;
+    const ladder = tiers || [];
     let tier = null;
     let next = null;
-    for (const t of MILESTONE_TIERS) {
-        if (hours >= t.hours) tier = t;
+    for (const t of ladder) {
+        const tierHours = t.hours ?? t.Hours ?? 0;
+        if (hours >= tierHours) tier = t;
         else { next = t; break; }
     }
-    return { tier, next, hoursToNext: next ? Math.max(0, next.hours - hours) : null };
+    const nextHours = next ? (next.hours ?? next.Hours ?? 0) : null;
+    return { tier, next, hoursToNext: next ? Math.max(0, nextHours - hours) : null };
 }
 
 // --- Per-app accent color (Timeline ribbon "Individual" mode) --------------

@@ -365,10 +365,9 @@ function renderMilestonesBody(noun, milestones) {
         const appName = m.appName ?? m.AppName;
         const tierName = m.tierName ?? m.TierName;
         const date = m.date ?? m.Date;
-        const tier = MILESTONE_TIERS.find(t => t.name === tierName);
         return `
             <div class="ms-row">
-                <div class="ms-dot" style="background:${tier ? tier.color : '#999'}"></div>
+                <div class="ms-dot" style="background:${milestoneTierColor(tierName)}"></div>
                 <div>
                     <div class="ms-app">${escapeHtml(appName)}</div>
                     <div class="ms-tier">${escapeHtml(tierName)} &middot; ${escapeHtml(date)}</div>

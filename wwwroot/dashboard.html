@@ -375,7 +375,10 @@
     <div class="settings-tab-panel" data-tab="data" style="display:none;">
     <div class="dd-section">
         <div class="dd-section-label">Database Retention</div>
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">How long detailed logs are kept before being cleared.</p>
+        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+            How long detailed session and macro logs are kept. Anything older is permanently deleted the next
+            time FastApp starts, and cannot be recovered without a backup. Your daily totals are never affected.
+        </p>
         <div class="retention-row">
             <select id="retention-select" class="field" style="flex:1;">
                 <option value="30">30 Days</option>
