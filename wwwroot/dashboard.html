@@ -488,13 +488,6 @@
             <div class="dd-title" id="dd-title">App Name</div>
             <div class="dd-rank" id="dd-rank">—</div>
         </div>
-        <div class="dd-milestone-badge" id="dd-milestone-badge" style="display:none;">
-            <span class="dd-milestone-icon" id="dd-milestone-icon"></span>
-            <div>
-                <div class="dd-milestone-name" id="dd-milestone-name"></div>
-                <div class="dd-milestone-next" id="dd-milestone-next"></div>
-            </div>
-        </div>
     </div>
 
     <div class="segmented" id="dd-tab-toggle" style="margin-bottom:20px;">
@@ -566,6 +559,16 @@
                     <div class="card-label">Running</div>
                     <div class="dd-stat-value" id="dd-running-all">0h 0m</div>
                 </div>
+            </div>
+        </div>
+
+        <div class="dd-section">
+            <div class="dd-section-label">Milestone</div>
+            <div style="font-size:12px;color:var(--text-faint);margin-bottom:14px;">Tiers based on cumulative focused time in this app.</div>
+            <div class="dd-tier-ladder" id="dd-tier-ladder"></div>
+            <div class="dd-limit-bar-wrap" id="dd-milestone-bar-wrap" style="margin-top:16px;">
+                <div class="dd-limit-bar"><div class="dd-limit-bar-fill" id="dd-milestone-bar-fill"></div></div>
+                <div class="dd-limit-bar-caption" id="dd-milestone-bar-caption">—</div>
             </div>
         </div>
 
