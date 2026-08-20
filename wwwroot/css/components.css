@@ -792,6 +792,28 @@
 
 .dd-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; padding-right: 40px; }
 
+/* Milestone badge — pushed to the far side of the header (margin-left:auto)
+   so it reads as a status indicator next to the app identity, not another
+   stat competing with rank/streak for attention lower in the drawer. */
+.dd-milestone-badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm, 8px);
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-border);
+}
+.dd-milestone-icon { font-size: 22px; line-height: 1; }
+.dd-milestone-name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+}
+.dd-milestone-next { font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+
 .dd-icon {
     width: 52px;
     height: 52px;
