@@ -3,6 +3,7 @@ using FastApp.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -44,6 +45,49 @@ namespace FastApp
 
             // 4. WIRE THE HOOK: Connect the live hook to the loaded ViewModel.
             _keyboardHook.KeysChanged += _viewModel.CheckForHotkeys;
+
+            // 5. SHUTDOWN SAFETY NET: Windows shutting down / restarting / logging
+            // off never goes through the tray Exit path, so without this the most
+            // COMMON way this app ends (the user turning their PC off) was also the
+            // only one that skipped the graceful flush entirely -- losing the open
+            // session plus up to 60s of tracking, and leaving the WAL unchecked-
+            // pointed. That last part is the same exposure that preceded the
+            // 2026-08-19 corruption; the update path was hardened against it at the
+            // time, but this far more frequent path was not.
+            System.Windows.Application.Current.SessionEnding += OnSessionEnding;
+        }
+
+        // Windows gives an app only a few seconds here before killing it, and it
+        // will NOT wait for an async handler to finish -- so this has to block
+        // rather than await. It deliberately blocks via Task.Run: awaiting
+        // RequestShutdownFlushAsync directly on this (UI) thread and then blocking
+        // on it would deadlock, because its internal await would try to resume on
+        // the very thread we're blocking. Running it on the thread pool means its
+        // continuations never need the UI thread. Safe to block on: the tracker's
+        // final flush touches only the DB and concurrent queues, never the
+        // dispatcher.
+        private void OnSessionEnding(object sender, SessionEndingCancelEventArgs e)
+        {
+            try
+            {
+                // RequestShutdownFlushAsync is itself bounded to ~3s; this outer
+                // bound is a backstop so a wedged flush can never be the reason
+                // Windows shutdown appears to hang.
+                Task.Run(() => _viewModel.RequestShutdownFlushAsync())
+                    .Wait(TimeSpan.FromSeconds(5));
+            }
+            catch { /* best-effort — never block the OS shutting down */ }
+
+            // The flush above stops the tracker, but this event fires while the
+            // shutdown can still be called off (any app may veto it). If we're
+            // somehow still running a while from now, the shutdown clearly didn't
+            // happen — bring the tracker back rather than sitting here silently
+            // recording nothing until the next launch.
+            _ = Task.Delay(TimeSpan.FromSeconds(20)).ContinueWith(_ =>
+            {
+                if (_isForceExiting) return; // a real exit is already in progress
+                try { _viewModel.RestartTrackerIfStopped(); } catch { }
+            });
         }
 
         // ==========================================
