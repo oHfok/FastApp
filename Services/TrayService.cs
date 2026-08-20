@@ -52,6 +52,19 @@ namespace FastApp.Services
 
         private void OpenDashboard()
         {
+            // Opening a browser tab at a server that never started just produces a
+            // confusing connection error with no hint of the real cause, so say
+            // what actually went wrong instead.
+            if (!DashboardServerService.IsRunning)
+            {
+                System.Windows.MessageBox.Show(
+                    DashboardServerService.StatusMessage,
+                    "Dashboard unavailable",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
             try
             {
                 // UseShellExecute:true is required on .NET Core+ to let the OS
