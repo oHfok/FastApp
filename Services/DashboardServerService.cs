@@ -149,7 +149,6 @@ namespace FastApp.Services
             public string DateRange { get; set; }
             public bool IsInProgress { get; set; }
             public string ElapsedLabel { get; set; }
-            public double PctFocused { get; set; }
             public object TopApp { get; set; }
             public double TotalFocusedHours { get; set; }
             // --- Per-period-shape fields added for the narrative-arc redesign.
@@ -211,9 +210,11 @@ namespace FastApp.Services
             double currentUptimeHours = currentSystemLogs.Sum(l => l.TimeSpent.TotalHours);
             double currentFocusedHours = currentSystemLogs.Sum(l => l.TimeFocused.TotalHours);
 
-            // Used as a secondary caption on the Cover slide (e.g. "72% of that
-            // was actually focused") and as an input to the Archetype's focus
-            // flourish below -- not a standalone slide anymore.
+            // Feeds the Archetype's focus flourish below (high/steady/low framing)
+            // -- not exposed as its own field. It doesn't belong on the Cover
+            // slide: totalFocusedHours there IS already the truly-focused figure,
+            // so pairing it with "X% of that was truly focused" would describe a
+            // subset-of-a-subset that doesn't exist.
             double pctFocused = currentUptimeHours > 0.01 ? Math.Round(currentFocusedHours / currentUptimeHours * 100, 1) : 0;
 
             var appLogs = await db.DailyLogs.AsNoTracking()
@@ -490,7 +491,6 @@ namespace FastApp.Services
                 DateRange = dateRange,
                 IsInProgress = isInProgress,
                 ElapsedLabel = isInProgress ? $"as of {today:dddd}" : null,
-                PctFocused = pctFocused,
                 TopApp = topApp,
                 TotalFocusedHours = Math.Round(currentFocusedHours, 1),
                 RhythmLabel = rhythmLabel,

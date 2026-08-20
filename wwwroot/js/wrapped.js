@@ -171,7 +171,6 @@ function buildWrappedSlides(type, data) {
     const elapsedSuffix = (data.isInProgress ?? data.IsInProgress) ? ' so far' : '';
 
     const totalFocusedHours = data.totalFocusedHours ?? data.TotalFocusedHours ?? 0;
-    const pctFocused = data.pctFocused ?? data.PctFocused ?? 0;
     const topApp = data.topApp ?? data.TopApp;
     const topApps = data.topApps ?? data.TopApps;
     const archetype = data.archetype ?? data.Archetype;
@@ -183,13 +182,19 @@ function buildWrappedSlides(type, data) {
     // 1. Cover -- one clean rounded number, not "Xh Ym" crammed into one
     // 96px line (that's what wrapped into two cramped stacked lines before).
     // Exact minutes aren't lost, just moved down to caption-sized text.
+    // totalFocusedHours IS already the truly-focused figure (not PC-on time),
+    // so there's no second "% of that was truly focused" number to tack on --
+    // that phrasing implied a subset-of-a-subset that doesn't exist and was
+    // just confusing. The focus-quality read (high/steady/low) still shows up
+    // in the Archetype slide's description, framed as a description instead
+    // of a contradictory qualifier on this number.
     slides.push({
         eyebrow,
         body: `
             <div class="headline">Your <em>${noun}</em>, Wrapped.</div>
             <div class="hero">
                 <div class="hero-number">${Math.round(totalFocusedHours)}<span class="unit">h</span></div>
-                <div class="hero-caption">hours focused${elapsedSuffix}${pctFocused ? ` &middot; ${pctFocused}% of that truly focused` : ''}</div>
+                <div class="hero-caption">hours focused${elapsedSuffix}</div>
             </div>`
     });
 
