@@ -11,6 +11,7 @@ let lbRankBy = 'focus';
 function setLbTimeframe(tf, btnEl) {
     document.querySelectorAll('#lb-scope button').forEach(b => b.classList.toggle('active', b === btnEl));
     document.getElementById('lb-scope').dataset.value = tf;
+    updateLbSubtitle();
     fetchFullLeaderboard();
 }
 
@@ -18,13 +19,21 @@ function setLbRankBy(mode, btnEl) {
     document.querySelectorAll('#lb-rankby button').forEach(b => b.classList.toggle('active', b === btnEl));
     document.getElementById('lb-rankby').dataset.value = mode;
     lbRankBy = mode;
-    const sub = document.getElementById('lb-view-sub');
-    if (sub) {
-        sub.textContent = mode === 'uptime'
-            ? 'Ranked by uptime. Arrows show movement since yesterday.'
-            : 'Ranked by focus time. Arrows show movement since yesterday.';
-    }
+    updateLbSubtitle();
     renderFullLeaderboard();
+}
+
+// The movement half of the sentence only holds on scopes that have a previous
+// period to compare against, so it is dropped rather than left as a promise the
+// view cannot keep.
+function updateLbSubtitle() {
+    const sub = document.getElementById('lb-view-sub');
+    if (!sub) return;
+    const tf = document.getElementById('lb-scope').dataset.value || 'all';
+    const basis = lbRankBy === 'uptime' ? 'Ranked by uptime.' : 'Ranked by focus time.';
+    sub.textContent = (tf === 'all' || tf === 'year')
+        ? basis
+        : `${basis} Arrows show movement since the previous ${tf}.`;
 }
 
 function handleLbSearch() {
@@ -75,6 +84,13 @@ function renderFullLeaderboard() {
         return;
     }
 
+    // On All Time and Year there is no previous period to compare against, so the
+    // backend returns zero for every app and every single row rendered "NEW" —
+    // a badge on 100% of rows is worse than no badge, because it occupies a
+    // column and teaches people to ignore that area. Hide it on those scopes.
+    const tf = document.getElementById('lb-scope').dataset.value || 'all';
+    const showMovement = tf !== 'all' && tf !== 'year';
+
     const primaryLabel = lbRankBy === 'uptime' ? 'Uptime' : 'Focused';
     const primaryTitle = lbRankBy === 'uptime'
         ? 'Total time the app was open, focused or not'
@@ -82,9 +98,9 @@ function renderFullLeaderboard() {
 
     // Column header row — describes what each column represents.
     const headerHtml = `
-        <div class="full-lb-header">
-            <span title="Rank, or movement vs. yesterday's ranking">Rank</span>
-            <span></span>
+        <div class="full-lb-header${showMovement ? '' : ' no-movement'}">
+            <span title="${showMovement ? "Rank, or movement vs. yesterday's ranking" : 'Rank'}">Rank</span>
+            ${showMovement ? '<span></span>' : ''}
             <span>Application</span>
             <span title="${primaryTitle}">${primaryLabel}</span>
             <span title="Time the app was open but you were away from the keyboard">AFK</span>
@@ -108,7 +124,9 @@ function renderFullLeaderboard() {
 
         let trendHtml = `<span class="trend-pill trend-flat">–</span>`;
         const prevRank = prevRankOf[app.appName];
-        if (!prevPrimaryMins(app)) {
+        if (!showMovement) {
+            trendHtml = '';
+        } else if (!prevPrimaryMins(app)) {
             trendHtml = `<span class="trend-pill trend-new">NEW</span>`;
         } else if (prevRank !== undefined) {
             const delta = prevRank - rank;
@@ -119,9 +137,9 @@ function renderFullLeaderboard() {
 
         const cat = app.category || 'Other';
         return `
-            <div class="full-lb-row" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0">
+            <div class="full-lb-row${showMovement ? '' : ' no-movement'}" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0">
                 ${medalOrRank}
-                <div class="full-lb-trend">${trendHtml}</div>
+                ${showMovement ? `<div class="full-lb-trend">${trendHtml}</div>` : ''}
                 <div class="full-lb-name-wrap">
                     <div class="full-lb-icon">${escapeHtml((app.appName || '?').charAt(0).toUpperCase())}</div>
                     <div class="full-lb-name-col">

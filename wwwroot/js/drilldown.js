@@ -374,7 +374,7 @@ async function toggleCompareChart(period, appName, rowEl) {
                 maintainAspectRatio: false,
                 scales: {
                     x: { grid: { display: false }, ticks: { color: theme.tick, font: { family: theme.fontMono, size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
-                    y: { grid: { color: theme.grid }, ticks: { color: theme.tick, font: { size: 10 }, callback: (v) => formatTime(v) } }
+                    y: durationAxis(Math.max(...current, ...previous, 1), theme)
                 },
                 plugins: {
                     legend: { labels: { color: theme.tick, font: { family: theme.fontBody, size: 10 }, boxWidth: 12, padding: 8 } },
@@ -425,7 +425,7 @@ async function loadUsageTrend(appName, granularity) {
                 maintainAspectRatio: false,
                 scales: {
                     x: { grid: { display: false }, ticks: { color: theme.tick, font: { family: theme.fontMono, size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
-                    y: { grid: { color: theme.grid }, ticks: { color: theme.tick, font: { size: 10 }, callback: (v) => formatTime(v) } }
+                    y: durationAxis(Math.max(...values, 1), theme)
                 },
                 plugins: {
                     legend: { display: false },

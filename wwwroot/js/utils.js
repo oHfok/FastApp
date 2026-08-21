@@ -107,6 +107,39 @@ function describeAgo(ts) {
     return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
 }
 
+// --- Duration axis ----------------------------------------------------------
+// Chart.js picks tick values that are round numbers of whatever unit the data
+// is in — minutes, here — and each was then formatted as a duration. Round
+// minutes are not round durations, so axes read "1h 40m, 3h 20m, 5h, 6h 40m,
+// 8h 20m", which has to be decoded rather than glanced at.
+//
+// Pinning the step to a whole number of hours (or a clean sub-hour step for
+// small ranges) makes the labels land on 0, 2h, 4h, 6h instead. Returns the
+// scale options to spread into a chart's `y`.
+function durationAxis(maxMinutes, theme, extra) {
+    const NICE_MIN = [1, 2, 5, 10, 15, 30];           // sub-hour steps, in minutes
+    const NICE_HRS = [1, 2, 3, 4, 6, 8, 12, 24, 48];  // whole-hour steps
+    const target = 6;                                  // aim for ~6 gridlines
+    const raw = Math.max(1, maxMinutes) / target;
+
+    let step = NICE_MIN.find(m => m >= raw);
+    if (step === undefined) {
+        const hrs = NICE_HRS.find(h => h * 60 >= raw);
+        step = (hrs === undefined ? Math.ceil(raw / 1440) * 1440 : hrs * 60);
+    }
+
+    return Object.assign({
+        grid: { color: theme.grid },
+        ticks: {
+            color: theme.tick,
+            font: { size: 10 },
+            stepSize: step,
+            // With the step pinned, formatTime now only ever sees clean values.
+            callback: (v) => formatTime(v)
+        }
+    }, extra || {});
+}
+
 // --- Heat grid --------------------------------------------------------------
 // Day-cell heatmaps were implemented four times — renderDayHeatmap in
 // overview.js, monthHeatmapHtml and yearHeatmapHtml in periods.js, and

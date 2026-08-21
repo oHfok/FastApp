@@ -5,6 +5,13 @@
 
 let allAppsData = [];
 let allAppsSearch = '';
+// 'time' | 'name'. Time first: alphabetical order has no relationship to
+// relevance, so the library used to open on Applicationframehost and a 0m
+// installer while the apps with hundreds of hours sat pages down.
+let allAppsSort = 'time';
+// Roughly half of tracked executables have never been focused at all —
+// installers, updaters, shell hosts. Hidden by default, one click away.
+let allAppsShowBackground = false;
 
 async function loadAllApps() {
     const grid = document.getElementById('allapps-grid');
@@ -20,11 +27,33 @@ function handleAllAppsSearch() {
     renderAllApps();
 }
 
+function setAllAppsSort(mode, btnEl) {
+    allAppsSort = mode;
+    document.querySelectorAll('#allapps-sort button').forEach(b => b.classList.toggle('active', b === btnEl));
+    renderAllApps();
+}
+
+function toggleAllAppsBackground(inputEl) {
+    allAppsShowBackground = inputEl.checked;
+    renderAllApps();
+}
+
 function renderAllApps() {
     const grid = document.getElementById('allapps-grid');
     const filtered = allAppsData
         .filter(a => (a.appName || '').toLowerCase().includes(allAppsSearch))
-        .sort((a, b) => (a.appName).localeCompare(b.appName));
+        .filter(a => allAppsShowBackground || (a.totalFocus || 0) >= 1)
+        .sort((a, b) => allAppsSort === 'name'
+            ? a.appName.localeCompare(b.appName)
+            : (b.totalFocus || 0) - (a.totalFocus || 0));
+
+    const hiddenCount = allAppsData.filter(a => (a.totalFocus || 0) < 1).length;
+    const countEl = document.getElementById('allapps-count');
+    if (countEl) {
+        countEl.textContent = allAppsShowBackground || hiddenCount === 0
+            ? `${filtered.length} app${filtered.length === 1 ? '' : 's'}`
+            : `${filtered.length} app${filtered.length === 1 ? '' : 's'} · ${hiddenCount} never focused`;
+    }
 
     if (filtered.length === 0) {
         grid.innerHTML = `<div class="empty-state">No applications found.</div>`;

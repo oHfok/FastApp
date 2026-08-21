@@ -62,6 +62,13 @@ function switchView(viewId, opts) {
 
     if (!opts || !opts.fromHistory) writeUrlState(opts && opts.replace);
 
+    // Each tab is its own destination, so it should start at its beginning.
+    // Without this the scroll position carried over, and switching tabs while
+    // part-way down a page dropped you into the middle of the next one with its
+    // title off screen. Only on a real tab change — a poll refresh must not
+    // yank the page back to the top while you are reading.
+    window.scrollTo(0, 0);
+
     const mod = Dashboard.tabs[viewId];
     if (mod && typeof mod.onEnter === 'function') mod.onEnter();
 }
