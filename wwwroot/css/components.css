@@ -51,6 +51,9 @@
     color: #B07C29;
 }
 .stat-block.stat-hero .stat-value { font-size: 44px; line-height: 1.05; }
+.hero-share { margin-top: 16px; max-width: 460px; }
+.hero-share .compare-bar { height: 8px; }
+.hero-share .compare-bar-caption { margin-top: 7px; }
 
 .stat-block.stat-minor {
     padding: 12px 16px;
@@ -140,6 +143,24 @@
     border-color: var(--brass-dim);
     transform: translateX(2px);
 }
+
+/* A faint proportional fill behind each row, scaled to the top entry. Comparing
+   #1 to #4 previously meant reading and subtracting two durations; length is
+   read pre-attentively, digits are not. The numbers are untouched -- this only
+   adds the shape they already describe. Sits behind content via a pseudo
+   element so it needs no extra markup and cannot affect layout. */
+.lb-row { position: relative; overflow: hidden; }
+.lb-row::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: var(--share, 0%);
+    background: var(--brass);
+    opacity: 0.10;
+    pointer-events: none;
+    transition: width 0.35s ease;
+}
+.lb-row > * { position: relative; }
 
 .lb-rank {
     font-family: var(--font-mono);
@@ -828,13 +849,21 @@
     cursor: pointer;
     transition: border-color 0.15s;
 }
-.dd-compare-row:hover { border-color: var(--panel-border); }
+/* This is one of the drawer's better features and almost nobody found it: the
+   only hint was a tiny chevron in the faint text colour, far from where the eye
+   rests, on a row otherwise indistinguishable from the static stat blocks above
+   it. Now it lifts on hover and the chevron is bigger and brighter. */
+.dd-compare-row:hover {
+    border-color: var(--brass-dim);
+    background: var(--panel);
+}
+.dd-compare-row:hover .dd-compare-chevron { color: var(--brass); }
 .dd-compare-label { flex: 1; font-size: 12px; color: var(--text-dim); font-weight: 600; }
 .dd-compare-value { font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
 .dd-compare-chevron {
-    color: var(--text-faint);
-    font-size: 10px;
-    transition: transform 0.15s;
+    color: var(--text-dim);
+    font-size: 13px;
+    transition: transform 0.15s, color 0.15s;
     flex-shrink: 0;
 }
 .dd-compare-row.is-open .dd-compare-chevron { transform: rotate(180deg); }
