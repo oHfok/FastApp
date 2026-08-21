@@ -25,6 +25,12 @@ let trendChartInstance = null;
 let currentDrilldownAppName = null;
 
 async function openDrilldown(appName) {
+    // Opening an app from inside the Category drawer used to close it via the
+    // row's own inline handler. Now that the click is delegated, that has to
+    // happen here — otherwise the two drawers stack and dismissing the top one
+    // reveals the other, which reads as the close button not working.
+    closeCategoryDetail();
+
     document.getElementById('dd-overlay').classList.add('open');
     document.getElementById('dd-drawer').classList.add('open');
     // Always land back on Overview — reopening a different app while still on

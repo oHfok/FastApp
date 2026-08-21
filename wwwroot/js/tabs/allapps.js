@@ -36,12 +36,12 @@ function renderAllApps() {
         const focus = app.totalFocus ?? app.TotalFocus ?? 0;
         const runtime = app.totalRuntime ?? app.TotalRuntime ?? 0;
         return `
-            <div class="card allapps-card" onclick="openDrilldown('${name}')">
+            <div class="card allapps-card" data-open-app="${escapeHtml(name)}">
                 <div class="allapps-card-head">
-                    <div class="allapps-icon" style="color:${catColor(cat)}">${name.charAt(0).toUpperCase()}</div>
+                    <div class="allapps-icon" style="color:${catColor(cat)}">${escapeHtml((name || '?').charAt(0).toUpperCase())}</div>
                     <div style="min-width:0;">
-                        <div class="allapps-name">${name}</div>
-                        <div class="allapps-cat cat-link" onclick="event.stopPropagation(); openCategoryDetail('${cat.replace(/'/g, "&#39;")}')">${cat}</div>
+                        <div class="allapps-name">${escapeHtml(name)}</div>
+                        <div class="allapps-cat cat-link" data-open-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</div>
                     </div>
                 </div>
                 <div class="allapps-metrics">

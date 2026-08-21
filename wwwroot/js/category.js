@@ -39,10 +39,12 @@ async function openCategoryDetail(category) {
 
         listEl.innerHTML = apps.length === 0
             ? `<div class="empty-state">No apps tagged with this category yet.</div>`
+            // The delegated opener handles the click; closeCategoryDetail runs
+            // from openDrilldown so this drawer doesn't stay stacked underneath.
             : apps.map((a, i) => `
-                <div class="lb-row app-link" onclick="closeCategoryDetail(); openDrilldown('${a.name.replace(/'/g, "&#39;")}')">
+                <div class="lb-row app-link" data-open-app="${escapeHtml(a.name)}">
                     <div class="lb-rank">${i + 1}</div>
-                    <div class="lb-name">${a.name}</div>
+                    <div class="lb-name">${escapeHtml(a.name)}</div>
                     <div class="lb-time">${formatTime(a.focus)}</div>
                 </div>`).join('');
     } catch (err) {

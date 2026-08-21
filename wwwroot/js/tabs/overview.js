@@ -94,9 +94,11 @@ function renderComparisonBlock(scope, ov) {
     uptimeEl.onmousemove = (e) => showTooltip(e, upHoverTip);
     uptimeEl.onmouseleave = hideTooltip;
 
-    // AFK per scope. Backend field names: AfkToday / AfkWeek / AfkMonth / AfkYear
-    // (Week/Month/Year require the afk-overview-patch.cs addition — falls back
-    // to a dash with an explanatory tooltip if those fields aren't there yet.)
+    // AFK per scope. The backend returns all four (AfkToday/Week/Month/Year); a
+    // missing value here means the response itself didn't arrive intact, so the
+    // card dims to a dash rather than showing a stale or invented number. It used
+    // to explain the gap by naming a C# patch file to apply, which was a
+    // development leftover that outlived the work it described.
     const afkMap = {
         day: ov.afkToday,
         week: ov.afkWeek,
@@ -114,7 +116,7 @@ function renderComparisonBlock(scope, ov) {
     } else {
         afkCard.style.opacity = '0.5';
         afkEl.textContent = '—';
-        afkCard.onmousemove = (e) => showTooltip(e, `AFK for "${scope}" needs the afk-overview-patch.cs addition on the backend.`);
+        afkCard.onmousemove = (e) => showTooltip(e, 'No AFK figure came back for this range.');
         afkCard.onmouseleave = hideTooltip;
     }
 }
@@ -139,14 +141,12 @@ function renderCategoryBar(leaderboard) {
 
     barEl.innerHTML = entries.map(([cat, mins]) => {
         const pct = (mins / totalMins) * 100;
-        const catAttr = cat.replace(/'/g, "&#39;");
-        return `<div class="cat-bar-seg cat-link" style="width:${pct}%;background:${catColor(cat)}" title="${cat}: ${formatTime(mins)}" onclick="openCategoryDetail('${catAttr}')"></div>`;
+        return `<div class="cat-bar-seg cat-link" style="width:${pct}%;background:${catColor(cat)}" title="${escapeHtml(cat)}: ${formatTime(mins)}" data-open-cat="${escapeHtml(cat)}"></div>`;
     }).join('');
 
     legendEl.innerHTML = entries.map(([cat, mins]) => {
         const pct = Math.round((mins / totalMins) * 100);
-        const catAttr = cat.replace(/'/g, "&#39;");
-        return `<div class="cat-legend-item cat-link" onclick="openCategoryDetail('${catAttr}')"><span class="cat-swatch" style="background:${catColor(cat)}"></span>${cat} <span class="mono" style="color:var(--text-faint)">${pct}% · ${formatTime(mins)}</span></div>`;
+        return `<div class="cat-legend-item cat-link" data-open-cat="${escapeHtml(cat)}"><span class="cat-swatch" style="background:${catColor(cat)}"></span>${escapeHtml(cat)} <span class="mono" style="color:var(--text-faint)">${pct}% · ${formatTime(mins)}</span></div>`;
     }).join('');
 }
 
@@ -157,9 +157,9 @@ function renderOverviewLeaderboards(leaderboard) {
         appsEl.innerHTML = `<div class="empty-state">No app activity for this period.</div>`;
     } else {
         appsEl.innerHTML = apps.map((app, i) => `
-            <div class="lb-row app-link" onclick="openDrilldown('${app.appName.replace(/'/g, "&#39;")}')">
+            <div class="lb-row app-link" data-open-app="${escapeHtml(app.appName)}">
                 <div class="lb-rank">${i + 1}</div>
-                <div class="lb-name">${app.appName}</div>
+                <div class="lb-name">${escapeHtml(app.appName)}</div>
                 <div class="lb-time">${formatTime(app.focusedMinutes)}</div>
             </div>`).join('');
     }
@@ -175,9 +175,9 @@ function renderOverviewLeaderboards(leaderboard) {
         catsEl.innerHTML = `<div class="empty-state">No category activity for this period.</div>`;
     } else {
         catsEl.innerHTML = cats.map(([cat, mins], i) => `
-            <div class="lb-row app-link" onclick="openCategoryDetail('${cat.replace(/'/g, "&#39;")}')">
+            <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}">
                 <div class="lb-rank">${i + 1}</div>
-                <div class="lb-name"><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${cat}</div>
+                <div class="lb-name"><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}</div>
                 <div class="lb-time">${formatTime(mins)}</div>
             </div>`).join('');
     }

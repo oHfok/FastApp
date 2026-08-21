@@ -41,6 +41,42 @@ function initNav() {
     });
 }
 
+// --- Delegated open handlers ------------------------------------------------
+// Every "open this app / category / period" click in the dashboard routes
+// through here. Previously each row built an inline onclick with the name
+// spliced into the string:
+//
+//     onclick="openDrilldown('${app.appName}')"
+//
+// which had two problems. An apostrophe in a name -- legal in Windows
+// filenames, so legal in a process name -- produced a JavaScript syntax error
+// and made that app permanently unclickable; escaping it to &#39; did not
+// help, because the browser decodes the entity back to a quote before the
+// handler is ever parsed. And since category names are free-form (the API
+// accepts any string), a name could carry markup that the row then re-executed
+// on every render.
+//
+// Reading the value from a data-* attribute fixes both: the string is only
+// ever DATA, never re-parsed as code or markup, whatever it contains.
+//
+// closest() with a comma selector returns the NEAREST matching ancestor, so a
+// category chip nested inside an app row wins over the row itself -- which is
+// what the old event.stopPropagation() calls were for.
+function initDelegatedOpeners() {
+    document.addEventListener('click', (e) => {
+        const el = e.target.closest('[data-open-app], [data-open-cat], [data-open-period]');
+        if (!el) return;
+
+        if (el.dataset.openCat !== undefined) {
+            openCategoryDetail(el.dataset.openCat);
+        } else if (el.dataset.openApp !== undefined) {
+            openDrilldown(el.dataset.openApp);
+        } else {
+            openPeriodDetail(el.dataset.openPeriod);
+        }
+    });
+}
+
 // --- Top bar: live clock (24h, European date) -------------------------------
 function tickClock() {
     const now = new Date();
@@ -122,6 +158,7 @@ function closeSettings() {
 // --- Boot ---------------------------------------------------------------------
 async function boot() {
     initNav();
+    initDelegatedOpeners();
     document.getElementById('tb-gear').addEventListener('click', openSettings);
     document.getElementById('settings-overlay').addEventListener('click', closeSettings);
     document.getElementById('settings-close').addEventListener('click', closeSettings);

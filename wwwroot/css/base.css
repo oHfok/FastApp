@@ -441,6 +441,31 @@ select.field {
     border-radius: var(--radius);
 }
 
+/* Failure, as distinct from "nothing here yet". An empty state is a normal
+   outcome; this one means something went wrong and the data on screen may be
+   incomplete, so it reads as a problem (solid border, warning tone) and always
+   offers a way out rather than leaving the user stuck. */
+.error-state {
+    text-align: center;
+    padding: 40px 20px;
+    background: var(--panel);
+    border: 1px solid var(--rose-dim, var(--panel-border));
+    border-radius: var(--radius);
+}
+.error-state-title {
+    color: var(--text);
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+.error-state-detail {
+    color: var(--text-faint);
+    font-size: 12.5px;
+    max-width: 46ch;
+    margin: 0 auto 16px;
+    line-height: 1.55;
+}
+
 /* ---------- App name link (used everywhere an app is referenced) ---------- */
 .app-link {
     cursor: pointer;

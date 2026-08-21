@@ -150,21 +150,26 @@ async function loadCategoryClassification() {
             return;
         }
 
+        // Category comes from a data-* attribute rather than being spliced into
+        // the onclick string — names are free-form, so an apostrophe would have
+        // broken the handler outright and markup would have been re-executed.
         const segButton = (cat, value, label, current) =>
-            `<button class="${current === value ? 'active' : ''}" onclick="setCategoryClassification('${cat}', '${value}')">${label}</button>`;
+            `<button class="${current === value ? 'active' : ''}" data-classify-cat="${escapeHtml(cat)}" data-classify-as="${value}">${label}</button>`;
 
-        listEl.innerHTML = `<div class="settings-list">${entries.map(([cat, cls]) => {
-            const catAttr = cat.replace(/'/g, "&#39;");
-            return `
+        listEl.innerHTML = `<div class="settings-list">${entries.map(([cat, cls]) => `
                 <div class="settings-list-item">
-                    <span><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${cat}</span>
+                    <span><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}</span>
                     <div class="segmented">
-                        ${segButton(catAttr, 'play', 'Play', cls)}
-                        ${segButton(catAttr, 'neutral', 'Neutral', cls)}
-                        ${segButton(catAttr, 'work', 'Work', cls)}
+                        ${segButton(cat, 'play', 'Play', cls)}
+                        ${segButton(cat, 'neutral', 'Neutral', cls)}
+                        ${segButton(cat, 'work', 'Work', cls)}
                     </div>
-                </div>`;
-        }).join('')}</div>`;
+                </div>`).join('')}</div>`;
+
+        listEl.querySelectorAll('[data-classify-cat]').forEach(btn => {
+            btn.addEventListener('click', () =>
+                setCategoryClassification(btn.dataset.classifyCat, btn.dataset.classifyAs));
+        });
     } catch (err) {
         console.error('Failed to load category classification', err);
         listEl.innerHTML = `<div class="empty-state">Couldn't load categories.</div>`;

@@ -6,8 +6,7 @@
    prev/next/current period. Day's "Daily Activity" section is
    the Timeline ribbon (session-by-session), not a heatmap —
    breaking a single day down into "days" would be circular.
-   Requires the /api/periods + /api/period-detail endpoints —
-   see periods-endpoint.cs for the C# to add.
+   Backed by /api/periods + /api/period-detail.
    ========================================================== */
 
 let periodType = 'week'; // 'day' | 'week' | 'month' | 'year'
@@ -66,12 +65,12 @@ async function loadPeriodList(silent) {
                     : label;
 
             return `
-                <div class="card period-card" onclick="openPeriodDetail('${start}')">
+                <div class="card period-card" data-open-period="${escapeHtml(start)}">
                     <div class="period-row">
                         <div class="period-rank-badge ${rank === 1 ? 'rank-1' : ''}">#${rank ?? '–'}</div>
                         <div class="period-main">
-                            <div class="period-label" title="${label}">${label}</div>
-                            <div class="period-range">${rangeText}</div>
+                            <div class="period-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
+                            <div class="period-range">${escapeHtml(rangeText)}</div>
                         </div>
                         <div class="period-stats">
                             <div class="period-stat">
@@ -80,7 +79,7 @@ async function loadPeriodList(silent) {
                             </div>
                             <div class="period-stat">
                                 <div class="period-stat-label">Most Used</div>
-                                <div class="period-stat-value app-link" title="${mostUsed}" onclick="event.stopPropagation(); openDrilldown('${mostUsed.replace(/'/g, "&#39;")}')">${mostUsed}</div>
+                                <div class="period-stat-value app-link" title="${escapeHtml(mostUsed)}" data-open-app="${escapeHtml(mostUsed)}">${escapeHtml(mostUsed)}</div>
                             </div>
                             <div class="period-stat">
                                 <div class="period-stat-label">Ranking</div>
@@ -94,10 +93,11 @@ async function loadPeriodList(silent) {
         // A failed silent poll shouldn't blow away an already-valid list with
         // an error message — just log it and leave what's on screen alone.
         if (silent) { console.error('Periods poll refresh failed', err); return; }
-        listEl.innerHTML = `<div class="empty-state">
-            The Weeks &amp; Months backend endpoint isn't set up yet.<br>
-            <span style="font-family:var(--font-mono);font-size:11px;">Add the code from periods-endpoint.cs to DashboardServerService.cs</span>
-        </div>`;
+        listEl.innerHTML = errorStateHtml(
+            `Couldn't load ${periodType}s`,
+            'FastApp is running but this list did not come back. It usually means the app is busy or was restarting.',
+            'retryPeriodList'
+        );
     }
 }
 
@@ -228,7 +228,7 @@ function windowActivityRowHtml(s) {
     // handler reads the name back out of a data-* attribute rather than
     // splicing it into the onclick string, same rule as the Timeline ribbon.
     return `
-        <div class="card activity-row" data-name="${escapeHtml(name)}" onclick="openDrilldown(this.dataset.name)">
+        <div class="card activity-row" data-open-app="${escapeHtml(name)}">
             <div class="activity-icon" style="color:${catColor(cat)}">${escapeHtml((name || '?').charAt(0).toUpperCase())}</div>
             <div class="activity-name-col">
                 <div class="activity-app-name">${escapeHtml(name)}</div>
@@ -331,8 +331,20 @@ async function openPeriodDetail(startDate, silent) {
         // A failed silent poll shouldn't blow away an already-loaded detail
         // view with an error message — just log it and leave things be.
         if (silent) { console.error('Period detail poll refresh failed', err); return; }
-        document.getElementById('period-detail-body').innerHTML = `<div class="empty-state">Couldn't load this period's detail.</div>`;
+        document.getElementById('period-detail-body').innerHTML = errorStateHtml(
+            "Couldn't load this period",
+            'The details for this period did not come back. FastApp may be busy or restarting.',
+            'retryPeriodDetail'
+        );
     }
+}
+
+// Named entry points for the failure state's retry button — it calls a global
+// by name, so these wrap the real loaders with the arguments they need.
+function retryPeriodList() { loadPeriodList(); }
+function retryPeriodDetail() {
+    if (!currentDetailKey) { showPeriodList(); loadPeriodList(); return; }
+    openPeriodDetail(currentDetailKey.slice(currentDetailKey.indexOf(':') + 1));
 }
 
 function renderPeriodDetail(d, isNewDay) {
@@ -396,19 +408,25 @@ function renderPeriodDetail(d, isNewDay) {
             </div>`;
     }).join('');
 
-    const appsHtml = topApps.length === 0 ? `<div class="empty-state">No app data.</div>` : topApps.map((a, i) => `
-        <div class="lb-row app-link" onclick="openDrilldown('${a.appName ?? a.AppName}')">
+    const appsHtml = topApps.length === 0 ? `<div class="empty-state">No app data.</div>` : topApps.map((a, i) => {
+        const appName = a.appName ?? a.AppName ?? '';
+        return `
+        <div class="lb-row app-link" data-open-app="${escapeHtml(appName)}">
             <div class="lb-rank">${i + 1}</div>
-            <div class="lb-name">${a.appName ?? a.AppName}</div>
+            <div class="lb-name">${escapeHtml(appName)}</div>
             <div class="lb-time">${formatTime(a.focusedMinutes ?? a.FocusedMinutes ?? 0)}</div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 
-    const catsHtml = topCategories.length === 0 ? `<div class="empty-state">No category data.</div>` : topCategories.map((c, i) => `
-        <div class="lb-row app-link" onclick="openCategoryDetail('${(c.category ?? c.Category).replace(/'/g, "&#39;")}')">
+    const catsHtml = topCategories.length === 0 ? `<div class="empty-state">No category data.</div>` : topCategories.map((c, i) => {
+        const cat = c.category ?? c.Category ?? 'Other';
+        return `
+        <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}">
             <div class="lb-rank">${i + 1}</div>
-            <div class="lb-name"><span class="cat-swatch" style="background:${catColor(c.category ?? c.Category)};display:inline-block;margin-right:8px;"></span>${c.category ?? c.Category}</div>
+            <div class="lb-name"><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}</div>
             <div class="lb-time">${formatTime(c.focusedMinutes ?? c.FocusedMinutes ?? 0)}</div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 
     const heatmapHtml = periodHeatmapHtml(days, periodType, daySessions);
     const heatmapCardLabel = periodType === 'day' ? 'Timeline' : 'Daily Activity';
