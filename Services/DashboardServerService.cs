@@ -537,6 +537,33 @@ namespace FastApp.Services
             var app = builder.Build();
 
             // ==========================================================
+            // INVARIANT FORMATTING
+            //
+            // Dates and numbers built here are formatted on the server and sent
+            // to the page already rendered, so they picked up whatever culture
+            // the machine runs in. On a Polish install that produced "lip 11 –
+            // lip 29, 2026", "sierpień 2026" and "4,3h" sitting inside an
+            // otherwise English interface -- and it is invisible to anyone
+            // developing on an English machine.
+            //
+            // Forced per-request rather than by setting the process culture,
+            // because the WPF app around this server is entitled to the user's
+            // real locale for its own UI. CurrentCulture flows across awaits, so
+            // every endpoint below inherits it, including ones added later --
+            // which beats correcting the ~26 individual format calls and hoping
+            // the next one remembers.
+            // ==========================================================
+            var invariant = System.Globalization.CultureInfo.InvariantCulture;
+            app.UseRequestLocalization(new Microsoft.AspNetCore.Builder.RequestLocalizationOptions
+            {
+                DefaultRequestCulture = new Microsoft.AspNetCore.Localization.RequestCulture(invariant, invariant),
+                SupportedCultures = new[] { invariant },
+                SupportedUICultures = new[] { invariant },
+                // Nothing may override it -- no Accept-Language, no query string.
+                RequestCultureProviders = new List<Microsoft.AspNetCore.Localization.IRequestCultureProvider>()
+            });
+
+            // ==========================================================
             // LOCAL-ONLY GUARD
             //
             // Binding to 127.0.0.1 keeps this off the network, but it does NOT

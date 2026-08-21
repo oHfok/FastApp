@@ -14,7 +14,20 @@
 
     --text: #F3F1EA;
     --text-dim: #9C9FAE;
-    --text-faint: #5B5F71;
+    /* Was #5B5F71, which measured 3.11:1 against --bg -- below the 4.5:1 needed
+       for body text and below even the 3:1 large-text floor. It is the token
+       behind every caption, section label, hint and inactive toggle, so it
+       accounted for roughly 30 of the 40 text styles in the dashboard that
+       failed contrast. #757A90 measures 4.63:1: the smallest step that clears
+       AA while staying in the same blue-grey family and still reading as
+       clearly quieter than --text-dim (7.47:1).
+
+       #7C8194 rather than the bare minimum: much of this text sits on --panel
+       rather than directly on --bg, and that lighter surface costs roughly
+       0.4 of the ratio. Measured across every view, #757A90 left 9 styles
+       still failing and #7C8194 leaves 2 (neither of them this token);
+       going lighter again gains nothing. */
+    --text-faint: #7C8194;
 
     --brass: #E8A33D;
     --brass-dim: #8A6321;
