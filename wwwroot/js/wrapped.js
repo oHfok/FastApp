@@ -14,6 +14,7 @@ const WRAPPED_TYPE_NOUN = { week: 'Week', month: 'Month', year: 'Year' };
 let wrappedAvailableData = [];
 let wrappedSlides = [];
 let wrappedSlideIndex = 0;
+let wrappedHintDismissed = false;
 
 function getWrappedSeen() {
     try { return JSON.parse(localStorage.getItem(WRAPPED_SEEN_KEY) || '{}'); }
@@ -99,6 +100,7 @@ async function openWrappedStory(type) {
 
         wrappedSlides = buildWrappedSlides(type, data);
         wrappedSlideIndex = 0;
+        wrappedHintDismissed = false;
         renderWrappedSlide();
 
         markWrappedSeen(type, data.label);
@@ -166,6 +168,13 @@ function renderWrappedSlide() {
     document.getElementById('wrapped-slide-eyebrow').innerHTML = slide.eyebrow;
     document.getElementById('wrapped-slide-counter').textContent = `${wrappedSlideIndex + 1} / ${wrappedSlides.length}`;
     document.getElementById('wrapped-slide-body').innerHTML = slide.body;
+
+    // The hint exists to answer "is there more?" on arrival. Once the reader has
+    // moved off slide one they have their answer, so it goes away and does not
+    // come back -- including if they page back to the start.
+    const hint = document.getElementById('wrapped-hint');
+    if (hint) hint.classList.toggle('show', wrappedSlideIndex === 0 && !wrappedHintDismissed);
+    if (wrappedSlideIndex > 0) wrappedHintDismissed = true;
 }
 
 // Each builder returns { eyebrow, body } for one slide. Unlike the old

@@ -458,6 +458,18 @@ select.field {
 
 .trend-up { background: rgba(52, 211, 196, 0.12); color: var(--teal); }
 .trend-down { background: rgba(255, 107, 107, 0.12); color: var(--rose); }
+
+/* App Detail's comparison rows are the one place where all four trends describe
+   a single app's own usage going up or down. Using an app less is not a failure
+   -- for a browser or a game it is arguably the opposite -- so a column of rose
+   arrows read as a verdict the tracker has not earned. The arrows still carry
+   the direction; only the good/bad colouring is dropped, which keeps red
+   meaningful for the things that do warrant attention, like passing a limit. */
+.dd-compare-row .trend-up,
+.dd-compare-row .trend-down {
+    background: rgba(127, 132, 148, 0.14);
+    color: var(--text-dim);
+}
 .trend-flat { background: rgba(156, 159, 174, 0.1); color: var(--text-faint); }
 .trend-new { background: rgba(232, 163, 61, 0.12); color: var(--brass); }
 

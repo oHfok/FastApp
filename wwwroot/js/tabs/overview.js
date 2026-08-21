@@ -311,6 +311,7 @@ async function renderDayTimeline(dateStr, signal) {
         const track = document.getElementById('ov-timeline-track');
         if (!track) return;
         track.innerHTML = timelineSegmentsHtml(sessions);
+        labelWideTimelineSegments(track);
         const ticks = document.getElementById('ov-timeline-ticks');
         if (ticks && sessions && sessions.length) ticks.innerHTML = timelineTicksHtml(timelineWindow(sessions));
     } catch (err) { if (!isAbort(err)) console.error(err); }

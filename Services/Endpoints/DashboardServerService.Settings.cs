@@ -52,7 +52,31 @@ namespace FastApp.Services
                 using var db = new AppDbContext();
                 var allCategories = await GetAllCategoriesAsync(db);
                 var classification = GetCategoryClassification(db);
-                var result = allCategories.ToDictionary(c => c, c => classification.GetValueOrDefault(c, "neutral"), StringComparer.OrdinalIgnoreCase);
+
+                // The list this feeds sat in alphabetical order, which put the
+                // categories holding almost no time above the ones that actually
+                // move the chart it controls. Ordering needs a weight, so the
+                // response carries recorded minutes per category over the same
+                // trailing 30 days the rhythm chart itself covers -- no new data,
+                // just the totals the sessions table already holds.
+                var since = DateTime.Today.AddDays(-30);
+                var hiddenApps = GetHiddenApps(db);
+                var categoryMap = await GetAppCategoriesSafely(db);
+                var recent = await db.SessionLogs
+                    .Where(x => x.StartTime >= since && !hiddenApps.Contains(x.AppName))
+                    .ToListAsync();
+                var minutesByCategory = recent
+                    .GroupBy(x => categoryMap.GetValueOrDefault(x.AppName, "Other"))
+                    .ToDictionary(g => g.Key, g => g.Sum(x => (x.EndTime - x.StartTime).TotalMinutes),
+                                  StringComparer.OrdinalIgnoreCase);
+
+                var result = allCategories.Select(c => new
+                {
+                    Category = c,
+                    Classification = classification.GetValueOrDefault(c, "neutral"),
+                    Minutes = Math.Round(minutesByCategory.GetValueOrDefault(c, 0), 1)
+                }).OrderByDescending(x => x.Minutes).ThenBy(x => x.Category).ToList();
+
                 await context.Response.WriteAsJsonAsync(result);
             }
             catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }

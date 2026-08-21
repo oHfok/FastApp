@@ -50,13 +50,28 @@ async function loadPeriodList(silent) {
             return;
         }
 
-        listEl.innerHTML = periods.map(p => {
+        listEl.innerHTML = periods.map((p, i) => {
             const rank = p.rank;
             const label = p.label;
             const start = p.startDate;
             const end = p.endDate;
             const totalMins = p.totalFocusMinutes ?? 0;
             const mostUsed = p.mostUsedApp ?? '—';
+            // The right-hand column used to repeat the rank badge ("#4 of 8"),
+            // spending one of the row's five slots on a fact the row already
+            // stated. It now answers the question the list could not: was this
+            // period better or worse than the one before it? The denominator
+            // moved into the badge's tooltip so nothing was actually lost.
+            //
+            // The list arrives newest-first and the server drops periods with no
+            // activity, so periods[i + 1] is the previous period that had any —
+            // which is the more useful comparison anyway, and never divides by
+            // zero the way an empty calendar-adjacent period would.
+            const prev = periods[i + 1];
+            const changeHtml = prev
+                ? trendPill(totalMins, prev.totalFocusMinutes ?? 0)
+                : `<span class="trend-pill trend-flat">First on record</span>`;
+
             const rangeText = periodType === 'week'
                 ? `${fmtDateEU(parseDateStr(start))} → ${fmtDateEU(parseDateStr(end))}`
                 : periodType === 'day'
@@ -66,7 +81,7 @@ async function loadPeriodList(silent) {
             return `
                 <div class="card period-card" data-open-period="${escapeHtml(start)}" role="button" tabindex="0">
                     <div class="period-row">
-                        <div class="period-rank-badge ${rank === 1 ? 'rank-1' : ''}">#${rank ?? '–'}</div>
+                        <div class="period-rank-badge ${rank === 1 ? 'rank-1' : ''}" title="Rank ${rank ?? '–'} of ${p.totalPeriods ?? '–'} by focus time">#${rank ?? '–'}</div>
                         <div class="period-main">
                             <div class="period-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
                             <div class="period-range">${escapeHtml(rangeText)}</div>
@@ -81,8 +96,8 @@ async function loadPeriodList(silent) {
                                 <div class="period-stat-value app-link" title="${escapeHtml(mostUsed)}" data-open-app="${escapeHtml(mostUsed)}" role="button" tabindex="0">${escapeHtml(displayAppName(mostUsed))}</div>
                             </div>
                             <div class="period-stat">
-                                <div class="period-stat-label">Ranking</div>
-                                <div class="period-stat-value">#${rank ?? '–'} of ${p.totalPeriods ?? '–'}</div>
+                                <div class="period-stat-label">vs Previous</div>
+                                <div class="period-stat-value">${changeHtml}</div>
                             </div>
                         </div>
                     </div>
@@ -435,6 +450,13 @@ function renderPeriodDetail(d, isNewDay) {
             </div>
         </div>
         ${windowActivityCardHtml}`;
+
+    // Day periods render the same ribbon Overview does, so they get the same
+    // inline block labels. Has to run after the innerHTML above: the labels are
+    // decided on measured pixel width, which does not exist until layout.
+    if (periodType === 'day') {
+        labelWideTimelineSegments(document.querySelector('#period-detail-body .timeline-track'));
+    }
 }
 
 // Refreshes whichever half of the tab is actually visible, silently (no
