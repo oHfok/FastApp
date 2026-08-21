@@ -80,11 +80,11 @@ function renderActivityRows(sessions) {
             ? `<div class="activity-title" title="${escapeHtml(windowTitle)}">${escapeHtml(windowTitle)}</div>`
             : '';
         html += `
-            <div class="card activity-row" data-open-app="${escapeHtml(appName)}">
+            <div class="card activity-row" data-open-app="${escapeHtml(appName)}" role="button" tabindex="0">
                 <div class="activity-icon" style="color:${catColor(cat)}">${escapeHtml((appName || '?').charAt(0).toUpperCase())}</div>
                 <div class="activity-name-col">
                     <div class="activity-app-name">${escapeHtml(appName)}</div>
-                    <div class="activity-cat cat-link" data-open-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</div>
+                    <div class="activity-cat cat-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">${escapeHtml(cat)}</div>
                     ${titleLine}
                 </div>
                 <div class="activity-time-range">${timeRange}</div>

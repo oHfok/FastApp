@@ -8,7 +8,14 @@ const VIEWS = ['overview', 'insights', 'periods', 'activity', 'leaderboard', 'al
 let currentViewId = null;
 
 function switchView(viewId) {
-    document.querySelectorAll('.rail-item').forEach(el => el.classList.toggle('active', el.dataset.view === viewId));
+    document.querySelectorAll('.rail-item').forEach(el => {
+        const isActive = el.dataset.view === viewId;
+        el.classList.toggle('active', isActive);
+        // The active state was colour-only, which says nothing to a screen
+        // reader; aria-current carries the same fact non-visually.
+        if (isActive) el.setAttribute('aria-current', 'page');
+        else el.removeAttribute('aria-current');
+    });
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
     const target = document.getElementById('view-' + viewId);
     if (target) target.classList.add('active');
@@ -62,18 +69,56 @@ function initNav() {
 // closest() with a comma selector returns the NEAREST matching ancestor, so a
 // category chip nested inside an app row wins over the row itself -- which is
 // what the old event.stopPropagation() calls were for.
+const OPENER_SELECTOR = '[data-open-app], [data-open-cat], [data-open-period]';
+
+function activateOpener(el) {
+    if (el.dataset.openCat !== undefined) {
+        openCategoryDetail(el.dataset.openCat);
+    } else if (el.dataset.openApp !== undefined) {
+        openDrilldown(el.dataset.openApp);
+    } else {
+        openPeriodDetail(el.dataset.openPeriod);
+    }
+}
+
 function initDelegatedOpeners() {
     document.addEventListener('click', (e) => {
-        const el = e.target.closest('[data-open-app], [data-open-cat], [data-open-period]');
-        if (!el) return;
+        const el = e.target.closest(OPENER_SELECTOR);
+        if (el) activateOpener(el);
+    });
 
-        if (el.dataset.openCat !== undefined) {
-            openCategoryDetail(el.dataset.openCat);
-        } else if (el.dataset.openApp !== undefined) {
-            openDrilldown(el.dataset.openApp);
-        } else {
-            openPeriodDetail(el.dataset.openPeriod);
-        }
+    // Keyboard equivalent. These are div/span elements carrying role="button"
+    // (they contain their own controls, so a real <button> would nest buttons),
+    // and a role alone gets no behaviour for free — the browser only handles
+    // Enter/Space on genuine buttons. Space is preventDefault'd because its
+    // default action on a non-button is to scroll the page.
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+        const el = e.target.closest ? e.target.closest(OPENER_SELECTOR) : null;
+        if (!el) return;
+        e.preventDefault();
+        activateOpener(el);
+    });
+}
+
+// --- Escape closes whatever is layered on top --------------------------------
+// There were no keyboard handlers in the dashboard at all, so the only way out
+// of a drawer or the Wrapped story was finding its ✕ or clicking the backdrop.
+// Closes one layer per press, innermost first, so Escape never skips past
+// something the user was looking at.
+function initEscapeToClose() {
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+
+        const wrapped = document.getElementById('wrapped-overlay');
+        if (wrapped && wrapped.style.display !== 'none') { closeWrappedStory(); return; }
+
+        const panel = document.getElementById('wrapped-panel');
+        if (panel && panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+
+        if (document.getElementById('cat-drawer').classList.contains('open')) { closeCategoryDetail(); return; }
+        if (document.getElementById('dd-drawer').classList.contains('open')) { closeDrilldown(); return; }
+        if (document.getElementById('settings-drawer').classList.contains('open')) { closeSettings(); return; }
     });
 }
 
@@ -159,6 +204,7 @@ function closeSettings() {
 async function boot() {
     initNav();
     initDelegatedOpeners();
+    initEscapeToClose();
     document.getElementById('tb-gear').addEventListener('click', openSettings);
     document.getElementById('settings-overlay').addEventListener('click', closeSettings);
     document.getElementById('settings-close').addEventListener('click', closeSettings);
@@ -175,6 +221,7 @@ async function boot() {
 
     loadWrappedAvailable();
     initWrappedPanelOutsideClick();
+    initWrappedKeys();
 
     setInterval(pollCurrentView, POLL_INTERVAL_MS);
 

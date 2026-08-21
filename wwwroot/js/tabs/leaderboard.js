@@ -108,14 +108,14 @@ function renderFullLeaderboard() {
 
         const cat = app.category || 'Other';
         return `
-            <div class="full-lb-row" data-open-app="${escapeHtml(app.appName)}">
+            <div class="full-lb-row" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0">
                 ${medalOrRank}
                 <div class="full-lb-trend">${trendHtml}</div>
                 <div class="full-lb-name-wrap">
                     <div class="full-lb-icon">${escapeHtml((app.appName || '?').charAt(0).toUpperCase())}</div>
                     <div class="full-lb-name-col">
                         <div class="full-lb-app-name">${escapeHtml(app.appName)}</div>
-                        <div class="full-lb-cat cat-link" data-open-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</div>
+                        <div class="full-lb-cat cat-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">${escapeHtml(cat)}</div>
                     </div>
                 </div>
                 <div class="full-lb-time">${formatTime(primaryMins(app))}</div>

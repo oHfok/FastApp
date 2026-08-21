@@ -42,7 +42,7 @@ async function openCategoryDetail(category) {
             // The delegated opener handles the click; closeCategoryDetail runs
             // from openDrilldown so this drawer doesn't stay stacked underneath.
             : apps.map((a, i) => `
-                <div class="lb-row app-link" data-open-app="${escapeHtml(a.name)}">
+                <div class="lb-row app-link" data-open-app="${escapeHtml(a.name)}" role="button" tabindex="0">
                     <div class="lb-rank">${i + 1}</div>
                     <div class="lb-name">${escapeHtml(a.name)}</div>
                     <div class="lb-time">${formatTime(a.focus)}</div>

@@ -304,7 +304,8 @@ function timelineSegmentsHtml(sessions) {
         return `<div class="timeline-seg" style="left:${left}%;width:${width}%;background:${timelineSegColor(name, cat)}"
                     data-name="${escapeHtml(name)}" data-range="${escapeHtml(startStr + ' – ' + endStr)}"
                     data-dur="${escapeHtml(formatTime(dur))}" data-title="${title ? escapeHtml(title) : ''}"
-                    data-open-app="${escapeHtml(name)}"
+                    data-open-app="${escapeHtml(name)}" role="button" tabindex="0"
+                    aria-label="${escapeHtml(`${name}, ${startStr} to ${endStr}, ${formatTime(dur)}`)}"
                     onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"></div>`;
     }).join('');
 }
