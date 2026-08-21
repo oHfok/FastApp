@@ -317,8 +317,16 @@
                 <div class="view-head">
                     <div>
                         <div class="view-title">Activity</div>
-                        <div class="view-sub">Every app switch, most recent first.</div>
+                        <div class="view-sub">What you had open, most recent first. Rapid switches between the same app are grouped.</div>
                     </div>
+                </div>
+                <div class="activity-toolbar">
+                    <input type="text" id="activity-search" class="field" placeholder="Search apps or window titles…" oninput="filterActivity(this)">
+                    <div class="segmented" id="activity-min-toggle">
+                        <button class="active" onclick="setActivityMinDuration(1, this)">Over a minute</button>
+                        <button onclick="setActivityMinDuration(0, this)">Everything</button>
+                    </div>
+                    <span class="activity-summary" id="activity-summary"></span>
                 </div>
                 <div id="activity-list"></div>
                 <div style="text-align:center;margin-top:16px;">
