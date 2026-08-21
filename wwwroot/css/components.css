@@ -224,11 +224,38 @@
 
 .full-lb-afk { font-family: var(--font-mono); font-weight: 600; font-size: 13px; text-align: right; color: var(--rose); }
 
+/* Below this width the six columns stop fitting. The old rule set AFK and the
+   efficiency bar to display:none -- the app still computed both, and a merely
+   narrow window made them unreachable with nothing saying anything had been
+   removed. They now wrap onto a second line inside the same row instead, which
+   the row has the vertical space for. The header still hides (it cannot span
+   two lines), so AFK gains an inline label to replace it. */
 @media (max-width: 1040px) {
     .full-lb-header { display: none; }
-    .full-lb-row { grid-template-columns: 36px 24px 1fr auto; }
+
+    .full-lb-row { grid-template-columns: 36px 24px 1fr auto; row-gap: 8px; }
+    .full-lb-row > .full-lb-rank,
+    .full-lb-row > .medal        { grid-row: 1; grid-column: 1; }
+    .full-lb-row > .full-lb-trend{ grid-row: 1; grid-column: 2; }
+    .full-lb-row > .full-lb-name-wrap { grid-row: 1; grid-column: 3; }
+    .full-lb-row > .full-lb-time { grid-row: 1; grid-column: 4; }
+    .full-lb-row > .full-lb-afk  { grid-row: 2; grid-column: 3; text-align: left; }
+    .full-lb-row > div:last-child{ grid-row: 2; grid-column: 4; }
+
     .full-lb-row.no-movement { grid-template-columns: 36px 1fr auto; }
-    .full-lb-afk, .full-lb-row > div:last-child { display: none; }
+    .full-lb-row.no-movement > .full-lb-rank,
+    .full-lb-row.no-movement > .medal        { grid-column: 1; }
+    .full-lb-row.no-movement > .full-lb-name-wrap { grid-column: 2; }
+    .full-lb-row.no-movement > .full-lb-time { grid-column: 3; }
+    .full-lb-row.no-movement > .full-lb-afk  { grid-column: 2; }
+    .full-lb-row.no-movement > div:last-child{ grid-column: 3; }
+
+    /* The column header is gone at this width, so the value labels itself. */
+    .full-lb-afk::before {
+        content: "AFK ";
+        color: var(--text-faint);
+        font-weight: 600;
+    }
 }
 
 .full-lb-row:hover { border-color: var(--brass-dim); }

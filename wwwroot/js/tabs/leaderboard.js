@@ -143,7 +143,7 @@ function renderFullLeaderboard() {
                 <div class="full-lb-name-wrap">
                     <div class="full-lb-icon" style="${avatarStyle(cat)}">${escapeHtml((app.appName || '?').charAt(0).toUpperCase())}</div>
                     <div class="full-lb-name-col">
-                        <div class="full-lb-app-name">${escapeHtml(app.appName)}</div>
+                        <div class="full-lb-app-name" title="${escapeHtml(app.appName)}">${escapeHtml(displayAppName(app.appName))}</div>
                         <div class="full-lb-cat cat-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">${escapeHtml(cat)}</div>
                     </div>
                 </div>

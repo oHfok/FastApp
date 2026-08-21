@@ -329,7 +329,7 @@ function renderTopAppBody(noun, topApp) {
             </div>`;
     }
     return `
-        <div class="headline"><em>${escapeHtml(appName)}</em> was your top app.</div>
+        <div class="headline"><em>${escapeHtml(displayAppName(appName))}</em> was your top app.</div>
         <div class="hero">
             <div class="hero-number" style="font-size:56px;">${escapeHtml(appName.charAt(0).toUpperCase())}</div>
             <div class="hero-caption">${formatTime(minutes)} focused</div>
@@ -352,7 +352,7 @@ function renderTopAppsBody(topApps) {
             <div class="rank-row">
                 <div class="rank-num">#${i + 1}</div>
                 <div>
-                    <div class="rank-name">${escapeHtml(appName)}</div>
+                    <div class="rank-name" title="${escapeHtml(appName)}">${escapeHtml(displayAppName(appName))}</div>
                     <div class="rank-sub">${formatTime(minutes)}${deltaText}</div>
                 </div>
             </div>`;
@@ -383,7 +383,7 @@ function renderMilestonesBody(noun, milestones) {
             <div class="ms-row">
                 <div class="ms-dot" style="background:${milestoneTierColor(tierName)}"></div>
                 <div>
-                    <div class="ms-app">${escapeHtml(appName)}</div>
+                    <div class="ms-app" title="${escapeHtml(appName)}">${escapeHtml(displayAppName(appName))}</div>
                     <div class="ms-tier">${escapeHtml(tierName)} &middot; ${escapeHtml(date)}</div>
                 </div>
             </div>`;

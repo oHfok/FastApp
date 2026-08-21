@@ -46,7 +46,10 @@ async function openDrilldown(appName) {
     document.querySelectorAll('#dd-trend-toggle button').forEach(b => b.classList.toggle('active', b.dataset.granularity === 'day'));
     loadUsageTrend(appName, 'day');
 
-    document.getElementById('dd-title').textContent = appName;
+    // Header shows the tidied name; the raw process name stays in the tooltip
+    // so it is never actually hidden from the user.
+    document.getElementById('dd-title').textContent = displayAppName(appName);
+    document.getElementById('dd-title').title = appName;
     document.getElementById('dd-icon').textContent = appName.charAt(0).toUpperCase();
     document.getElementById('dd-rank').textContent = 'Loading rank…';
 

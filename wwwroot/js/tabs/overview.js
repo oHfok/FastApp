@@ -261,7 +261,7 @@ function renderOverviewLeaderboards(leaderboard) {
         appsEl.innerHTML = apps.map((app, i) => `
             <div class="lb-row app-link" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0" style="--share:${((app.focusedMinutes || 0) / appMax) * 100}%">
                 <div class="lb-rank">${i + 1}</div>
-                <div class="lb-name">${escapeHtml(app.appName)}</div>
+                <div class="lb-name" title="${escapeHtml(app.appName)}">${escapeHtml(displayAppName(app.appName))}</div>
                 <div class="lb-time">${formatTime(app.focusedMinutes)}</div>
             </div>`).join('');
     }
@@ -293,7 +293,7 @@ async function renderActivityBody(scope, dateStr, ov, signal) {
     if (scope === 'day') {
         body.innerHTML = `
             <div class="timeline-wrap">
-                <div class="timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+                <div class="timeline-ticks" id="ov-timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
                 <div class="timeline-track" id="ov-timeline-track"></div>
             </div>`;
         await renderDayTimeline(dateStr, signal);
@@ -311,6 +311,8 @@ async function renderDayTimeline(dateStr, signal) {
         const track = document.getElementById('ov-timeline-track');
         if (!track) return;
         track.innerHTML = timelineSegmentsHtml(sessions);
+        const ticks = document.getElementById('ov-timeline-ticks');
+        if (ticks && sessions && sessions.length) ticks.innerHTML = timelineTicksHtml(timelineWindow(sessions));
     } catch (err) { if (!isAbort(err)) console.error(err); }
 }
 

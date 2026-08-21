@@ -277,6 +277,30 @@ function getMilestoneProgress(allTimeHours, tiers) {
     return { tier, next, hoursToNext: next ? Math.max(0, nextHours - hours) : null };
 }
 
+// --- Display names ----------------------------------------------------------
+// Names come from the process, so the interface is full of things like
+// "Valorant-win64-shipping", "Fortniteclient-win64-shipping" and
+// "Eaanticheat.gameservicelauncher". They are long enough to be truncated in
+// most columns and they make the product read like a task manager rather than a
+// description of someone's day.
+//
+// Purely cosmetic: the tracked name is never modified, every list keeps the raw
+// value in its title attribute, and lookups (categories, drilldown, hidden
+// apps) all still key off the real name. Suffix rules rather than a hand-built
+// list of apps, so new games and launchers benefit without an update.
+const APP_NAME_SUFFIXES = [
+    /-win64-shipping$/i, /-win32-shipping$/i, /-shipping$/i,
+    /-windows-msvc-[a-z0-9.-]+$/i, /-win-x64$/i, /-x64$/i, /\.tmp$/i
+];
+function displayAppName(name) {
+    if (!name) return '';
+    let out = String(name);
+    for (const rx of APP_NAME_SUFFIXES) out = out.replace(rx, '');
+    out = out.replace(/[-_.]+$/, '');
+    // Never return an empty label just because the whole name was suffix.
+    return out.length ? out : String(name);
+}
+
 // --- Per-app accent color (Timeline ribbon "Individual" mode) --------------
 // Category color alone makes a timeline unreadable once more than one or two
 // apps share a category — they render as one indistinguishable block. This
@@ -467,10 +491,57 @@ function heatColor(intensity, minAlpha = 0.15, alphaRange = 0.75) {
 // (a day period's Daily Activity is this same ribbon, not a heatmap — breaking
 // a single day down into "days" would be circular). Returns just the inner
 // HTML for a .timeline-track; callers own their own wrapper/ticks markup.
+// Persisted like the colour mode: 'day' spans the full 24 hours, 'activity'
+// trims the axis to the first and last recorded session. On a normal day most
+// of the 24h is asleep or away, so the full-day ribbon is ~90% empty and the
+// hours that matter are squeezed into a few pixels. Trimming makes the same
+// data several times larger on screen without changing what is recorded.
+const TIMELINE_RANGE_KEY = 'fastapp-timeline-range';
+function getTimelineRangeMode() {
+    return localStorage.getItem(TIMELINE_RANGE_KEY) || 'day';
+}
+
+// Returns the window the ribbon spans, in minutes past midnight, plus the tick
+// labels to print under it. Callers render the ticks so both the Overview and
+// the Periods ribbon stay in step with whatever range is in force.
+function timelineWindow(sessions) {
+    const FULL = { startMin: 0, endMin: 1440 };
+    if (getTimelineRangeMode() !== 'activity' || !sessions || !sessions.length) return FULL;
+
+    let lo = Infinity, hi = -Infinity;
+    sessions.forEach(s => {
+        const st = s.startMinutes ?? 0;
+        lo = Math.min(lo, st);
+        hi = Math.max(hi, st + (s.durationMinutes ?? 0));
+    });
+    if (!isFinite(lo) || !isFinite(hi) || hi <= lo) return FULL;
+
+    // Round out to whole hours and keep a little air either side, so segments
+    // never start flush against the edge.
+    const startMin = Math.max(0, Math.floor(lo / 60) * 60 - 60);
+    const endMin = Math.min(1440, Math.ceil(hi / 60) * 60 + 60);
+    // Below a few hours the trimming stops being worth the loss of context.
+    if (endMin - startMin >= 1200) return FULL;
+    return { startMin, endMin };
+}
+
+function timelineTicksHtml(win) {
+    const span = win.endMin - win.startMin;
+    const steps = 4;
+    let out = '';
+    for (let i = 0; i <= steps; i++) {
+        const m = win.startMin + (span / steps) * i;
+        out += `<span>${pad(Math.floor(m / 60) % 24)}:${pad(Math.round(m % 60))}</span>`;
+    }
+    return out;
+}
+
 function timelineSegmentsHtml(sessions) {
     if (!sessions || sessions.length === 0) {
         return `<div class="empty-state" style="border:none;background:none;">No sessions recorded for this day.</div>`;
     }
+    const win = timelineWindow(sessions);
+    const span = Math.max(1, win.endMin - win.startMin);
     return sessions.map(s => {
         const name = s.appName;
         const cat = s.category;
@@ -479,8 +550,8 @@ function timelineSegmentsHtml(sessions) {
         const dur = s.durationMinutes ?? 0;
         const startMins = s.startMinutes ?? 0;
         const title = s.windowTitle;
-        const left = (startMins / 1440) * 100;
-        const width = Math.max((dur / 1440) * 100, 0.25);
+        const left = ((startMins - win.startMin) / span) * 100;
+        const width = Math.max((dur / span) * 100, 0.25);
         // Window titles (and, defensively, app names) are attacker-controllable —
         // any webpage can set its own tab title — so they're carried as plain data
         // in data-* attributes and rendered via showSessionTooltip's textContent

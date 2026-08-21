@@ -43,7 +43,7 @@ async function openCategoryDetail(category) {
             : apps.map((a, i) => `
                 <div class="lb-row app-link" data-open-app="${escapeHtml(a.name)}" role="button" tabindex="0">
                     <div class="lb-rank">${i + 1}</div>
-                    <div class="lb-name">${escapeHtml(a.name)}</div>
+                    <div class="lb-name" title="${escapeHtml(a.name)}">${escapeHtml(displayAppName(a.name))}</div>
                     <div class="lb-time">${formatTime(a.focus)}</div>
                 </div>`).join('');
     } catch (err) {
