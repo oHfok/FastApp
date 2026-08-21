@@ -65,7 +65,7 @@ async function loadPeriodList(silent) {
                     : label;
 
             return `
-                <div class="card period-card" data-open-period="${escapeHtml(start)}">
+                <div class="card period-card" data-open-period="${escapeHtml(start)}" role="button" tabindex="0">
                     <div class="period-row">
                         <div class="period-rank-badge ${rank === 1 ? 'rank-1' : ''}">#${rank ?? '–'}</div>
                         <div class="period-main">
@@ -79,7 +79,7 @@ async function loadPeriodList(silent) {
                             </div>
                             <div class="period-stat">
                                 <div class="period-stat-label">Most Used</div>
-                                <div class="period-stat-value app-link" title="${escapeHtml(mostUsed)}" data-open-app="${escapeHtml(mostUsed)}">${escapeHtml(mostUsed)}</div>
+                                <div class="period-stat-value app-link" title="${escapeHtml(mostUsed)}" data-open-app="${escapeHtml(mostUsed)}" role="button" tabindex="0">${escapeHtml(mostUsed)}</div>
                             </div>
                             <div class="period-stat">
                                 <div class="period-stat-label">Ranking</div>
@@ -228,7 +228,7 @@ function windowActivityRowHtml(s) {
     // handler reads the name back out of a data-* attribute rather than
     // splicing it into the onclick string, same rule as the Timeline ribbon.
     return `
-        <div class="card activity-row" data-open-app="${escapeHtml(name)}">
+        <div class="card activity-row" data-open-app="${escapeHtml(name)}" role="button" tabindex="0">
             <div class="activity-icon" style="color:${catColor(cat)}">${escapeHtml((name || '?').charAt(0).toUpperCase())}</div>
             <div class="activity-name-col">
                 <div class="activity-app-name">${escapeHtml(name)}</div>
@@ -411,7 +411,7 @@ function renderPeriodDetail(d, isNewDay) {
     const appsHtml = topApps.length === 0 ? `<div class="empty-state">No app data.</div>` : topApps.map((a, i) => {
         const appName = a.appName ?? a.AppName ?? '';
         return `
-        <div class="lb-row app-link" data-open-app="${escapeHtml(appName)}">
+        <div class="lb-row app-link" data-open-app="${escapeHtml(appName)}" role="button" tabindex="0">
             <div class="lb-rank">${i + 1}</div>
             <div class="lb-name">${escapeHtml(appName)}</div>
             <div class="lb-time">${formatTime(a.focusedMinutes ?? a.FocusedMinutes ?? 0)}</div>
@@ -421,7 +421,7 @@ function renderPeriodDetail(d, isNewDay) {
     const catsHtml = topCategories.length === 0 ? `<div class="empty-state">No category data.</div>` : topCategories.map((c, i) => {
         const cat = c.category ?? c.Category ?? 'Other';
         return `
-        <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}">
+        <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">
             <div class="lb-rank">${i + 1}</div>
             <div class="lb-name"><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}</div>
             <div class="lb-time">${formatTime(c.focusedMinutes ?? c.FocusedMinutes ?? 0)}</div>

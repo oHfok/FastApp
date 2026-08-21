@@ -141,12 +141,15 @@ function renderCategoryBar(leaderboard) {
 
     barEl.innerHTML = entries.map(([cat, mins]) => {
         const pct = (mins / totalMins) * 100;
-        return `<div class="cat-bar-seg cat-link" style="width:${pct}%;background:${catColor(cat)}" title="${escapeHtml(cat)}: ${formatTime(mins)}" data-open-cat="${escapeHtml(cat)}"></div>`;
+        // Purely a coloured slice — no text inside, so it needs an explicit
+        // name or it announces as an unlabelled button.
+        const segLabel = `${cat}, ${formatTime(mins)}`;
+        return `<div class="cat-bar-seg cat-link" style="width:${pct}%;background:${catColor(cat)}" title="${escapeHtml(segLabel)}" aria-label="${escapeHtml(segLabel)}" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0"></div>`;
     }).join('');
 
     legendEl.innerHTML = entries.map(([cat, mins]) => {
         const pct = Math.round((mins / totalMins) * 100);
-        return `<div class="cat-legend-item cat-link" data-open-cat="${escapeHtml(cat)}"><span class="cat-swatch" style="background:${catColor(cat)}"></span>${escapeHtml(cat)} <span class="mono" style="color:var(--text-faint)">${pct}% · ${formatTime(mins)}</span></div>`;
+        return `<div class="cat-legend-item cat-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0"><span class="cat-swatch" style="background:${catColor(cat)}"></span>${escapeHtml(cat)} <span class="mono" style="color:var(--text-faint)">${pct}% · ${formatTime(mins)}</span></div>`;
     }).join('');
 }
 
@@ -157,7 +160,7 @@ function renderOverviewLeaderboards(leaderboard) {
         appsEl.innerHTML = `<div class="empty-state">No app activity for this period.</div>`;
     } else {
         appsEl.innerHTML = apps.map((app, i) => `
-            <div class="lb-row app-link" data-open-app="${escapeHtml(app.appName)}">
+            <div class="lb-row app-link" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0">
                 <div class="lb-rank">${i + 1}</div>
                 <div class="lb-name">${escapeHtml(app.appName)}</div>
                 <div class="lb-time">${formatTime(app.focusedMinutes)}</div>
@@ -175,7 +178,7 @@ function renderOverviewLeaderboards(leaderboard) {
         catsEl.innerHTML = `<div class="empty-state">No category activity for this period.</div>`;
     } else {
         catsEl.innerHTML = cats.map(([cat, mins], i) => `
-            <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}">
+            <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">
                 <div class="lb-rank">${i + 1}</div>
                 <div class="lb-name"><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}</div>
                 <div class="lb-time">${formatTime(mins)}</div>

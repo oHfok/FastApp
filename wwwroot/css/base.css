@@ -217,6 +217,10 @@ h1, h2, h3, .num-display {
     gap: 4px;
 }
 
+/* A real <button>, not a div — the rail is the primary navigation and was
+   previously unreachable by keyboard entirely. It has no interactive
+   descendants, so a button is valid here; the row/card elements elsewhere
+   keep role="button" instead because they contain their own controls. */
 .rail-item {
     display: flex;
     align-items: center;
@@ -229,6 +233,16 @@ h1, h2, h3, .num-display {
     cursor: pointer;
     transition: all 0.15s;
     border-left: 2px solid transparent;
+    /* button reset */
+    width: 100%;
+    background: none;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
+    font-family: inherit;
+    text-align: left;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .rail-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.8; }
@@ -440,6 +454,50 @@ select.field {
     border: 1px dashed var(--panel-border);
     border-radius: var(--radius);
 }
+
+/* ---------- Keyboard focus ----------------------------------------------
+   The dashboard previously had exactly one :focus rule in the entire
+   stylesheet, so even the controls that WERE reachable gave no sign of it.
+   :focus-visible rather than :focus, so the ring appears for keyboard and
+   assistive navigation without drawing a box around every mouse click.
+   Applied broadly on purpose — anything focusable should say so. */
+:focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+/* Rows and cards sit flush against their neighbours, so an outward ring gets
+   clipped by the next element; inset it slightly for those. */
+.lb-row:focus-visible,
+.full-lb-row:focus-visible,
+.activity-row:focus-visible,
+.period-card:focus-visible,
+.allapps-card:focus-visible,
+.cat-legend-item:focus-visible {
+    outline-offset: -2px;
+}
+/* Timeline segments can be a fraction of a percent wide, where a 2px ring on
+   each side would swamp the element itself. */
+.timeline-seg:focus-visible,
+.cat-bar-seg:focus-visible {
+    outline-offset: 1px;
+    outline-width: 2px;
+}
+
+/* Skip link — first tab stop, lets keyboard users jump the rail. */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 200;
+    background: var(--brass);
+    color: #10121A;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 13px;
+    border-radius: 0 0 var(--radius-sm) 0;
+}
+.skip-link:focus { left: 0; }
 
 /* Failure, as distinct from "nothing here yet". An empty state is a normal
    outcome; this one means something went wrong and the data on screen may be

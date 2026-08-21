@@ -120,6 +120,20 @@ function handleWrappedOverlayClick(event) {
     if (event.target.id === 'wrapped-overlay') closeWrappedStory();
 }
 
+// Keyboard navigation for the story. The prev/next zones are invisible
+// full-height strips sized for the mouse — making them tab stops would put two
+// unlabelled buttons in the tab order for no benefit, so the keyboard gets
+// arrow keys instead (Escape closes, handled centrally in app.js).
+function initWrappedKeys() {
+    document.addEventListener('keydown', (e) => {
+        const overlay = document.getElementById('wrapped-overlay');
+        if (!overlay || overlay.style.display === 'none') return;
+
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); wrappedNextSlide(); }
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); wrappedPrevSlide(); }
+    });
+}
+
 function wrappedNextSlide() {
     if (wrappedSlideIndex < wrappedSlides.length - 1) {
         wrappedSlideIndex++;
