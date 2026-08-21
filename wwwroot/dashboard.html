@@ -199,6 +199,19 @@
                     <div class="card-label" id="ov-hero-label">Focus Today</div>
                     <div class="stat-value" id="ov-hero-value" style="color:var(--brass)">0h 0m</div>
                     <div id="ov-hero-trend"></div>
+                    <!-- Focus, AFK and uptime are not three independent facts: the
+                         first two are parts of the third. Shown as three cards the
+                         reader had to relate them by hand, and the most useful
+                         figure -- what share of time at the machine was focused --
+                         was never stated. Same .compare-bar the Periods detail page
+                         already uses, rather than a new component. -->
+                    <div class="hero-share" id="ov-hero-share" style="display:none;">
+                        <div class="compare-bar">
+                            <div class="compare-bar-seg" id="ov-share-focus"></div>
+                            <div class="compare-bar-seg" id="ov-share-afk"></div>
+                        </div>
+                        <div class="compare-bar-caption" id="ov-share-caption"></div>
+                    </div>
                 </div>
                 <div class="stat-row">
                     <div class="card stat-block" id="ov-afk-card">

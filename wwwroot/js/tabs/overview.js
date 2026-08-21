@@ -155,6 +155,8 @@ function renderComparisonBlock(scope, ov) {
     uptimeEl.onmousemove = (e) => showTooltip(e, upHoverTip);
     uptimeEl.onmouseleave = hideTooltip;
 
+    renderHeroShare(scope, ov, cur || 0, upCur || 0);
+
     // AFK per scope. The backend returns all four (AfkToday/Week/Month/Year); a
     // missing value here means the response itself didn't arrive intact, so the
     // card dims to a dash rather than showing a stale or invented number. It used
@@ -180,6 +182,33 @@ function renderComparisonBlock(scope, ov) {
         afkCard.onmousemove = (e) => showTooltip(e, 'No AFK figure came back for this range.');
         afkCard.onmouseleave = hideTooltip;
     }
+}
+
+// Focus and AFK as shares of total time at the machine. Uses only figures the
+// three cards are already showing; the point is to state the relationship
+// between them rather than add data.
+function renderHeroShare(scope, ov, focusHours, uptimeHours) {
+    const host = document.getElementById('ov-hero-share');
+    if (!host) return;
+
+    const afkHours = { day: ov.afkToday, week: ov.afkWeek, month: ov.afkMonth, year: ov.afkYear }[scope];
+
+    // Needs a real uptime figure to be a share OF anything.
+    if (!uptimeHours || uptimeHours <= 0) { host.style.display = 'none'; return; }
+
+    const focusPct = Math.min(100, (focusHours / uptimeHours) * 100);
+    const afkPct = Math.min(100 - focusPct, ((afkHours || 0) / uptimeHours) * 100);
+
+    document.getElementById('ov-share-focus').style.width = `${focusPct}%`;
+    document.getElementById('ov-share-focus').style.background = 'var(--brass)';
+    document.getElementById('ov-share-afk').style.width = `${afkPct}%`;
+    document.getElementById('ov-share-afk').style.background = 'var(--rose)';
+
+    const afkText = (afkHours === undefined || afkHours === null)
+        ? '' : ` · ${formatHours(afkHours)} away`;
+    document.getElementById('ov-share-caption').textContent =
+        `${Math.round(focusPct)}% of ${formatHours(uptimeHours)} at the machine${afkText}`;
+    host.style.display = 'block';
 }
 
 function renderCategoryBar(leaderboard) {
@@ -228,8 +257,9 @@ function renderOverviewLeaderboards(leaderboard) {
     if (apps.length === 0) {
         appsEl.innerHTML = `<div class="empty-state">No app activity for this period.</div>`;
     } else {
+        const appMax = Math.max(...apps.map(a => a.focusedMinutes || 0), 1);
         appsEl.innerHTML = apps.map((app, i) => `
-            <div class="lb-row app-link" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0">
+            <div class="lb-row app-link" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0" style="--share:${((app.focusedMinutes || 0) / appMax) * 100}%">
                 <div class="lb-rank">${i + 1}</div>
                 <div class="lb-name">${escapeHtml(app.appName)}</div>
                 <div class="lb-time">${formatTime(app.focusedMinutes)}</div>
@@ -247,8 +277,9 @@ function renderOverviewLeaderboards(leaderboard) {
     if (cats.length === 0) {
         catsEl.innerHTML = `<div class="empty-state">No category activity for this period.</div>`;
     } else {
+        const catMax = Math.max(...cats.map(([, m]) => m), 1);
         catsEl.innerHTML = cats.map(([cat, mins], i) => `
-            <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">
+            <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0" style="--share:${(mins / catMax) * 100}%">
                 <div class="lb-rank">${i + 1}</div>
                 <div class="lb-name"><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}</div>
                 <div class="lb-time">${formatTime(mins)}</div>
