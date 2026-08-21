@@ -62,7 +62,7 @@ async function openDrilldown(appName) {
             apiFetch(`/api/all-apps`, { signal }),
             apiFetch(`/api/settings/pin`, { signal })
         ]);
-        const hasPin = pinData.hasPin ?? pinData.HasPin ?? false;
+        const hasPin = pinData.hasPin ?? false;
 
         if (data.error) { console.error(data.error); return; }
 
@@ -76,8 +76,8 @@ async function openDrilldown(appName) {
         // Category selector — /api/app-details doesn't return a category field, so
         // read the app's current category from /api/all-apps instead (it includes
         // hidden apps too, unlike the leaderboard, so this works even for hidden apps).
-        const allAppsMatch = allApps.find(a => (a.appName || a.AppName || '').toLowerCase() === appName.toLowerCase());
-        const currentCategory = (allAppsMatch && (allAppsMatch.category || allAppsMatch.Category)) || 'Other';
+        const allAppsMatch = allApps.find(a => (a.appName || '').toLowerCase() === appName.toLowerCase());
+        const currentCategory = (allAppsMatch && (allAppsMatch.category)) || 'Other';
 
         const catSelect = document.getElementById('dd-category-select');
         let opts = allCategories.map(c => `<option value="${c}" ${currentCategory === c ? 'selected' : ''}>${c}</option>`).join('');
@@ -105,12 +105,12 @@ async function openDrilldown(appName) {
         // it's actually clear what each one takes to earn) plus a progress bar
         // toward whichever tier is next. No unlock notification for this first
         // version; it just reflects current state whenever the drawer opens.
-        const milestoneDates = data.milestoneDates ?? data.MilestoneDates ?? [];
+        const milestoneDates = data.milestoneDates ?? [];
         // Ladder definition comes from the backend (Services/MilestoneTiers.cs) so
         // this renders exactly the tiers it scored against, never a local copy.
-        const milestoneTiers = (data.milestoneTiers ?? data.MilestoneTiers ?? []).map(t => ({
-            name: t.name ?? t.Name,
-            hours: t.hours ?? t.Hours ?? 0
+        const milestoneTiers = (data.milestoneTiers ?? []).map(t => ({
+            name: t.name,
+            hours: t.hours ?? 0
         }));
         const { tier, next, hoursToNext } = getMilestoneProgress(allTimeFocusedHours, milestoneTiers);
 
@@ -212,10 +212,10 @@ async function openDrilldown(appName) {
 
         // Daily limit + Strict Focus Mode — actually enforced by the WPF tracker now;
         // editing here sends a live message to the running app, same as category edits.
-        const dailyLimitMinutes = data.dailyLimitMinutes ?? data.DailyLimitMinutes ?? 0;
-        const strictFocusMode = data.strictFocusMode ?? data.StrictFocusMode ?? false;
-        const todayMinutes = data.todayMinutes ?? data.TodayMinutes ?? 0;
-        const todayBonusMinutes = data.todayBonusMinutes ?? data.TodayBonusMinutes ?? 0;
+        const dailyLimitMinutes = data.dailyLimitMinutes ?? 0;
+        const strictFocusMode = data.strictFocusMode ?? false;
+        const todayMinutes = data.todayMinutes ?? 0;
+        const todayBonusMinutes = data.todayBonusMinutes ?? 0;
         const effectiveLimit = dailyLimitMinutes + todayBonusMinutes;
 
         document.getElementById('dd-limit-input').value = dailyLimitMinutes > 0 ? dailyLimitMinutes : '';
@@ -352,9 +352,9 @@ async function toggleCompareChart(period, appName, rowEl) {
 
     try {
         const data = await apiFetch(`/api/app-period-breakdown?appName=${encodeURIComponent(appName)}&period=${period}`);
-        const labels = data.labels ?? data.Labels ?? [];
-        const current = data.current ?? data.Current ?? [];
-        const previous = data.previous ?? data.Previous ?? [];
+        const labels = data.labels ?? [];
+        const current = data.current ?? [];
+        const previous = data.previous ?? [];
 
         const ctx = document.getElementById(`dd-compare-canvas-${period}`);
         if (!ctx || !window.Chart) return;
@@ -403,8 +403,8 @@ async function loadUsageTrend(appName, granularity) {
     try {
         const data = await apiFetch(`/api/app-usage-trend?appName=${encodeURIComponent(appName)}&granularity=${granularity}`,
                                     { signal: abortableSignal('usage-trend') });
-        const labels = data.labels ?? data.Labels ?? [];
-        const values = data.values ?? data.Values ?? [];
+        const labels = data.labels ?? [];
+        const values = data.values ?? [];
 
         document.getElementById('dd-trend-numbers').innerHTML = labels.map((l, i) => `
             <div class="dd-trend-cell">

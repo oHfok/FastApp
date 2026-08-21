@@ -107,6 +107,62 @@ function describeAgo(ts) {
     return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
 }
 
+// --- Heat grid --------------------------------------------------------------
+// Day-cell heatmaps were implemented four times — renderDayHeatmap in
+// overview.js, monthHeatmapHtml and yearHeatmapHtml in periods.js, and
+// renderInsightsHeatmap — each rebuilding the same cell and legend markup with
+// slightly different assumptions. The legend in particular was copy-pasted
+// verbatim four times, so any change to the colour scale had to be made in four
+// places and would silently drift if one was missed.
+//
+// Callers supply data and layout; this owns the markup.
+function heatLegendHtml() {
+    return `
+        <div class="heat-legend">
+            <span>Less</span>
+            <span class="heat-legend-swatch" style="background:var(--bg-raised)"></span>
+            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.3)}"></span>
+            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.6)}"></span>
+            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.9)}"></span>
+            <span>More</span>
+        </div>`;
+}
+
+// cells: [{ intensity, tooltip, className?, style? }]
+function heatCellsHtml(cells, cellClass) {
+    return cells.map(c => {
+        const cls = c.className ? `${cellClass} ${c.className}` : cellClass;
+        const bg = c.intensity === null ? '' : `background:${heatColor(c.intensity)}`;
+        // Tooltips here are built by us from dates and durations, never from an
+        // app name or window title — showTooltip parses its argument as HTML.
+        return `<div class="${cls}" style="${bg}${c.style || ''}"`
+             + (c.tooltip ? ` onmousemove="showTooltip(event, '${c.tooltip}')" onmouseleave="hideTooltip()"` : '')
+             + `></div>`;
+    }).join('');
+}
+
+// --- Loading state ----------------------------------------------------------
+// Periods and Activity showed "Loading…"; Overview, Leaderboard, Insights and
+// All Applications showed nothing at all and swapped content in when it
+// arrived. Identical-looking panels behaving differently gave no reliable way
+// to tell "working on it" from "stuck". One treatment everywhere fixes that.
+//
+// Only ever used for a first load. Poll refreshes deliberately leave the
+// existing content alone — replacing good data with a skeleton every 12 seconds
+// would be worse than the problem it solves.
+function loadingRowsHtml(rows) {
+    const n = rows || 5;
+    return `<div class="skeleton-list">${
+        Array.from({ length: n }, () => `<div class="skeleton-row"></div>`).join('')
+    }</div>`;
+}
+
+// True the first time a container is asked to load and it has nothing in it —
+// which is exactly when a skeleton helps and a refresh does not.
+function isEmptyContainer(el) {
+    return !el || el.children.length === 0 || !!el.querySelector('.skeleton-list');
+}
+
 // --- Failure state --------------------------------------------------------
 // One shared renderer for "this didn't load", so every tab fails the same way
 // and always offers a retry. Replaces per-tab messages that named C# source
@@ -170,11 +226,11 @@ function getMilestoneProgress(allTimeHours, tiers) {
     let tier = null;
     let next = null;
     for (const t of ladder) {
-        const tierHours = t.hours ?? t.Hours ?? 0;
+        const tierHours = t.hours ?? 0;
         if (hours >= tierHours) tier = t;
         else { next = t; break; }
     }
-    const nextHours = next ? (next.hours ?? next.Hours ?? 0) : null;
+    const nextHours = next ? (next.hours ?? 0) : null;
     return { tier, next, hoursToNext: next ? Math.max(0, nextHours - hours) : null };
 }
 
@@ -373,13 +429,13 @@ function timelineSegmentsHtml(sessions) {
         return `<div class="empty-state" style="border:none;background:none;">No sessions recorded for this day.</div>`;
     }
     return sessions.map(s => {
-        const name = s.appName || s.AppName;
-        const cat = s.category || s.Category;
-        const startStr = s.start || s.Start;
-        const endStr = s.end || s.End;
-        const dur = s.durationMinutes ?? s.DurationMinutes ?? 0;
-        const startMins = s.startMinutes ?? s.StartMinutes ?? 0;
-        const title = s.windowTitle ?? s.WindowTitle;
+        const name = s.appName;
+        const cat = s.category;
+        const startStr = s.start;
+        const endStr = s.end;
+        const dur = s.durationMinutes ?? 0;
+        const startMins = s.startMinutes ?? 0;
+        const title = s.windowTitle;
         const left = (startMins / 1440) * 100;
         const width = Math.max((dur / 1440) * 100, 0.25);
         // Window titles (and, defensively, app names) are attacker-controllable —
@@ -432,3 +488,18 @@ let selectedDate = getLocalTodayStr();
 
 function getSelectedDate() { return selectedDate; }
 function getSelectedScope() { return selectedScope; }
+// Setters exist so restoring from the URL (or stepping through history) goes
+// through one place instead of assigning these globals from several files.
+function setSelectedScope(scope) { selectedScope = scope; }
+function setSelectedDate(dateStr) { selectedDate = dateStr; }
+
+function shiftSelectedDate(days) {
+    const d = parseDateStr(selectedDate);
+    d.setDate(d.getDate() + days);
+    // Never past today — there is no data for the future, and an empty
+    // "tomorrow" reads as the app being broken rather than as a boundary.
+    const today = parseDateStr(getLocalTodayStr());
+    if (d > today) return false;
+    selectedDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    return true;
+}

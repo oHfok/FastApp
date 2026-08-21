@@ -153,6 +153,21 @@
                 <button class="btn btn-ghost" onclick="refreshActiveTab()">Retry</button>
             </div>
 
+            <!-- Shown only while nothing has been tracked yet; hides itself as
+                 soon as any data exists, so it never needs dismissing. -->
+            <div class="first-run" id="first-run" style="display:none;">
+                <div class="first-run-title">FastApp is already tracking.</div>
+                <p class="first-run-body">
+                    Nothing to show yet — usage is written to disk about once a minute, so your first
+                    numbers will appear here shortly. Just keep working; there is nothing to set up.
+                </p>
+                <p class="first-run-body">
+                    Two things worth knowing: window titles are <strong>not</strong> recorded unless you
+                    turn that on, and history is kept forever until you change it. Both live in
+                    <button class="link-button" onclick="openSettings()">Settings</button>.
+                </p>
+            </div>
+
 
             <!-- ===== VIEW: OVERVIEW ===== -->
             <section id="view-overview" class="view active">
@@ -161,11 +176,22 @@
                         <div class="view-title">Overview</div>
                         <div class="view-sub mono" id="ov-range-label">—</div>
                     </div>
-                    <div class="segmented" id="overview-scope">
-                        <button class="active" onclick="setOverviewScope('day', this)">Day</button>
-                        <button onclick="setOverviewScope('week', this)">Week</button>
-                        <button onclick="setOverviewScope('month', this)">Month</button>
-                        <button onclick="setOverviewScope('year', this)">Year</button>
+                    <div class="ov-controls">
+                        <!-- selectedDate was already threaded through every
+                             Overview request but nothing in the UI could change
+                             it; reaching yesterday meant going to Periods → Days
+                             and clicking an entry. -->
+                        <div class="date-stepper" id="ov-date-stepper">
+                            <button type="button" id="ov-date-prev" aria-label="Previous day" title="Previous day">&#8249;</button>
+                            <button type="button" id="ov-date-today" title="Jump back to today">Today</button>
+                            <button type="button" id="ov-date-next" aria-label="Next day" title="Next day">&#8250;</button>
+                        </div>
+                        <div class="segmented" id="overview-scope">
+                            <button class="active" onclick="setOverviewScope('day', this)">Day</button>
+                            <button onclick="setOverviewScope('week', this)">Week</button>
+                            <button onclick="setOverviewScope('month', this)">Month</button>
+                            <button onclick="setOverviewScope('year', this)">Year</button>
+                        </div>
                     </div>
                 </div>
 

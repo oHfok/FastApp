@@ -34,6 +34,8 @@ function handleLbSearch() {
 
 async function fetchFullLeaderboard() {
     const tf = document.getElementById('lb-scope').dataset.value || 'all';
+    const container = document.getElementById('lb-list');
+    if (isEmptyContainer(container)) container.innerHTML = loadingRowsHtml(6);
     try {
         lbData = await apiFetch(`/api/leaderboard?timeframe=${tf}&date=${getLocalTodayStr()}`,
                                 { signal: abortableSignal('leaderboard') });

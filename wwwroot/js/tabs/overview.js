@@ -4,9 +4,51 @@
    ========================================================== */
 
 function setOverviewScope(scope, btnEl) {
-    selectedScope = scope;
+    setSelectedScope(scope);
     document.querySelectorAll('#overview-scope button').forEach(b => b.classList.toggle('active', b === btnEl));
+    writeUrlState();
     loadOverview();
+}
+
+// Reflects the current scope/date state onto the controls. Needed when state
+// arrives from somewhere other than a click — a URL on first load, or Back.
+function syncOverviewControls() {
+    const scope = getSelectedScope();
+    document.querySelectorAll('#overview-scope button').forEach(b => {
+        // The scope each button sets is only expressed in its inline onclick,
+        // so match on the label rather than re-encoding it in a data attribute.
+        b.classList.toggle('active', b.textContent.trim().toLowerCase() === scope);
+    });
+
+    const stepper = document.getElementById('ov-date-stepper');
+    if (stepper) {
+        // The stepper only makes sense for Day; the other scopes are rolling
+        // windows ending today, so "previous day" has nothing to mean there.
+        stepper.style.display = scope === 'day' ? 'flex' : 'none';
+        const isToday = getSelectedDate() === getLocalTodayStr();
+        document.getElementById('ov-date-next').disabled = isToday;
+        document.getElementById('ov-date-today').disabled = isToday;
+    }
+}
+
+function stepOverviewDate(days) {
+    if (!shiftSelectedDate(days)) return;
+    syncOverviewControls();
+    writeUrlState();
+    loadOverview();
+}
+
+function jumpOverviewToToday() {
+    setSelectedDate(getLocalTodayStr());
+    syncOverviewControls();
+    writeUrlState();
+    loadOverview();
+}
+
+function initOverviewControls() {
+    document.getElementById('ov-date-prev').addEventListener('click', () => stepOverviewDate(-1));
+    document.getElementById('ov-date-next').addEventListener('click', () => stepOverviewDate(1));
+    document.getElementById('ov-date-today').addEventListener('click', jumpOverviewToToday);
 }
 
 // Range actually summed by the backend for each scope, so the label always
@@ -208,7 +250,7 @@ async function renderActivityBody(scope, dateStr, ov, signal) {
         body.innerHTML = `<div class="empty-state">Loading…</div>`;
         await renderWeekHeatmap(dateStr, ov, signal);
     } else {
-        renderDayHeatmap(scope, dateStr, ov.yearlyHeatmap || ov.YearlyHeatmap || []);
+        renderDayHeatmap(scope, dateStr, ov.yearlyHeatmap || []);
     }
 }
 
@@ -235,9 +277,9 @@ async function renderWeekHeatmap(dateStr, ov, signal) {
     // Indexed by date first: this used to run .find() over the full 365-entry
     // series once per day drawn, and the same pattern in the year heatmap below
     // meant ~133,000 comparisons per render, repeating on every poll.
-    const yearlyHeatmap = (ov && (ov.yearlyHeatmap || ov.YearlyHeatmap)) || [];
+    const yearlyHeatmap = (ov && (ov.yearlyHeatmap)) || [];
     const byDate = new Map(yearlyHeatmap.map(x =>
-        [x.date || x.Date, x.focusedMinutes ?? x.FocusedMinutes ?? 0]));
+        [x.date, x.focusedMinutes ?? 0]));
 
     const weekDays = [];
     for (let i = 0; i < 7; i++) {
@@ -256,7 +298,7 @@ async function renderWeekHeatmap(dateStr, ov, signal) {
     let grid = Array.from({ length: 7 }, () => new Array(24).fill(0));
     try {
         const data = await apiFetch(`/api/week-heatmap?date=${dateStr}`, { signal });
-        const returned = data.grid ?? data.Grid;
+        const returned = data.grid;
         if (Array.isArray(returned) && returned.length === 7) grid = returned;
     } catch (err) {
         if (isAbort(err)) return;
@@ -295,12 +337,12 @@ function renderDayHeatmap(scope, dateStr, heatData) {
     const oldest = new Date(target);
     oldest.setDate(oldest.getDate() - (days - 1));
 
-    const maxMins = Math.max(...heatData.map(d => d.focusedMinutes ?? d.FocusedMinutes ?? 0), 1);
+    const maxMins = Math.max(...heatData.map(d => d.focusedMinutes ?? 0), 1);
 
     // Indexed once instead of a linear .find() per cell — at year scope that
     // was 365 scans of a 365-entry array on every render, every poll tick.
     const byDate = new Map(heatData.map(x =>
-        [x.date || x.Date, x.focusedMinutes ?? x.FocusedMinutes ?? 0]));
+        [x.date, x.focusedMinutes ?? 0]));
 
     let cellsHtml = '';
     for (let i = 0; i < days; i++) {
@@ -321,14 +363,10 @@ function renderDayHeatmap(scope, dateStr, heatData) {
 
     body.innerHTML = `
         <div class="heat-days-grid" style="grid-template-columns:repeat(${cols}, minmax(0, ${cellCap}px));">${cellsHtml}</div>
-        <div class="heat-legend">
-            <span>Less</span>
-            <span class="heat-legend-swatch" style="background:var(--bg-raised)"></span>
-            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.3)}"></span>
-            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.6)}"></span>
-            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.9)}"></span>
-            <span>More</span>
-        </div>`;
+        ${heatLegendHtml()}`;
 }
 
-Dashboard.tabs.overview = { onEnter: loadOverview, refresh: loadOverview };
+Dashboard.tabs.overview = {
+    onEnter: () => { syncOverviewControls(); loadOverview(); },
+    refresh: loadOverview
+};

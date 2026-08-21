@@ -40,7 +40,7 @@ function showPeriodList() {
 
 async function loadPeriodList(silent) {
     const listEl = document.getElementById('period-list');
-    if (!silent) listEl.innerHTML = `<div class="empty-state">Loading…</div>`;
+    if (!silent && isEmptyContainer(listEl)) listEl.innerHTML = loadingRowsHtml(5);
     try {
         const periods = await apiFetch(`/api/periods?type=${periodType}`,
                                       { signal: abortableSignal('periods') });
@@ -51,12 +51,12 @@ async function loadPeriodList(silent) {
         }
 
         listEl.innerHTML = periods.map(p => {
-            const rank = p.rank ?? p.Rank;
-            const label = p.label ?? p.Label;
-            const start = p.startDate ?? p.StartDate;
-            const end = p.endDate ?? p.EndDate;
-            const totalMins = p.totalFocusMinutes ?? p.TotalFocusMinutes ?? 0;
-            const mostUsed = p.mostUsedApp ?? p.MostUsedApp ?? '—';
+            const rank = p.rank;
+            const label = p.label;
+            const start = p.startDate;
+            const end = p.endDate;
+            const totalMins = p.totalFocusMinutes ?? 0;
+            const mostUsed = p.mostUsedApp ?? '—';
             const rangeText = periodType === 'week'
                 ? `${fmtDateEU(parseDateStr(start))} → ${fmtDateEU(parseDateStr(end))}`
                 : periodType === 'day'
@@ -82,7 +82,7 @@ async function loadPeriodList(silent) {
                             </div>
                             <div class="period-stat">
                                 <div class="period-stat-label">Ranking</div>
-                                <div class="period-stat-value">#${rank ?? '–'} of ${p.totalPeriods ?? p.TotalPeriods ?? '–'}</div>
+                                <div class="period-stat-value">#${rank ?? '–'} of ${p.totalPeriods ?? '–'}</div>
                             </div>
                         </div>
                     </div>
@@ -130,12 +130,12 @@ function periodHeatmapHtml(days, periodType, daySessions) {
 // instantly, so this is a small bar chart: value pinned above, weekday
 // label below as the axis, bar height doing the actual comparison.
 function weekHeatmapHtml(days) {
-    const maxMins = Math.max(...days.map(d => d.focusedMinutes ?? d.FocusedMinutes ?? 0), 1);
+    const maxMins = Math.max(...days.map(d => d.focusedMinutes ?? 0), 1);
     const trackHeight = 120;
 
     const cells = days.map(d => {
-        const date = parseDateStr(d.date ?? d.Date);
-        const mins = d.focusedMinutes ?? d.FocusedMinutes ?? 0;
+        const date = parseDateStr(d.date);
+        const mins = d.focusedMinutes ?? 0;
         const intensity = mins / maxMins;
         const barPx = mins > 0 ? Math.max(6, Math.round(intensity * trackHeight)) : 0;
         const bg = heatColor(intensity, 0.55, 0.45);
@@ -155,15 +155,15 @@ function weekHeatmapHtml(days) {
 }
 
 function monthHeatmapHtml(days) {
-    const maxMins = Math.max(...days.map(d => d.focusedMinutes ?? d.FocusedMinutes ?? 0), 1);
-    const firstDate = parseDateStr(days[0].date ?? days[0].Date);
+    const maxMins = Math.max(...days.map(d => d.focusedMinutes ?? 0), 1);
+    const firstDate = parseDateStr(days[0].date);
     const leadingBlanks = isoDow(firstDate); // days before the 1st lands on its real weekday column
 
     let cells = '';
     for (let i = 0; i < leadingBlanks; i++) cells += `<div class="month-heat-cell is-empty"></div>`;
     days.forEach(d => {
-        const date = parseDateStr(d.date ?? d.Date);
-        const mins = d.focusedMinutes ?? d.FocusedMinutes ?? 0;
+        const date = parseDateStr(d.date);
+        const mins = d.focusedMinutes ?? 0;
         const intensity = mins / maxMins;
         const bg = heatColor(intensity);
         const tip = `${fmtDateEU(date)}<br>${formatTime(mins)} focused`;
@@ -175,14 +175,7 @@ function monthHeatmapHtml(days) {
     return `
         <div class="month-heat-weekdays">${weekdayHeaders}</div>
         <div class="month-heat-grid">${cells}</div>
-        <div class="heat-legend">
-            <span>Less</span>
-            <span class="heat-legend-swatch" style="background:var(--bg-raised)"></span>
-            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.3)}"></span>
-            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.6)}"></span>
-            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.9)}"></span>
-            <span>More</span>
-        </div>`;
+        ${heatLegendHtml()}`;
 }
 
 // Same cell/legend styling as Month, reusing the .heat-days-grid/.heat-day-cell
@@ -191,11 +184,11 @@ function monthHeatmapHtml(days) {
 // which reads as noise, and this keeps the visual consistent with Overview's
 // existing year heatmap instead of inventing a second layout for the same data.
 function yearHeatmapHtml(days) {
-    const maxMins = Math.max(...days.map(d => d.focusedMinutes ?? d.FocusedMinutes ?? 0), 1);
+    const maxMins = Math.max(...days.map(d => d.focusedMinutes ?? 0), 1);
     let cellsHtml = '';
     days.forEach(d => {
-        const date = parseDateStr(d.date ?? d.Date);
-        const mins = d.focusedMinutes ?? d.FocusedMinutes ?? 0;
+        const date = parseDateStr(d.date);
+        const mins = d.focusedMinutes ?? 0;
         const intensity = mins / maxMins;
         const bg = heatColor(intensity);
         const tip = `${fmtDateEU(date)}<br>${formatTime(mins)} focused`;
@@ -205,23 +198,16 @@ function yearHeatmapHtml(days) {
 
     return `
         <div class="heat-days-grid" style="grid-template-columns:repeat(${cols}, minmax(0, 13px));">${cellsHtml}</div>
-        <div class="heat-legend">
-            <span>Less</span>
-            <span class="heat-legend-swatch" style="background:var(--bg-raised)"></span>
-            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.3)}"></span>
-            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.6)}"></span>
-            <span class="heat-legend-swatch" style="background:${themeAccentAlpha(0.9)}"></span>
-            <span>More</span>
-        </div>`;
+        ${heatLegendHtml()}`;
 }
 
 function windowActivityRowHtml(s) {
-    const name = s.appName ?? s.AppName;
-    const cat = s.category ?? s.Category ?? 'Other';
-    const title = s.windowTitle ?? s.WindowTitle;
-    const start = s.start ?? s.Start;
-    const end = s.end ?? s.End;
-    const dur = s.durationMinutes ?? s.DurationMinutes ?? 0;
+    const name = s.appName;
+    const cat = s.category ?? 'Other';
+    const title = s.windowTitle;
+    const start = s.start;
+    const end = s.end;
+    const dur = s.durationMinutes ?? 0;
     // Window titles are attacker-controllable (any webpage can set its own
     // tab title) — escapeHtml before touching innerHTML, and the click
     // handler reads the name back out of a data-* attribute rather than
@@ -245,8 +231,8 @@ function windowActivityRowsMarkup() {
     let list = waSessions;
     if (q) {
         list = list.filter(s => {
-            const name = (s.appName ?? s.AppName ?? '').toLowerCase();
-            const title = (s.windowTitle ?? s.WindowTitle ?? '').toLowerCase();
+            const name = (s.appName ?? '').toLowerCase();
+            const title = (s.windowTitle ?? '').toLowerCase();
             return name.includes(q) || title.includes(q);
         });
     }
@@ -254,8 +240,8 @@ function windowActivityRowsMarkup() {
         return `<div class="empty-state">No matching activity${q ? ` for "${escapeHtml(waSearch.trim())}"` : ''}.</div>`;
     }
     const sorted = [...list].sort((a, b) => {
-        const am = a.startMinutes ?? a.StartMinutes ?? 0;
-        const bm = b.startMinutes ?? b.StartMinutes ?? 0;
+        const am = a.startMinutes ?? 0;
+        const bm = b.startMinutes ?? 0;
         return waSort === 'oldest' ? am - bm : bm - am;
     });
     return sorted.map(windowActivityRowHtml).join('');
@@ -288,7 +274,7 @@ function setWindowActivitySort(sort, btnEl) {
 // screen — keep whatever search/sort the user had set instead of resetting
 // it out from under them every ~12s.
 function windowActivityHtml(daySessions, isNewDay) {
-    waSessions = (daySessions || []).filter(s => s.windowTitle ?? s.WindowTitle);
+    waSessions = (daySessions || []).filter(s => s.windowTitle);
     if (isNewDay) {
         waSearch = '';
         waSort = 'newest';
@@ -319,7 +305,7 @@ async function openPeriodDetail(startDate, silent) {
     const isNewDay = key !== currentDetailKey;
     currentDetailKey = key;
 
-    if (!silent) document.getElementById('period-detail-body').innerHTML = `<div class="empty-state">Loading…</div>`;
+    if (!silent) document.getElementById('period-detail-body').innerHTML = loadingRowsHtml(4);
 
     try {
         const d = await apiFetch(`/api/period-detail?type=${periodType}&start=${startDate}`,
@@ -346,23 +332,23 @@ function retryPeriodDetail() {
 }
 
 function renderPeriodDetail(d, isNewDay) {
-    const label = d.label ?? d.Label;
-    const totalMins = d.totalFocusMinutes ?? d.TotalFocusMinutes ?? 0;
-    const rank = d.rank ?? d.Rank;
-    const totalPeriods = d.totalPeriods ?? d.TotalPeriods;
-    const prev = d.previous ?? d.Previous;
-    const next = d.next ?? d.Next;
-    const current = d.current ?? d.Current;
-    const topApps = d.topApps ?? d.TopApps ?? [];
-    const topCategories = d.topCategories ?? d.TopCategories ?? [];
-    const days = d.days ?? d.Days ?? [];
-    const daySessions = d.daySessions ?? d.DaySessions ?? [];
+    const label = d.label;
+    const totalMins = d.totalFocusMinutes ?? 0;
+    const rank = d.rank;
+    const totalPeriods = d.totalPeriods;
+    const prev = d.previous;
+    const next = d.next;
+    const current = d.current;
+    const topApps = d.topApps ?? [];
+    const topCategories = d.topCategories ?? [];
+    const days = d.days ?? [];
+    const daySessions = d.daySessions ?? [];
 
     document.getElementById('period-detail-title').textContent = label;
     document.getElementById('period-detail-sub').textContent = `#${rank ?? '–'} of ${totalPeriods ?? '–'} ${periodType}s · ${formatHours((totalMins || 0) / 60)}`;
 
-    const chosenAfkMins = d.totalAfkMinutes ?? d.TotalAfkMinutes;
-    const chosenUptimeMins = d.totalUptimeMinutes ?? d.TotalUptimeMinutes;
+    const chosenAfkMins = d.totalAfkMinutes;
+    const chosenUptimeMins = d.totalUptimeMinutes;
     const periodNoun = PERIOD_NOUNS[periodType] || 'Period';
     const blocks = [
         prev ? { tag: 'Previous', obj: prev } : null,
@@ -377,10 +363,10 @@ function renderPeriodDetail(d, isNewDay) {
     // directly (how much of the bar is filled = how much of your time online
     // was focused), with one caption line underneath for the exact figures.
     const compareHtml = blocks.map(b => {
-        const mins = b.obj.totalFocusMinutes ?? b.obj.TotalFocusMinutes ?? 0;
-        const afkMins = b.obj.totalAfkMinutes ?? b.obj.TotalAfkMinutes;
-        const uptimeMins = b.obj.totalUptimeMinutes ?? b.obj.TotalUptimeMinutes;
-        const lbl = b.obj.label ?? b.obj.Label ?? b.tag;
+        const mins = b.obj.totalFocusMinutes ?? 0;
+        const afkMins = b.obj.totalAfkMinutes;
+        const uptimeMins = b.obj.totalUptimeMinutes;
+        const lbl = b.obj.label ?? b.tag;
 
         let barHtml = '';
         if (uptimeMins > 0) {
@@ -407,22 +393,22 @@ function renderPeriodDetail(d, isNewDay) {
     }).join('');
 
     const appsHtml = topApps.length === 0 ? `<div class="empty-state">No app data.</div>` : topApps.map((a, i) => {
-        const appName = a.appName ?? a.AppName ?? '';
+        const appName = a.appName ?? '';
         return `
         <div class="lb-row app-link" data-open-app="${escapeHtml(appName)}" role="button" tabindex="0">
             <div class="lb-rank">${i + 1}</div>
             <div class="lb-name">${escapeHtml(appName)}</div>
-            <div class="lb-time">${formatTime(a.focusedMinutes ?? a.FocusedMinutes ?? 0)}</div>
+            <div class="lb-time">${formatTime(a.focusedMinutes ?? 0)}</div>
         </div>`;
     }).join('');
 
     const catsHtml = topCategories.length === 0 ? `<div class="empty-state">No category data.</div>` : topCategories.map((c, i) => {
-        const cat = c.category ?? c.Category ?? 'Other';
+        const cat = c.category ?? 'Other';
         return `
         <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">
             <div class="lb-rank">${i + 1}</div>
             <div class="lb-name"><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}</div>
-            <div class="lb-time">${formatTime(c.focusedMinutes ?? c.FocusedMinutes ?? 0)}</div>
+            <div class="lb-time">${formatTime(c.focusedMinutes ?? 0)}</div>
         </div>`;
     }).join('');
 

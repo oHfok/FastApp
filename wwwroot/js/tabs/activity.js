@@ -23,14 +23,14 @@ async function loadMoreActivity() {
 async function fetchActivityPage(isFirstPage) {
     const listEl = document.getElementById('activity-list');
     const loadMoreBtn = document.getElementById('activity-load-more');
-    if (isFirstPage) listEl.innerHTML = `<div class="empty-state">Loading…</div>`;
+    if (isFirstPage && isEmptyContainer(listEl)) listEl.innerHTML = loadingRowsHtml(6);
     loadMoreBtn.disabled = true;
     loadMoreBtn.textContent = 'Loading…';
 
     try {
         const data = await apiFetch(`/api/recent-sessions?limit=${ACTIVITY_PAGE_SIZE}&offset=${activityOffset}`);
-        const sessions = data.sessions ?? data.Sessions ?? [];
-        activityTotalCount = data.totalCount ?? data.TotalCount ?? 0;
+        const sessions = data.sessions ?? [];
+        activityTotalCount = data.totalCount ?? 0;
 
         if (isFirstPage) listEl.innerHTML = '';
 
@@ -56,12 +56,12 @@ async function fetchActivityPage(isFirstPage) {
 function renderActivityRows(sessions) {
     let html = '';
     sessions.forEach(s => {
-        const appName = s.appName ?? s.AppName;
-        const cat = s.category ?? s.Category ?? 'Other';
-        const start = new Date(s.startTime ?? s.StartTime);
-        const end = new Date(s.endTime ?? s.EndTime);
-        const dur = s.durationMinutes ?? s.DurationMinutes ?? 0;
-        const windowTitle = s.windowTitle ?? s.WindowTitle;
+        const appName = s.appName;
+        const cat = s.category ?? 'Other';
+        const start = new Date(s.startTime);
+        const end = new Date(s.endTime);
+        const dur = s.durationMinutes ?? 0;
+        const windowTitle = s.windowTitle;
 
         const dayKey = `${start.getFullYear()}-${start.getMonth()}-${start.getDate()}`;
         if (dayKey !== activityLastDayKey) {

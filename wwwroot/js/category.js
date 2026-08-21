@@ -21,16 +21,16 @@ async function openCategoryDetail(category) {
     iconEl.style.color = color;
 
     const listEl = document.getElementById('cat-app-list');
-    listEl.innerHTML = `<div class="empty-state">Loading…</div>`;
+    listEl.innerHTML = loadingRowsHtml(5);
 
     try {
         const allApps = await apiFetch('/api/all-apps', { signal: abortableSignal('category-detail') });
 
         const apps = allApps
-            .filter(a => (a.category ?? a.Category ?? 'Other') === category)
+            .filter(a => (a.category ?? 'Other') === category)
             .map(a => ({
-                name: a.appName ?? a.AppName,
-                focus: a.totalFocus ?? a.TotalFocus ?? 0
+                name: a.appName,
+                focus: a.totalFocus ?? 0
             }))
             .sort((a, b) => b.focus - a.focus);
 
