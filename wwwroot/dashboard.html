@@ -331,7 +331,7 @@
                 <div class="view-head">
                     <div>
                         <div class="view-title">Leaderboard</div>
-                        <div class="view-sub" id="lb-view-sub">Ranked by focus time. Arrows show movement since yesterday.</div>
+                        <div class="view-sub" id="lb-view-sub">Ranked by focus time.</div>
                     </div>
                 </div>
                 <div class="lb-toolbar">
@@ -361,6 +361,15 @@
                 </div>
                 <div class="allapps-search-row">
                     <input type="text" id="allapps-search" class="field" placeholder="Search your library…" style="width:280px;" onkeyup="handleAllAppsSearch()">
+                    <div class="segmented" id="allapps-sort">
+                        <button class="active" onclick="setAllAppsSort('time', this)">Most used</button>
+                        <button onclick="setAllAppsSort('name', this)">A–Z</button>
+                    </div>
+                    <label class="dd-toggle-label" title="Installers, updaters and background services that have never been focused">
+                        <input type="checkbox" id="allapps-background" onchange="toggleAllAppsBackground(this)">
+                        Show background processes
+                    </label>
+                    <span class="allapps-count" id="allapps-count"></span>
                 </div>
                 <div class="allapps-grid" id="allapps-grid"></div>
             </section>

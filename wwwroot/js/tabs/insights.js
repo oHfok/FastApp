@@ -50,7 +50,7 @@ function renderRhythmChart(rhythm) {
             maintainAspectRatio: false,
             scales: {
                 x: { stacked: true, grid: { display: false }, ticks: { color: theme.tick, font: { family: theme.fontMono, size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
-                y: { stacked: true, grid: { color: theme.grid }, ticks: { color: theme.tick, callback: (v) => formatTime(v) } }
+                y: durationAxis(Math.max(...work.map((w, i) => w + play[i]), 1), theme, { stacked: true })
             },
             plugins: {
                 legend: { labels: { color: theme.tick, font: { family: theme.fontBody, size: 11 } } },
@@ -85,7 +85,7 @@ function renderFatigueChart(fatigue) {
             maintainAspectRatio: false,
             scales: {
                 x: { grid: { display: false }, ticks: { color: theme.tick, font: { family: theme.fontMono, size: 11 } } },
-                y: { grid: { color: theme.grid }, ticks: { color: theme.tick, callback: (v) => formatTime(v) } }
+                y: durationAxis(Math.max(...values, 1), theme)
             },
             plugins: {
                 legend: { display: false },

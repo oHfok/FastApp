@@ -188,7 +188,9 @@ function renderCategoryBar(leaderboard) {
         const cat = app.category || 'Other';
         totals[cat] = (totals[cat] || 0) + (app.focusedMinutes || 0);
     });
-    const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    // Categories rounding to 0% added a third line to the legend to say nothing
+    // ("Other 0% · 0m"). Keep the bar honest by leaving them out of both.
+    const entries = Object.entries(totals).filter(([, m]) => m >= 1).sort((a, b) => b[1] - a[1]);
     const totalMins = entries.reduce((s, [, v]) => s + v, 0);
 
     const barEl = document.getElementById('ov-cat-bar');
@@ -215,7 +217,13 @@ function renderCategoryBar(leaderboard) {
 }
 
 function renderOverviewLeaderboards(leaderboard) {
-    const apps = [...(leaderboard || [])].sort((a, b) => b.focusedMinutes - a.focusedMinutes).slice(0, 8);
+    // Sub-minute entries were padding both lists to eight rows regardless of how
+    // much actually happened, so the tail read "Steamwebhelper 0m / Snippingtool
+    // 0m" — a full row each, carrying nothing. Show only what is real; a short
+    // list on a quiet day is itself information.
+    const apps = [...(leaderboard || [])]
+        .filter(a => (a.focusedMinutes || 0) >= 1)
+        .sort((a, b) => b.focusedMinutes - a.focusedMinutes).slice(0, 8);
     const appsEl = document.getElementById('ov-lb-apps');
     if (apps.length === 0) {
         appsEl.innerHTML = `<div class="empty-state">No app activity for this period.</div>`;
@@ -233,7 +241,8 @@ function renderOverviewLeaderboards(leaderboard) {
         const cat = app.category || 'Other';
         catTotals[cat] = (catTotals[cat] || 0) + (app.focusedMinutes || 0);
     });
-    const cats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const cats = Object.entries(catTotals).filter(([, m]) => m >= 1)
+        .sort((a, b) => b[1] - a[1]).slice(0, 8);
     const catsEl = document.getElementById('ov-lb-categories');
     if (cats.length === 0) {
         catsEl.innerHTML = `<div class="empty-state">No category activity for this period.</div>`;

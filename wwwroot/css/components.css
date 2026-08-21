@@ -180,6 +180,9 @@
     font-weight: 700;
 }
 
+.full-lb-header.no-movement,
+.full-lb-row.no-movement { grid-template-columns: 46px 1fr 110px 90px 150px; }
+
 .full-lb-header span:nth-child(1) { text-align: center; }
 .full-lb-header span:nth-child(4),
 .full-lb-header span:nth-child(5) { text-align: right; }
@@ -203,6 +206,7 @@
 @media (max-width: 1040px) {
     .full-lb-header { display: none; }
     .full-lb-row { grid-template-columns: 36px 24px 1fr auto; }
+    .full-lb-row.no-movement { grid-template-columns: 36px 1fr auto; }
     .full-lb-afk, .full-lb-row > div:last-child { display: none; }
 }
 
@@ -670,7 +674,21 @@
 }
 
 /* ---------- All Apps tab ---------- */
-.allapps-search-row { margin-bottom: 20px; }
+/* Search, sort, the background-process toggle and the count sit on one line;
+   they wrap together rather than each finding its own row. */
+.allapps-search-row {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.allapps-count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+}
 
 .allapps-grid {
     display: grid;
