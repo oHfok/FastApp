@@ -43,7 +43,12 @@
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.03em;
-    color: var(--brass-dim);
+    /* --brass-dim (#8A6321) measures 3.64:1 here and fails as text. This is a
+       lighter brass at 5.39:1, still clearly quieter than the value's full
+       --brass (9.12:1) so the label/value hierarchy on the hero card holds.
+       Set here rather than on --brass-dim itself, which is mostly used for
+       borders and hover states where the contrast floor does not apply. */
+    color: #B07C29;
 }
 .stat-block.stat-hero .stat-value { font-size: 44px; line-height: 1.05; }
 
@@ -412,7 +417,20 @@
 
 .period-main { min-width: 0; flex: 1 1 180px; }
 .period-label { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.period-range { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 2px; white-space: nowrap; }
+/* overflow/ellipsis matter as much here as on .period-label above. Without them
+   the range ("17.08.2026 → 23.08.2026", ~151px) simply painted outside its box
+   once the flex row squeezed this column below that -- around 1100px it needed
+   151px and was given 81, so 70px of date rendered straight across the Total
+   Focus figure on every row in the list. */
+.period-range {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 /* Fixed-width columns (not flex) so Total Focus / Most Used / Ranking line up
    vertically across rows even when one row's text is much longer than another's. */
@@ -430,6 +448,22 @@
     text-overflow: ellipsis;
     display: block;
     max-width: 100%;
+}
+
+/* The three stat columns are a fixed 418px that never shrinks, so below roughly
+   1100px they leave the label/date column too little to work with -- ellipsis
+   stops the date painting over them, but "17.08.2026 → 2…" is not much of an
+   improvement. Dropping the stats onto their own full-width line instead gives
+   the date its space back and keeps every value visible, rather than hiding
+   columns the way the Leaderboard currently does at narrow widths. */
+@media (max-width: 1100px) {
+    .period-row { flex-wrap: wrap; }
+    .period-stats {
+        flex-basis: 100%;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 4px;
+    }
 }
 
 /* Daily-activity: week view — a small bar chart. Height (not just color
