@@ -62,11 +62,18 @@ async function loadHiddenApps() {
             list.innerHTML = `<div class="empty-state">No apps hidden.</div>`;
             return;
         }
+        // Hidden app names are OS-supplied and can contain an apostrophe, which
+        // would have broken the inline handler outright — carried as data and
+        // bound after render instead.
         list.innerHTML = apps.map(app => `
             <div class="settings-list-item">
-                <span>${app}</span>
-                <button class="btn btn-ghost" onclick="unhideAppSetting('${app}')">Unhide</button>
+                <span>${escapeHtml(app)}</span>
+                <button class="btn btn-ghost" data-unhide="${escapeHtml(app)}">Unhide</button>
             </div>`).join('');
+
+        list.querySelectorAll('[data-unhide]').forEach(btn => {
+            btn.addEventListener('click', () => unhideAppSetting(btn.dataset.unhide));
+        });
     } catch (err) { console.error(err); }
 }
 

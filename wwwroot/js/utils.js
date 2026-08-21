@@ -20,6 +20,27 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// --- Failure state --------------------------------------------------------
+// One shared renderer for "this didn't load", so every tab fails the same way
+// and always offers a retry. Replaces per-tab messages that named C# source
+// files and told the user to edit them -- those were development leftovers that
+// fired on any failure at all (a 500, a restart mid-request, a dropped
+// connection), long after the endpoints they described had shipped.
+//
+// retryFnName is the name of a global function, called from the button; it is
+// written by us at the call site, never derived from data.
+function errorStateHtml(title, detail, retryFnName) {
+    const retry = retryFnName
+        ? `<button class="btn btn-ghost" onclick="${retryFnName}()">Try again</button>`
+        : '';
+    return `
+        <div class="error-state">
+            <div class="error-state-title">${escapeHtml(title)}</div>
+            <div class="error-state-detail">${escapeHtml(detail)}</div>
+            ${retry}
+        </div>`;
+}
+
 // --- Category -> accent color -------------------------------------------
 const categoryColors = {
     'Development': '#8B7CFF',
@@ -283,8 +304,8 @@ function timelineSegmentsHtml(sessions) {
         return `<div class="timeline-seg" style="left:${left}%;width:${width}%;background:${timelineSegColor(name, cat)}"
                     data-name="${escapeHtml(name)}" data-range="${escapeHtml(startStr + ' – ' + endStr)}"
                     data-dur="${escapeHtml(formatTime(dur))}" data-title="${title ? escapeHtml(title) : ''}"
-                    onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"
-                    onclick="openDrilldown(this.dataset.name)"></div>`;
+                    data-open-app="${escapeHtml(name)}"
+                    onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"></div>`;
     }).join('');
 }
 

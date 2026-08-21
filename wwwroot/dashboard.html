@@ -5,9 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FastApp Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMTAwIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzE4MUIyNiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMwQTBCMTAiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8ZmlsdGVyIGlkPSJnbG93IiB4PSItNjAlIiB5PSItNjAlIiB3aWR0aD0iMjIwJSIgaGVpZ2h0PSIyMjAlIj4KICAgICAgPGZlR2F1c3NpYW5CbHVyIHN0ZERldmlhdGlvbj0iMi4yIiByZXN1bHQ9ImJsdXIiLz4KICAgICAgPGZlTWVyZ2U+CiAgICAgICAgPGZlTWVyZ2VOb2RlIGluPSJibHVyIi8+CiAgICAgICAgPGZlTWVyZ2VOb2RlIGluPSJTb3VyY2VHcmFwaGljIi8+CiAgICAgIDwvZmVNZXJnZT4KICAgIDwvZmlsdGVyPgogIDwvZGVmcz4KCiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMjEiIGZpbGw9InVybCgjYmcpIiBzdHJva2U9InJnYmEoMjMyLDE2Myw2MSwwLjIyKSIgc3Ryb2tlLXdpZHRoPSIxIi8+CgogIDxwYXRoIGQ9Ik0gMzAgMjAgTCA3NCAyMCBMIDc0IDMyIEwgNDIgMzIgTCA0MiA0NCBMIDYyIDQ0IEwgNjIgNTYgTCA0MiA1NiBMIDQyIDc0IEwgMzQgODIgTCAzMCA4MiBaIgogICAgICAgIGZpbGw9IiNFOEEzM0QiIGZpbHRlcj0idXJsKCNnbG93KSIvPgo8L3N2Zz4K">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Fonts and Chart.js are served from vendor/, not a CDN. FastApp ships as a
+     self-contained app and tracks usage privately; loading either from the
+     network meant the dashboard's charts silently broke with no internet, that
+     an upstream release could change behaviour without a build here, and that
+     opening the dashboard announced itself to two third parties. vendor/fonts.css
+     is Google's own stylesheet with the gstatic URLs rewritten to local files,
+     so unicode-range subsetting still works exactly as before. -->
+<link href="vendor/fonts.css" rel="stylesheet">
+<script src="vendor/chart.umd.min.js"></script>
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/themes.css">

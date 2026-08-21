@@ -71,19 +71,20 @@ function renderActivityRows(sessions) {
         }
 
         const timeRange = `${pad(start.getHours())}:${pad(start.getMinutes())} &ndash; ${pad(end.getHours())}:${pad(end.getMinutes())}`;
-        const nameAttr = appName.replace(/'/g, "&#39;");
-        const catAttr = cat.replace(/'/g, "&#39;");
-        // windowTitle is attacker-controllable (any webpage can set its own tab
-        // title) — always through escapeHtml, never raw into innerHTML.
+        // Every value below is escaped: window titles are attacker-controllable
+        // (any page sets its own title), and app/category names are OS- and
+        // user-supplied. The category chip carries its own data-open-cat, which
+        // the delegated handler resolves ahead of the row's data-open-app
+        // because it sits closer to the click target.
         const titleLine = windowTitle
             ? `<div class="activity-title" title="${escapeHtml(windowTitle)}">${escapeHtml(windowTitle)}</div>`
             : '';
         html += `
-            <div class="card activity-row" onclick="openDrilldown('${nameAttr}')">
-                <div class="activity-icon" style="color:${catColor(cat)}">${appName.charAt(0).toUpperCase()}</div>
+            <div class="card activity-row" data-open-app="${escapeHtml(appName)}">
+                <div class="activity-icon" style="color:${catColor(cat)}">${escapeHtml((appName || '?').charAt(0).toUpperCase())}</div>
                 <div class="activity-name-col">
-                    <div class="activity-app-name">${appName}</div>
-                    <div class="activity-cat cat-link" onclick="event.stopPropagation(); openCategoryDetail('${catAttr}')">${cat}</div>
+                    <div class="activity-app-name">${escapeHtml(appName)}</div>
+                    <div class="activity-cat cat-link" data-open-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</div>
                     ${titleLine}
                 </div>
                 <div class="activity-time-range">${timeRange}</div>
