@@ -68,7 +68,7 @@ function renderAllApps() {
         return `
             <div class="card allapps-card" data-open-app="${escapeHtml(name)}" role="button" tabindex="0">
                 <div class="allapps-card-head">
-                    <div class="allapps-icon" style="color:${catColor(cat)}">${escapeHtml((name || '?').charAt(0).toUpperCase())}</div>
+                    <div class="allapps-icon" style="${avatarStyle(cat)}">${escapeHtml((name || '?').charAt(0).toUpperCase())}</div>
                     <div style="min-width:0;">
                         <div class="allapps-name">${escapeHtml(name)}</div>
                         <div class="allapps-cat cat-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">${escapeHtml(cat)}</div>

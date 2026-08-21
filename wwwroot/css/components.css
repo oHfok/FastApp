@@ -64,7 +64,7 @@
     display: flex;
     width: 100%;
     height: 18px;
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
     background: var(--bg-raised);
     border: 1px solid var(--panel-border);
@@ -232,9 +232,13 @@
     font-size: 12px;
 }
 
-.medal-gold { background: linear-gradient(135deg, #FFE28A, #E8A33D); color: #3A2400; box-shadow: 0 0 14px rgba(232,163,61,0.45); }
-.medal-silver { background: linear-gradient(135deg, #E7EAF2, #B9C0D0); color: #22242C; box-shadow: 0 0 12px rgba(185,192,208,0.3); }
-.medal-bronze { background: linear-gradient(135deg, #E3A97A, #B06A3B); color: #2B1400; box-shadow: 0 0 12px rgba(176,106,59,0.3); }
+/* The numeral used to be near-black on the medal colour, measuring 1.13-1.34:1
+   -- effectively invisible on the three rows meant to draw the eye first. The
+   fills are darkened enough to carry white text while keeping each medal's
+   identity, and the glow is unchanged so they still stand out. */
+.medal-gold { background: linear-gradient(135deg, #B87C20, #77500F); color: #FFFFFF; box-shadow: 0 0 14px rgba(232,163,61,0.45); }
+.medal-silver { background: linear-gradient(135deg, #7C8290, #4F5566); color: #FFFFFF; box-shadow: 0 0 12px rgba(185,192,208,0.3); }
+.medal-bronze { background: linear-gradient(135deg, #A9683C, #6E4020); color: #FFFFFF; box-shadow: 0 0 12px rgba(176,106,59,0.3); }
 
 .full-lb-trend {
     display: flex;
@@ -246,7 +250,7 @@
 .full-lb-icon {
     width: 38px;
     height: 38px;
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
     background: var(--bg-raised);
     border: 1px solid var(--panel-border);
     display: flex;
@@ -284,7 +288,7 @@
     flex-direction: column;
     justify-content: space-between;
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     color: var(--text-faint);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -369,7 +373,7 @@
 .timeline-track {
     position: relative;
     height: 56px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     background: var(--bg-raised);
     border: 1px solid var(--panel-border);
     overflow: hidden;
@@ -532,7 +536,7 @@
 
 .month-heat-weekdays span {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.05em;
     color: var(--text-faint);
@@ -543,7 +547,7 @@
 .month-heat-cell {
     width: 100%;
     aspect-ratio: 1;
-    border-radius: 5px;
+    border-radius: var(--radius-sm);
     background: var(--bg-raised);
     border: 1px solid var(--panel-border-soft);
 }
@@ -648,7 +652,7 @@
 .activity-icon {
     width: 40px;
     height: 40px;
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
     background: var(--bg-raised);
     border: 1px solid var(--panel-border);
     display: flex;
@@ -819,9 +823,9 @@
     padding: 6px 2px;
     background: var(--bg-raised);
     border: 1px solid var(--panel-border-soft);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
 }
-.dd-trend-cell-label { font-size: 9px; color: var(--text-faint); white-space: nowrap; }
+.dd-trend-cell-label { font-size: 10px; color: var(--text-faint); white-space: nowrap; }
 .dd-trend-cell-value { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text); margin-top: 2px; white-space: nowrap; }
 
 .drawer-close {
@@ -830,6 +834,10 @@
     right: 20px;
     width: 30px;
     height: 30px;
+    /* The only unstyled control that actually renders text — its ✕ was coming
+       out at the browser's default 13.3333px. The gear and the checkboxes have
+       no text, so they are left alone rather than given a blanket size. */
+    font-size: 14px;
     border-radius: 8px;
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -880,12 +888,12 @@
     letter-spacing: 0.02em;
 }
 .dd-tier-req { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
-.dd-tier-date { font-size: 9px; color: var(--text-faint); }
+.dd-tier-date { font-size: 10px; color: var(--text-faint); }
 
 .dd-icon {
     width: 52px;
     height: 52px;
-    border-radius: 12px;
+    border-radius: var(--radius);
     background: var(--bg-raised);
     border: 1px solid var(--panel-border);
     display: flex;
@@ -935,7 +943,7 @@
 .dd-personal-best-badge {
     display: inline-block;
     margin-top: 5px;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.07em;
     text-transform: uppercase;
@@ -1059,7 +1067,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 14px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     background: var(--panel);
     border: 1px solid var(--panel-border-soft);
     margin-bottom: 8px;
@@ -1197,8 +1205,8 @@
 .wrapped-slide .hero-caption { font-size: 14px; color: var(--text-dim); max-width: 260px; }
 
 .wrapped-slide .foot { display: grid; gap: 10px; margin-top: 22px; }
-.wrapped-slide .foot-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--panel-border-soft); border-radius: 12px; padding: 12px 14px; }
-.wrapped-slide .foot-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
+.wrapped-slide .foot-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--panel-border-soft); border-radius: var(--radius); padding: 12px 14px; }
+.wrapped-slide .foot-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
 .wrapped-slide .foot-value { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .wrapped-slide .foot-value.teal { color: var(--teal); }
 
@@ -1213,7 +1221,7 @@
 .wrapped-slide .bar-fill { width: 100%; min-height: 3px; border-radius: 4px 4px 2px 2px; background: var(--brass-dim); transition: height 0.3s ease; }
 .wrapped-slide .bar-fill.is-peak { background: var(--brass); box-shadow: 0 0 20px var(--brass-glow); }
 .wrapped-slide .bar-fill.is-future { background: rgba(255, 255, 255, 0.06); }
-.wrapped-slide .bar-label { font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); }
+.wrapped-slide .bar-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
 
 /* --- Category breakdown: dominant category as the hero stat, the rest of
    the split listed underneath so the whole picture is visible at a glance. */
