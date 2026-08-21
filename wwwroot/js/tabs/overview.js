@@ -6,6 +6,11 @@
 function setOverviewScope(scope, btnEl) {
     setSelectedScope(scope);
     document.querySelectorAll('#overview-scope button').forEach(b => b.classList.toggle('active', b === btnEl));
+    // Must re-sync: the stepper's visibility depends on the scope, and leaving
+    // it out meant the arrows stayed on screen after switching away from Day,
+    // then vanished on the next arrow click (the first thing that did sync) and
+    // never returned, because coming back to Day did not sync either.
+    syncOverviewControls();
     writeUrlState();
     loadOverview();
 }
@@ -32,6 +37,12 @@ function syncOverviewControls() {
 }
 
 function stepOverviewDate(days) {
+    // Day-stepping only means something on Day scope — the others are windows
+    // anchored to selectedDate, so nudging it by a day there just yields a
+    // partial week or a 30-day range shifted by one. Guarded rather than left to
+    // the button being hidden, so the date can't be moved out from under a scope
+    // that has no visible control for it.
+    if (getSelectedScope() !== 'day') return;
     if (!shiftSelectedDate(days)) return;
     syncOverviewControls();
     writeUrlState();
