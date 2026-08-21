@@ -95,7 +95,7 @@ async function loadRetentionSetting() {
     try {
         const res = await fetch('/api/settings');
         const data = await res.json();
-        const val = data.retentionDays ?? data.RetentionDays ?? 99999;
+        const val = data.retentionDays ?? 99999;
         const select = document.getElementById('retention-select');
         // If the stored value isn't one of the presets, fall back to Keep Forever
         const hasOption = Array.from(select.options).some(o => o.value == val);
@@ -104,7 +104,7 @@ async function loadRetentionSetting() {
         // needs confirmation) from a lengthening (deletes nothing).
         select.dataset.savedValue = select.value;
 
-        const captureWindowTitles = data.captureWindowTitles ?? data.CaptureWindowTitles ?? false;
+        const captureWindowTitles = data.captureWindowTitles ?? false;
         document.getElementById('window-titles-toggle').checked = captureWindowTitles;
     } catch (err) { console.error(err); }
 }
@@ -162,10 +162,10 @@ async function loadDbStats() {
         const res = await fetch('/api/db-stats');
         const data = await res.json();
 
-        const sizeBytes = data.dbSizeBytes ?? data.DbSizeBytes ?? 0;
-        const firstDate = data.firstTrackedDate ?? data.FirstTrackedDate;
-        const p90 = data.projected90Days ?? data.Projected90Days ?? 0;
-        const p365 = data.projected365Days ?? data.Projected365Days ?? 0;
+        const sizeBytes = data.dbSizeBytes ?? 0;
+        const firstDate = data.firstTrackedDate;
+        const p90 = data.projected90Days ?? 0;
+        const p365 = data.projected365Days ?? 0;
 
         document.getElementById('dbsize-current').textContent = formatBytes(sizeBytes);
         document.getElementById('dbsize-since').textContent = firstDate ? fmtDateEU(parseDateStr(firstDate)) : 'No data yet';
@@ -220,7 +220,7 @@ async function loadPinSetting() {
     try {
         const res = await fetch('/api/settings/pin');
         const data = await res.json();
-        const hasPin = data.hasPin ?? data.HasPin ?? false;
+        const hasPin = data.hasPin ?? false;
         document.getElementById('pin-status-line').style.display = hasPin ? 'block' : 'none';
         document.getElementById('pin-form').style.display = hasPin ? 'none' : 'flex';
     } catch (err) { console.error(err); }

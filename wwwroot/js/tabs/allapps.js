@@ -7,6 +7,8 @@ let allAppsData = [];
 let allAppsSearch = '';
 
 async function loadAllApps() {
+    const grid = document.getElementById('allapps-grid');
+    if (isEmptyContainer(grid)) grid.innerHTML = loadingRowsHtml(6);
     try {
         allAppsData = await apiFetch('/api/all-apps', { signal: abortableSignal('allapps') });
         renderAllApps();
@@ -21,8 +23,8 @@ function handleAllAppsSearch() {
 function renderAllApps() {
     const grid = document.getElementById('allapps-grid');
     const filtered = allAppsData
-        .filter(a => (a.appName || a.AppName || '').toLowerCase().includes(allAppsSearch))
-        .sort((a, b) => (a.appName || a.AppName).localeCompare(b.appName || b.AppName));
+        .filter(a => (a.appName || '').toLowerCase().includes(allAppsSearch))
+        .sort((a, b) => (a.appName).localeCompare(b.appName));
 
     if (filtered.length === 0) {
         grid.innerHTML = `<div class="empty-state">No applications found.</div>`;
@@ -30,10 +32,10 @@ function renderAllApps() {
     }
 
     grid.innerHTML = filtered.map(app => {
-        const name = app.appName || app.AppName;
-        const cat = app.category || app.Category || 'Other';
-        const focus = app.totalFocus ?? app.TotalFocus ?? 0;
-        const runtime = app.totalRuntime ?? app.TotalRuntime ?? 0;
+        const name = app.appName;
+        const cat = app.category || 'Other';
+        const focus = app.totalFocus ?? 0;
+        const runtime = app.totalRuntime ?? 0;
         return `
             <div class="card allapps-card" data-open-app="${escapeHtml(name)}" role="button" tabindex="0">
                 <div class="allapps-card-head">

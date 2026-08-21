@@ -7,7 +7,45 @@ const VIEWS = ['overview', 'insights', 'periods', 'activity', 'leaderboard', 'al
 
 let currentViewId = null;
 
-function switchView(viewId) {
+// --- URL state --------------------------------------------------------------
+// The dashboard opens in a browser tab, so people use browser habits on it —
+// and none of them used to work. Tab, scope and date lived only in memory and
+// the URL never changed, so refreshing dumped you back on Overview/Day from
+// wherever you were, Back left the dashboard entirely instead of closing what
+// you had just opened, and there was no way to bookmark a view or keep two
+// tabs on different periods.
+//
+// Only the shell's own state goes in the URL (which tab, which scope, which
+// date). Drawers are deliberately left out: they are transient detail views
+// over a tab, and putting them in history would make Back walk through every
+// app you happened to glance at.
+function readUrlState() {
+    const params = new URLSearchParams(location.search);
+    const view = params.get('view');
+    return {
+        view: VIEWS.includes(view) ? view : null,
+        scope: ['day', 'week', 'month', 'year'].includes(params.get('scope')) ? params.get('scope') : null,
+        // Only accept a real yyyy-mm-dd, so a hand-edited URL can't push a
+        // malformed string into every date-keyed request the tab makes.
+        date: /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') || '') ? params.get('date') : null
+    };
+}
+
+function writeUrlState(replace) {
+    const params = new URLSearchParams();
+    if (currentViewId) params.set('view', currentViewId);
+    if (currentViewId === 'overview') {
+        params.set('scope', getSelectedScope());
+        // Today is the default, so leaving it out keeps the common URL short
+        // and means a bookmark made today still means "today" tomorrow.
+        if (getSelectedDate() !== getLocalTodayStr()) params.set('date', getSelectedDate());
+    }
+    const url = `${location.pathname}?${params.toString()}`;
+    if (replace) history.replaceState(null, '', url);
+    else history.pushState(null, '', url);
+}
+
+function switchView(viewId, opts) {
     document.querySelectorAll('.rail-item').forEach(el => {
         const isActive = el.dataset.view === viewId;
         el.classList.toggle('active', isActive);
@@ -21,8 +59,24 @@ function switchView(viewId) {
     if (target) target.classList.add('active');
     closeSettings();
     currentViewId = viewId;
+
+    if (!opts || !opts.fromHistory) writeUrlState(opts && opts.replace);
+
     const mod = Dashboard.tabs[viewId];
     if (mod && typeof mod.onEnter === 'function') mod.onEnter();
+}
+
+// Back/forward. Restores the whole shell state rather than just the tab, so
+// stepping back from "Overview / week / a past date" lands on exactly that.
+function initHistoryNav() {
+    window.addEventListener('popstate', () => {
+        const state = readUrlState();
+        if (state.scope) setSelectedScope(state.scope);
+        if (state.date) setSelectedDate(state.date);
+        else setSelectedDate(getLocalTodayStr());
+        syncOverviewControls();
+        switchView(state.view || 'overview', { fromHistory: true });
+    });
 }
 
 // --- Live polling -------------------------------------------------------
@@ -163,9 +217,9 @@ async function refreshTopBar() {
         if (!fresh) cacheOverviewPayload(data);
         if (dotEl) dotEl.classList.remove('offline');
 
-        const focusToday = data.focusToday ?? data.FocusToday ?? 0;
-        const usual = data.usualDailyFocus ?? data.UsualDailyFocus ?? 0;
-        const allTime = data.focusAllTime ?? data.FocusAllTime ?? 0;
+        const focusToday = data.focusToday ?? 0;
+        const usual = data.usualDailyFocus ?? 0;
+        const allTime = data.focusAllTime ?? 0;
 
         const focusEl = document.getElementById('tb-focus-value');
         if (focusEl) focusEl.textContent = formatHours(focusToday);
@@ -173,14 +227,14 @@ async function refreshTopBar() {
         const allTimeEl = document.getElementById('tb-alltime-value');
         if (allTimeEl) allTimeEl.textContent = formatHours(allTime);
 
-        const topAppsToday = data.topAppsToday ?? data.TopAppsToday ?? [];
+        const topAppsToday = data.topAppsToday ?? [];
         const mostUsedEl = document.getElementById('tb-mostused');
         const mostUsedValueEl = document.getElementById('tb-mostused-value');
         if (mostUsedEl && mostUsedValueEl) {
             if (topAppsToday.length > 0) {
                 const top = topAppsToday[0];
-                const name = top.appName ?? top.AppName;
-                const mins = top.focusedMinutes ?? top.FocusedMinutes ?? 0;
+                const name = top.appName;
+                const mins = top.focusedMinutes ?? 0;
                 tbMostUsedAppName = name;
                 mostUsedValueEl.textContent = `${name} · ${formatTime(mins)}`;
                 mostUsedEl.style.display = '';
@@ -242,13 +296,44 @@ async function boot() {
     setInterval(pollCurrentView, POLL_INTERVAL_MS);
 
     try {
-        const res = await fetch('/api/categories');
-        allCategories = await res.json();
+        allCategories = await apiFetch('/api/categories');
     } catch (e) {
         allCategories = ['Development', 'Gaming', 'Productivity', 'Browsing', 'Communication', 'Media Production', 'Music', 'Fun', 'Education', 'Utilities', 'Other'];
     }
 
-    switchView('overview');
+    // Restore whatever the URL asked for before the first render, so a
+    // bookmarked or refreshed view comes back as it was instead of snapping to
+    // Overview/Day. replace:true so the restored state doesn't add a history
+    // entry on top of the one the browser already has for this load.
+    const urlState = readUrlState();
+    if (urlState.scope) setSelectedScope(urlState.scope);
+    if (urlState.date) setSelectedDate(urlState.date);
+    initOverviewControls();
+    initHistoryNav();
+    switchView(urlState.view || 'overview', { replace: true });
+
+    checkFirstRun();
+}
+
+// --- First run ---------------------------------------------------------------
+// On a fresh install every tab is a terse dead end ("No data yet. Time to open
+// some apps."), which reads as a failed install rather than as a tracker that
+// simply hasn't flushed yet. The tracker writes every ~60s, so the first
+// numbers genuinely are about a minute away — saying so is the whole fix.
+//
+// Keyed off there being no data at all, not off a stored flag, so it disappears
+// by itself the moment anything is tracked and never needs dismissing.
+async function checkFirstRun() {
+    const host = document.getElementById('first-run');
+    if (!host) return;
+    try {
+        const apps = await apiFetch('/api/all-apps');
+        const hasData = Array.isArray(apps) && apps.length > 0;
+        host.style.display = hasData ? 'none' : 'block';
+    } catch (e) {
+        // Can't tell — say nothing rather than claim it's a fresh install.
+        host.style.display = 'none';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', boot);

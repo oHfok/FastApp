@@ -15,12 +15,12 @@ async function loadInsights() {
                                     { signal: abortableSignal('insights') });
         if (data.error) { console.error(data.error); return; }
 
-        document.getElementById('in-longest-block').textContent = formatTime(data.longestBlock ?? data.LongestBlock ?? 0);
-        document.getElementById('in-avg-span').textContent = formatTime(data.averageSpan ?? data.AverageSpan ?? 0);
+        document.getElementById('in-longest-block').textContent = formatTime(data.longestBlock ?? 0);
+        document.getElementById('in-avg-span').textContent = formatTime(data.averageSpan ?? 0);
 
-        renderRhythmChart(data.rhythm ?? data.Rhythm ?? []);
-        renderFatigueChart(data.fatigue ?? data.Fatigue ?? []);
-        renderInsightsHeatmap(data.heatmap ?? data.Heatmap ?? []);
+        renderRhythmChart(data.rhythm ?? []);
+        renderFatigueChart(data.fatigue ?? []);
+        renderInsightsHeatmap(data.heatmap ?? []);
     } catch (err) {
         if (!isAbort(err)) console.error('Insights load failed', err);
     }
@@ -32,9 +32,9 @@ function renderRhythmChart(rhythm) {
     if (rhythmChartInstance) rhythmChartInstance.destroy();
 
     const theme = getChartTheme(); // read fresh each render — themes recolor charts by re-rendering, not by CSS alone
-    const labels = rhythm.map(r => `${pad(r.hour ?? r.Hour ?? 0)}:00`);
-    const work = rhythm.map(r => Math.round(r.work ?? r.Work ?? 0));
-    const play = rhythm.map(r => Math.round(r.play ?? r.Play ?? 0));
+    const labels = rhythm.map(r => `${pad(r.hour ?? 0)}:00`);
+    const work = rhythm.map(r => Math.round(r.work ?? 0));
+    const play = rhythm.map(r => Math.round(r.play ?? 0));
 
     rhythmChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -71,8 +71,8 @@ function renderFatigueChart(fatigue) {
     if (fatigueChartInstance) fatigueChartInstance.destroy();
 
     const theme = getChartTheme();
-    const labels = fatigue.map(f => f.day ?? f.Day ?? '');
-    const values = fatigue.map(f => Math.round(f.avgMinutes ?? f.AvgMinutes ?? 0));
+    const labels = fatigue.map(f => f.day ?? '');
+    const values = fatigue.map(f => Math.round(f.avgMinutes ?? 0));
 
     fatigueChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -107,9 +107,9 @@ function renderInsightsHeatmap(heatmap) {
     const grid = Array.from({ length: 7 }, () => new Array(24).fill(0));
 
     (heatmap || []).forEach(h => {
-        const dow = h.dayIndex ?? h.DayIndex ?? 0;
-        const hour = h.hour ?? h.Hour ?? 0;
-        const mins = h.totalMinutes ?? h.TotalMinutes ?? 0;
+        const dow = h.dayIndex ?? 0;
+        const hour = h.hour ?? 0;
+        const mins = h.totalMinutes ?? 0;
         const row = (dow + 6) % 7;
         if (hour >= 0 && hour < 24) grid[row][hour] += mins;
     });

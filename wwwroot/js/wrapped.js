@@ -29,7 +29,7 @@ function markWrappedSeen(type, label) {
 
 function updateWrappedReadyDot() {
     const seen = getWrappedSeen();
-    const hasUnseen = wrappedAvailableData.some(w => seen[w.type ?? w.Type] !== (w.label ?? w.Label));
+    const hasUnseen = wrappedAvailableData.some(w => seen[w.type] !== (w.label));
     const dot = document.getElementById('tb-wrapped-ready-dot');
     if (dot) dot.style.display = hasUnseen ? '' : 'none';
 }
@@ -48,9 +48,9 @@ async function loadWrappedAvailable() {
         }
 
         cardsEl.innerHTML = wrappedAvailableData.map(w => {
-            const type = w.type ?? w.Type;
-            const label = w.label ?? w.Label;
-            const teaser = w.teaser ?? w.Teaser;
+            const type = w.type;
+            const label = w.label;
+            const teaser = w.teaser;
             return `
                 <div class="wrapped-card" data-type="${type}" onclick="openWrappedStory(this.dataset.type)">
                     <div>
@@ -102,7 +102,7 @@ async function openWrappedStory(type) {
         wrappedSlideIndex = 0;
         renderWrappedSlide();
 
-        markWrappedSeen(type, data.label ?? data.Label);
+        markWrappedSeen(type, data.label);
     } catch (err) {
         console.error('Failed to load Wrapped story', err);
         document.getElementById('wrapped-slide-body').innerHTML = `<div class="empty-state" style="border:none;background:none;">Couldn't load this recap.</div>`;
@@ -181,15 +181,15 @@ function buildWrappedSlides(type, data) {
     // CSS handles the uppercase styling (.wrapped-slide .eyebrow) -- doing it
     // here in JS as well would also uppercase the "&middot;" entity into
     // "&MIDDOT;", which browsers don't recognize and print literally.
-    const eyebrow = `${data.label ?? data.Label} &middot; ${(data.dateRange ?? data.DateRange) || ''}`;
-    const elapsedSuffix = (data.isInProgress ?? data.IsInProgress) ? ' so far' : '';
+    const eyebrow = `${data.label} &middot; ${(data.dateRange) || ''}`;
+    const elapsedSuffix = (data.isInProgress) ? ' so far' : '';
 
-    const totalFocusedHours = data.totalFocusedHours ?? data.TotalFocusedHours ?? 0;
-    const topApp = data.topApp ?? data.TopApp;
-    const topApps = data.topApps ?? data.TopApps;
-    const archetype = data.archetype ?? data.Archetype;
-    const categoryBreakdown = data.categoryBreakdown ?? data.CategoryBreakdown;
-    const milestones = data.milestones ?? data.Milestones;
+    const totalFocusedHours = data.totalFocusedHours ?? 0;
+    const topApp = data.topApp;
+    const topApps = data.topApps;
+    const archetype = data.archetype;
+    const categoryBreakdown = data.categoryBreakdown;
+    const milestones = data.milestones;
 
     const slides = [];
 
@@ -242,12 +242,12 @@ function buildWrappedSlides(type, data) {
 // a single figure. The headline names the strongest bucket explicitly so the
 // story reads even before you look at the bars.
 function renderRhythmBody(type, noun, data) {
-    const buckets = (data.rhythmBuckets ?? data.RhythmBuckets ?? []).map(b => ({
-        label: b.label ?? b.Label ?? '',
-        hours: b.hours ?? b.Hours ?? 0,
-        isFuture: b.isFuture ?? b.IsFuture ?? false
+    const buckets = (data.rhythmBuckets ?? []).map(b => ({
+        label: b.label ?? '',
+        hours: b.hours ?? 0,
+        isFuture: b.isFuture ?? false
     }));
-    const rhythmLabel = data.rhythmLabel ?? data.RhythmLabel ?? '';
+    const rhythmLabel = data.rhythmLabel ?? '';
     const unitWord = type === 'week' ? 'day' : type === 'month' ? 'week' : 'month';
 
     const real = buckets.filter(b => !b.isFuture && b.hours > 0);
@@ -279,14 +279,14 @@ function renderCategoryBreakdownBody(noun, categoryBreakdown) {
     if (!categoryBreakdown) {
         return `<div class="headline">Not enough data yet to see where your time went.</div>`;
     }
-    const top = categoryBreakdown.top ?? categoryBreakdown.Top;
-    const all = categoryBreakdown.all ?? categoryBreakdown.All ?? [];
-    const topCat = top.category ?? top.Category;
-    const topPct = top.pct ?? top.Pct ?? 0;
+    const top = categoryBreakdown.top;
+    const all = categoryBreakdown.all ?? [];
+    const topCat = top.category;
+    const topPct = top.pct ?? 0;
 
     const listHtml = all.map(c => {
-        const cat = c.category ?? c.Category;
-        const pct = c.pct ?? c.Pct ?? 0;
+        const cat = c.category;
+        const pct = c.pct ?? 0;
         return `
             <div class="cat-row">
                 <div class="cat-dot" style="background:${catColor(cat)}"></div>
@@ -309,14 +309,14 @@ function renderCategoryBreakdownBody(noun, categoryBreakdown) {
 function renderTopAppBody(noun, topApp) {
     if (!topApp) return `<div class="headline">No standout app this ${noun.toLowerCase()} yet.</div>`;
 
-    const appName = topApp.appName ?? topApp.AppName;
-    const minutes = topApp.minutes ?? topApp.Minutes ?? 0;
-    const mover = topApp.mover ?? topApp.Mover;
+    const appName = topApp.appName;
+    const minutes = topApp.minutes ?? 0;
+    const mover = topApp.mover;
     let moverHtml = '';
     if (mover) {
-        const moverName = mover.appName ?? mover.AppName;
-        const direction = mover.direction ?? mover.Direction;
-        const moverDeltaPct = mover.deltaPct ?? mover.DeltaPct;
+        const moverName = mover.appName;
+        const direction = mover.direction;
+        const moverDeltaPct = mover.deltaPct;
         const moverText = moverDeltaPct != null
             ? `${direction === 'up' ? '&#9650;' : '&#9660;'} ${moverDeltaPct}% vs last ${noun.toLowerCase()}`
             : (direction === 'up' ? 'New this ' + noun.toLowerCase() : 'Quiet this ' + noun.toLowerCase());
@@ -344,9 +344,9 @@ function renderTopAppsBody(topApps) {
     if (list.length === 0) return `<div class="headline">No standout apps yet this year.</div>`;
 
     const rows = list.map((a, i) => {
-        const appName = a.appName ?? a.AppName;
-        const minutes = a.minutes ?? a.Minutes ?? 0;
-        const deltaPct = a.deltaPct ?? a.DeltaPct;
+        const appName = a.appName;
+        const minutes = a.minutes ?? 0;
+        const deltaPct = a.deltaPct;
         const deltaText = deltaPct == null ? '' : ` &middot; ${deltaPct >= 0 ? '&#9650;' : '&#9660;'} ${Math.abs(deltaPct)}% vs last year`;
         return `
             <div class="rank-row">
@@ -376,9 +376,9 @@ function renderMilestonesBody(noun, milestones) {
             <div class="hero"><div class="hero-caption">Tiers are Bronze (10h), Silver (50h), Gold (150h), Platinum (500h) per app -- keep going.</div></div>`;
     }
     const rows = list.map(m => {
-        const appName = m.appName ?? m.AppName;
-        const tierName = m.tierName ?? m.TierName;
-        const date = m.date ?? m.Date;
+        const appName = m.appName;
+        const tierName = m.tierName;
+        const date = m.date;
         return `
             <div class="ms-row">
                 <div class="ms-dot" style="background:${milestoneTierColor(tierName)}"></div>
@@ -401,9 +401,9 @@ function renderMilestonesBody(noun, milestones) {
 function renderArchetypeBody(noun, archetype) {
     if (!archetype) return `<div class="headline">Not enough data yet for a read on your ${noun.toLowerCase()}.</div>`;
 
-    const label = archetype.label ?? archetype.Label;
-    const description = archetype.description ?? archetype.Description;
-    const weight = archetype.weight ?? archetype.Weight ?? 'full';
+    const label = archetype.label;
+    const description = archetype.description;
+    const weight = archetype.weight ?? 'full';
     const titleText = weight === 'light' ? `This ${noun.toLowerCase()}'s vibe` : 'Your Type';
 
     return `
