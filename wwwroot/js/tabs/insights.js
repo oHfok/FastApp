@@ -141,10 +141,12 @@ function renderInsightsHeatmap(heatmap) {
 async function loadCategoryClassification() {
     const listEl = document.getElementById('in-classification-list');
     try {
-        const data = await apiFetch('/api/settings/category-classification');
-        const entries = Object.entries(data).sort((a, b) => a[0].localeCompare(b[0]));
+        // Server-ordered by recorded time, heaviest first, so the categories that
+        // actually shift the chart above sit at the top instead of wherever the
+        // alphabet happened to put them.
+        const entries = await apiFetch('/api/settings/category-classification');
 
-        if (entries.length === 0) {
+        if (!entries || entries.length === 0) {
             listEl.innerHTML = `<div class="empty-state">No categories yet.</div>`;
             return;
         }
@@ -155,9 +157,9 @@ async function loadCategoryClassification() {
         const segButton = (cat, value, label, current) =>
             `<button class="${current === value ? 'active' : ''}" data-classify-cat="${escapeHtml(cat)}" data-classify-as="${value}">${label}</button>`;
 
-        listEl.innerHTML = `<div class="settings-list">${entries.map(([cat, cls]) => `
+        listEl.innerHTML = `<div class="settings-list classification-list">${entries.map(({ category: cat, classification: cls, minutes }) => `
                 <div class="settings-list-item">
-                    <span><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}</span>
+                    <span><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}<span class="classification-mins">${minutes > 0 ? formatTime(minutes) : '—'}</span></span>
                     <div class="segmented">
                         ${segButton(cat, 'play', 'Play', cls)}
                         ${segButton(cat, 'neutral', 'Neutral', cls)}

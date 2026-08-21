@@ -107,9 +107,16 @@
             </div>
             <!-- Mouse-only hit zones; the keyboard path is arrow keys (see
                  initWrappedKeys) so these stay out of the tab order rather than
-                 adding two unlabelled stops over the slide. -->
-            <div class="wrapped-nav-zone wrapped-nav-prev" aria-hidden="true" onclick="event.stopPropagation(); wrappedPrevSlide();"></div>
-            <div class="wrapped-nav-zone wrapped-nav-next" aria-hidden="true" onclick="event.stopPropagation(); wrappedNextSlide();"></div>
+                 adding two unlabelled stops over the slide.
+
+                 The zones were invisible, which borrows a phone-story convention
+                 that does not survive the move to a mouse pointer: nothing on
+                 screen said the story continued, so a reader could see slide one
+                 and close it. Each zone now shows a chevron on hover, and the
+                 first slide carries a one-time hint. -->
+            <div class="wrapped-nav-zone wrapped-nav-prev" aria-hidden="true" onclick="event.stopPropagation(); wrappedPrevSlide();"><span class="wrapped-chev">&#8249;</span></div>
+            <div class="wrapped-nav-zone wrapped-nav-next" aria-hidden="true" onclick="event.stopPropagation(); wrappedNextSlide();"><span class="wrapped-chev">&#8250;</span></div>
+            <div class="wrapped-hint" id="wrapped-hint" aria-hidden="true">Click or use &#8592; &#8594; to move through</div>
         </div>
     </div>
 
@@ -264,7 +271,7 @@
                     </div>
                     <div class="card stat-block">
                         <div class="card-label">Average Session Length</div>
-                        <div class="stat-value" id="in-avg-span" style="color:var(--teal)">0h 0m</div>
+                        <div class="stat-value" id="in-avg-span" style="color:var(--brass)">0h 0m</div>
                     </div>
                 </div>
 

@@ -324,7 +324,10 @@
 }
 
 .full-lb-eff-fill { height: 100%; border-radius: 3px; }
-.full-lb-eff-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); text-align: right; margin-top: 4px; }
+/* Reads as a sentence rather than a figure now that it states what the bar
+   measures, so it drops the mono face -- mono is ~20% wider per character
+   and the phrase would have wrapped inside the 150px column. */
+.full-lb-eff-label { font-size: 10px; color: var(--text-faint); text-align: right; margin-top: 4px; white-space: nowrap; }
 
 /* ---------- Activity heatmaps (Week/Month/Year scopes) ---------- */
 .ov-week-divider { height: 1px; background: var(--panel-border-soft); margin: 24px 0; }
@@ -438,6 +441,28 @@
 }
 
 .timeline-seg:hover { filter: brightness(1.3); z-index: 2; }
+
+/* Only applied to blocks measured wide enough to hold the whole name (see
+   labelWideTimelineSegments), so there is deliberately no ellipsis here -- a
+   clipped name is worse than no name. pointer-events stays off so the label
+   never sits between the pointer and the block's own tooltip handler. */
+.timeline-seg-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* Ink is picked per block from the colour underneath it -- see
+   labelWideTimelineSegments. The shadow is a halo in the opposite direction from
+   the text, so a block that sits mid-range stays legible either way. */
+.timeline-seg-label.on-dark  { color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55); }
+.timeline-seg-label.on-light { color: #14161C; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.45); }
 
 /* ---------- Weeks & Months tab ---------- */
 .period-toggle { margin-bottom: 20px; }
@@ -1102,6 +1127,20 @@
 
 .settings-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; padding-right: 4px; }
 
+/* Inside the Settings drawer a capped, scrolling list is right -- the drawer is
+   a fixed-height surface. On the Insights page it is not: the page scrolls too,
+   so the wheel did one of two different things a few pixels apart, and the
+   control that reconfigures the chart above it was the awkward one to reach.
+   On a full page the list just takes the height it needs. */
+.classification-list { max-height: none; overflow-y: visible; padding-right: 0; }
+
+.classification-mins {
+    margin-left: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+}
+
 .settings-list-item {
     display: flex;
     justify-content: space-between;
@@ -1214,9 +1253,52 @@
     z-index: 2;
 }
 .wrapped-stage { position: relative; width: 380px; max-width: calc(100vw - 40px); }
-.wrapped-nav-zone { position: absolute; top: 0; bottom: 0; width: 33%; cursor: pointer; }
-.wrapped-nav-prev { left: 0; }
-.wrapped-nav-next { right: 0; }
+.wrapped-nav-zone {
+    position: absolute; top: 0; bottom: 0; width: 33%; cursor: pointer;
+    display: flex; align-items: center;
+}
+.wrapped-nav-prev { left: 0; justify-content: flex-start; padding-left: 10px; }
+.wrapped-nav-next { right: 0; justify-content: flex-end; padding-right: 10px; }
+
+/* Visible affordance for the hit zones. Faint at rest so it never competes with
+   the slide, brass on hover so the target is unmistakable once the pointer is
+   anywhere near it. */
+.wrapped-chev {
+    font-size: 40px;
+    line-height: 1;
+    color: var(--text-faint);
+    /* 0.75, not lower: the whole point is that the affordance is visible before
+       the pointer finds it. Measured against the overlay backdrop this lands at
+       3.35:1, clearing the 3:1 non-text contrast threshold; 0.45 sat at 1.89:1,
+       which was decorative rather than discoverable. */
+    opacity: 0.75;
+    transition: opacity 0.15s, color 0.15s, transform 0.15s;
+    user-select: none;
+}
+.wrapped-nav-zone:hover .wrapped-chev { opacity: 1; color: var(--brass); }
+.wrapped-nav-prev:hover .wrapped-chev { transform: translateX(-3px); }
+.wrapped-nav-next:hover .wrapped-chev { transform: translateX(3px); }
+
+/* Shown on the first slide only, then faded out for the rest of the story --
+   it answers "is there more?" exactly once and then gets out of the way. */
+.wrapped-hint {
+    position: absolute;
+    left: 50%;
+    bottom: -34px;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text-faint);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+}
+.wrapped-hint.show { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+    .wrapped-chev, .wrapped-hint { transition: none; }
+    .wrapped-nav-zone:hover .wrapped-chev { transform: none; }
+}
 
 .wrapped-slide {
     position: relative;

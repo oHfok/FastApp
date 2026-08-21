@@ -567,6 +567,61 @@ function timelineSegmentsHtml(sessions) {
     }).join('');
 }
 
+// The ribbon identified its blocks on hover alone, so a day that was glanced at
+// rather than explored said nothing about what was in it. Labels are applied
+// after render, not baked into the markup, because whether a block can hold text
+// depends on its pixel width -- and the markup only knows a percentage, which
+// means nothing until the container has been laid out.
+function labelWideTimelineSegments(trackEl) {
+    if (!trackEl) return;
+    trackEl.querySelectorAll('.timeline-seg').forEach(seg => {
+        const old = seg.querySelector('.timeline-seg-label');
+        if (old) old.remove();
+
+        const name = displayAppName(seg.dataset.name || '');
+        if (!name) return;
+
+        // ~6.5px per character at 11px/600, plus 14px of breathing room. Below
+        // that the name would be clipped mid-word, which reads worse than the
+        // bare block it replaced -- so narrow blocks keep the hover-only path.
+        if (seg.clientWidth < Math.max(name.length * 6.5 + 14, 44)) return;
+
+        const label = document.createElement('span');
+        label.className = 'timeline-seg-label';
+        label.textContent = name;
+        // Blocks are coloured per app -- hsl(h, 68%, 60%) -- or per category, and
+        // both palettes span very light to very dark. A fixed white label is
+        // 10.8:1 on 'Other' (#3A3D4A) but only 2.14:1 on 'Productivity'
+        // (#E8A33D), so the ink has to be chosen from whatever it lands on.
+        label.classList.add(timelineLabelInk(getComputedStyle(seg).backgroundColor));
+        seg.appendChild(label);
+    });
+}
+
+// WCAG relative luminance of an "r, g, b" string.
+function relativeLuminance(cssColor) {
+    const parts = (cssColor.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    if (parts.length < 3) return 0;
+    const lin = parts.map(v => {
+        const c = v / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+
+// Which of the two label inks reads better on this block. Scoring both and
+// taking the winner rather than testing luminance against a threshold: any
+// fixed cut is wrong somewhere, and #E8A33D (luminance 0.44) proved it -- it
+// fell on the dark side of a 0.45 cut and got white at 2.16:1 when the dark
+// ink scores 8:1 on the same colour.
+const TIMELINE_INK_DARK_LUM = 0.00669;   // #14161C, matching .on-light in CSS
+function timelineLabelInk(cssColor) {
+    const bg = relativeLuminance(cssColor);
+    const vsWhite = 1.05 / (bg + 0.05);
+    const vsDark = (bg + 0.05) / (TIMELINE_INK_DARK_LUM + 0.05);
+    return vsDark > vsWhite ? 'on-light' : 'on-dark';
+}
+
 // --- Chart.js shared theme --------------------------------------------------
 // A function, not a static object — Chart.js canvases are drawn on a <canvas>,
 // so CSS alone can't re-theme them. Reading the live custom-property values at

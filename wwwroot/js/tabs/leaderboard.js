@@ -104,7 +104,7 @@ function renderFullLeaderboard() {
             <span>Application</span>
             <span title="${primaryTitle}">${primaryLabel}</span>
             <span title="Time the app was open but you were away from the keyboard">AFK</span>
-            <span title="Focused time as a share of total time the app was open">Efficiency</span>
+            <span title="Focused time as a share of time the app was open and you were at the keyboard">Efficiency</span>
         </div>`;
 
     const rowsHtml = sorted.map((app) => {
@@ -115,7 +115,14 @@ function renderFullLeaderboard() {
         // open time and active (non-AFK) time already returned per app.
         const afkMins = Math.max(0, totalMins - activeMins);
         const efficiency = activeMins > 0 ? Math.round((app.focusedMinutes / activeMins) * 100) : 0;
-        const effColor = efficiency > 80 ? 'var(--teal)' : (efficiency < 20 ? 'var(--rose)' : 'var(--brass)');
+        // Efficiency describes, it does not grade. A media player or a game
+        // legitimately scores low because it stays open while you watch or idle,
+        // and rendering that in red read as a failing mark for ordinary use. The
+        // ramp now runs neutral -> brass; the bar's width already carries the
+        // magnitude, so colour does not need to also carry a verdict.
+        const effColor = efficiency >= 70 ? 'var(--brass)'
+                       : efficiency >= 35 ? 'var(--brass-dim)'
+                       : 'var(--text-faint)';
 
         let medalOrRank = `<div class="full-lb-rank">${rank}</div>`;
         if (rank === 1) medalOrRank = `<div class="medal medal-gold">1</div>`;
@@ -151,7 +158,7 @@ function renderFullLeaderboard() {
                 <div class="full-lb-afk">${formatTime(afkMins)}</div>
                 <div>
                     <div class="full-lb-eff-bar"><div class="full-lb-eff-fill" style="width:${efficiency}%;background:${effColor}"></div></div>
-                    <div class="full-lb-eff-label">${efficiency}% efficiency</div>
+                    <div class="full-lb-eff-label">${efficiency}% of active time focused</div>
                 </div>
             </div>`;
     }).join('');
