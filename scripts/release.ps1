@@ -107,10 +107,36 @@ if ($Publish) {
     if ($NotesFile) {
         if (-not (Test-Path $NotesFile)) { throw "NotesFile not found: $NotesFile" }
         Write-Host "==> Setting release notes from $NotesFile..." -ForegroundColor Cyan
-        # Velopack tags releases by the raw version number (no "v" prefix),
-        # confirmed against this repo's actual tags -- e.g. "1.0.5", not "v1.0.5".
-        gh release edit $Version --repo oHfok/FastApp --notes-file $NotesFile
-        if ($LASTEXITCODE -ne 0) { throw "gh release edit failed." }
+
+        # GH_TOKEN is handed over explicitly rather than letting `gh` resolve its
+        # own auth here. `gh auth token` above clearly succeeds (vpk uploads with
+        # that very token), yet `gh release edit` invoked from this script kept
+        # failing with "please run gh auth login" -- it re-resolves credentials
+        # independently, and that lookup does not survive into this context.
+        # Releases 1.0.6, 1.0.7 and 1.0.8 all published fine and then died on this
+        # line, leaving the release live with an empty body until it was set by
+        # hand afterwards. Passing the token removes the second lookup entirely.
+        $priorGhToken = $env:GH_TOKEN
+        $env:GH_TOKEN = $ghToken
+        try {
+            # Velopack tags releases by the raw version number (no "v" prefix),
+            # confirmed against this repo's actual tags -- e.g. "1.0.5", not "v1.0.5".
+            gh release edit $Version --repo oHfok/FastApp --notes-file $NotesFile
+            $notesExit = $LASTEXITCODE
+        }
+        finally {
+            $env:GH_TOKEN = $priorGhToken
+        }
+
+        if ($notesExit -ne 0) {
+            # The release itself is already live at this point, so failing loudly
+            # without saying how to finish the job is the unhelpful outcome.
+            Write-Host ""
+            Write-Host "!! Release v$Version PUBLISHED, but its notes were not set." -ForegroundColor Red
+            Write-Host "   Run this to finish:" -ForegroundColor Yellow
+            Write-Host "   gh release edit $Version --repo oHfok/FastApp --notes-file `"$NotesFile`"" -ForegroundColor Yellow
+            throw "gh release edit failed."
+        }
     }
 
     Write-Host "==> v$Version is live. Installed copies of FastApp will pick it up automatically on next launch." -ForegroundColor Green
