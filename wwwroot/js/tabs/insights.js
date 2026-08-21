@@ -141,8 +141,7 @@ function renderInsightsHeatmap(heatmap) {
 async function loadCategoryClassification() {
     const listEl = document.getElementById('in-classification-list');
     try {
-        const res = await fetch('/api/settings/category-classification');
-        const data = await res.json();
+        const data = await apiFetch('/api/settings/category-classification');
         const entries = Object.entries(data).sort((a, b) => a[0].localeCompare(b[0]));
 
         if (entries.length === 0) {
