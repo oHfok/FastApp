@@ -45,6 +45,21 @@ function loadTimelineColorMode() {
     });
 }
 
+function loadTimelineRangeMode() {
+    const current = getTimelineRangeMode();
+    document.querySelectorAll('#timeline-range-toggle button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === current);
+    });
+}
+
+function setTimelineRangeMode(mode, btnEl) {
+    localStorage.setItem(TIMELINE_RANGE_KEY, mode);
+    document.querySelectorAll('#timeline-range-toggle button').forEach(btn => {
+        btn.classList.toggle('active', btn === btnEl);
+    });
+    refreshActiveTab();
+}
+
 function setTimelineColorMode(mode, btnEl) {
     localStorage.setItem(TIMELINE_COLOR_MODE_KEY, mode);
     document.querySelectorAll('#timeline-color-toggle button').forEach(btn => {
@@ -265,6 +280,7 @@ Dashboard.tabs.settings = {
     onEnter: () => {
         loadDashboardTheme();
         loadTimelineColorMode();
+        loadTimelineRangeMode();
         loadHiddenApps();
         loadRetentionSetting();
         loadPinSetting();

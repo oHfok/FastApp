@@ -446,6 +446,20 @@
             <button data-mode="category" onclick="setTimelineColorMode('category', this)">By Category</button>
         </div>
     </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Timeline Range</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+            "Full Day" always spans midnight to midnight. "Fit to Activity" trims the axis to your first and last
+            recorded session — on a typical day most of the 24 hours are asleep or away, so trimming makes the hours
+            you actually used several times wider on screen. Falls back to the full day when a day already spans most
+            of it.
+        </p>
+        <div class="segmented" id="timeline-range-toggle">
+            <button class="active" data-mode="day" onclick="setTimelineRangeMode('day', this)">Full Day</button>
+            <button data-mode="activity" onclick="setTimelineRangeMode('activity', this)">Fit to Activity</button>
+        </div>
+    </div>
     </div>
 
     <div class="settings-tab-panel" data-tab="data" style="display:none;">

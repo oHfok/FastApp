@@ -78,7 +78,7 @@ async function loadPeriodList(silent) {
                             </div>
                             <div class="period-stat">
                                 <div class="period-stat-label">Most Used</div>
-                                <div class="period-stat-value app-link" title="${escapeHtml(mostUsed)}" data-open-app="${escapeHtml(mostUsed)}" role="button" tabindex="0">${escapeHtml(mostUsed)}</div>
+                                <div class="period-stat-value app-link" title="${escapeHtml(mostUsed)}" data-open-app="${escapeHtml(mostUsed)}" role="button" tabindex="0">${escapeHtml(displayAppName(mostUsed))}</div>
                             </div>
                             <div class="period-stat">
                                 <div class="period-stat-label">Ranking</div>
@@ -115,7 +115,7 @@ function periodHeatmapHtml(days, periodType, daySessions) {
     if (periodType === 'day') {
         return `
             <div class="timeline-wrap">
-                <div class="timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+                <div class="timeline-ticks">${timelineTicksHtml(timelineWindow(daySessions))}</div>
                 <div class="timeline-track">${timelineSegmentsHtml(daySessions)}</div>
             </div>`;
     }
@@ -216,7 +216,7 @@ function windowActivityRowHtml(s) {
         <div class="card activity-row" data-open-app="${escapeHtml(name)}" role="button" tabindex="0">
             <div class="activity-icon" style="${avatarStyle(cat)}">${escapeHtml((name || '?').charAt(0).toUpperCase())}</div>
             <div class="activity-name-col">
-                <div class="activity-app-name">${escapeHtml(name)}</div>
+                <div class="activity-app-name" title="${escapeHtml(name)}">${escapeHtml(displayAppName(name))}</div>
                 <div class="activity-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
             </div>
             <div class="activity-time-range">${escapeHtml(start)} &ndash; ${escapeHtml(end)}</div>
@@ -397,7 +397,7 @@ function renderPeriodDetail(d, isNewDay) {
         return `
         <div class="lb-row app-link" data-open-app="${escapeHtml(appName)}" role="button" tabindex="0">
             <div class="lb-rank">${i + 1}</div>
-            <div class="lb-name">${escapeHtml(appName)}</div>
+            <div class="lb-name" title="${escapeHtml(appName)}">${escapeHtml(displayAppName(appName))}</div>
             <div class="lb-time">${formatTime(a.focusedMinutes ?? 0)}</div>
         </div>`;
     }).join('');
