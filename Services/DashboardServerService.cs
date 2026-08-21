@@ -1069,6 +1069,62 @@ namespace FastApp.Services
                 catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
             });
 
+            // ---- /api/week-heatmap?date= ---------------------------------------------
+            // The hour-by-day grid behind Overview's Week scope, in one response.
+            // The frontend used to build this by calling /api/timeline once per day
+            // of the week -- seven requests, each opening its own AppDbContext
+            // against the file the tracker is writing to, and all seven repeating
+            // on every 12-second poll for as long as the tab stayed open.
+            //
+            // Aggregating here also means sending 168 numbers instead of every
+            // session row for seven days, when the client was only ever bucketing
+            // them by hour anyway.
+            app.MapGet("/api/week-heatmap", async (string date, HttpContext context) =>
+            {
+                try
+                {
+                    using var db = new AppDbContext();
+                    DateTime targetDate = string.IsNullOrEmpty(date) ? DateTime.Today : DateTime.Parse(date).Date;
+                    DateTime monday = GetMondayStartOfWeek(targetDate);
+                    DateTime rangeEnd = monday.AddDays(7);
+                    var hiddenApps = GetHiddenApps(db);
+
+                    var sessions = await db.SessionLogs
+                        .Where(s => s.StartTime >= monday && s.StartTime < rangeEnd
+                                    && s.AppName != "SYSTEM_PC" && !hiddenApps.Contains(s.AppName))
+                        .Select(s => new { s.StartTime, s.EndTime })
+                        .ToListAsync();
+
+                    // [day 0..6 = Mon..Sun][hour 0..23] of focused minutes, matching
+                    // the Monday-first ordering every other heatmap in the UI uses.
+                    var grid = new double[7][];
+                    for (int d = 0; d < 7; d++) grid[d] = new double[24];
+
+                    foreach (var s in sessions)
+                    {
+                        int dayIdx = (int)(s.StartTime.Date - monday).TotalDays;
+                        if (dayIdx < 0 || dayIdx > 6) continue;
+                        int hour = s.StartTime.Hour;
+                        if (hour < 0 || hour > 23) continue;
+                        grid[dayIdx][hour] += (s.EndTime - s.StartTime).TotalMinutes;
+                    }
+
+                    for (int d = 0; d < 7; d++)
+                        for (int h = 0; h < 24; h++)
+                            grid[d][h] = Math.Round(grid[d][h], 1);
+
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        WeekStart = monday.ToString("yyyy-MM-dd"),
+                        // Days after the selected date have no data yet and are
+                        // rendered as "not happened" rather than "zero".
+                        ElapsedDays = Math.Min(7, (int)(targetDate.Date - monday).TotalDays + 1),
+                        Grid = grid
+                    });
+                }
+                catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+            });
+
             // ---- /api/recent-sessions?limit=&offset= ----------------------------------
             // Raw chronological app-switch feed (not aggregated by day), paged
             // newest-first, for the Activity tab's scrollable log.

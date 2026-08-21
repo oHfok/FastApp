@@ -139,12 +139,28 @@ function tickClock() {
 // step for inline handlers.
 let tbMostUsedAppName = null;
 
+// The top bar needs four numbers, but /api/overview also carries a 365-day
+// heatmap array — so this poll was pulling a year of data every 30 seconds to
+// update a clock-sized readout, on top of whatever the active tab was fetching
+// from the same endpoint. When Overview is the active tab it has already
+// fetched this, so its payload is reused and no second request is made.
+let _lastOverviewPayload = null;
+let _lastOverviewAt = 0;
+const OVERVIEW_REUSE_WINDOW_MS = 10000;
+
+function cacheOverviewPayload(data) {
+    _lastOverviewPayload = data;
+    _lastOverviewAt = Date.now();
+}
+
 async function refreshTopBar() {
     const dotEl = document.getElementById('tb-status-dot');
     try {
-        const res = await fetch(`/api/overview?date=${getLocalTodayStr()}`);
-        if (!res.ok) throw new Error('bad response');
-        const data = await res.json();
+        const fresh = _lastOverviewPayload && (Date.now() - _lastOverviewAt) < OVERVIEW_REUSE_WINDOW_MS;
+        const data = fresh
+            ? _lastOverviewPayload
+            : await apiFetch(`/api/overview?date=${getLocalTodayStr()}`);
+        if (!fresh) cacheOverviewPayload(data);
         if (dotEl) dotEl.classList.remove('offline');
 
         const focusToday = data.focusToday ?? data.FocusToday ?? 0;

@@ -24,8 +24,7 @@ async function openCategoryDetail(category) {
     listEl.innerHTML = `<div class="empty-state">Loading…</div>`;
 
     try {
-        const res = await fetch('/api/all-apps');
-        const allApps = await res.json();
+        const allApps = await apiFetch('/api/all-apps', { signal: abortableSignal('category-detail') });
 
         const apps = allApps
             .filter(a => (a.category ?? a.Category ?? 'Other') === category)
@@ -48,6 +47,7 @@ async function openCategoryDetail(category) {
                     <div class="lb-time">${formatTime(a.focus)}</div>
                 </div>`).join('');
     } catch (err) {
+        if (isAbort(err)) return;
         console.error('Failed to load category apps', err);
         listEl.innerHTML = `<div class="empty-state">Couldn't load apps for this category.</div>`;
     }

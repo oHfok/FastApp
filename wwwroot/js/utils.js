@@ -20,6 +20,93 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// --- API access -------------------------------------------------------------
+// One entry point for every call to the local backend, so three things that
+// were previously each tab's own problem happen in one place:
+//
+//  1. A non-2xx response throws. Several tabs called .json() straight on the
+//     response, so a 500 (whose body is a JSON error object) was parsed as if
+//     it were data and rendered as zeroes.
+//  2. Success and failure are recorded, which drives the stale-data banner
+//     below. Tabs used to swallow failures into console.error and leave the
+//     previous numbers on screen indefinitely with no sign they had stopped
+//     updating -- the worst outcome for an app whose whole value is accurate
+//     measurement.
+//  3. Requests can be cancelled per tab (see abortableSignal), so switching
+//     scope or tab quickly can't have a slow earlier response land last and
+//     overwrite the view the user actually asked for.
+async function apiFetch(url, options) {
+    try {
+        const res = await fetch(url, options);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        DataHealth.reportOk();
+        return data;
+    } catch (err) {
+        // An aborted request is us cancelling deliberately, not the backend
+        // failing -- it must not count towards the failure streak.
+        if (err && err.name === 'AbortError') throw err;
+        DataHealth.reportFail();
+        throw err;
+    }
+}
+
+// Per-key AbortControllers. Calling this again for the same key aborts whatever
+// that key had in flight, so each tab keeps at most one live request set.
+const _abortControllers = {};
+function abortableSignal(key) {
+    if (_abortControllers[key]) _abortControllers[key].abort();
+    const controller = new AbortController();
+    _abortControllers[key] = controller;
+    return controller.signal;
+}
+function isAbort(err) { return !!err && err.name === 'AbortError'; }
+
+// --- Connection health ------------------------------------------------------
+// Shows a persistent banner once the backend has failed repeatedly, so stale
+// numbers are never presented as current. Deliberately tolerant of a single
+// blip: the tracker restarts, the app gets busy, and one dropped request during
+// a 12-second poll is not worth shouting about.
+const DataHealth = {
+    consecutiveFailures: 0,
+    lastOkAt: null,
+    FAILURES_BEFORE_WARNING: 2,
+
+    reportOk() {
+        this.consecutiveFailures = 0;
+        this.lastOkAt = Date.now();
+        this._render();
+    },
+    reportFail() {
+        this.consecutiveFailures++;
+        this._render();
+    },
+    _render() {
+        const el = document.getElementById('stale-banner');
+        if (!el) return;
+
+        if (this.consecutiveFailures < this.FAILURES_BEFORE_WARNING) {
+            el.style.display = 'none';
+            return;
+        }
+        const since = this.lastOkAt
+            ? `Last updated ${describeAgo(this.lastOkAt)}.`
+            : 'No data has loaded yet.';
+        el.querySelector('.stale-banner-text').textContent =
+            `Not updating — can't reach FastApp. ${since}`;
+        el.style.display = 'flex';
+    }
+};
+
+function describeAgo(ts) {
+    const secs = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    if (secs < 60) return 'less than a minute ago';
+    const mins = Math.round(secs / 60);
+    if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+    const hrs = Math.round(mins / 60);
+    return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+}
+
 // --- Failure state --------------------------------------------------------
 // One shared renderer for "this didn't load", so every tab fails the same way
 // and always offers a retry. Replaces per-tab messages that named C# source
