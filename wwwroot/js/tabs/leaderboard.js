@@ -141,7 +141,7 @@ function renderFullLeaderboard() {
                 ${medalOrRank}
                 ${showMovement ? `<div class="full-lb-trend">${trendHtml}</div>` : ''}
                 <div class="full-lb-name-wrap">
-                    <div class="full-lb-icon">${escapeHtml((app.appName || '?').charAt(0).toUpperCase())}</div>
+                    <div class="full-lb-icon" style="${avatarStyle(cat)}">${escapeHtml((app.appName || '?').charAt(0).toUpperCase())}</div>
                     <div class="full-lb-name-col">
                         <div class="full-lb-app-name">${escapeHtml(app.appName)}</div>
                         <div class="full-lb-cat cat-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">${escapeHtml(cat)}</div>

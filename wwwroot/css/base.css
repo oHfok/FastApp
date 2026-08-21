@@ -57,6 +57,13 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Form controls do not inherit type from their parent, so any button or input
+   that never set a family fell back to the browser default — Arial at
+   13.3333px. Mostly invisible on icon buttons, but the drawers' close "✕" was
+   genuinely rendering in Arial. Rules that set their own family (.segmented
+   button, .btn) are more specific and still win. */
+button, input, select, textarea { font-family: inherit; }
+
 html, body {
     height: 100%;
 }
@@ -168,18 +175,35 @@ h1, h2, h3, .num-display {
     gap: 10px;
 }
 
+/* nowrap on both: below ~1200px the flex row squeezed these until the label
+   broke over two lines and "2h 55m" split into "2h" above "55m", which grew the
+   whole bar by a third and made the most persistently visible number in the
+   product briefly unreadable. */
 .tb-metric-label {
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-faint);
     font-weight: 700;
+    white-space: nowrap;
 }
 
 .tb-metric-value {
     font-family: var(--font-mono);
     font-size: 15px;
     font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Rather than let all three compress, drop the least useful one first.
+   All-Time Focus moves imperceptibly minute to minute, so losing it costs
+   almost nothing; Focus Today and Most Used are the reasons to glance up. */
+@media (max-width: 1180px) {
+    .topbar { gap: 18px; }
+    .tb-metric.alltime { display: none; }
+}
+@media (max-width: 900px) {
+    .tb-metric.mostused { display: none; }
 }
 
 .tb-metric.focus .tb-metric-value { color: var(--brass); }
@@ -338,7 +362,7 @@ h1, h2, h3, .num-display {
     display: inline-flex;
     background: var(--bg-raised);
     border: 1px solid var(--panel-border);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     padding: 3px;
     gap: 2px;
 }
@@ -349,7 +373,7 @@ h1, h2, h3, .num-display {
     outline: none;
     cursor: pointer;
     padding: 7px 16px;
-    border-radius: 7px;
+    border-radius: var(--radius-sm);
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 600;

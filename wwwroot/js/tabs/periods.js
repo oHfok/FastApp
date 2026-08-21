@@ -214,7 +214,7 @@ function windowActivityRowHtml(s) {
     // splicing it into the onclick string, same rule as the Timeline ribbon.
     return `
         <div class="card activity-row" data-open-app="${escapeHtml(name)}" role="button" tabindex="0">
-            <div class="activity-icon" style="color:${catColor(cat)}">${escapeHtml((name || '?').charAt(0).toUpperCase())}</div>
+            <div class="activity-icon" style="${avatarStyle(cat)}">${escapeHtml((name || '?').charAt(0).toUpperCase())}</div>
             <div class="activity-name-col">
                 <div class="activity-app-name">${escapeHtml(name)}</div>
                 <div class="activity-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>

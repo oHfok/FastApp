@@ -233,6 +233,16 @@ const categoryColors = {
 };
 function catColor(cat) { return categoryColors[cat] || categoryColors['Other']; }
 
+// Letter avatars used to tint the GLYPH with the category colour, which put dark
+// hues straight onto a dark ground -- "Other" (the category two thirds of apps
+// fall into) measured 1.73:1, Gaming 2.35:1. Using the colour as a translucent
+// background with light text keeps the colour coding while making the letter
+// readable regardless of which category it belongs to.
+function avatarStyle(cat) {
+    const c = catColor(cat);
+    return `background:${c}2E;border-color:${c}80;color:var(--text)`;
+}
+
 // --- Milestone badges (App Detail drawer) -----------------------------------
 // The tier ladder itself (names + hour thresholds) is owned by the backend and
 // arrives with /api/app-details — see Services/MilestoneTiers.cs. It used to be
