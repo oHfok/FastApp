@@ -37,8 +37,7 @@ function updateWrappedReadyDot() {
 async function loadWrappedAvailable() {
     const cardsEl = document.getElementById('wrapped-panel-cards');
     try {
-        const res = await fetch('/api/wrapped/available');
-        const data = await res.json();
+        const data = await apiFetch('/api/wrapped/available', { signal: abortableSignal('wrapped-available') });
         wrappedAvailableData = data || [];
 
         if (wrappedAvailableData.length === 0) {
@@ -63,6 +62,7 @@ async function loadWrappedAvailable() {
 
         updateWrappedReadyDot();
     } catch (err) {
+        if (isAbort(err)) return;
         console.error('Failed to load Wrapped availability', err);
         if (cardsEl) cardsEl.innerHTML = `<div class="empty-state" style="padding:16px;">Couldn't load Wrapped.</div>`;
     }
@@ -94,8 +94,7 @@ async function openWrappedStory(type) {
     document.getElementById('wrapped-slide-body').innerHTML = `<div class="empty-state" style="border:none;background:none;">Loading…</div>`;
 
     try {
-        const res = await fetch(`/api/wrapped?type=${type}`);
-        const data = await res.json();
+        const data = await apiFetch(`/api/wrapped?type=${type}`, { signal: abortableSignal('wrapped-story') });
         if (data.error) throw new Error(data.error);
 
         wrappedSlides = buildWrappedSlides(type, data);
@@ -104,6 +103,7 @@ async function openWrappedStory(type) {
 
         markWrappedSeen(type, data.label);
     } catch (err) {
+        if (isAbort(err)) return;
         console.error('Failed to load Wrapped story', err);
         document.getElementById('wrapped-slide-body').innerHTML = `<div class="empty-state" style="border:none;background:none;">Couldn't load this recap.</div>`;
     }
