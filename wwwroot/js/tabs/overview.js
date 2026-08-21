@@ -39,19 +39,27 @@ async function loadOverview() {
         year: "Last 365 Days"
     }[scope];
 
+    // One signal for the whole tab: switching scope quickly aborts the previous
+    // set rather than letting a slower earlier response land last and repaint
+    // the view with data the user already navigated away from.
+    const signal = abortableSignal('overview');
+
     try {
-        const [ovRes, lbRes] = await Promise.all([
-            fetch(`/api/overview?date=${dateStr}`),
-            fetch(`/api/leaderboard?timeframe=${scope}&date=${dateStr}`)
+        const [ov, leaderboard] = await Promise.all([
+            apiFetch(`/api/overview?date=${dateStr}`, { signal }),
+            apiFetch(`/api/leaderboard?timeframe=${scope}&date=${dateStr}`, { signal })
         ]);
-        const ov = await ovRes.json();
-        const leaderboard = await lbRes.json();
+
+        // Share this payload with the top bar so its 30-second poll doesn't
+        // re-request the same (365-day) response for four numbers.
+        cacheOverviewPayload(ov);
 
         renderComparisonBlock(scope, ov);
         renderCategoryBar(leaderboard);
         renderOverviewLeaderboards(leaderboard);
-        await renderActivityBody(scope, dateStr, ov);
+        await renderActivityBody(scope, dateStr, ov, signal);
     } catch (err) {
+        if (isAbort(err)) return; // superseded by a newer request — not a failure
         console.error('Overview load failed', err);
     }
 }
@@ -187,7 +195,7 @@ function renderOverviewLeaderboards(leaderboard) {
 }
 
 // --- Activity body: day ribbon, or a heatmap for week/month/year ------------
-async function renderActivityBody(scope, dateStr, ov) {
+async function renderActivityBody(scope, dateStr, ov, signal) {
     const body = document.getElementById('ov-activity-body');
     if (scope === 'day') {
         body.innerHTML = `
@@ -195,74 +203,63 @@ async function renderActivityBody(scope, dateStr, ov) {
                 <div class="timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
                 <div class="timeline-track" id="ov-timeline-track"></div>
             </div>`;
-        await renderDayTimeline(dateStr);
+        await renderDayTimeline(dateStr, signal);
     } else if (scope === 'week') {
         body.innerHTML = `<div class="empty-state">Loading…</div>`;
-        await renderWeekHeatmap(dateStr, ov);
+        await renderWeekHeatmap(dateStr, ov, signal);
     } else {
         renderDayHeatmap(scope, dateStr, ov.yearlyHeatmap || ov.YearlyHeatmap || []);
     }
 }
 
-async function renderDayTimeline(dateStr) {
+async function renderDayTimeline(dateStr, signal) {
     try {
-        const res = await fetch(`/api/timeline?date=${dateStr}`);
-        const sessions = await res.json();
+        const sessions = await apiFetch(`/api/timeline?date=${dateStr}`, { signal });
         const track = document.getElementById('ov-timeline-track');
         if (!track) return;
         track.innerHTML = timelineSegmentsHtml(sessions);
-    } catch (err) { console.error(err); }
+    } catch (err) { if (!isAbort(err)) console.error(err); }
 }
 
 // Week scope: a per-day focus bar chart (same component the Weeks & Months
 // detail page uses, for visual consistency) on top of an hour-by-day heatmap
 // (7 rows x 24 cols), both built from the same range the Week focus number
 // covers (Monday of that week -> selected date).
-async function renderWeekHeatmap(dateStr, ov) {
+async function renderWeekHeatmap(dateStr, ov, signal) {
     const body = document.getElementById('ov-activity-body');
     const target = parseDateStr(dateStr);
     const monday = mondayOf(target);
 
     // Day-total bars come straight from the yearly heatmap series /api/overview
     // already returned — no extra fetch needed, just slice out this week.
+    // Indexed by date first: this used to run .find() over the full 365-entry
+    // series once per day drawn, and the same pattern in the year heatmap below
+    // meant ~133,000 comparisons per render, repeating on every poll.
     const yearlyHeatmap = (ov && (ov.yearlyHeatmap || ov.YearlyHeatmap)) || [];
+    const byDate = new Map(yearlyHeatmap.map(x =>
+        [x.date || x.Date, x.focusedMinutes ?? x.FocusedMinutes ?? 0]));
+
     const weekDays = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date(monday); d.setDate(monday.getDate() + i);
         if (d > target) break;
         const ds = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-        const match = yearlyHeatmap.find(x => (x.date || x.Date) === ds);
-        weekDays.push({ date: ds, focusedMinutes: match ? (match.focusedMinutes ?? match.FocusedMinutes ?? 0) : 0 });
+        weekDays.push({ date: ds, focusedMinutes: byDate.get(ds) ?? 0 });
     }
     const dayBarsHtml = weekDays.length ? `
         <div class="card-label" style="margin-bottom:14px;">Daily Focus</div>
         ${weekHeatmapHtml(weekDays)}
         <div class="ov-week-divider"></div>` : '';
 
-    const dayDates = [];
-    for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); dayDates.push(d); }
-
-    // Grid rows for days after the selected date stay empty (no future data).
-    const grid = Array.from({ length: 7 }, () => new Array(24).fill(0));
-
+    // One request for the whole 7x24 grid. This was previously seven parallel
+    // /api/timeline calls — one per day — re-issued on every 12-second poll.
+    let grid = Array.from({ length: 7 }, () => new Array(24).fill(0));
     try {
-        const results = await Promise.all(dayDates.map(async (d, dayIdx) => {
-            if (d > target) return null;
-            const ds = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-            const res = await fetch(`/api/timeline?date=${ds}`);
-            return { dayIdx, sessions: await res.json() };
-        }));
-
-        results.forEach(r => {
-            if (!r) return;
-            (r.sessions || []).forEach(s => {
-                const startMins = s.startMinutes ?? s.StartMinutes ?? 0;
-                const dur = s.durationMinutes ?? s.DurationMinutes ?? 0;
-                const hour = Math.floor(startMins / 60);
-                if (hour >= 0 && hour < 24) grid[r.dayIdx][hour] += dur;
-            });
-        });
+        const data = await apiFetch(`/api/week-heatmap?date=${dateStr}`, { signal });
+        const returned = data.grid ?? data.Grid;
+        if (Array.isArray(returned) && returned.length === 7) grid = returned;
     } catch (err) {
+        if (isAbort(err)) return;
         console.error('Week heatmap load failed', err);
     }
 
@@ -300,13 +297,17 @@ function renderDayHeatmap(scope, dateStr, heatData) {
 
     const maxMins = Math.max(...heatData.map(d => d.focusedMinutes ?? d.FocusedMinutes ?? 0), 1);
 
+    // Indexed once instead of a linear .find() per cell — at year scope that
+    // was 365 scans of a 365-entry array on every render, every poll tick.
+    const byDate = new Map(heatData.map(x =>
+        [x.date || x.Date, x.focusedMinutes ?? x.FocusedMinutes ?? 0]));
+
     let cellsHtml = '';
     for (let i = 0; i < days; i++) {
         const d = new Date(oldest);
         d.setDate(oldest.getDate() + i);
         const ds = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-        const match = heatData.find(x => (x.date || x.Date) === ds);
-        const mins = match ? (match.focusedMinutes ?? match.FocusedMinutes ?? 0) : 0;
+        const mins = byDate.get(ds) ?? 0;
         const intensity = mins / maxMins;
         const bg = heatColor(intensity);
         const tip = `${fmtDateEU(d)}<br>${formatTime(mins)} focused`;

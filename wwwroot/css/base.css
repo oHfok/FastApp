@@ -455,6 +455,26 @@ select.field {
     border-radius: var(--radius);
 }
 
+/* Stale-data banner. Sits at the top of the content area rather than in the
+   top bar, because the top bar already carries a small status dot that is easy
+   to miss — this is the case where the numbers below it are wrong, so it has to
+   be unmissable without being alarming enough to hide the data itself. */
+.stale-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 107, 107, 0.08);
+    border: 1px solid var(--rose-dim, rgba(255, 107, 107, 0.35));
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+}
+.stale-banner svg { width: 17px; height: 17px; color: var(--rose); flex-shrink: 0; }
+.stale-banner-text { flex: 1; }
+
 /* ---------- Keyboard focus ----------------------------------------------
    The dashboard previously had exactly one :focus rule in the entire
    stylesheet, so even the controls that WERE reachable gave no sign of it.

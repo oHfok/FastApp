@@ -78,9 +78,17 @@ async function loadHiddenApps() {
 }
 
 async function unhideAppSetting(appName) {
-    await fetch('/api/unhide', { method: 'POST', body: appName });
-    loadHiddenApps();
-    refreshActiveTab();
+    try {
+        const res = await fetch('/api/unhide', { method: 'POST', body: appName });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        loadHiddenApps();
+        refreshActiveTab();
+    } catch (err) {
+        console.error('Unhide failed', err);
+        // Re-read the list so it shows what is actually stored; the row stays
+        // put rather than disappearing as though the change had worked.
+        loadHiddenApps();
+    }
 }
 
 async function loadRetentionSetting() {

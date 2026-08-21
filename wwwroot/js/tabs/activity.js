@@ -28,8 +28,7 @@ async function fetchActivityPage(isFirstPage) {
     loadMoreBtn.textContent = 'Loading…';
 
     try {
-        const res = await fetch(`/api/recent-sessions?limit=${ACTIVITY_PAGE_SIZE}&offset=${activityOffset}`);
-        const data = await res.json();
+        const data = await apiFetch(`/api/recent-sessions?limit=${ACTIVITY_PAGE_SIZE}&offset=${activityOffset}`);
         const sessions = data.sessions ?? data.Sessions ?? [];
         activityTotalCount = data.totalCount ?? data.TotalCount ?? 0;
 

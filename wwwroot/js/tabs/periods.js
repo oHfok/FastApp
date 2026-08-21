@@ -42,9 +42,8 @@ async function loadPeriodList(silent) {
     const listEl = document.getElementById('period-list');
     if (!silent) listEl.innerHTML = `<div class="empty-state">Loading…</div>`;
     try {
-        const res = await fetch(`/api/periods?type=${periodType}`);
-        if (!res.ok) throw new Error('endpoint missing');
-        const periods = await res.json();
+        const periods = await apiFetch(`/api/periods?type=${periodType}`,
+                                      { signal: abortableSignal('periods') });
 
         if (!periods || periods.length === 0) {
             listEl.innerHTML = `<div class="empty-state">No ${periodType}s recorded yet.</div>`;
@@ -323,9 +322,8 @@ async function openPeriodDetail(startDate, silent) {
     if (!silent) document.getElementById('period-detail-body').innerHTML = `<div class="empty-state">Loading…</div>`;
 
     try {
-        const res = await fetch(`/api/period-detail?type=${periodType}&start=${startDate}`);
-        if (!res.ok) throw new Error('endpoint missing');
-        const d = await res.json();
+        const d = await apiFetch(`/api/period-detail?type=${periodType}&start=${startDate}`,
+                                 { signal: abortableSignal('period-detail') });
         renderPeriodDetail(d, isNewDay);
     } catch (err) {
         // A failed silent poll shouldn't blow away an already-loaded detail

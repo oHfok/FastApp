@@ -8,10 +8,9 @@ let allAppsSearch = '';
 
 async function loadAllApps() {
     try {
-        const res = await fetch('/api/all-apps');
-        allAppsData = await res.json();
+        allAppsData = await apiFetch('/api/all-apps', { signal: abortableSignal('allapps') });
         renderAllApps();
-    } catch (err) { console.error(err); }
+    } catch (err) { if (!isAbort(err)) console.error('All apps load failed', err); }
 }
 
 function handleAllAppsSearch() {

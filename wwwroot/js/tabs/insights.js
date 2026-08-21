@@ -11,8 +11,8 @@ let fatigueChartInstance = null;
 
 async function loadInsights() {
     try {
-        const res = await fetch(`/api/insights?date=${getLocalTodayStr()}`);
-        const data = await res.json();
+        const data = await apiFetch(`/api/insights?date=${getLocalTodayStr()}`,
+                                    { signal: abortableSignal('insights') });
         if (data.error) { console.error(data.error); return; }
 
         document.getElementById('in-longest-block').textContent = formatTime(data.longestBlock ?? data.LongestBlock ?? 0);
@@ -22,7 +22,7 @@ async function loadInsights() {
         renderFatigueChart(data.fatigue ?? data.Fatigue ?? []);
         renderInsightsHeatmap(data.heatmap ?? data.Heatmap ?? []);
     } catch (err) {
-        console.error('Insights load failed', err);
+        if (!isAbort(err)) console.error('Insights load failed', err);
     }
 }
 
@@ -177,13 +177,28 @@ async function loadCategoryClassification() {
 }
 
 async function setCategoryClassification(category, classification) {
-    await fetch('/api/settings/category-classification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, classification })
-    });
-    await loadCategoryClassification(); // refresh which button is highlighted
-    loadInsights(); // recompute + redraw the rhythm chart against the new mapping
+    const listEl = document.getElementById('in-classification-list');
+    try {
+        const res = await fetch('/api/settings/category-classification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category, classification })
+        });
+        // This response was never checked, so a rejected value still re-rendered
+        // and left the button looking as though the change had taken.
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await loadCategoryClassification(); // refresh which button is highlighted
+        loadInsights(); // recompute + redraw the rhythm chart against the new mapping
+    } catch (err) {
+        console.error('Classification update failed', err);
+        // Re-read from the server so the highlighted button reflects what is
+        // actually stored, not what was clicked.
+        await loadCategoryClassification();
+        if (listEl) {
+            listEl.insertAdjacentHTML('afterbegin',
+                `<div class="error-state-detail" style="color:var(--rose);margin-bottom:10px;">Couldn't save that change.</div>`);
+        }
+    }
 }
 
 Dashboard.tabs.insights = {

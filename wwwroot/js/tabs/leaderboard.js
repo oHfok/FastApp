@@ -35,10 +35,10 @@ function handleLbSearch() {
 async function fetchFullLeaderboard() {
     const tf = document.getElementById('lb-scope').dataset.value || 'all';
     try {
-        const res = await fetch(`/api/leaderboard?timeframe=${tf}&date=${getLocalTodayStr()}`);
-        lbData = await res.json();
+        lbData = await apiFetch(`/api/leaderboard?timeframe=${tf}&date=${getLocalTodayStr()}`,
+                                { signal: abortableSignal('leaderboard') });
         renderFullLeaderboard();
-    } catch (err) { console.error(err); }
+    } catch (err) { if (!isAbort(err)) console.error('Leaderboard load failed', err); }
 }
 
 function renderFullLeaderboard() {
@@ -51,13 +51,22 @@ function renderFullLeaderboard() {
     const primaryMins = a => lbRankBy === 'uptime' ? (a.totalMinutes || 0) : (a.focusedMinutes || 0);
     const prevPrimaryMins = a => lbRankBy === 'uptime' ? (a.prevTotalMinutes || 0) : (a.prevFocusedMinutes || 0);
 
-    const filtered = lbData.filter(a => a.appName.toLowerCase().includes(lbSearch));
-    const sorted = [...filtered].sort((a, b) => primaryMins(b) - primaryMins(a));
+    // Rank against the FULL dataset, then filter for display. Both rankings used
+    // to be computed from the search-filtered list, which meant a search silently
+    // changed what the numbers meant: an app could be handed rank #1 (and the
+    // gold medal that goes with it) purely because the other apps were typed out
+    // of view, and the "movement since yesterday" arrows recomputed against a
+    // different population every keystroke. Searching should change which rows
+    // you see, not what they claim.
+    const rankedNow = [...lbData].sort((a, b) => primaryMins(b) - primaryMins(a));
+    const rankOf = {};
+    rankedNow.forEach((a, i) => { rankOf[a.appName] = i + 1; });
 
-    // Rank yesterday's data (by the same metric) to compute the day-over-day delta.
-    const prevSorted = [...filtered].sort((a, b) => prevPrimaryMins(b) - prevPrimaryMins(a));
+    const rankedPrev = [...lbData].sort((a, b) => prevPrimaryMins(b) - prevPrimaryMins(a));
     const prevRankOf = {};
-    prevSorted.forEach((a, i) => { prevRankOf[a.appName] = i + 1; });
+    rankedPrev.forEach((a, i) => { prevRankOf[a.appName] = i + 1; });
+
+    const sorted = rankedNow.filter(a => a.appName.toLowerCase().includes(lbSearch));
 
     if (sorted.length === 0) {
         container.innerHTML = `<div class="empty-state">No apps match your search.</div>`;
@@ -80,8 +89,8 @@ function renderFullLeaderboard() {
             <span title="Focused time as a share of total time the app was open">Efficiency</span>
         </div>`;
 
-    const rowsHtml = sorted.map((app, i) => {
-        const rank = i + 1;
+    const rowsHtml = sorted.map((app) => {
+        const rank = rankOf[app.appName];
         const totalMins = app.totalMinutes || 0;
         const activeMins = app.activeMinutes || 0;
         // AFK isn't a separate field from the backend — it's the gap between total

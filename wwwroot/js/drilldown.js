@@ -50,17 +50,18 @@ async function openDrilldown(appName) {
     document.getElementById('dd-icon').textContent = appName.charAt(0).toUpperCase();
     document.getElementById('dd-rank').textContent = 'Loading rank…';
 
+    // Opening a second app before the first finished used to leave whichever
+    // response arrived last painting into the drawer, regardless of which app
+    // the title said. One signal for the drawer fixes that.
+    const signal = abortableSignal('drilldown');
+
     try {
-        const [detailRes, allTimeRes, allAppsRes, pinRes] = await Promise.all([
-            fetch(`/api/app-details?appName=${encodeURIComponent(appName)}`),
-            fetch(`/api/leaderboard?timeframe=all&date=${getLocalTodayStr()}`),
-            fetch(`/api/all-apps`),
-            fetch(`/api/settings/pin`)
+        const [data, allTimeBoard, allApps, pinData] = await Promise.all([
+            apiFetch(`/api/app-details?appName=${encodeURIComponent(appName)}`, { signal }),
+            apiFetch(`/api/leaderboard?timeframe=all&date=${getLocalTodayStr()}`, { signal }),
+            apiFetch(`/api/all-apps`, { signal }),
+            apiFetch(`/api/settings/pin`, { signal })
         ]);
-        const data = await detailRes.json();
-        const allTimeBoard = await allTimeRes.json();
-        const allApps = await allAppsRes.json();
-        const pinData = await pinRes.json();
         const hasPin = pinData.hasPin ?? pinData.HasPin ?? false;
 
         if (data.error) { console.error(data.error); return; }
@@ -82,7 +83,8 @@ async function openDrilldown(appName) {
         let opts = allCategories.map(c => `<option value="${c}" ${currentCategory === c ? 'selected' : ''}>${c}</option>`).join('');
         if (currentCategory && !allCategories.includes(currentCategory)) opts += `<option value="${currentCategory}" selected>${currentCategory}</option>`;
         catSelect.innerHTML = opts;
-        catSelect.onchange = () => updateCategory(appName, catSelect.value);
+        // currentCategory is captured so a failed save can put the dropdown back.
+        catSelect.onchange = () => updateCategory(appName, catSelect.value, catSelect, currentCategory);
 
         // Most used day
         document.getElementById('dd-max-day').textContent = data.maxFocusDay || 'N/A';
@@ -255,7 +257,13 @@ async function openDrilldown(appName) {
         hideBtn.onclick = () => hideAppFromDetail(appName);
 
     } catch (err) {
+        if (isAbort(err)) return; // a newer app was opened before this finished
         console.error('Failed to load app details', err);
+        document.getElementById('dd-tab-panel-overview').innerHTML = errorStateHtml(
+            "Couldn't load this app",
+            'FastApp is running but the details for this app did not come back.',
+            null
+        );
     }
 }
 
@@ -343,8 +351,7 @@ async function toggleCompareChart(period, appName, rowEl) {
     if (compareChartInstances[period]) return; // already rendered — just toggling visibility
 
     try {
-        const res = await fetch(`/api/app-period-breakdown?appName=${encodeURIComponent(appName)}&period=${period}`);
-        const data = await res.json();
+        const data = await apiFetch(`/api/app-period-breakdown?appName=${encodeURIComponent(appName)}&period=${period}`);
         const labels = data.labels ?? data.Labels ?? [];
         const current = data.current ?? data.Current ?? [];
         const previous = data.previous ?? data.Previous ?? [];
@@ -394,8 +401,8 @@ function setTrendGranularity(granularity, btnEl) {
 // spec ("presented numerically and visually").
 async function loadUsageTrend(appName, granularity) {
     try {
-        const res = await fetch(`/api/app-usage-trend?appName=${encodeURIComponent(appName)}&granularity=${granularity}`);
-        const data = await res.json();
+        const data = await apiFetch(`/api/app-usage-trend?appName=${encodeURIComponent(appName)}&granularity=${granularity}`,
+                                    { signal: abortableSignal('usage-trend') });
         const labels = data.labels ?? data.Labels ?? [];
         const values = data.values ?? data.Values ?? [];
 
@@ -430,23 +437,54 @@ async function loadUsageTrend(appName, granularity) {
             }
         });
     } catch (err) {
+        if (isAbort(err)) return;
         console.error('Failed to load usage trend', err);
     }
 }
 
-async function updateCategory(appName, category) {
-    await fetch('/api/update-category', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appName, category })
-    });
-    refreshActiveTab();
+// These writes are applied by the WPF app via a messenger rather than by the
+// web server directly, so failure is a real possibility — and both used to be
+// fire-and-forget. The UI kept showing the new value, the change was lost on
+// the next refresh, and nothing was ever reported. Both now confirm and, on
+// failure, put the control back where it was.
+async function updateCategory(appName, category, selectEl, previousCategory) {
+    try {
+        const res = await fetch('/api/update-category', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appName, category })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        flashDrilldownStatus('Category updated.', false);
+        refreshActiveTab();
+    } catch (err) {
+        console.error('Category update failed', err);
+        if (selectEl && previousCategory !== undefined) selectEl.value = previousCategory;
+        flashDrilldownStatus("Couldn't save that category.", true);
+    }
 }
 
 async function hideAppFromDetail(appName) {
-    await fetch('/api/hide', { method: 'POST', body: appName });
-    closeDrilldown();
-    refreshActiveTab();
+    try {
+        const res = await fetch('/api/hide', { method: 'POST', body: appName });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        closeDrilldown();
+        refreshActiveTab();
+    } catch (err) {
+        console.error('Hide failed', err);
+        flashDrilldownStatus("Couldn't hide this app.", true);
+    }
+}
+
+// Reuses the Limits panel's status line, which already exists and is styled;
+// the Overview panel had no feedback element of its own.
+function flashDrilldownStatus(text, isError) {
+    const status = document.getElementById('dd-category-status');
+    if (!status) return;
+    status.textContent = text;
+    status.style.color = isError ? 'var(--rose)' : 'var(--teal)';
+    status.style.display = 'block';
+    setTimeout(() => { status.style.display = 'none'; }, 2500);
 }
 
 function refreshActiveTab() {

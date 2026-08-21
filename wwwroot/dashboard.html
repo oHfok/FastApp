@@ -145,6 +145,15 @@
         <!-- ============ MAIN ============ -->
         <main class="main" id="main-content" tabindex="-1">
 
+            <!-- Shown by DataHealth once the backend has failed repeatedly, so
+                 numbers already on screen are never mistaken for current ones. -->
+            <div class="stale-banner" id="stale-banner" style="display:none;" role="status" aria-live="polite">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+                <span class="stale-banner-text">Not updating — can't reach FastApp.</span>
+                <button class="btn btn-ghost" onclick="refreshActiveTab()">Retry</button>
+            </div>
+
+
             <!-- ===== VIEW: OVERVIEW ===== -->
             <section id="view-overview" class="view active">
                 <div class="view-head">
@@ -513,8 +522,9 @@
         <div class="dd-section">
             <div class="dd-section-label">Category</div>
             <div class="dd-cat-row">
-                <select class="field" id="dd-category-select" style="flex:1;"></select>
+                <select class="field" id="dd-category-select" style="flex:1;" aria-label="Category for this app"></select>
             </div>
+            <div class="retention-status" id="dd-category-status">Saved.</div>
         </div>
 
         <div class="dd-section">
