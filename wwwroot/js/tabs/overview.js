@@ -227,7 +227,7 @@ function renderCategoryBar(leaderboard) {
 
     if (totalMins === 0) {
         barEl.innerHTML = `<div class="cat-bar-seg" style="width:100%;background:var(--panel-border)"></div>`;
-        legendEl.innerHTML = `<span style="color:var(--text-faint);font-size:12px;">No category data for this period.</span>`;
+        legendEl.innerHTML = `<span style="color:var(--text-faint);font-size:var(--fs-small);">No category data for this period.</span>`;
         return;
     }
 

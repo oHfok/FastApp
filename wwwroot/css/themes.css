@@ -94,7 +94,7 @@
     content: ">";
     font-family: var(--font-mono);
     font-weight: 700;
-    font-size: 16px;
+    font-size: var(--fs-stat);
     color: var(--text-faint);
     width: 20px;
     flex-shrink: 0;
