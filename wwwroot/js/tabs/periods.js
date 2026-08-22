@@ -402,7 +402,7 @@ function renderPeriodDetail(d, isNewDay) {
             <div class="card compare-block ${b.current ? 'is-current' : ''}">
                 <div class="card-label">${b.tag}</div>
                 <div class="stat-value mono" style="margin-top:6px;color:var(--brass)">${formatHours((mins || 0) / 60)}</div>
-                <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Focused · ${lbl}</div>
+                <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:4px;">Focused · ${lbl}</div>
                 ${barHtml}
             </div>`;
     }).join('');

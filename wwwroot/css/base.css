@@ -46,6 +46,30 @@
     --font-body: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
+    /* --- Type ramp ---------------------------------------------------------
+       There was no scale here: 143 font-size literals typed at the point of
+       use, so the only thing keeping two similar elements in step was whoever
+       wrote the second one remembering the first. They drifted -- the 9-17px
+       band held ten distinct sizes including a stray 11.5 and 12.5, and 1px
+       apart carries no hierarchy, it just reads as unsettled.
+
+       Six text steps, each with a job. Pick by role, never by number; if a new
+       element does not fit one of these, that is a design question, not a
+       reason to type a literal. */
+    --fs-micro:   10px;   /* uppercase micro-labels above a value */
+    --fs-caption: 11px;   /* captions, chips, secondary meta */
+    --fs-small:   12px;   /* explanatory paragraphs */
+    --fs-body:    13px;   /* default: row text and inline values */
+    --fs-strong:  14px;   /* primary row identifiers, emphasised values */
+    --fs-stat:    16px;   /* compact numeric readouts */
+
+    /* Display steps. Wrapped keeps a handful of bespoke per-slide sizes on
+       purpose -- it is a showcase surface, not a list. */
+    --fs-title:   20px;   /* drawer and panel titles */
+    --fs-view:    24px;   /* page headings */
+    --fs-display: 26px;   /* stat-card values */
+    --fs-hero:    44px;   /* the hero stat */
+
     --radius: 14px;
     --radius-sm: 8px;
 
@@ -62,7 +86,7 @@
    13.3333px. Mostly invisible on icon buttons, but the drawers' close "✕" was
    genuinely rendering in Arial. Rules that set their own family (.segmented
    button, .btn) are more specific and still win. */
-button, input, select, textarea { font-family: inherit; }
+button, input, select, textarea { font-family: inherit; font-size: inherit; }
 
 html, body {
     height: 100%;
@@ -75,6 +99,10 @@ body {
         radial-gradient(ellipse 700px 500px at 100% 10%, rgba(139, 124, 255, 0.06), transparent 60%);
     color: var(--text);
     font-family: var(--font-body);
+    /* The ramp needs a root. Without this, body took the UA default of 16px and
+       anything added without its own rule inherited a size that is not a step
+       on the scale -- which is how the drift started. */
+    font-size: var(--fs-body);
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
 }
@@ -117,7 +145,7 @@ h1, h2, h3, .num-display {
     gap: 8px;
     font-family: var(--font-display);
     font-weight: 600;
-    font-size: 14px;
+    font-size: var(--fs-strong);
     letter-spacing: 0.02em;
 }
 
@@ -156,14 +184,14 @@ h1, h2, h3, .num-display {
 
 .tb-time {
     font-family: var(--font-mono);
-    font-size: 15px;
+    font-size: var(--fs-strong);
     font-weight: 600;
     letter-spacing: 0.03em;
 }
 
 .tb-date {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--fs-micro);
     color: var(--text-faint);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -180,7 +208,7 @@ h1, h2, h3, .num-display {
    whole bar by a third and made the most persistently visible number in the
    product briefly unreadable. */
 .tb-metric-label {
-    font-size: 10px;
+    font-size: var(--fs-micro);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-faint);
@@ -190,7 +218,7 @@ h1, h2, h3, .num-display {
 
 .tb-metric-value {
     font-family: var(--font-mono);
-    font-size: 15px;
+    font-size: var(--fs-strong);
     font-weight: 600;
     white-space: nowrap;
 }
@@ -265,7 +293,7 @@ h1, h2, h3, .num-display {
     padding: 10px 14px;
     border-radius: var(--radius-sm);
     color: var(--text-dim);
-    font-size: 13px;
+    font-size: var(--fs-body);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s;
@@ -323,12 +351,12 @@ h1, h2, h3, .num-display {
 }
 
 .view-title {
-    font-size: 24px;
+    font-size: var(--fs-view);
     font-weight: 700;
 }
 
 .view-sub {
-    font-size: 13px;
+    font-size: var(--fs-body);
     color: var(--text-faint);
     margin-top: 4px;
 }
@@ -350,7 +378,7 @@ h1, h2, h3, .num-display {
 }
 
 .card-label {
-    font-size: 10px;
+    font-size: var(--fs-micro);
     text-transform: uppercase;
     letter-spacing: 0.09em;
     color: var(--text-faint);
@@ -375,7 +403,7 @@ h1, h2, h3, .num-display {
     padding: 7px 16px;
     border-radius: var(--radius-sm);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-caption);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -398,7 +426,7 @@ h1, h2, h3, .num-display {
     border-radius: var(--radius-sm);
     padding: 8px 12px;
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--fs-body);
     font-family: var(--font-body);
     outline: none;
     transition: border-color 0.15s;
@@ -420,7 +448,7 @@ select.field {
 .btn {
     padding: 9px 18px;
     border-radius: var(--radius-sm);
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 700;
     font-family: var(--font-body);
     cursor: pointer;
@@ -449,7 +477,7 @@ select.field {
     align-items: center;
     gap: 4px;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-caption);
     font-weight: 600;
     padding: 3px 9px;
     border-radius: 20px;
@@ -481,7 +509,7 @@ select.field {
     padding: 9px 12px;
     border-radius: 8px;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-caption);
     line-height: 1.5;
     color: var(--text);
     pointer-events: none;
@@ -498,7 +526,7 @@ select.field {
     padding: 48px 16px;
     color: var(--text-faint);
     font-weight: 600;
-    font-size: 13px;
+    font-size: var(--fs-body);
     background: var(--panel);
     border: 1px dashed var(--panel-border);
     border-radius: var(--radius);
@@ -533,14 +561,14 @@ select.field {
 }
 .first-run-title {
     font-family: var(--font-display);
-    font-size: 15px;
+    font-size: var(--fs-strong);
     font-weight: 700;
     color: var(--brass);
     margin-bottom: 8px;
 }
 .first-run-body {
     margin: 0 0 8px;
-    font-size: 13px;
+    font-size: var(--fs-body);
     line-height: 1.6;
     color: var(--text-dim);
     max-width: 68ch;
@@ -576,7 +604,7 @@ select.field {
     border: none;
     color: var(--text-dim);
     font-family: var(--font-body);
-    font-size: 13px;
+    font-size: var(--fs-body);
     font-weight: 600;
     padding: 7px 12px;
     cursor: pointer;
@@ -585,7 +613,7 @@ select.field {
 .date-stepper button + button { border-left: 1px solid var(--panel-border); }
 .date-stepper button:hover:not(:disabled) { background: var(--bg-raised); color: var(--text); }
 .date-stepper button:disabled { opacity: 0.35; cursor: default; }
-#ov-date-prev, #ov-date-next { font-size: 17px; line-height: 1; padding: 6px 12px; }
+#ov-date-prev, #ov-date-next { font-size: var(--fs-stat); line-height: 1; padding: 6px 12px; }
 
 /* Stale-data banner. Sits at the top of the content area rather than in the
    top bar, because the top bar already carries a small status dot that is easy
@@ -601,7 +629,7 @@ select.field {
     background: rgba(255, 107, 107, 0.08);
     border: 1px solid var(--rose-dim, rgba(255, 107, 107, 0.35));
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--fs-body);
     font-weight: 600;
 }
 .stale-banner svg { width: 17px; height: 17px; color: var(--rose); flex-shrink: 0; }
@@ -646,7 +674,7 @@ select.field {
     color: #10121A;
     padding: 10px 18px;
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--fs-body);
     border-radius: 0 0 var(--radius-sm) 0;
 }
 .skip-link:focus { left: 0; }
@@ -665,12 +693,12 @@ select.field {
 .error-state-title {
     color: var(--text);
     font-weight: 700;
-    font-size: 14px;
+    font-size: var(--fs-strong);
     margin-bottom: 6px;
 }
 .error-state-detail {
     color: var(--text-faint);
-    font-size: 12.5px;
+    font-size: var(--fs-small);
     max-width: 46ch;
     margin: 0 auto 16px;
     line-height: 1.55;

@@ -324,7 +324,7 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"></path></svg>
                         </button>
                         <div>
-                            <div class="view-title" id="period-detail-title" style="font-size:20px;">—</div>
+                            <div class="view-title" id="period-detail-title">—</div>
                             <div class="view-sub" id="period-detail-sub">—</div>
                         </div>
                     </div>
@@ -410,7 +410,7 @@
 <div class="drawer-overlay" id="settings-overlay"></div>
 <div class="drawer" id="settings-drawer">
     <button class="drawer-close" id="settings-close">✕</button>
-    <h2 style="font-size:20px;margin-bottom:16px;">Settings</h2>
+    <h2 class="view-title" style="margin-bottom:16px;">Settings</h2>
 
     <div class="segmented" id="settings-tab-toggle" style="margin-bottom:20px;">
         <button class="active" data-tab="appearance" onclick="setSettingsTab('appearance', this)">Appearance</button>
@@ -421,7 +421,7 @@
     <div class="settings-tab-panel" data-tab="appearance">
     <div class="dd-section">
         <div class="dd-section-label">Dashboard Theme</div>
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">
             More than a color swap — typography, shape, and density change too. Applies instantly, saved on this device only.
         </p>
         <div class="theme-picker" id="theme-picker">
@@ -442,7 +442,7 @@
 
     <div class="dd-section">
         <div class="dd-section-label">Timeline Colors</div>
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">
             "Individual App" gives every app its own color, so a busy day's Timeline ribbon is actually readable at a
             glance instead of a few apps sharing categories blurring together. "By Category" colors by category instead,
             like the rest of the dashboard.
@@ -455,7 +455,7 @@
 
     <div class="dd-section">
         <div class="dd-section-label">Timeline Range</div>
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">
             "Full Day" always spans midnight to midnight. "Fit to Activity" trims the axis to your first and last
             recorded session — on a typical day most of the 24 hours are asleep or away, so trimming makes the hours
             you actually used several times wider on screen. Falls back to the full day when a day already spans most
@@ -471,7 +471,7 @@
     <div class="settings-tab-panel" data-tab="data" style="display:none;">
     <div class="dd-section">
         <div class="dd-section-label">Database Retention</div>
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">
             How long detailed session and macro logs are kept. Anything older is permanently deleted the next
             time FastApp starts, and cannot be recovered without a backup. Your daily totals are never affected.
         </p>
@@ -490,7 +490,7 @@
 
     <div class="dd-section">
         <div class="dd-section-label">Database Size</div>
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">
             Everything lives in one SQLite file. This is a rough estimate (total size ÷ days tracked, projected forward) —
             not an exact model of retention or usage trends.
         </p>
@@ -518,13 +518,13 @@
 
     <div class="dd-section">
         <div class="dd-section-label">Backup &amp; Restore</div>
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">
             Download a complete copy of your tracked history as a single file. Everything lives in one file on this PC —
             worth keeping a copy of that somewhere else too.
         </p>
         <a class="btn btn-brass" href="/api/backup" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">Download Backup</a>
 
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">
             Restoring <strong style="color:var(--rose);">replaces everything currently tracked</strong> with the backup
             file's contents, and restarts FastApp. Your current data is saved first, just in case — but this isn't
             something to click through by accident.
@@ -538,7 +538,7 @@
     <div class="settings-tab-panel" data-tab="privacy" style="display:none;">
     <div class="dd-section">
         <div class="dd-section-label">Window Title Capture</div>
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">
             Off by default. When on, the Activity feed also records each window's title (e.g. a browser tab's page name
             or a document's filename) alongside the app name — so you can tell "coding in VS Code" apart from
             "watching YouTube in Chrome." Titles can contain anything the page/document author put there, so treat this
@@ -558,11 +558,11 @@
 
     <div class="dd-section">
         <div class="dd-section-label">Parental PIN</div>
-        <p style="font-size:12px;color:var(--text-faint);margin-bottom:12px;" id="pin-explainer">
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;" id="pin-explainer">
             Required to extend an app's time past its daily limit for the day. Not stored in plain text — but this
             isn't a hardened security control, just enough friction to make "just one more round" require asking first.
         </p>
-        <div id="pin-status-line" style="font-size:12px;color:var(--text-dim);margin-bottom:12px;display:none;">
+        <div id="pin-status-line" style="font-size:var(--fs-small);color:var(--text-dim);margin-bottom:12px;display:none;">
             A PIN is currently set. <span class="app-link" onclick="showPinForm()">Change it</span>
         </div>
         <div id="pin-form" class="retention-row">
@@ -619,13 +619,13 @@
 
         <div class="dd-section">
             <div class="dd-section-label">Most Used Day</div>
-            <div style="font-family:var(--font-mono);font-size:14px;font-weight:600;" id="dd-max-day">—</div>
+            <div style="font-family:var(--font-mono);font-size:var(--fs-strong);font-weight:600;" id="dd-max-day">—</div>
         </div>
 
         <div class="dd-section">
             <div class="dd-section-label">Last 30 Days</div>
-            <div style="font-size:14px;font-weight:600;" id="dd-consistency">—</div>
-            <div style="font-size:12px;color:var(--text-faint);margin-top:6px;" id="dd-pattern"></div>
+            <div style="font-size:var(--fs-strong);font-weight:600;" id="dd-consistency">—</div>
+            <div style="font-size:var(--fs-small);color:var(--text-faint);margin-top:6px;" id="dd-pattern"></div>
         </div>
 
         <div class="dd-section">
@@ -662,7 +662,7 @@
 
         <div class="dd-section">
             <div class="dd-section-label">Milestone</div>
-            <div style="font-size:12px;color:var(--text-faint);margin-bottom:14px;">Tiers based on cumulative focused time in this app.</div>
+            <div style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:14px;">Tiers based on cumulative focused time in this app.</div>
             <div class="dd-tier-ladder" id="dd-tier-ladder"></div>
             <div class="dd-limit-bar-wrap" id="dd-milestone-bar-wrap" style="margin-top:16px;">
                 <div class="dd-limit-bar"><div class="dd-limit-bar-fill" id="dd-milestone-bar-fill"></div></div>
@@ -694,7 +694,7 @@
             </div>
             <div class="dd-limit-row">
                 <input type="text" class="field" id="dd-limit-input" placeholder="0 = No limit" style="width:110px;" inputmode="numeric">
-                <span style="font-size:12px;color:var(--text-faint);">minutes / day</span>
+                <span style="font-size:var(--fs-small);color:var(--text-faint);">minutes / day</span>
             </div>
             <label class="dd-toggle-label">
                 <input type="checkbox" id="dd-strict-toggle">
@@ -708,7 +708,7 @@
 
             <div id="dd-extend-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--panel-border-soft);">
                 <div id="dd-extend-controls">
-                    <div style="font-size:12px;color:var(--text-faint);margin-bottom:10px;">Need more time today?</div>
+                    <div style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:10px;">Need more time today?</div>
                     <div class="dd-limit-row">
                         <select class="field" id="dd-extend-minutes" style="width:100px;">
                             <option value="10">+10 min</option>

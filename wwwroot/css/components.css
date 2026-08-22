@@ -27,7 +27,7 @@
 
 .stat-value {
     font-family: var(--font-mono);
-    font-size: 26px;
+    font-size: var(--fs-display);
     font-weight: 600;
 }
 
@@ -40,7 +40,7 @@
     border-color: var(--brass-dim);
 }
 .stat-block.stat-hero .card-label {
-    font-size: 13px;
+    font-size: var(--fs-body);
     font-weight: 700;
     letter-spacing: 0.03em;
     /* --brass-dim (#8A6321) measures 3.64:1 here and fails as text. This is a
@@ -50,7 +50,7 @@
        borders and hover states where the contrast floor does not apply. */
     color: #B07C29;
 }
-.stat-block.stat-hero .stat-value { font-size: 44px; line-height: 1.05; }
+.stat-block.stat-hero .stat-value { font-size: var(--fs-hero); line-height: 1.05; }
 .hero-share { margin-top: 16px; max-width: 460px; }
 .hero-share .compare-bar { height: 8px; }
 .hero-share .compare-bar-caption { margin-top: 7px; }
@@ -58,9 +58,9 @@
 .stat-block.stat-minor {
     padding: 12px 16px;
 }
-.stat-block.stat-minor .card-label { font-size: 11px; margin-bottom: 4px; }
-.stat-block.stat-minor .stat-value { font-size: 17px; font-weight: 600; color: var(--text-dim); }
-.stat-block.stat-minor .trend-pill { margin-top: 4px; font-size: 10px; }
+.stat-block.stat-minor .card-label { font-size: var(--fs-caption); margin-bottom: 4px; }
+.stat-block.stat-minor .stat-value { font-size: var(--fs-stat); font-weight: 600; color: var(--text-dim); }
+.stat-block.stat-minor .trend-pill { margin-top: 4px; font-size: var(--fs-micro); }
 
 /* ---------- Category progress bar ---------- */
 .cat-bar {
@@ -90,7 +90,7 @@
     display: flex;
     align-items: center;
     gap: 7px;
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 600;
     color: var(--text-dim);
 }
@@ -164,14 +164,14 @@
 
 .lb-rank {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 700;
     color: var(--text-faint);
     text-align: center;
 }
 
-.lb-name { font-weight: 600; font-size: 13px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lb-time { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text-dim); }
+.lb-name { font-weight: 600; font-size: var(--fs-body); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-time { font-family: var(--font-mono); font-size: var(--fs-body); font-weight: 600; color: var(--text-dim); }
 
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
@@ -194,7 +194,7 @@
     grid-template-columns: 46px 30px 1fr 110px 90px 150px;
     gap: 18px;
     padding: 0 20px 12px;
-    font-size: 10px;
+    font-size: var(--fs-micro);
     text-transform: uppercase;
     letter-spacing: 0.07em;
     color: var(--text-faint);
@@ -222,7 +222,7 @@
     transition: all 0.15s;
 }
 
-.full-lb-afk { font-family: var(--font-mono); font-weight: 600; font-size: 13px; text-align: right; color: var(--rose); }
+.full-lb-afk { font-family: var(--font-mono); font-weight: 600; font-size: var(--fs-body); text-align: right; color: var(--rose); }
 
 /* Below this width the six columns stop fitting. The old rule set AFK and the
    efficiency bar to display:none -- the app still computed both, and a merely
@@ -263,7 +263,7 @@
 .full-lb-rank {
     font-family: var(--font-mono);
     font-weight: 700;
-    font-size: 15px;
+    font-size: var(--fs-strong);
     color: var(--text-faint);
     text-align: center;
 }
@@ -277,7 +277,7 @@
     justify-content: center;
     font-family: var(--font-display);
     font-weight: 800;
-    font-size: 12px;
+    font-size: var(--fs-small);
 }
 
 /* The numeral used to be near-black on the medal colour, measuring 1.13-1.34:1
@@ -306,15 +306,15 @@
     justify-content: center;
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 14px;
+    font-size: var(--fs-strong);
     flex-shrink: 0;
 }
 
 .full-lb-name-col { min-width: 0; }
-.full-lb-app-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.full-lb-cat { font-size: 11px; color: var(--text-faint); font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.full-lb-app-name { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.full-lb-cat { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.full-lb-time { font-family: var(--font-mono); font-weight: 700; font-size: 15px; text-align: right; color: var(--brass); }
+.full-lb-time { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-strong); text-align: right; color: var(--brass); }
 
 .full-lb-eff-bar {
     height: 6px;
@@ -327,7 +327,7 @@
 /* Reads as a sentence rather than a figure now that it states what the bar
    measures, so it drops the mono face -- mono is ~20% wider per character
    and the phrase would have wrapped inside the 150px column. */
-.full-lb-eff-label { font-size: 10px; color: var(--text-faint); text-align: right; margin-top: 4px; white-space: nowrap; }
+.full-lb-eff-label { font-size: var(--fs-micro); color: var(--text-faint); text-align: right; margin-top: 4px; white-space: nowrap; }
 
 /* ---------- Activity heatmaps (Week/Month/Year scopes) ---------- */
 .ov-week-divider { height: 1px; background: var(--panel-border-soft); margin: 24px 0; }
@@ -339,7 +339,7 @@
     flex-direction: column;
     justify-content: space-between;
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--fs-micro);
     color: var(--text-faint);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -368,7 +368,7 @@
     display: flex;
     justify-content: space-between;
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--fs-micro);
     color: var(--text-faint);
     margin-top: 8px;
     padding-left: 34px;
@@ -398,7 +398,7 @@
     gap: 8px;
     margin-top: 12px;
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--fs-micro);
     color: var(--text-faint);
     justify-content: flex-end;
 }
@@ -416,7 +416,7 @@
     display: flex;
     justify-content: space-between;
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--fs-micro);
     color: var(--text-faint);
     padding: 0 2px 8px;
 }
@@ -452,7 +452,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: var(--fs-caption);
     font-weight: 600;
     pointer-events: none;
     white-space: nowrap;
@@ -483,7 +483,7 @@
 .period-rank-badge {
     font-family: var(--font-mono);
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--fs-body);
     color: var(--text-faint);
     text-align: center;
     background: var(--bg-raised);
@@ -497,7 +497,7 @@
 .period-rank-badge.rank-1 { color: var(--brass); border-color: var(--brass-dim); }
 
 .period-main { min-width: 0; flex: 1 1 180px; }
-.period-label { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.period-label { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* overflow/ellipsis matter as much here as on .period-label above. Without them
    the range ("17.08.2026 → 23.08.2026", ~151px) simply painted outside its box
    once the flex row squeezed this column below that -- around 1100px it needed
@@ -505,7 +505,7 @@
    Focus figure on every row in the list. */
 .period-range {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-caption);
     color: var(--text-faint);
     margin-top: 2px;
     white-space: nowrap;
@@ -518,11 +518,11 @@
 .period-stats { display: grid; grid-template-columns: 110px 160px 100px; gap: 24px; flex-shrink: 0; }
 .period-stat { min-width: 0; }
 
-.period-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; white-space: nowrap; }
+.period-stat-label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; white-space: nowrap; }
 .period-stat-value {
     font-family: var(--font-mono);
     font-weight: 600;
-    font-size: 13px;
+    font-size: var(--fs-body);
     margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
@@ -568,7 +568,7 @@
 
 .week-heat-label {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--fs-micro);
     font-weight: 700;
     letter-spacing: 0.07em;
     color: var(--text-faint);
@@ -591,7 +591,7 @@
 
 .week-heat-value {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: var(--fs-small);
     font-weight: 600;
     color: var(--text-dim);
 }
@@ -609,7 +609,7 @@
 
 .month-heat-weekdays span {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--fs-micro);
     font-weight: 700;
     letter-spacing: 0.05em;
     color: var(--text-faint);
@@ -692,14 +692,14 @@
 
 .compare-bar-caption {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-caption);
     color: var(--text-faint);
     margin-top: 8px;
 }
 
 /* ---------- Activity tab (raw chronological session feed) ---------- */
 .activity-day-divider {
-    font-size: 10px;
+    font-size: var(--fs-micro);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-faint);
@@ -722,7 +722,7 @@
 .activity-summary {
     margin-left: auto;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-caption);
     color: var(--text-faint);
 }
 @media (max-width: 640px) {
@@ -755,7 +755,7 @@
 .activity-switches {
     margin-left: 7px;
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--fs-micro);
     font-weight: 600;
     color: var(--text-faint);
     background: var(--bg-raised);
@@ -778,17 +778,17 @@
     justify-content: center;
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 15px;
+    font-size: var(--fs-strong);
     flex-shrink: 0;
 }
 
 .activity-name-col { min-width: 0; }
-.activity-app-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.activity-cat { font-size: 11px; color: var(--text-faint); font-weight: 600; margin-top: 1px; }
-.activity-title { font-size: 11px; color: var(--text-faint); font-style: italic; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity-app-name { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity-cat { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 600; margin-top: 1px; }
+.activity-title { font-size: var(--fs-caption); color: var(--text-faint); font-style: italic; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.activity-time-range { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); white-space: nowrap; }
-.activity-duration { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--brass); text-align: right; white-space: nowrap; }
+.activity-time-range { font-family: var(--font-mono); font-size: var(--fs-small); color: var(--text-dim); white-space: nowrap; }
+.activity-duration { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-body); color: var(--brass); text-align: right; white-space: nowrap; }
 
 @media (max-width: 640px) {
     .activity-row { grid-template-columns: 36px 1fr auto; }
@@ -808,7 +808,7 @@
 .allapps-count {
     margin-left: auto;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-caption);
     color: var(--text-faint);
 }
 
@@ -839,15 +839,15 @@
     justify-content: center;
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--fs-body);
     flex-shrink: 0;
 }
 
-.allapps-name { font-weight: 700; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.allapps-cat { font-size: 10px; color: var(--text-faint); font-weight: 600; margin-top: 1px; }
+.allapps-name { font-weight: 700; font-size: var(--fs-body); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.allapps-cat { font-size: var(--fs-micro); color: var(--text-faint); font-weight: 600; margin-top: 1px; }
 
-.allapps-metrics { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; }
-.allapps-metrics .v { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; }
+.allapps-metrics { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: var(--fs-caption); }
+.allapps-metrics .v { display: block; font-size: var(--fs-body); font-weight: 700; margin-top: 2px; }
 
 /* ---------- Drilldown drawer (App Detail Page) ---------- */
 .drawer-overlay {
@@ -910,11 +910,11 @@
     background: var(--panel);
 }
 .dd-compare-row:hover .dd-compare-chevron { color: var(--brass); }
-.dd-compare-label { flex: 1; font-size: 12px; color: var(--text-dim); font-weight: 600; }
-.dd-compare-value { font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+.dd-compare-label { flex: 1; font-size: var(--fs-small); color: var(--text-dim); font-weight: 600; }
+.dd-compare-value { font-family: var(--font-mono); font-size: var(--fs-body); font-weight: 700; }
 .dd-compare-chevron {
     color: var(--text-dim);
-    font-size: 13px;
+    font-size: var(--fs-body);
     transition: transform 0.15s, color 0.15s;
     flex-shrink: 0;
 }
@@ -951,8 +951,8 @@
     border: 1px solid var(--panel-border-soft);
     border-radius: var(--radius-sm);
 }
-.dd-trend-cell-label { font-size: 10px; color: var(--text-faint); white-space: nowrap; }
-.dd-trend-cell-value { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text); margin-top: 2px; white-space: nowrap; }
+.dd-trend-cell-label { font-size: var(--fs-micro); color: var(--text-faint); white-space: nowrap; }
+.dd-trend-cell-value { font-family: var(--font-mono); font-size: var(--fs-caption); font-weight: 700; color: var(--text); margin-top: 2px; white-space: nowrap; }
 
 .drawer-close {
     position: absolute;
@@ -963,7 +963,7 @@
     /* The only unstyled control that actually renders text — its ✕ was coming
        out at the browser's default 13.3333px. The gear and the checkboxes have
        no text, so they are left alone rather than given a blanket size. */
-    font-size: 14px;
+    font-size: var(--fs-strong);
     border-radius: 8px;
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -1010,11 +1010,11 @@
 .dd-tier-name {
     font-family: var(--font-display);
     font-weight: 800;
-    font-size: 12px;
+    font-size: var(--fs-small);
     letter-spacing: 0.02em;
 }
-.dd-tier-req { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
-.dd-tier-date { font-size: 10px; color: var(--text-faint); }
+.dd-tier-req { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-faint); }
+.dd-tier-date { font-size: var(--fs-micro); color: var(--text-faint); }
 
 .dd-icon {
     width: 52px;
@@ -1031,8 +1031,8 @@
     flex-shrink: 0;
 }
 
-.dd-title { font-size: 20px; font-weight: 700; line-height: 1.2; }
-.dd-rank { font-family: var(--font-mono); font-size: 11px; color: var(--brass); font-weight: 700; margin-top: 4px; }
+.dd-title { font-size: var(--fs-title); font-weight: 700; line-height: 1.2; }
+.dd-rank { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--brass); font-weight: 700; margin-top: 4px; }
 
 /* Each section its own boxed card — was just a label + loose fields with
    nothing marking where one setting ends and the next begins. Applies to
@@ -1045,19 +1045,19 @@
     border: 1px solid var(--panel-border);
     border-radius: var(--radius);
 }
-.dd-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); font-weight: 700; margin-bottom: 10px; }
+.dd-section-label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); font-weight: 700; margin-bottom: 10px; }
 
 .dd-cat-row { display: flex; align-items: center; gap: 10px; }
 
 .dd-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dd-stat { padding: 12px 14px; }
-.dd-stat-value { font-family: var(--font-mono); font-size: 16px; font-weight: 700; margin-top: 4px; }
+.dd-stat-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 700; margin-top: 4px; }
 
 /* Dates ("Aug 16, 2026") are wider than the short numeric values (e.g.
    "12h 30m") these tiles were sized for — a touch smaller so they don't wrap. */
-.dd-stat-value-date { font-size: 13px; white-space: nowrap; }
+.dd-stat-value-date { font-size: var(--fs-body); white-space: nowrap; }
 
-.dd-stat-sub { font-size: 10px; color: var(--text-faint); margin-top: 5px; min-height: 12px; }
+.dd-stat-sub { font-size: var(--fs-micro); color: var(--text-faint); margin-top: 5px; min-height: 12px; }
 
 /* Current streak == longest streak ever — the record is happening right now.
    Same brass-glow treatment Overview's hero Focus card uses, so it reads as
@@ -1069,7 +1069,7 @@
 .dd-personal-best-badge {
     display: inline-block;
     margin-top: 5px;
-    font-size: 10px;
+    font-size: var(--fs-micro);
     font-weight: 800;
     letter-spacing: 0.07em;
     text-transform: uppercase;
@@ -1082,11 +1082,11 @@
 .dd-limit-bar-wrap { margin-bottom: 14px; }
 .dd-limit-bar { height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg-raised); }
 .dd-limit-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease, background 0.3s ease; }
-.dd-limit-bar-caption { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 6px; }
+.dd-limit-bar-caption { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); margin-top: 6px; }
 
 .dd-limit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 
-.dd-toggle-label { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
+.dd-toggle-label { display: flex; align-items: center; gap: 9px; font-size: var(--fs-small); color: var(--text-dim); cursor: pointer; }
 .dd-toggle-label input[type="checkbox"] { accent-color: var(--brass); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
 
 /* ---------- Theme picker (Settings drawer) ---------- */
@@ -1102,7 +1102,7 @@
     border: 1px solid var(--panel-border-soft);
     color: var(--text-dim);
     font-family: var(--font-body);
-    font-size: 13px;
+    font-size: var(--fs-body);
     font-weight: 600;
     cursor: pointer;
     transition: border-color 0.15s, color 0.15s, background 0.15s;
@@ -1137,7 +1137,7 @@
 .classification-mins {
     margin-left: 10px;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-caption);
     color: var(--text-faint);
 }
 
@@ -1149,12 +1149,12 @@
     border-radius: var(--radius-sm);
     background: var(--bg-raised);
     border: 1px solid var(--panel-border-soft);
-    font-size: 13px;
+    font-size: var(--fs-body);
     font-weight: 600;
 }
 
 .retention-row { display: flex; gap: 10px; align-items: center; }
-.retention-status { color: var(--teal); font-size: 12px; font-weight: 600; margin-top: 10px; display: none; }
+.retention-status { color: var(--teal); font-size: var(--fs-small); font-weight: 600; margin-top: 10px; display: none; }
 
 /* ==========================================================
    WRAPPED — top bar entry, its 3-card panel, and the story
@@ -1174,7 +1174,7 @@
     background: linear-gradient(180deg, rgba(232, 163, 61, 0.16), rgba(232, 163, 61, 0.05));
     color: var(--brass);
     font-family: var(--font-display);
-    font-size: 13px;
+    font-size: var(--fs-body);
     font-weight: 600;
     cursor: pointer;
     position: relative;
@@ -1201,7 +1201,7 @@
     padding: 16px;
     z-index: 40;
 }
-.wrapped-panel-title { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+.wrapped-panel-title { font-family: var(--font-display); font-size: var(--fs-strong); font-weight: 600; color: var(--text); margin-bottom: 12px; }
 .wrapped-card {
     display: flex;
     align-items: center;
@@ -1216,15 +1216,15 @@
 }
 .wrapped-card:hover { background: rgba(232, 163, 61, 0.08); border-color: var(--brass-dim); }
 .wrapped-card:last-of-type { margin-bottom: 0; }
-.wrapped-card-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
-.wrapped-card-teaser { font-size: 13px; color: var(--text); margin-top: 3px; }
+.wrapped-card-eyebrow { font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+.wrapped-card-teaser { font-size: var(--fs-body); color: var(--text); margin-top: 3px; }
 .wrapped-card-teaser strong { color: var(--brass); font-family: var(--font-mono); }
 .wrapped-card-chev { color: var(--text-faint); }
 .wrapped-panel-footer {
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid var(--panel-border-soft);
-    font-size: 11.5px;
+    font-size: var(--fs-caption);
     color: var(--text-faint);
     text-align: center;
 }
@@ -1247,7 +1247,7 @@
     border: 1px solid var(--panel-border);
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-dim);
-    font-size: 20px;
+    font-size: var(--fs-title);
     line-height: 1;
     cursor: pointer;
     z-index: 2;
@@ -1287,7 +1287,7 @@
     bottom: -34px;
     transform: translateX(-50%);
     white-space: nowrap;
-    font-size: 12px;
+    font-size: var(--fs-small);
     color: var(--text-faint);
     opacity: 0;
     transition: opacity 0.4s;
@@ -1341,7 +1341,7 @@
 
 .wrapped-slide .eyebrow {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-caption);
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--text-faint);
@@ -1385,49 +1385,49 @@
 }
 .wrapped-slide .hero-number sup,
 .wrapped-slide .hero-number .unit { font-size: 40px; font-weight: 600; vertical-align: super; }
-.wrapped-slide .hero-caption { font-size: 14px; color: var(--text-dim); max-width: 260px; }
+.wrapped-slide .hero-caption { font-size: var(--fs-strong); color: var(--text-dim); max-width: 260px; }
 
 .wrapped-slide .foot { display: grid; gap: 10px; margin-top: 22px; }
 .wrapped-slide .foot-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--panel-border-soft); border-radius: var(--radius); padding: 12px 14px; }
-.wrapped-slide .foot-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
-.wrapped-slide .foot-value { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.wrapped-slide .foot-label { font-size: var(--fs-micro); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
+.wrapped-slide .foot-value { font-family: var(--font-mono); font-size: var(--fs-strong); font-weight: 700; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .wrapped-slide .foot-value.teal { color: var(--teal); }
 
 /* --- Rhythm slide: a small bar chart (day-by-day / week-by-week /
    month-by-month, whichever fits the period) standing in for the giant
    hero-number the other slides use -- this one is about a shape, not a
    single figure. */
-.wrapped-slide .rhythm-caption { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); text-align: center; margin-bottom: 10px; }
+.wrapped-slide .rhythm-caption { font-size: var(--fs-micro); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); text-align: center; margin-bottom: 10px; }
 .wrapped-slide .bar-row { flex: 1; display: flex; align-items: flex-end; gap: 6px; min-height: 0; padding: 0 4px; }
 .wrapped-slide .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
 .wrapped-slide .bar-track { width: 100%; flex: 1; display: flex; align-items: flex-end; }
 .wrapped-slide .bar-fill { width: 100%; min-height: 3px; border-radius: 4px 4px 2px 2px; background: var(--brass-dim); transition: height 0.3s ease; }
 .wrapped-slide .bar-fill.is-peak { background: var(--brass); box-shadow: 0 0 20px var(--brass-glow); }
 .wrapped-slide .bar-fill.is-future { background: rgba(255, 255, 255, 0.06); }
-.wrapped-slide .bar-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
+.wrapped-slide .bar-label { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-faint); }
 
 /* --- Category breakdown: dominant category as the hero stat, the rest of
    the split listed underneath so the whole picture is visible at a glance. */
 .wrapped-slide .cat-list { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
 .wrapped-slide .cat-row { display: flex; align-items: center; gap: 10px; }
 .wrapped-slide .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.wrapped-slide .cat-name { flex: 1; font-size: 12px; color: var(--text-dim); }
-.wrapped-slide .cat-pct { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.wrapped-slide .cat-name { flex: 1; font-size: var(--fs-small); color: var(--text-dim); }
+.wrapped-slide .cat-pct { font-family: var(--font-mono); font-size: var(--fs-small); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 
 /* --- Milestones this month/year: a compact list, one row per tier crossed --
    reuses the same medal colors as the App Detail drawer's tier ladder. */
 .wrapped-slide .ms-list { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; overflow-y: auto; }
 .wrapped-slide .ms-row { display: flex; align-items: center; gap: 12px; }
 .wrapped-slide .ms-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-.wrapped-slide .ms-app { font-size: 14px; font-weight: 600; color: var(--text); }
-.wrapped-slide .ms-tier { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+.wrapped-slide .ms-app { font-size: var(--fs-strong); font-weight: 600; color: var(--text); }
+.wrapped-slide .ms-tier { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); margin-top: 2px; }
 
 /* --- Top apps, plural (Year only): a small ranked list instead of one hero. */
 .wrapped-slide .rank-list { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
 .wrapped-slide .rank-row { display: flex; align-items: center; gap: 14px; }
-.wrapped-slide .rank-num { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--brass); width: 32px; flex-shrink: 0; }
-.wrapped-slide .rank-name { font-size: 15px; font-weight: 600; color: var(--text); }
-.wrapped-slide .rank-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+.wrapped-slide .rank-num { font-family: var(--font-display); font-size: var(--fs-title); font-weight: 800; color: var(--brass); width: 32px; flex-shrink: 0; }
+.wrapped-slide .rank-name { font-size: var(--fs-strong); font-weight: 600; color: var(--text); }
+.wrapped-slide .rank-sub { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); margin-top: 2px; }
 
 /* --- Archetype ("Your Type" / "This week's vibe"): the payoff slide, a short
    bespoke label instead of a number. Light weight (Week) is deliberately
