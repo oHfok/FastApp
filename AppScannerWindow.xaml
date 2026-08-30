@@ -31,7 +31,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" Foreground="White" FontSize="14"/>
+                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" Foreground="{StaticResource BrandText}" FontSize="14"/>
 
                         <ui:Button Grid.Column="1" Content="Track App" Appearance="Primary" Padding="15,5"
                                    Command="{Binding DataContext.SaveDetectedAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"

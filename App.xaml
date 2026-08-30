@@ -9,6 +9,10 @@
             <ResourceDictionary.MergedDictionaries>
                 <ui:ThemesDictionary Theme="Dark" />
                 <ui:ControlsDictionary />
+                <!-- After the WPF-UI dictionaries so brand keys win where they
+                     overlap. See Themes/Brand.xaml for why this is a palette
+                     and not a re-skin. -->
+                <ResourceDictionary Source="pack://application:,,,/Themes/Brand.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
