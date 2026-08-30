@@ -7,13 +7,13 @@
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize" WindowStartupLocation="Manual">
 
-    <Border x:Name="OsdBorder" Background="#E6101010" CornerRadius="8" BorderBrush="#33FFFFFF" BorderThickness="1" Padding="20,0" Opacity="0" Margin="50,0,-50,0">
+    <Border x:Name="OsdBorder" Background="{StaticResource BrandOverlayBackground}" CornerRadius="8" BorderBrush="{StaticResource BrandOverlayBorder}" BorderThickness="1" Padding="20,0" Opacity="0" Margin="50,0,-50,0">
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <!-- We keep both icons here and toggle visibility to avoid version conflicts in C# -->
-            <ui:SymbolIcon x:Name="ActionIcon" Symbol="Flash24" FontSize="24" Foreground="#FF8C00" Margin="0,0,15,0" Visibility="Collapsed"/>
-            <ui:SymbolIcon x:Name="AppIcon" Symbol="Apps24" FontSize="24" Foreground="#0078D7" Margin="0,0,15,0" Visibility="Collapsed"/>
+            <ui:SymbolIcon x:Name="ActionIcon" Symbol="Flash24" FontSize="24" Foreground="{StaticResource BrandAction}" Margin="0,0,15,0" Visibility="Collapsed"/>
+            <ui:SymbolIcon x:Name="AppIcon" Symbol="Apps24" FontSize="24" Foreground="{StaticResource BrandBrass}" Margin="0,0,15,0" Visibility="Collapsed"/>
 
-            <TextBlock x:Name="OsdText" Text="Macro Activated" FontSize="16" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+            <TextBlock x:Name="OsdText" Text="Macro Activated" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource BrandText}" VerticalAlignment="Center"/>
         </StackPanel>
     </Border>
 </Window>

@@ -1,0 +1,74 @@
+﻿<!--
+    FastApp brand palette.
+
+    These are the same values the web dashboard uses (wwwroot/css/base.css,
+    :root) so the two halves of the product read as one thing. The desktop app
+    had no palette at all: 35 colour literals typed into five XAML files, and
+    the dominant one was #0078D7 — the stock Windows 10 blue, a default nobody
+    had ever chosen rather than a decision.
+
+    Deliberately NOT a full re-skin. The window chrome stays WPF-UI/Fluent with
+    its Mica backdrop, because a native app that looks native is a feature, and
+    because the dashboard has three themes — matching one would mismatch the
+    other two. What is shared is identity: the accent, and the text ramp.
+
+    Accent brushes (buttons with Appearance="Primary", etc.) are not set here.
+    They come from WPF-UI's own accent system, which is driven in App.xaml.cs
+    via ApplicationAccentColorManager so the library can derive its own
+    light/dark variants from the one brass value.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Accent. Brass is the product's identity colour across the dashboard. -->
+    <Color x:Key="BrandBrassColor">#E8A33D</Color>
+    <SolidColorBrush x:Key="BrandBrass" Color="{StaticResource BrandBrassColor}"/>
+    <SolidColorBrush x:Key="BrandBrassDim" Color="#8A6321"/>
+
+    <!-- Secondary accent, used where something must read as distinct from a
+         plain tracked app — the "action" apps that fire a macro. Violet keeps
+         that distinction legible next to brass; the old Windows orange sat too
+         close to it to tell apart at icon size. -->
+    <SolidColorBrush x:Key="BrandAction" Color="#8B7CFF"/>
+
+    <!-- Text ramp, matching the dashboard's text, text-dim and text-faint tokens.
+         The old greys (#888888, #999999, #CCCCCC, #555555, #444) were five
+         unrelated values doing three jobs. -->
+    <SolidColorBrush x:Key="BrandText" Color="#F3F1EA"/>
+    <SolidColorBrush x:Key="BrandTextDim" Color="#9C9FAE"/>
+    <SolidColorBrush x:Key="BrandTextFaint" Color="#7C8194"/>
+
+    <!-- Floating popups (the hotkey OSD and the auto-launch progress window).
+         These sit over full-screen games, so they are opaque enough to read
+         against anything and keep a slightly stronger border than the
+         dashboard's panels use inside a page. The bg token at 90% opacity. -->
+    <SolidColorBrush x:Key="BrandOverlayBackground" Color="#E60A0B10"/>
+    <SolidColorBrush x:Key="BrandOverlayBorder" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="BrandOverlayTrack" Color="#22FFFFFF"/>
+
+    <!-- Subtle raised chip inside a card (the hotkey pill). -->
+    <SolidColorBrush x:Key="BrandChipBackground" Color="#1AFFFFFF"/>
+
+    <!--
+        Ink for anything sitting ON an accent fill.
+
+        WPF-UI's dark theme puts white here, which is right for the stock
+        Windows blue because that accent is dark. Brass is light, so the same
+        white lands at 2.16:1 and is genuinely hard to read. The dashboard
+        solved this already: .btn-brass pairs the brass fill with near-black
+        ink, which measures 8.71:1.
+
+        Overriding the library's keys rather than restyling each button, so
+        every accent surface (buttons, selection highlights, toggles) gets
+        legible ink without the control templates being touched.
+    -->
+    <Color x:Key="TextOnAccentFillColorPrimary">#1A1000</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#1A1000"/>
+    <Color x:Key="TextOnAccentFillColorSecondary">#B31A1000</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#B31A1000"/>
+    <Color x:Key="TextOnAccentFillColorSelectedText">#1A1000</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorSelectedTextBrush" Color="#1A1000"/>
+    <Color x:Key="TextOnAccentFillColorDisabled">#661A1000</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorDisabledBrush" Color="#661A1000"/>
+
+</ResourceDictionary>

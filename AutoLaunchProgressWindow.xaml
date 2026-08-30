@@ -11,15 +11,15 @@
          so the two transient popups read as the same feature, not two different
          ones — this one is just centered instead of bottom-right, and carries
          more content (a counter line, a current-app line, a progress bar). -->
-    <Border x:Name="ProgressBorder" Background="#E6101010" CornerRadius="10" BorderBrush="#33FFFFFF" BorderThickness="1" Padding="22,16" Opacity="0">
+    <Border x:Name="ProgressBorder" Background="{StaticResource BrandOverlayBackground}" CornerRadius="10" BorderBrush="{StaticResource BrandOverlayBorder}" BorderThickness="1" Padding="22,16" Opacity="0">
         <StackPanel VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
-                <ui:SymbolIcon Symbol="Apps24" FontSize="20" Foreground="#0078D7" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                <TextBlock x:Name="TitleText" Text="Opening 1 of 10" FontSize="16" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                <ui:SymbolIcon Symbol="Apps24" FontSize="20" Foreground="{StaticResource BrandBrass}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TitleText" Text="Opening 1 of 10" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource BrandText}" VerticalAlignment="Center"/>
             </StackPanel>
-            <TextBlock x:Name="SubtitleText" Text="Starting: —" FontSize="12" Foreground="#999999" Margin="30,4,0,12"/>
+            <TextBlock x:Name="SubtitleText" Text="Starting: —" FontSize="12" Foreground="{StaticResource BrandTextDim}" Margin="30,4,0,12"/>
             <ProgressBar x:Name="ProgressBarControl" Height="4" Minimum="0" Maximum="10" Value="1"
-                         Background="#22FFFFFF" Foreground="#0078D7" BorderThickness="0"/>
+                         Background="{StaticResource BrandOverlayTrack}" Foreground="{StaticResource BrandBrass}" BorderThickness="0"/>
         </StackPanel>
     </Border>
 </Window>
