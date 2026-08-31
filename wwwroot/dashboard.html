@@ -291,43 +291,69 @@
                 <div class="view-head">
                     <div>
                         <div class="view-title">Insights</div>
-                        <div class="view-sub">Patterns from your last 30 days of activity.</div>
+                        <div class="view-sub">Patterns across the last 30 days</div>
                     </div>
                     <button type="button" class="layout-edit-toggle" data-layout-edit="insights">Customise</button>
                     </div>
 
-                <div class="stat-row" style="margin-bottom:20px;" data-card="focus-blocks" data-card-name="Longest Focus & Average Session">
-                    <div class="card stat-block">
-                        <div class="card-label">Longest Focus Block</div>
-                        <div class="stat-value" id="in-longest-block" style="color:var(--brass)">0h 0m</div>
+                <!-- Each figure is drawn as the share it actually is: the longest
+                     block as a fraction of the day's tracked time, the average
+                     session as a fraction of that longest block. Both are real
+                     ratios -- see setInsightDial. -->
+                <div class="insight-dials" data-card="focus-blocks" data-card-name="Longest Focus &amp; Average Session">
+                    <div class="insight-dial">
+                        <div class="insight-dial-ring">
+                            <svg viewBox="0 0 100 100" aria-hidden="true">
+                                <circle class="insight-dial-track" cx="50" cy="50" r="42"></circle>
+                                <circle class="insight-dial-arc" id="in-longest-arc" cx="50" cy="50" r="42"></circle>
+                            </svg>
+                            <span class="insight-dial-value" id="in-longest-block">0h 0m</span>
+                        </div>
+                        <div class="insight-dial-text">
+                            <div class="card-label">Longest Focus Block</div>
+                            <div class="insight-dial-sub">Your best unbroken stretch</div>
+                        </div>
                     </div>
-                    <div class="card stat-block">
-                        <div class="card-label">Average Session Length</div>
-                        <div class="stat-value" id="in-avg-span" style="color:var(--brass)">0h 0m</div>
+                    <div class="insight-dial">
+                        <div class="insight-dial-ring">
+                            <svg viewBox="0 0 100 100" aria-hidden="true">
+                                <circle class="insight-dial-track" cx="50" cy="50" r="42"></circle>
+                                <circle class="insight-dial-arc" id="in-avg-arc" cx="50" cy="50" r="42"></circle>
+                            </svg>
+                            <span class="insight-dial-value" id="in-avg-span">0h 0m</span>
+                        </div>
+                        <div class="insight-dial-text">
+                            <div class="card-label">Average Session Length</div>
+                            <div class="insight-dial-sub">Typical time before switching</div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="card" style="margin-bottom:20px;" data-card="rhythm" data-card-name="Work vs. Play by Hour">
-                    <div class="card-label" style="margin-bottom:14px;">Work vs. Play by Hour</div>
-                    <div class="view-sub" style="margin:-8px 0 14px;">Which hours of the day skew productive, and which skew leisure.</div>
+                    <div class="insight-head">
+                        <div class="card-label">Work vs. Play by Hour</div>
+                        <span class="insight-key"><span class="insight-key-dot" style="background:var(--teal)"></span>Work</span>
+                        <span class="insight-key"><span class="insight-key-dot" style="background:var(--violet)"></span>Play</span>
+                    </div>
                     <div class="chart-wrap"><canvas id="in-rhythm-chart"></canvas></div>
                 </div>
 
-                <div class="card" style="margin-bottom:20px;" data-card="classification" data-card-name="Configure Work vs. Play">
-                    <div class="card-label" style="margin-bottom:14px;">Configure Work vs. Play</div>
-                    <div class="view-sub" style="margin:-8px 0 14px;">Tag each category so the chart above reflects what YOU consider productive — nothing is guessed.</div>
-                    <div id="in-classification-list"></div>
-                </div>
-
-                <div class="card" style="margin-bottom:20px;" data-card="fatigue" data-card-name="Weekday Fatigue">
-                    <div class="card-label" style="margin-bottom:14px;">Weekday Fatigue</div>
-                    <div class="view-sub" style="margin:-8px 0 14px;">Average session length by day of the week — are you sharper early in the week?</div>
-                    <div class="chart-wrap chart-wrap-short"><canvas id="in-fatigue-chart"></canvas></div>
+                <!-- Side by side, as designed: a short chart and a short list, each
+                     of which would leave half a screen empty on its own. -->
+                <div class="insight-pair" data-card="fatigue" data-card-name="Weekday Fatigue &amp; Work/Play">
+                    <div>
+                        <div class="card-label" style="margin-bottom:14px;">Weekday Fatigue</div>
+                        <div class="chart-wrap chart-wrap-short"><canvas id="in-fatigue-chart"></canvas></div>
+                        <div class="insight-caption">Average session length per weekday</div>
+                    </div>
+                    <div>
+                        <div class="card-label" style="margin-bottom:14px;">Configure Work vs. Play</div>
+                        <div id="in-classification-list"></div>
+                    </div>
                 </div>
 
                 <div class="card" id="in-heatmap-card" data-card="active-hours" data-card-name="When You're Usually Active">
                     <div class="card-label" style="margin-bottom:14px;">When You're Usually Active</div>
-                    <div class="view-sub" style="margin:-8px 0 14px;">Total activity by day and hour, last 30 days.</div>
                     <div id="in-heatmap-body"></div>
                 </div>
             </section>
