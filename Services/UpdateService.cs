@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Velopack;
@@ -92,6 +94,142 @@ namespace FastApp.Services
             {
                 return new UpdateCheckResult(false, $"Couldn't check for updates: {ex.Message}", null);
             }
+        }
+
+        // ==========================================================
+        // ROLLBACK
+        //
+        // Velopack will install an older version, but only if asked explicitly:
+        // AllowVersionDowngrade, a hand-built UpdateInfo marked IsDowngrade, and
+        // the Full package rather than a delta (deltas only patch forward from a
+        // known base, so they are useless going backwards).
+        // ==========================================================
+
+        private static UpdateManager CreateDowngradeManager() =>
+            new(new GithubSource(RepoUrl, null, false), new UpdateOptions { AllowVersionDowngrade = true });
+
+        /// <summary>
+        /// Whether the target predates the current database schema.
+        ///
+        /// Migration ids are timestamps (20260816120000_AddDailyLogsIndex), so a
+        /// migration applied after a release was published is one that release's
+        /// code never knew about. Today every migration is additive and EF simply
+        /// ignores columns its model does not mention, so this is a warning and
+        /// not a block -- but a future migration that drops or renames a column
+        /// would make going back lossy, and the backup below is what makes that
+        /// recoverable rather than final.
+        /// </summary>
+        public static string DescribeSchemaRisk(DateTime targetPublishedUtc)
+        {
+            try
+            {
+                using var db = new AppDbContext();
+                return DescribeSchemaRisk(targetPublishedUtc, db.Database.GetAppliedMigrations());
+            }
+            catch
+            {
+                // Reading the migration history is not worth failing a rollback
+                // over; the database backup is the real safety net.
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// The comparison itself, split from the database read so it can be
+        /// exercised without one.
+        /// </summary>
+        public static string DescribeSchemaRisk(DateTime targetPublishedUtc, IEnumerable<string> appliedMigrationIds)
+        {
+            if (targetPublishedUtc == DateTime.MinValue || appliedMigrationIds == null) return null;
+
+            DateTime newest = DateTime.MinValue;
+            foreach (var id in appliedMigrationIds)
+            {
+                if (string.IsNullOrEmpty(id)) continue;
+                string stamp = id.Split('_')[0];
+                if (stamp.Length >= 14 && DateTime.TryParseExact(stamp[..14], "yyyyMMddHHmmss",
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                        out var parsed) && parsed > newest)
+                {
+                    newest = parsed;
+                }
+            }
+
+            if (newest == DateTime.MinValue || newest <= targetPublishedUtc) return null;
+
+            // Formatted invariantly on purpose. The interface is English, and the
+            // default culture here is Polish, so an interpolated date renders as
+            // "16 sie 2026" in the middle of an English sentence. The dashboard
+            // had exactly this bug before the UX pass; the desktop app has no
+            // equivalent of the server's invariant-culture setup to prevent it.
+            string when = newest.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            return $"Your data was upgraded on {when}, after this version was released. "
+                 + "It should still open, but anything recorded since then may not show correctly until you update again.";
+        }
+
+        /// <summary>Timestamped copy of the database, taken before a rollback. Returns its path, or null.</summary>
+        public static string BackUpDatabase()
+        {
+            try
+            {
+                string source = AppDbContext.GetDbPath();
+                if (string.IsNullOrEmpty(source) || !System.IO.File.Exists(source)) return null;
+
+                string folder = AppDbContext.GetDbFolder();
+                string target = System.IO.Path.Combine(folder, $"appmanager.before-rollback-{DateTime.Now:yyyyMMdd-HHmmss}.db");
+                System.IO.File.Copy(source, target, overwrite: false);
+                return target;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Finds the Full package for a version and downloads it, ready to apply.</summary>
+        public static async Task<UpdateCheckResult> PrepareRollbackAsync(string version)
+        {
+            try
+            {
+                var mgr = CreateDowngradeManager();
+                if (!mgr.IsInstalled)
+                    return new UpdateCheckResult(false, "Not available — this copy wasn't installed via Setup.exe.", null);
+
+                string wanted = (version ?? string.Empty).TrimStart('v', 'V');
+                var source = new GithubSource(RepoUrl, null, false);
+                var feed = await source.GetReleaseFeed(null, "FastApp", "win", null, null);
+
+                var target = (feed.Assets ?? Array.Empty<VelopackAsset>())
+                    .FirstOrDefault(a => a.Type == VelopackAssetType.Full
+                                      && a.Version?.ToString() == wanted);
+                if (target == null)
+                    return new UpdateCheckResult(false, $"No installable package published for {wanted}.", null);
+
+                var info = new UpdateInfo(target, isDowngrade: true);
+                await mgr.DownloadUpdatesAsync(info);
+                return new UpdateCheckResult(true, $"Version {wanted} downloaded and ready.", info);
+            }
+            catch (Exception ex)
+            {
+                return new UpdateCheckResult(false, $"Couldn't prepare that version: {ex.Message}", null);
+            }
+        }
+
+        /// <summary>Applies a prepared rollback. Backs the database up first, then restarts.</summary>
+        public static async Task RollBackAndRestartAsync(UpdateInfo target, Func<Task> beforeRestart = null)
+        {
+            if (target == null) return;
+
+            // Order matters: flush and checkpoint the database through the caller
+            // first, then copy the settled file. Copying a live WAL mid-write is
+            // how you get a backup that is itself corrupt.
+            if (beforeRestart != null) await beforeRestart();
+            BackUpDatabase();
+
+            var mgr = CreateDowngradeManager();
+            var restartArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
+            mgr.ApplyUpdatesAndRestart(target, restartArgs);
         }
 
         public static async Task ApplyAndRestartAsync(UpdateInfo updateInfo, Func<Task> beforeRestart = null)

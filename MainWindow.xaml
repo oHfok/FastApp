@@ -440,6 +440,35 @@
                                 </StackPanel>
                             </ui:CardControl>
 
+                            <!-- Rolling back. Hidden entirely when there is nothing to go
+                                 back to (a fresh install, or offline) rather than showing
+                                 an empty picker. -->
+                            <ui:CardExpander Margin="0,0,0,10" IsExpanded="False"
+                                             Visibility="{Binding HasRollbackVersions, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <ui:CardExpander.Header>
+                                    <StackPanel Margin="0,8,0,8">
+                                        <TextBlock Text="Reinstall an Earlier Version" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource BrandText}"/>
+                                        <TextBlock Text="Go back if a release causes trouble. Your data is backed up first."
+                                                   Foreground="{StaticResource BrandTextDim}" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </ui:CardExpander.Header>
+                                <StackPanel Margin="0,4,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ComboBox Width="150" ItemsSource="{Binding RollbackVersions}"
+                                                  SelectedItem="{Binding SelectedRollbackVersion, Mode=TwoWay}"
+                                                  IsEnabled="{Binding IsRollbackBusy, Converter={StaticResource InverseBooleanConverter}}"/>
+                                        <ui:Button Content="Reinstall" Icon="ArrowUndo24" Appearance="Secondary" Margin="10,0,0,0"
+                                                   Command="{Binding RollBackCommand}"
+                                                   IsEnabled="{Binding IsRollbackBusy, Converter={StaticResource InverseBooleanConverter}}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding RollbackWarningText}" TextWrapping="Wrap" MaxWidth="420"
+                                               Foreground="{StaticResource BrandAction}" FontSize="12" Margin="0,10,0,0"
+                                               Visibility="{Binding HasRollbackWarning, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="{Binding RollbackStatusText}" TextWrapping="Wrap"
+                                               Foreground="{StaticResource BrandTextDim}" FontSize="12" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </ui:CardExpander>
+
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
