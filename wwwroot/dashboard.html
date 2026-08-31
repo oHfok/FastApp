@@ -235,6 +235,14 @@
                          moves on its own. Customise only reorders top-level blocks,
                          and a handle on something nested inside another block would
                          be a control that cannot do anything. -->
+                    <!-- Everything right of the dial is one column: the two secondary
+                         readouts, the share bar, then Focus by Category. That is the
+                         arrangement in the design -- the dial and its supporting
+                         detail read as a single band rather than four stacked
+                         sections. Focus by Category loses its data-card for the
+                         same reason AFK/Uptime did: it is part of this band now, so
+                         a Customise handle on it could not move anything. -->
+                    <div class="hero-body">
                     <div class="hero-side">
                         <div class="stat-block stat-minor" id="ov-uptime-card">
                             <div class="card-label" id="ov-uptime-label">Uptime Today</div>
@@ -253,13 +261,14 @@
                         </div>
                         <div class="compare-bar-caption" id="ov-share-caption"></div>
                     </div>
-                </div>
-                <div class="card" style="margin-bottom:20px;" data-card="focus-by-category" data-card-name="Focus by Category">
-                    <div class="card-label" style="margin-bottom:12px;">Focus by Category</div>
-                    <div class="cat-bar" id="ov-cat-bar"></div>
-                    <div class="cat-legend" id="ov-cat-legend"></div>
-                </div>
 
+                    <div class="hero-cat">
+                        <div class="card-label">Focus by Category</div>
+                        <div class="cat-bar" id="ov-cat-bar"></div>
+                        <div class="cat-legend" id="ov-cat-legend"></div>
+                    </div>
+                    </div>
+                </div>
                 <div class="two-col" style="margin-bottom:20px;" data-card="top-lists" data-card-name="Top Applications & Categories">
                     <div class="card">
                         <div class="card-label" style="margin-bottom:12px;">Top Applications</div>

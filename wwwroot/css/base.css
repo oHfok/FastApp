@@ -241,11 +241,13 @@ h1, h2, h3, .num-display {
 /* Rather than let all three compress, drop the least useful one first.
    All-Time Focus moves imperceptibly minute to minute, so losing it costs
    almost nothing; Focus Today and Most Used are the reasons to glance up. */
-@media (max-width: 1180px) {
+/* Lowered: the rail went from 208px to 72px, so the top bar has 136px more room
+   than when these were chosen and was dropping metrics that now fit. */
+@media (max-width: 860px) {
     .topbar { gap: 18px; }
     .tb-metric.alltime { display: none; }
 }
-@media (max-width: 900px) {
+@media (max-width: 700px) {
     .tb-metric.mostused { display: none; }
 }
 
@@ -612,7 +614,7 @@ select.field {
 
 /* Overview date stepper. Sits beside the scope toggle and borrows its shape so
    the two read as one control group rather than two unrelated widgets. */
-.ov-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ov-controls { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
 
 .date-stepper {
     display: flex;
