@@ -1397,12 +1397,16 @@ namespace FastApp.ViewModels
         }
 
         [RelayCommand]
-        private void AddApplication()
+        private async Task AddApplication()
         {
             SearchText = string.Empty;
             DetectedApps.Clear();
 
-            var foundApps = AppScannerService.GetInstalledApps();
+            // Awaited rather than called inline: the scan takes about a second
+            // and a half on a normal machine, which was a visible freeze of the
+            // whole window between clicking "Scan PC For Applications" and the
+            // dialog appearing.
+            var foundApps = await AppScannerService.GetInstalledAppsAsync();
             foreach (var app in foundApps)
             {
                 if (!ManagedApps.Any(m => m.ExecutablePath == app.ExecutablePath))
