@@ -1443,3 +1443,73 @@
     text-wrap: balance;
 }
 .wrapped-slide .archetype-hero.is-light .archetype-label { font-size: 24px; text-shadow: none; }
+
+/* ---------- Version history ("What's New") ---------- */
+.release-item {
+    border: 1px solid var(--panel-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.release-item.is-current { border-color: var(--brass-dim); }
+
+.release-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+.release-head::-webkit-details-marker { display: none; }
+.release-head::before {
+    content: "\25B8";                     /* rotates to point down when open */
+    color: var(--text-faint);
+    transition: transform 0.15s;
+    font-size: var(--fs-caption);
+}
+.release-item[open] .release-head::before { transform: rotate(90deg); }
+.release-head:hover { background: var(--bg-raised); }
+
+.release-version { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-strong); color: var(--text); }
+.release-date { margin-left: auto; font-size: var(--fs-caption); color: var(--text-faint); font-family: var(--font-mono); }
+.release-badge {
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 3px 7px;
+    border-radius: 4px;
+    background: var(--brass);
+    color: #1A1000;
+}
+.release-body { padding: 2px 16px 16px; border-top: 1px solid var(--panel-border-soft); }
+.release-nonotes { color: var(--text-faint); font-size: var(--fs-small); font-style: italic; }
+
+/* Markdown produced by renderMarkdown(). Scoped to the release body so it
+   cannot leak into the rest of the dashboard's type. */
+.release-body .md-h { font-size: var(--fs-strong); font-weight: 700; color: var(--text); margin: 16px 0 6px; }
+.release-body p { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.6; margin: 0 0 10px; }
+.release-body ul { margin: 0 0 12px; padding-left: 20px; }
+.release-body li { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.6; margin-bottom: 5px; }
+.release-body strong { color: var(--text); font-weight: 700; }
+.release-body a { color: var(--brass); }
+.release-body .md-code {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-border-soft);
+    border-radius: 4px;
+    padding: 1px 5px;
+}
+.release-body .md-hr { border: none; border-top: 1px solid var(--panel-border-soft); margin: 14px 0; }
+
+/* Wide tables scroll inside their own box rather than pushing the page sideways. */
+.release-body .md-table-wrap { overflow-x: auto; margin: 0 0 12px; }
+.release-body .md-table { border-collapse: collapse; width: 100%; font-size: var(--fs-small); }
+.release-body .md-table th,
+.release-body .md-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--panel-border-soft); }
+.release-body .md-table th { color: var(--text-faint); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; }
+.release-body .md-table td { color: var(--text-dim); }

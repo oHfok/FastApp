@@ -622,6 +622,90 @@ function timelineLabelInk(cssColor) {
     return vsDark > vsWhite ? 'on-light' : 'on-dark';
 }
 
+// --- Markdown (release notes) ------------------------------------------------
+// A deliberately small subset: headings, bold, italic, inline code, links,
+// bullet lists, tables and rules -- which is everything the release notes
+// actually use. Not a general markdown engine, and not trying to be.
+//
+// Escaping happens FIRST, on the whole string, and every transform below runs
+// over already-escaped text. Notes are authored on GitHub rather than by a
+// stranger, but they arrive over the network and get written with innerHTML,
+// which is exactly the shape of thing that should not be trusted on the way in.
+function renderMarkdown(md) {
+    if (!md) return '';
+    const lines = escapeHtml(md).replace(/\r\n/g, '\n').split('\n');
+    const out = [];
+    let paragraph = [];
+    let listItems = [];
+    let tableRows = [];
+
+    const flushParagraph = () => {
+        if (!paragraph.length) return;
+        out.push(`<p>${inline(paragraph.join(' '))}</p>`);
+        paragraph = [];
+    };
+    const flushList = () => {
+        if (!listItems.length) return;
+        out.push(`<ul>${listItems.map(li => `<li>${inline(li)}</li>`).join('')}</ul>`);
+        listItems = [];
+    };
+    const flushTable = () => {
+        if (!tableRows.length) return;
+        const cells = row => row.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+        const head = cells(tableRows[0]);
+        // A separator row (|---|---|) marks the row above as headers; without one
+        // the block is still rendered, just with no header styling.
+        const hasHeader = tableRows.length > 1 && /^[\s|:-]+$/.test(tableRows[1]);
+        const bodyRows = tableRows.slice(hasHeader ? 2 : 1);
+        const thead = hasHeader ? `<thead><tr>${head.map(c => `<th>${inline(c)}</th>`).join('')}</tr></thead>` : '';
+        const tbody = (hasHeader ? bodyRows : tableRows).map(r =>
+            `<tr>${cells(r).map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('');
+        out.push(`<div class="md-table-wrap"><table class="md-table">${thead}<tbody>${tbody}</tbody></table></div>`);
+        tableRows = [];
+    };
+    const flushAll = () => { flushParagraph(); flushList(); flushTable(); };
+
+    for (const raw of lines) {
+        const line = raw.trimEnd();
+
+        if (!line.trim()) { flushAll(); continue; }
+
+        if (/^\|.*\|$/.test(line.trim())) { flushParagraph(); flushList(); tableRows.push(line.trim()); continue; }
+        if (tableRows.length) flushTable();
+
+        const heading = line.match(/^(#{1,6})\s+(.*)$/);
+        if (heading) {
+            flushAll();
+            // Notes start at ###; clamping keeps them from out-ranking the page's
+            // own headings in the document outline.
+            const level = Math.min(6, Math.max(3, heading[1].length));
+            out.push(`<h${level} class="md-h">${inline(heading[2])}</h${level}>`);
+            continue;
+        }
+        if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { flushAll(); out.push('<hr class="md-hr">'); continue; }
+
+        const bullet = line.match(/^\s*[-*+]\s+(.*)$/);
+        if (bullet) { flushParagraph(); listItems.push(bullet[1]); continue; }
+
+        flushList();
+        paragraph.push(line.trim());
+    }
+    flushAll();
+    return out.join('');
+}
+
+function inline(text) {
+    return text
+        .replace(/`([^`]+)`/g, '<code class="md-code">$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s.,;:)!?]|$)/g, '$1<em>$2</em>')
+        // Only http(s) becomes a link. escapeHtml has already run, so a javascript:
+        // or data: target cannot be smuggled through -- but spelling out the
+        // allowed schemes means that stays true if the escaping ever changes.
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+                 '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
 // --- Chart.js shared theme --------------------------------------------------
 // A function, not a static object — Chart.js canvases are drawn on a <canvas>,
 // so CSS alone can't re-theme them. Reading the live custom-property values at

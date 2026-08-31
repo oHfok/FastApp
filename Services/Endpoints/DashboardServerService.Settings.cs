@@ -22,6 +22,28 @@ namespace FastApp.Services
     {
         private static void MapSettingsEndpoints(WebApplication app)
         {
+        // Version history and what changed in each. Notes are markdown as
+        // authored on the GitHub release; the dashboard renders them.
+        app.MapGet("/api/releases", async (HttpContext context) =>
+        {
+            try
+            {
+                var releases = await ReleaseFeedService.GetReleasesAsync();
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    CurrentVersion = UpdateService.CurrentVersionText.TrimStart('v'),
+                    Releases = releases.Select(r => new
+                    {
+                        r.Version,
+                        PublishedAt = r.PublishedAt == DateTime.MinValue ? null : r.PublishedAt.ToString("yyyy-MM-dd"),
+                        r.NotesMarkdown,
+                        r.IsInstallable
+                    })
+                });
+            }
+            catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+        });
+
         app.MapGet("/api/settings", async (HttpContext context) => { using var db = new AppDbContext(); await context.Response.WriteAsJsonAsync(new { RetentionDays = GetRetentionDays(db), CaptureWindowTitles = GetCaptureWindowTitles(db) }); });
         // Validated before storing: this value drives an irreversible DELETE on
         // every app start, so an unparseable or nonsensical entry landing in the
