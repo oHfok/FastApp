@@ -42,8 +42,12 @@
     --violet: #8B7CFF;
     --violet-dim: #4E4599;
 
-    --font-display: 'Sora', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    /* One face for everything that is not a figure. The design is set in Space
+       Grotesk -- squarer, more characterful, and it pairs with JetBrains Mono
+       rather than fighting it. Sora and Inter are gone: two faces doing one job,
+       and Inter is the most generic UI face there is. */
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Space Grotesk', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
     /* --- Type ramp ---------------------------------------------------------
@@ -178,10 +182,13 @@ h1, h2, h3, .num-display {
     50% { opacity: 0.35; }
 }
 
+/* The design separates top-bar groups with space rather than rules. Kept in the
+   markup (it is a layout hook the JS does not touch) but drawn as a gap. */
 .tb-divider {
-    width: 1px;
+    width: 0;
     height: 24px;
-    background: var(--panel-border);
+    background: none;
+    margin: 0 8px;
 }
 
 .tb-clock {
@@ -253,10 +260,10 @@ h1, h2, h3, .num-display {
 .tb-gear {
     width: 34px;
     height: 34px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--panel-border);
-    background: var(--panel);
-    color: var(--text-dim);
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: var(--text-faint);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -267,8 +274,7 @@ h1, h2, h3, .num-display {
 
 .tb-gear:hover {
     color: var(--text);
-    border-color: var(--brass-dim);
-    background: rgba(232, 163, 61, 0.08);
+    background: var(--panel);
 }
 
 .tb-gear svg { width: 17px; height: 17px; }
@@ -393,9 +399,12 @@ h1, h2, h3, .num-display {
 }
 
 .card-label {
+    /* Mono, because these sit beside figures and the wide tracking the design
+       uses only holds together on a monospaced face. */
+    font-family: var(--font-mono);
     font-size: var(--fs-micro);
     text-transform: uppercase;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.17em;
     color: var(--text-faint);
     font-weight: 700;
 }
@@ -608,8 +617,8 @@ select.field {
 .date-stepper {
     display: flex;
     align-items: stretch;
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius-sm);
+    border: none;
+    border-radius: var(--radius-pill);
     overflow: hidden;
     background: var(--panel);
 }
@@ -624,8 +633,8 @@ select.field {
     cursor: pointer;
     transition: background 0.12s, color 0.12s;
 }
-.date-stepper button + button { border-left: 1px solid var(--panel-border); }
-.date-stepper button:hover:not(:disabled) { background: var(--bg-raised); color: var(--text); }
+.date-stepper button + button { border-left: none; }
+.date-stepper button:hover:not(:disabled) { background: rgba(255,255,255,0.05); color: var(--text); }
 .date-stepper button:disabled { opacity: 0.35; cursor: default; }
 #ov-date-prev, #ov-date-next { font-size: var(--fs-stat); line-height: 1; padding: 6px 12px; }
 

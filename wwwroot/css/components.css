@@ -128,43 +128,43 @@
 
 .lb-row {
     display: grid;
-    grid-template-columns: 34px 1fr auto;
+    /* rank | name | proportional bar | time. The design gives the bar its own
+       column instead of washing it behind the text: a tinted fill under a row
+       has to stay faint enough to read through, which makes the comparison it
+       exists for hard to see. A bar in its own track can be solid. */
+    grid-template-columns: 22px minmax(0, 1fr) 88px auto;
     align-items: center;
-    gap: 16px;
-    padding: 12px 16px;
+    gap: 14px;
+    padding: 11px 18px;
+    border-radius: var(--radius-pill);
+    background: var(--panel);
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.lb-row:hover { background: rgba(255, 255, 255, 0.06); }
+
+.lb-bar {
+    height: 6px;
     border-radius: var(--radius-pill);
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
-    cursor: pointer;
-    transition: all 0.15s;
+    overflow: hidden;
 }
-
-.lb-row:hover {
-    border-color: var(--brass-dim);
-    transform: translateX(2px);
-}
-
-/* A faint proportional fill behind each row, scaled to the top entry. Comparing
-   #1 to #4 previously meant reading and subtracting two durations; length is
-   read pre-attentively, digits are not. The numbers are untouched -- this only
-   adds the shape they already describe. Sits behind content via a pseudo
-   element so it needs no extra markup and cannot affect layout. */
-.lb-row { position: relative; overflow: hidden; }
-.lb-row::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: var(--share, 0%);
-    background: var(--brass);
-    opacity: 0.10;
-    /* Rounded on its own account, not just clipped by the row. Left square, the
-       fill ended in a hard vertical edge partway across a pill-shaped row, which
-       read as a rendering fault rather than a proportion. */
+.lb-bar-fill {
+    height: 100%;
     border-radius: var(--radius-pill);
-    pointer-events: none;
+    background: var(--brass);
     transition: width 0.35s ease;
 }
-.lb-row > * { position: relative; }
+
+/* The bar is a column now, so the row no longer needs a proportional wash. */
+@media (max-width: 620px) {
+    .lb-row { grid-template-columns: 22px minmax(0, 1fr) auto; }
+    .lb-bar { display: none; }
+}
+
+
 
 .lb-rank {
     font-family: var(--font-mono);
@@ -1176,9 +1176,9 @@
     align-items: center;
     gap: 7px;
     padding: 7px 14px 7px 11px;
-    border-radius: 999px;
-    border: 1px solid rgba(232, 163, 61, 0.4);
-    background: linear-gradient(180deg, rgba(232, 163, 61, 0.16), rgba(232, 163, 61, 0.05));
+    border-radius: var(--radius-pill);
+    border: none;
+    background: rgba(232, 163, 61, 0.10);
     color: var(--brass);
     font-family: var(--font-display);
     font-size: var(--fs-body);
@@ -1586,16 +1586,16 @@
 
 .layout-edit-toggle {
     margin-left: auto;
-    padding: 5px 12px;
+    padding: 5px 2px;
     font-size: var(--fs-caption);
-    font-weight: 600;
-    color: var(--text-dim);
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius-sm);
+    font-weight: 500;
+    color: var(--text-faint);
+    background: none;
+    border: none;
+    border-radius: 0;
     cursor: pointer;
 }
-.layout-edit-toggle:hover { color: var(--text); border-color: var(--text-faint); }
+.layout-edit-toggle:hover { color: var(--text); }
 
 @media (prefers-reduced-motion: reduce) {
     .layout-dragging { opacity: 1; }
