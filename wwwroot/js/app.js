@@ -317,6 +317,11 @@ async function boot() {
     if (urlState.date) setSelectedDate(urlState.date);
     initOverviewControls();
     initHistoryNav();
+    initLayout();
+    // Applied after the markup exists but before data arrives: reordering the
+    // containers does not touch their contents, so it costs nothing to do early
+    // and avoids cards visibly jumping once the layout comes back.
+    loadLayout();
     switchView(urlState.view || 'overview', { replace: true });
 
     checkFirstRun();

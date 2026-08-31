@@ -1513,3 +1513,86 @@
 .release-body .md-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--panel-border-soft); }
 .release-body .md-table th { color: var(--text-faint); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; }
 .release-body .md-table td { color: var(--text-dim); }
+
+/* ---------- Card layout editing ---------- */
+.layout-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-raised);
+    border: 1px solid var(--brass-dim);
+}
+.layout-bar-text { font-size: var(--fs-small); color: var(--text-dim); }
+.layout-bar-status { font-size: var(--fs-caption); color: var(--brass); margin-left: auto; }
+
+/* Only shown while editing, so the handle never sits between the reader and the
+   card's own content during normal use. */
+.layout-handle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* Some movable blocks are grids (.stat-row, .two-col). Without this the
+       handle becomes a grid cell, takes one of the two columns and shoves the
+       cards it is labelling out of their own layout. Spanning every column puts
+       it on its own row above them. Inert in flex and block parents. */
+    grid-column: 1 / -1;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-border);
+}
+.layout-grip { color: var(--text-faint); cursor: grab; font-size: var(--fs-strong); line-height: 1; }
+.layout-name { font-size: var(--fs-caption); font-weight: 700; color: var(--text-dim); }
+
+.layout-btn {
+    margin-left: 4px;
+    padding: 3px 8px;
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    cursor: pointer;
+}
+.layout-btn:last-child { margin-left: auto; }
+.layout-btn:hover:not(:disabled) { color: var(--text); border-color: var(--text-faint); }
+.layout-btn:disabled { opacity: 0.35; cursor: default; }
+.layout-btn-hide[aria-pressed="true"] { color: var(--brass); border-color: var(--brass-dim); }
+
+.layout-editing > [data-card] {
+    outline: 1px dashed var(--panel-border);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+}
+.layout-dragging { opacity: 0.45; }
+
+/* Hidden cards disappear outright in normal use. While editing they stay on
+   screen, dimmed, because a card you cannot see is a card you cannot un-hide. */
+.layout-hidden { display: none; }
+.layout-editing > .layout-hidden { display: block; opacity: 0.4; }
+
+.layout-edit-toggle {
+    margin-left: auto;
+    padding: 5px 12px;
+    font-size: var(--fs-caption);
+    font-weight: 600;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.layout-edit-toggle:hover { color: var(--text); border-color: var(--text-faint); }
+
+@media (prefers-reduced-motion: reduce) {
+    .layout-dragging { opacity: 1; }
+}
+
+/* The drawer's tab strip gained a Customise button beside it. */
+.dd-tab-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }

@@ -200,9 +200,10 @@
                             <button onclick="setOverviewScope('year', this)">Year</button>
                         </div>
                     </div>
-                </div>
+                    <button type="button" class="layout-edit-toggle" data-layout-edit="overview">Customise</button>
+                    </div>
 
-                <div class="card stat-block stat-hero" id="ov-hero-block">
+                <div class="card stat-block stat-hero" id="ov-hero-block" data-card="focus-today" data-card-name="Focus Today">
                     <div class="card-label" id="ov-hero-label">Focus Today</div>
                     <div class="stat-value" id="ov-hero-value" style="color:var(--brass)">0h 0m</div>
                     <div id="ov-hero-trend"></div>
@@ -220,7 +221,7 @@
                         <div class="compare-bar-caption" id="ov-share-caption"></div>
                     </div>
                 </div>
-                <div class="stat-row">
+                <div class="stat-row" data-card="afk-uptime" data-card-name="AFK & Uptime">
                     <div class="card stat-block" id="ov-afk-card">
                         <div class="card-label">AFK Time</div>
                         <div class="stat-value" id="ov-afk-value" style="color:var(--rose)">0h 0m</div>
@@ -232,13 +233,13 @@
                     </div>
                 </div>
 
-                <div class="card" style="margin-bottom:20px;">
+                <div class="card" style="margin-bottom:20px;" data-card="focus-by-category" data-card-name="Focus by Category">
                     <div class="card-label" style="margin-bottom:12px;">Focus by Category</div>
                     <div class="cat-bar" id="ov-cat-bar"></div>
                     <div class="cat-legend" id="ov-cat-legend"></div>
                 </div>
 
-                <div class="two-col" style="margin-bottom:20px;">
+                <div class="two-col" style="margin-bottom:20px;" data-card="top-lists" data-card-name="Top Applications & Categories">
                     <div class="card">
                         <div class="card-label" style="margin-bottom:12px;">Top Applications</div>
                         <div class="lb-list" id="ov-lb-apps"></div>
@@ -249,7 +250,7 @@
                     </div>
                 </div>
 
-                <div class="card" id="ov-activity-card">
+                <div class="card" id="ov-activity-card" data-card="timeline" data-card-name="Today's Timeline">
                     <div class="card-label" style="margin-bottom:14px;" id="ov-activity-label">Today's Timeline</div>
                     <div id="ov-activity-body"></div>
                 </div>
@@ -262,9 +263,10 @@
                         <div class="view-title">Insights</div>
                         <div class="view-sub">Patterns from your last 30 days of activity.</div>
                     </div>
-                </div>
+                    <button type="button" class="layout-edit-toggle" data-layout-edit="insights">Customise</button>
+                    </div>
 
-                <div class="stat-row" style="margin-bottom:20px;">
+                <div class="stat-row" style="margin-bottom:20px;" data-card="focus-blocks" data-card-name="Longest Focus & Average Session">
                     <div class="card stat-block">
                         <div class="card-label">Longest Focus Block</div>
                         <div class="stat-value" id="in-longest-block" style="color:var(--brass)">0h 0m</div>
@@ -275,25 +277,25 @@
                     </div>
                 </div>
 
-                <div class="card" style="margin-bottom:20px;">
+                <div class="card" style="margin-bottom:20px;" data-card="rhythm" data-card-name="Work vs. Play by Hour">
                     <div class="card-label" style="margin-bottom:14px;">Work vs. Play by Hour</div>
                     <div class="view-sub" style="margin:-8px 0 14px;">Which hours of the day skew productive, and which skew leisure.</div>
                     <div class="chart-wrap"><canvas id="in-rhythm-chart"></canvas></div>
                 </div>
 
-                <div class="card" style="margin-bottom:20px;">
+                <div class="card" style="margin-bottom:20px;" data-card="classification" data-card-name="Configure Work vs. Play">
                     <div class="card-label" style="margin-bottom:14px;">Configure Work vs. Play</div>
                     <div class="view-sub" style="margin:-8px 0 14px;">Tag each category so the chart above reflects what YOU consider productive — nothing is guessed.</div>
                     <div id="in-classification-list"></div>
                 </div>
 
-                <div class="card" style="margin-bottom:20px;">
+                <div class="card" style="margin-bottom:20px;" data-card="fatigue" data-card-name="Weekday Fatigue">
                     <div class="card-label" style="margin-bottom:14px;">Weekday Fatigue</div>
                     <div class="view-sub" style="margin:-8px 0 14px;">Average session length by day of the week — are you sharper early in the week?</div>
                     <div class="chart-wrap chart-wrap-short"><canvas id="in-fatigue-chart"></canvas></div>
                 </div>
 
-                <div class="card" id="in-heatmap-card">
+                <div class="card" id="in-heatmap-card" data-card="active-hours" data-card-name="When You're Usually Active">
                     <div class="card-label" style="margin-bottom:14px;">When You're Usually Active</div>
                     <div class="view-sub" style="margin:-8px 0 14px;">Total activity by day and hour, last 30 days.</div>
                     <div id="in-heatmap-body"></div>
@@ -598,13 +600,16 @@
         </div>
     </div>
 
-    <div class="segmented" id="dd-tab-toggle" style="margin-bottom:20px;">
-        <button class="active" data-tab="overview" onclick="setDrilldownTab('overview', this)">Overview</button>
-        <button data-tab="limits" onclick="setDrilldownTab('limits', this)">Limits</button>
+    <div class="dd-tab-row">
+        <div class="segmented" id="dd-tab-toggle">
+            <button class="active" data-tab="overview" onclick="setDrilldownTab('overview', this)">Overview</button>
+            <button data-tab="limits" onclick="setDrilldownTab('limits', this)">Limits</button>
+        </div>
+        <button type="button" class="layout-edit-toggle" data-layout-edit="appdetail">Customise</button>
     </div>
 
     <div id="dd-tab-panel-overview">
-        <div class="dd-section">
+        <div class="dd-section" data-card="dd-category" data-card-name="Category">
             <div class="dd-section-label">Category</div>
             <div class="dd-cat-row">
                 <select class="field" id="dd-category-select" style="flex:1;" aria-label="Category for this app"></select>
@@ -612,7 +617,7 @@
             <div class="retention-status" id="dd-category-status">Saved.</div>
         </div>
 
-        <div class="dd-section">
+        <div class="dd-section" data-card="dd-streaks" data-card-name="Streaks">
             <div class="dd-section-label">Streaks</div>
             <div class="dd-stat-grid">
                 <div class="card dd-stat">
@@ -628,23 +633,23 @@
             </div>
         </div>
 
-        <div class="dd-section">
+        <div class="dd-section" data-card="dd-most-used-day" data-card-name="Most Used Day">
             <div class="dd-section-label">Most Used Day</div>
             <div style="font-family:var(--font-mono);font-size:var(--fs-strong);font-weight:600;" id="dd-max-day">—</div>
         </div>
 
-        <div class="dd-section">
+        <div class="dd-section" data-card="dd-last-30" data-card-name="Last 30 Days">
             <div class="dd-section-label">Last 30 Days</div>
             <div style="font-size:var(--fs-strong);font-weight:600;" id="dd-consistency">—</div>
             <div style="font-size:var(--fs-small);color:var(--text-faint);margin-top:6px;" id="dd-pattern"></div>
         </div>
 
-        <div class="dd-section">
+        <div class="dd-section" data-card="dd-comparison" data-card-name="Period Comparison">
             <div class="dd-section-label">Period Comparison</div>
             <div class="dd-compare-list" id="dd-period-compare"></div>
         </div>
 
-        <div class="dd-section">
+        <div class="dd-section" data-card="dd-trend" data-card-name="Usage Trend">
             <div class="dd-section-label">Usage Trend</div>
             <div class="segmented" id="dd-trend-toggle" style="margin-bottom:14px;">
                 <button class="active" data-granularity="day" onclick="setTrendGranularity('day', this)">Last 12 Days</button>
@@ -657,7 +662,7 @@
             <div class="dd-trend-numbers" id="dd-trend-numbers"></div>
         </div>
 
-        <div class="dd-section">
+        <div class="dd-section" data-card="dd-lifetime" data-card-name="Lifetime Totals">
             <div class="dd-section-label">Lifetime Totals</div>
             <div class="dd-stat-grid">
                 <div class="card dd-stat">
@@ -671,7 +676,7 @@
             </div>
         </div>
 
-        <div class="dd-section">
+        <div class="dd-section" data-card="dd-milestone" data-card-name="Milestone">
             <div class="dd-section-label">Milestone</div>
             <div style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:14px;">Tiers based on cumulative focused time in this app.</div>
             <div class="dd-tier-ladder" id="dd-tier-ladder"></div>
@@ -681,7 +686,7 @@
             </div>
         </div>
 
-        <div class="dd-section">
+        <div class="dd-section" data-card="dd-first-last" data-card-name="First &amp; Last Opened">
             <div class="dd-section-label">First &amp; Last Opened</div>
             <div class="dd-stat-grid">
                 <div class="card dd-stat">
@@ -773,5 +778,6 @@
 <script src="js/tabs/leaderboard.js"></script>
 <script src="js/tabs/allapps.js"></script>
 <script src="js/tabs/settings.js"></script>
+<script src="js/layout.js"></script>
 </body>
 </html>
