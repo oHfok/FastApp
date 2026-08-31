@@ -19,6 +19,16 @@
    ========================================================== */
 
 const ACTIVITY_PAGE_SIZE = 50;
+
+// How far apart two same-app sessions can sit and still count as one stretch.
+// Sessions are written per focus change, so a genuine run is back-to-back; this
+// only has to absorb the rounding between one row's end and the next row's start.
+const RUN_GAP_TOLERANCE_MS = 2 * 60 * 1000;
+
+// Typing shouldn't put a query per keystroke on the database.
+const ACTIVITY_SEARCH_DEBOUNCE_MS = 250;
+// Below this the term matches most of the table: a full scan for a useless answer.
+const ACTIVITY_SEARCH_MIN_CHARS = 2;
 let activityOffset = 0;
 let activityTotalCount = 0;
 
@@ -39,7 +49,15 @@ function mergeActivityRuns(sessions) {
         const end = new Date(s.endTime);
         const sameDay = prev && prev.start.toDateString() === start.toDateString();
 
-        if (prev && prev.appName === s.appName && sameDay) {
+        // Contiguity matters now that the server can filter. In the unfiltered
+        // feed consecutive rows are back-to-back by construction, so this changes
+        // almost nothing; in search results it is the difference between truth
+        // and fiction. Searching "chrome" returns only Chrome sessions, and
+        // merging those blindly would splice together stretches with an hour of
+        // something else between them into one long fabricated run.
+        const contiguous = prev && Math.abs(prev.start - end) <= RUN_GAP_TOLERANCE_MS;
+
+        if (prev && prev.appName === s.appName && sameDay && contiguous) {
             prev.start = start;                       // extend backwards in time
             prev.durationMinutes += (s.durationMinutes ?? 0);
             prev.switches++;
@@ -60,12 +78,16 @@ function mergeActivityRuns(sessions) {
 
 function visibleActivityRuns() {
     const q = activitySearch.trim().toLowerCase();
+    // A term long enough to have gone to the server is already applied there,
+    // across the whole table. Re-applying it here would do nothing except drop
+    // rows the server deliberately matched on a window title.
+    const filterLocally = q.length > 0 && q.length < ACTIVITY_SEARCH_MIN_CHARS;
     return mergeActivityRuns(activitySessions)
         // Filter on the merged total, not the individual sessions: six 20-second
         // visits to the same window is a two-minute stretch of doing something,
         // and should survive a "hide anything under a minute" filter.
         .filter(r => r.durationMinutes >= activityMinMinutes)
-        .filter(r => !q
+        .filter(r => !filterLocally
             || r.appName.toLowerCase().includes(q)
             || r.titles.some(t => t.toLowerCase().includes(q)));
 }
@@ -88,7 +110,14 @@ async function fetchActivityPage(isFirstPage) {
     loadMoreBtn.textContent = 'Loading…';
 
     try {
-        const data = await apiFetch(`/api/recent-sessions?limit=${ACTIVITY_PAGE_SIZE}&offset=${activityOffset}`);
+        const term = activitySearch.trim();
+        const query = term.length >= ACTIVITY_SEARCH_MIN_CHARS ? `&search=${encodeURIComponent(term)}` : '';
+        // Aborting the previous request matters while typing: without it the
+        // replies race, and a slower earlier query can land after a later one
+        // and repaint the list with results for a term already edited away.
+        const data = await apiFetch(
+            `/api/recent-sessions?limit=${ACTIVITY_PAGE_SIZE}&offset=${activityOffset}${query}`,
+            { signal: abortableSignal('activity-page') });
         const sessions = data.sessions ?? [];
         activityTotalCount = data.totalCount ?? 0;
 
@@ -122,14 +151,22 @@ function renderActivity() {
     const summary = document.getElementById('activity-summary');
     if (summary) {
         const hidden = mergeActivityRuns(activitySessions).length - runs.length;
+        const searching = activitySearch.trim().length >= ACTIVITY_SEARCH_MIN_CHARS;
+        // Says how many matched in total, not just how many are on screen --
+        // otherwise "12 from 12 switches" reads as if that were the whole answer
+        // when there are 300 more matches waiting behind Load More.
+        const scope = searching
+            ? `${activityTotalCount} match${activityTotalCount === 1 ? '' : 'es'} in all history`
+            : `${runs.length} from ${activitySessions.length} switches`;
         summary.textContent = activitySessions.length === 0 ? ''
-            : `${runs.length} from ${activitySessions.length} switches`
-              + (hidden > 0 ? ` · ${hidden} short one${hidden === 1 ? '' : 's'} hidden` : '');
+            : scope + (hidden > 0 ? ` · ${hidden} short one${hidden === 1 ? '' : 's'} hidden` : '');
     }
 
     if (runs.length === 0) {
         listEl.innerHTML = `<div class="empty-state">${
-            activitySearch ? `No activity matching “${escapeHtml(activitySearch.trim())}”.` : 'No activity recorded yet.'
+            activitySearch
+                ? `No activity matching “${escapeHtml(activitySearch.trim())}” anywhere in your history.`
+                : 'No activity recorded yet.'
         }</div>`;
         return;
     }
@@ -180,9 +217,21 @@ function activityRunHtml(r) {
         </div>`;
 }
 
+let activitySearchTimer = null;
+
 function filterActivity(inputEl) {
     activitySearch = inputEl.value;
+
+    // Repaint immediately off what is already loaded so typing still feels
+    // instant, then go to the database once the user pauses.
     renderActivity();
+
+    clearTimeout(activitySearchTimer);
+    activitySearchTimer = setTimeout(() => {
+        // Paging restarts: results for a new term have their own ordering and
+        // their own total, so keeping the old offset would page into nothing.
+        loadActivity();
+    }, ACTIVITY_SEARCH_DEBOUNCE_MS);
 }
 
 function setActivityMinDuration(mins, btnEl) {
@@ -209,6 +258,10 @@ Dashboard.tabs.activity = {
     refresh: () => {
         const search = document.getElementById('activity-search');
         if (search && document.activeElement === search) return;
+        // A search is a deliberate query, not a live feed. Re-running it every
+        // 12 seconds would reset paging under anyone reading past page one, and
+        // new sessions cannot change an answer about the past anyway.
+        if (activitySearch.trim().length >= ACTIVITY_SEARCH_MIN_CHARS) return;
         if (activityOffset <= ACTIVITY_PAGE_SIZE) loadActivity();
     }
 };

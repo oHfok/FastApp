@@ -514,7 +514,13 @@ namespace FastApp.Services
         // ---- /api/recent-sessions?limit=&offset= ----------------------------------
         // Raw chronological app-switch feed (not aggregated by day), paged
         // newest-first, for the Activity tab's scrollable log.
-        app.MapGet("/api/recent-sessions", async (int? limit, int? offset, HttpContext context) =>
+        // `search` makes the filter the database's job rather than the browser's.
+        // The Activity tab used to filter only what it had already paged in, so
+        // searching found nothing older than the last "Load More" and quietly
+        // reported that as no results -- the further back something was, the less
+        // findable it got. Matching here covers the whole table regardless of how
+        // far the user has scrolled.
+        app.MapGet("/api/recent-sessions", async (int? limit, int? offset, string search, HttpContext context) =>
         {
             try
             {
@@ -525,6 +531,22 @@ namespace FastApp.Services
                 int skip = Math.Max(offset ?? 0, 0);
 
                 var query = db.SessionLogs.Where(s => s.AppName != "SYSTEM_PC" && !hiddenApps.Contains(s.AppName));
+
+                // Two characters minimum: a single letter matches most of the table,
+                // which is a full scan to produce a result nobody wanted.
+                //
+                // ToLower().Contains rather than EF.Functions.Like: it becomes
+                // instr(lower(col), @term) in SQLite, so it is case-insensitive
+                // without the caller having to escape % and _ out of the search box.
+                // Searching for "100%" matches "100%" rather than everything.
+                string term = (search ?? string.Empty).Trim().ToLowerInvariant();
+                bool isSearch = term.Length >= 2;
+                if (isSearch)
+                {
+                    query = query.Where(s => s.AppName.ToLower().Contains(term)
+                                          || (s.WindowTitle != null && s.WindowTitle.ToLower().Contains(term)));
+                }
+
                 int totalCount = await query.CountAsync();
 
                 var sessions = await query
@@ -548,7 +570,8 @@ namespace FastApp.Services
                     Sessions = payload,
                     TotalCount = totalCount,
                     Offset = skip,
-                    Limit = take
+                    Limit = take,
+                    IsSearch = isSearch
                 });
             }
             catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
