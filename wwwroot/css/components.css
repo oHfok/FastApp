@@ -1765,3 +1765,46 @@
     .hero-side { flex-direction: row; gap: 36px; }
     .stat-block.stat-hero .hero-share { flex-basis: 100%; }
 }
+
+/* ---------- Overview hero band, as designed ----------
+   No panel. The design puts the dial and its supporting detail straight on the
+   page; a tinted box around them was the last thing making the top of the
+   screen read as a card. */
+#view-overview > [data-card="focus-today"].card,
+#view-overview > [data-card="focus-today"].card.stat-hero {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+}
+
+.stat-block.stat-hero { align-items: center; gap: 42px; }
+
+.hero-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Uptime and AFK sit side by side, not stacked -- they are peers. */
+.hero-side { flex-direction: row; gap: 44px; }
+
+.stat-block.stat-hero .hero-share { flex: none; margin-top: 0; }
+.hero-cat { display: flex; flex-direction: column; gap: 10px; }
+.hero-cat .card-label { margin-bottom: 0; }
+
+@media (max-width: 900px) {
+    .stat-block.stat-hero { flex-direction: column; align-items: flex-start; gap: 26px; }
+    .hero-body { width: 100%; }
+}
+
+/* ---------- Overview lists, as designed ----------
+   Bare rows. A pill behind every row turned the two lists back into stacks of
+   boxes; the bar already gives each row its shape. */
+#view-overview .lb-row {
+    background: none;
+    padding: 7px 0;
+}
+#view-overview .lb-row:hover { background: none; }
+#view-overview .lb-row:hover .lb-name { color: var(--brass); }
