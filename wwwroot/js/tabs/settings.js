@@ -12,6 +12,9 @@ function setSettingsTab(tab, btnEl) {
     document.querySelectorAll('.settings-tab-panel').forEach(panel => {
         panel.style.display = panel.dataset.tab === tab ? 'block' : 'none';
     });
+    // Fetched on first view rather than on page load: it is a network call to
+    // GitHub, and most visits to Settings are not about the changelog.
+    if (tab === 'whatsnew') loadReleaseNotes();
 }
 
 function loadDashboardTheme() {
@@ -287,3 +290,54 @@ Dashboard.tabs.settings = {
         loadDbStats();
     }
 };
+
+/* ==========================================================
+   VERSION HISTORY ("What's New")
+
+   Notes are markdown from the GitHub release, rendered by
+   renderMarkdown(). The version the user is actually running is
+   marked, and versions with no notes still appear rather than
+   silently vanishing -- releases before 1.0.5 predate the habit
+   of writing them, and a gap in the list would read as a bug.
+   ========================================================== */
+let releasesLoaded = false;
+
+async function loadReleaseNotes(force) {
+    const listEl = document.getElementById('release-list');
+    if (!listEl || (releasesLoaded && !force)) return;
+
+    listEl.innerHTML = loadingRowsHtml(3);
+    try {
+        const data = await apiFetch('/api/releases');
+        const releases = data.releases ?? [];
+        if (releases.length === 0) {
+            listEl.innerHTML = `<div class="empty-state">No published versions found.</div>`;
+            return;
+        }
+
+        const current = (data.currentVersion || '').trim();
+        listEl.innerHTML = releases.map((r, i) => {
+            const isCurrent = current && r.version === current;
+            const body = r.notesMarkdown && r.notesMarkdown.trim()
+                ? renderMarkdown(r.notesMarkdown)
+                : `<p class="release-nonotes">No notes were recorded for this release.</p>`;
+            return `
+                <details class="release-item${isCurrent ? ' is-current' : ''}"${i === 0 ? ' open' : ''}>
+                    <summary class="release-head">
+                        <span class="release-version">${escapeHtml(r.version)}</span>
+                        ${isCurrent ? '<span class="release-badge">Installed</span>' : ''}
+                        <span class="release-date">${r.publishedAt ? escapeHtml(r.publishedAt) : ''}</span>
+                    </summary>
+                    <div class="release-body">${body}</div>
+                </details>`;
+        }).join('');
+        releasesLoaded = true;
+    } catch (err) {
+        if (isAbort(err)) return;
+        console.error('Failed to load release notes', err);
+        listEl.innerHTML = errorStateHtml(
+            "Couldn't load version history",
+            'The list comes from GitHub, so this needs a working connection.',
+            'loadReleaseNotes');
+    }
+}

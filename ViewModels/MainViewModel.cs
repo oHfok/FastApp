@@ -152,6 +152,34 @@ namespace FastApp.ViewModels
         [ObservableProperty] private bool _isUpdateReadyToApply;
         private Velopack.UpdateInfo? _pendingUpdateInfo;
 
+        // "What's New" for the version actually running. The desktop card shows a
+        // trimmed, plain-text rendering; the dashboard's What's New tab has the
+        // full history with the markdown rendered properly. Loaded lazily and
+        // never awaited on startup -- it is a GitHub call, and the app must open
+        // whether or not the network is there.
+        [ObservableProperty] private string _whatsNewText = string.Empty;
+        [ObservableProperty] private bool _hasWhatsNew;
+        private bool _whatsNewRequested;
+
+        public async Task LoadWhatsNewAsync()
+        {
+            if (_whatsNewRequested) return;
+            _whatsNewRequested = true;
+            try
+            {
+                var release = await Services.ReleaseFeedService.GetReleaseAsync(UpdateVersionText);
+                if (release == null || string.IsNullOrWhiteSpace(release.NotesMarkdown)) return;
+
+                WhatsNewText = Services.ReleaseFeedService.ToPlainText(release.NotesMarkdown, maxLines: 14);
+                HasWhatsNew = !string.IsNullOrWhiteSpace(WhatsNewText);
+            }
+            catch
+            {
+                // The card just stays hidden; nothing here is worth interrupting for.
+                _whatsNewRequested = false;
+            }
+        }
+
         [RelayCommand]
         private async Task CheckForUpdatesAsync()
         {
@@ -541,6 +569,11 @@ namespace FastApp.ViewModels
                 sw.Stop();
                 System.Diagnostics.Debug.WriteLine($"[PERF] RefreshStats took {sw.ElapsedMilliseconds}ms");
             }
+
+            // Settings. Fetching the notes here rather than at startup keeps the
+            // GitHub call off the launch path -- fire and forget, since nothing
+            // downstream waits on it and the card simply stays hidden on failure.
+            if (value == 2) _ = LoadWhatsNewAsync();
         }
 
         // This method automatically runs every time you type a letter into the search box
