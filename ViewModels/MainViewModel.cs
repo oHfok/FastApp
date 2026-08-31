@@ -180,6 +180,95 @@ namespace FastApp.ViewModels
             }
         }
 
+        // ---------- Rolling back to an earlier version ----------
+        // Only versions Velopack still has a package for are offered; the very
+        // first releases show in the dashboard's history but cannot be installed.
+        public System.Collections.ObjectModel.ObservableCollection<string> RollbackVersions { get; } = new();
+
+        [ObservableProperty] private string _selectedRollbackVersion;
+        [ObservableProperty] private string _rollbackWarningText = string.Empty;
+        // A plain bool so the existing BoolToVisibilityConverter can hide the
+        // warning line; there is no string-to-visibility converter in this app
+        // and one more converter for one binding is not worth the class.
+        [ObservableProperty] private bool _hasRollbackWarning;
+        // Drives the card's visibility. Not CountToVisibilityConverter, which is
+        // the empty-state converter: it shows at zero and hides above it, so
+        // binding the card to it would offer rollback only when there was
+        // nothing to roll back to.
+        [ObservableProperty] private bool _hasRollbackVersions;
+        [ObservableProperty] private string _rollbackStatusText = string.Empty;
+        [ObservableProperty] private bool _isRollbackBusy;
+        private Velopack.UpdateInfo? _preparedRollback;
+
+        partial void OnSelectedRollbackVersionChanged(string value)
+        {
+            _preparedRollback = null;
+            RollbackStatusText = string.Empty;
+            RollbackWarningText = string.Empty;
+            HasRollbackWarning = false;
+            if (string.IsNullOrWhiteSpace(value)) return;
+
+            _ = Task.Run(async () =>
+            {
+                var release = await Services.ReleaseFeedService.GetReleaseAsync(value);
+                if (release == null) return;
+                string risk = Services.UpdateService.DescribeSchemaRisk(release.PublishedAt.ToUniversalTime());
+                if (!string.IsNullOrEmpty(risk))
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        RollbackWarningText = risk;
+                        HasRollbackWarning = true;
+                    });
+            });
+        }
+
+        public async Task LoadRollbackVersionsAsync()
+        {
+            if (RollbackVersions.Count > 0) return;
+            try
+            {
+                var releases = await Services.ReleaseFeedService.GetReleasesAsync();
+                string current = UpdateVersionText.TrimStart('v');
+                foreach (var r in releases)
+                {
+                    if (!r.IsInstallable || r.Version == current) continue;
+                    RollbackVersions.Add(r.Version);
+                }
+                HasRollbackVersions = RollbackVersions.Count > 0;
+            }
+            catch { /* leaves the picker empty, which hides the card */ }
+        }
+
+        [RelayCommand]
+        private async Task RollBack()
+        {
+            if (IsRollbackBusy || string.IsNullOrWhiteSpace(SelectedRollbackVersion)) return;
+
+            // This restarts the app and replaces the installed build, so it asks
+            // first rather than acting on a single click.
+            string question = $"Reinstall version {SelectedRollbackVersion}?\n\n"
+                            + "FastApp will close and reopen on that version. Your database is backed up first, "
+                            + "and you can update again at any time."
+                            + (string.IsNullOrEmpty(RollbackWarningText) ? string.Empty : "\n\n" + RollbackWarningText);
+            var answer = System.Windows.MessageBox.Show(question, "Reinstall earlier version",
+                System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Warning);
+            if (answer != System.Windows.MessageBoxResult.OK) return;
+
+            IsRollbackBusy = true;
+            RollbackStatusText = $"Downloading {SelectedRollbackVersion}…";
+
+            var result = await Services.UpdateService.PrepareRollbackAsync(SelectedRollbackVersion);
+            RollbackStatusText = result.Message;
+            _preparedRollback = result.UpdateInfo;
+
+            if (result.Success && _preparedRollback != null)
+            {
+                RollbackStatusText = "Backing up your data and restarting…";
+                await Services.UpdateService.RollBackAndRestartAsync(_preparedRollback, RequestShutdownFlushAsync);
+            }
+            IsRollbackBusy = false;
+        }
+
         [RelayCommand]
         private async Task CheckForUpdatesAsync()
         {
@@ -573,7 +662,7 @@ namespace FastApp.ViewModels
             // Settings. Fetching the notes here rather than at startup keeps the
             // GitHub call off the launch path -- fire and forget, since nothing
             // downstream waits on it and the card simply stays hidden on failure.
-            if (value == 2) _ = LoadWhatsNewAsync();
+            if (value == 2) { _ = LoadWhatsNewAsync(); _ = LoadRollbackVersionsAsync(); }
         }
 
         // This method automatically runs every time you type a letter into the search box
