@@ -520,7 +520,10 @@ namespace FastApp.Services
         // reported that as no results -- the further back something was, the less
         // findable it got. Matching here covers the whole table regardless of how
         // far the user has scrolled.
-        app.MapGet("/api/recent-sessions", async (int? limit, int? offset, string search, HttpContext context) =>
+        // `search` must be nullable. A non-nullable string parameter is REQUIRED by
+        // minimal-API binding, so omitting it -- which the page does on every normal
+        // load -- returned 400 and broke the Activity tab outright.
+        app.MapGet("/api/recent-sessions", async (int? limit, int? offset, string? search, HttpContext context) =>
         {
             try
             {

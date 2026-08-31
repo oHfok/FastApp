@@ -132,7 +132,10 @@
        column instead of washing it behind the text: a tinted fill under a row
        has to stay faint enough to read through, which makes the comparison it
        exists for hard to see. A bar in its own track can be solid. */
-    grid-template-columns: 22px minmax(0, 1fr) 88px auto;
+    /* Name fixed, BAR flexible -- the design's proportion. Built the other way
+       round the bar was pinned to 88px in a row hundreds of pixels wide, so a
+       100% bar looked like a stub and the comparison was unreadable. */
+    grid-template-columns: 22px minmax(84px, 168px) minmax(0, 1fr) auto;
     align-items: center;
     gap: 14px;
     padding: 11px 18px;
@@ -186,12 +189,16 @@
 /* ---------- Full leaderboard tab (spotify-style) ---------- */
 .lb-toolbar {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 12px;
+    /* Scope and Rank-by are one decision made twice, so they sit together.
+       space-between shoved them to opposite ends of the toolbar. */
+    gap: 14px;
     margin-bottom: 20px;
 }
+/* Search is the only thing that belongs on the far side. */
+.lb-toolbar > .lb-search-wrap,
+.lb-toolbar > #lb-search { margin-left: auto; }
 
 .full-lb-header {
     display: grid;
@@ -316,7 +323,7 @@
 
 .full-lb-name-col { min-width: 0; }
 .full-lb-app-name { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.full-lb-cat { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.full-lb-cat { font-size: var(--fs-caption); color: var(--cat-color, var(--text-faint)); font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .full-lb-time { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-strong); text-align: right; color: var(--brass); }
 
@@ -359,9 +366,9 @@
 
 .heat-cell {
     aspect-ratio: 1;
-    border-radius: 3px;
+    border-radius: 4px;
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
+    border: none;
     cursor: default;
     transition: transform 0.1s;
 }
@@ -383,7 +390,12 @@
     grid-auto-flow: column;
     grid-template-rows: repeat(7, 1fr);
     gap: 4px;
-    justify-content: start;
+    /* Thirty days is five columns of cells. Left-aligned in a full-width
+       section they sat in the corner of a large empty area with the legend
+       stranded at the far right. Centred, the block reads as a deliberate
+       object. Cells are also bigger, since there is room for them. */
+    justify-content: center;
+    grid-auto-columns: 26px;
     overflow-x: auto;
     padding-bottom: 6px;
 }
@@ -391,9 +403,9 @@
 .heat-day-cell {
     width: 100%;
     aspect-ratio: 1;
-    border-radius: 3px;
+    border-radius: 5px;
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
+    border: none;
 }
 
 .heat-legend {
@@ -404,10 +416,10 @@
     font-family: var(--font-mono);
     font-size: var(--fs-micro);
     color: var(--text-faint);
-    justify-content: flex-end;
+    justify-content: center;
 }
 
-.heat-legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
+.heat-legend-swatch { width: 10px; height: 10px; border-radius: 3px; }
 
 /* ---------- Insights charts ---------- */
 .chart-wrap { position: relative; height: 260px; }
@@ -474,33 +486,41 @@
 .period-list { display: flex; flex-direction: column; gap: 12px; }
 
 .period-card {
-    padding: 16px 20px;
+    padding: 15px 18px;
+    border-radius: var(--radius);
     cursor: pointer;
 }
 
 .period-row {
-    display: flex;
+    /* A grid, so the three stat columns line up down the list. As a flex row
+       they were sized by their own content, so Total Focus, Most Used and vs
+       Previous started at a different x on every row. */
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
     align-items: center;
     gap: 20px;
 }
 
 .period-rank-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-family: var(--font-mono);
     font-weight: 700;
-    font-size: var(--fs-body);
-    color: var(--text-faint);
-    text-align: center;
+    font-size: var(--fs-small);
+    color: var(--text-dim);
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    padding: 6px 0;
-    width: 40px;
+    border: none;
+    /* A circle, like every other rank marker in the design. */
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
 }
 
-.period-rank-badge.rank-1 { color: var(--brass); border-color: var(--brass-dim); }
+.period-rank-badge.rank-1 { color: #1A1000; background: var(--brass); }
 
-.period-main { min-width: 0; flex: 1 1 180px; }
+.period-main { min-width: 0; }
 .period-label { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* overflow/ellipsis matter as much here as on .period-label above. Without them
    the range ("17.08.2026 → 23.08.2026", ~151px) simply painted outside its box
@@ -519,7 +539,11 @@
 
 /* Fixed-width columns (not flex) so Total Focus / Most Used / Ranking line up
    vertically across rows even when one row's text is much longer than another's. */
-.period-stats { display: grid; grid-template-columns: 110px 160px 100px; gap: 24px; flex-shrink: 0; }
+.period-stats {
+    /* display: contents -- the row grid places the three stats directly, so
+       they align across every row instead of being packed inside one column. */
+    display: contents;
+}
 .period-stat { min-width: 0; }
 
 .period-stat-label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; white-space: nowrap; }
@@ -542,13 +566,16 @@
    the date its space back and keeps every value visible, rather than hiding
    columns the way the Leaderboard currently does at narrow widths. */
 @media (max-width: 1100px) {
-    .period-row { flex-wrap: wrap; }
-    .period-stats {
-        flex-basis: 100%;
+    /* The row is a grid now, so flex-wrap and flex-basis no longer apply.
+       Badge and label take the first line; the three stats fall onto the second,
+       one per column, still aligned with each other down the list. */
+    .period-row {
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
-        margin-top: 4px;
+        row-gap: 14px;
+        column-gap: 16px;
     }
+    .period-rank-badge { grid-column: 1; grid-row: 1; }
+    .period-main { grid-column: 2 / -1; grid-row: 1; }
 }
 
 /* Daily-activity: week view — a small bar chart. Height (not just color
@@ -791,7 +818,7 @@
 
 .activity-name-col { min-width: 0; }
 .activity-app-name { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.activity-cat { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 600; margin-top: 1px; }
+.activity-cat { font-size: var(--fs-caption); color: var(--cat-color, var(--text-faint)); font-weight: 600; margin-top: 1px; }
 .activity-title { font-size: var(--fs-caption); color: var(--text-faint); font-style: italic; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .activity-time-range { font-family: var(--font-mono); font-size: var(--fs-small); color: var(--text-dim); white-space: nowrap; }
@@ -851,7 +878,7 @@
 }
 
 .allapps-name { font-weight: 700; font-size: var(--fs-body); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.allapps-cat { font-size: var(--fs-micro); color: var(--text-faint); font-weight: 600; margin-top: 1px; }
+.allapps-cat { font-size: var(--fs-micro); color: var(--cat-color, var(--text-faint)); font-weight: 600; margin-top: 1px; }
 
 .allapps-metrics { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: var(--fs-caption); }
 .allapps-metrics .v { display: block; font-size: var(--fs-body); font-weight: 700; margin-top: 2px; }

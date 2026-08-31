@@ -41,8 +41,11 @@ function renderRhythmChart(rhythm) {
         data: {
             labels,
             datasets: [
-                { label: 'Work', data: work, backgroundColor: theme.brass, borderRadius: 3, stack: 's' },
-                { label: 'Play', data: play, backgroundColor: theme.violet, borderRadius: 3, stack: 's' }
+                // Teal for work, violet for play -- the same pairing the legend and
+                // the classification list use. Brass is reserved for focus.
+                // borderRadius 100 rounds to the cap, matching every other bar.
+                { label: 'Work', data: work, backgroundColor: theme.teal, borderRadius: 100, borderSkipped: false, stack: 's' },
+                { label: 'Play', data: play, backgroundColor: theme.violet, borderRadius: 100, borderSkipped: false, stack: 's' }
             ]
         },
         options: {
@@ -78,7 +81,8 @@ function renderFatigueChart(fatigue) {
         type: 'bar',
         data: {
             labels,
-            datasets: [{ label: 'Avg session length', data: values, backgroundColor: theme.teal, borderRadius: 4, maxBarThickness: 48 }]
+            datasets: [{ label: 'Avg session length', data: values, backgroundColor: theme.teal,
+                         borderRadius: 100, borderSkipped: false, maxBarThickness: 44 }]
         },
         options: {
             responsive: true,
