@@ -123,27 +123,27 @@
     <div class="body-row">
         <!-- ============ RAIL NAV ============ -->
         <nav class="rail">
-            <button type="button" class="rail-item active" aria-current="page" data-view="overview">
+            <button type="button" class="rail-item active" aria-current="page" data-view="overview" title="Overview" aria-label="Overview">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
                 <span class="label-text">Overview</span>
             </button>
-            <button type="button" class="rail-item" data-view="insights">
+            <button type="button" class="rail-item" data-view="insights" title="Insights" aria-label="Insights">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18.5 8.5 13 14l-3-3-4.5 4.5"></path></svg>
                 <span class="label-text">Insights</span>
             </button>
-            <button type="button" class="rail-item" data-view="periods">
+            <button type="button" class="rail-item" data-view="periods" title="Periods" aria-label="Periods">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18M8 2v4M16 2v4"></path></svg>
                 <span class="label-text">Periods</span>
             </button>
-            <button type="button" class="rail-item" data-view="activity">
+            <button type="button" class="rail-item" data-view="activity" title="Activity" aria-label="Activity">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg>
                 <span class="label-text">Activity</span>
             </button>
-            <button type="button" class="rail-item" data-view="leaderboard">
+            <button type="button" class="rail-item" data-view="leaderboard" title="Leaderboard" aria-label="Leaderboard">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4z"></path><path d="M17 5h3a1 1 0 011 1 4 4 0 01-4 4M7 5H4a1 1 0 00-1 1 4 4 0 004 4"></path></svg>
                 <span class="label-text">Leaderboard</span>
             </button>
-            <button type="button" class="rail-item" data-view="allapps">
+            <button type="button" class="rail-item" data-view="allapps" title="All Applications" aria-label="All Applications">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
                 <span class="label-text">All Applications</span>
             </button>
@@ -231,6 +231,21 @@
                          figure -- what share of time at the machine was focused --
                          was never stated. Same .compare-bar the Periods detail page
                          already uses, rather than a new component. -->
+                    <!-- No data-card: these are part of the hero band now, not a block that
+                         moves on its own. Customise only reorders top-level blocks,
+                         and a handle on something nested inside another block would
+                         be a control that cannot do anything. -->
+                    <div class="hero-side">
+                        <div class="stat-block stat-minor" id="ov-uptime-card">
+                            <div class="card-label" id="ov-uptime-label">Uptime Today</div>
+                            <div class="stat-value" id="ov-uptime-value">0h 0m</div>
+                            <div id="ov-uptime-trend"></div>
+                        </div>
+                        <div class="stat-block" id="ov-afk-card">
+                            <div class="card-label">AFK Time</div>
+                            <div class="stat-value" id="ov-afk-value" style="color:var(--rose)">0h 0m</div>
+                        </div>
+                    </div>
                     <div class="hero-share" id="ov-hero-share" style="display:none;">
                         <div class="compare-bar">
                             <div class="compare-bar-seg" id="ov-share-focus"></div>
@@ -239,18 +254,6 @@
                         <div class="compare-bar-caption" id="ov-share-caption"></div>
                     </div>
                 </div>
-                <div class="stat-row" data-card="afk-uptime" data-card-name="AFK & Uptime">
-                    <div class="card stat-block" id="ov-afk-card">
-                        <div class="card-label">AFK Time</div>
-                        <div class="stat-value" id="ov-afk-value" style="color:var(--rose)">0h 0m</div>
-                    </div>
-                    <div class="card stat-block stat-minor" id="ov-uptime-card">
-                        <div class="card-label" id="ov-uptime-label">Uptime Today</div>
-                        <div class="stat-value" id="ov-uptime-value">0h 0m</div>
-                        <div id="ov-uptime-trend"></div>
-                    </div>
-                </div>
-
                 <div class="card" style="margin-bottom:20px;" data-card="focus-by-category" data-card-name="Focus by Category">
                     <div class="card-label" style="margin-bottom:12px;">Focus by Category</div>
                     <div class="cat-bar" id="ov-cat-bar"></div>

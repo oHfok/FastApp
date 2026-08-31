@@ -157,6 +157,10 @@
     width: var(--share, 0%);
     background: var(--brass);
     opacity: 0.10;
+    /* Rounded on its own account, not just clipped by the row. Left square, the
+       fill ended in a hard vertical edge partway across a pill-shaped row, which
+       read as a rendering fault rather than a proportion. */
+    border-radius: var(--radius-pill);
     pointer-events: none;
     transition: width 0.35s ease;
 }
@@ -1649,4 +1653,88 @@
 @media (max-width: 720px) {
     .stat-block.stat-hero { flex-direction: column; gap: 22px; }
     .hero-dial { width: 190px; height: 190px; }
+}
+
+/* ---------- Overview composition ----------
+   The port that shipped in 1.1.1 changed shape but not arrangement: every block
+   was still a full-width card stacked on the next, which is why it did not look
+   like the design. These rules do the recomposition.
+
+   Sections lose their card surface entirely. A heading plus its content on the
+   page background is enough separation; a tinted panel around each one is what
+   made the page read as a column of boxes. Rows and controls keep their fill,
+   because those are things you touch. */
+#view-overview > [data-card].card,
+#view-insights > [data-card].card,
+/* Blocks that are a grid of cards rather than a card themselves -- Top
+   Applications beside Top Categories, the two Insights stat cards -- carry the
+   panel on their CHILDREN, so stripping only the top level left those two
+   sitting in tinted boxes while everything around them was bare. */
+#view-overview > [data-card] > .card,
+#view-insights > [data-card] > .card {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+}
+
+/* Space, not panels, separates the sections. */
+#view-overview > [data-card],
+#view-insights > [data-card] {
+    margin-bottom: 34px !important;
+}
+
+/* The hero keeps its surface -- it is the one panel on the page -- and holds the
+   dial, the two secondary readouts and the share bar on ONE line, which is the
+   arrangement that makes the top of the page read as a single statement rather
+   than three stacked cards. */
+#view-overview > [data-card="focus-today"].card,
+#view-overview > [data-card="focus-today"].card.stat-hero {
+    background: var(--panel);
+    padding: 26px 30px;
+    border-radius: var(--radius);
+}
+
+/* AFK and Uptime move up beside the dial instead of forming their own row. */
+.hero-side {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex-shrink: 0;
+}
+.hero-side .stat-block {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+}
+.hero-side .card-label { margin-bottom: 4px; }
+
+/* Both of these have to out-specify .stat-block.stat-hero .stat-value, which is
+   a DESCENDANT selector: moving these readouts inside the hero band handed them
+   the hero's 44px, so AFK rendered larger than the focus figure it is a detail
+   of. .stat-minor pulls the other way, to 16px. Pinning both here keeps the two
+   the same size as each other and clearly under the hero. */
+.stat-block.stat-hero .hero-side .stat-value,
+.stat-block.stat-hero .hero-side .stat-minor .stat-value {
+    font-size: 25px;
+    line-height: 1.15;
+}
+
+/* Section headings sit on the page, so they need the label treatment the cards
+   used to give them. */
+#view-overview > [data-card] > .card-label,
+#view-insights > [data-card] > .card-label {
+    margin-bottom: 14px;
+}
+
+/* Two lists side by side with a real gutter and no dividing rule. */
+#view-overview [data-card="top-lists"].two-col { gap: 64px; }
+
+/* The hero band: dial, the two secondary readouts, then the share bar. */
+.stat-block.stat-hero { align-items: center; gap: 36px; }
+.stat-block.stat-hero .hero-share { flex: 1; min-width: 0; }
+
+@media (max-width: 1080px) {
+    .stat-block.stat-hero { flex-wrap: wrap; gap: 24px; }
+    .hero-side { flex-direction: row; gap: 36px; }
+    .stat-block.stat-hero .hero-share { flex-basis: 100%; }
 }
