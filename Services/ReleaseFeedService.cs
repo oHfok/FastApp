@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using Rx = System.Text.RegularExpressions.Regex;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -161,6 +162,49 @@ namespace FastApp.Services
                 // history still renders, rollback simply isn't offered.
             }
             return versions;
+        }
+
+        /// <summary>
+        /// Markdown flattened for the desktop Settings card, which is a plain
+        /// TextBlock rather than a renderer. The dashboard shows the same notes
+        /// formatted properly; this only has to stay readable, so the markers
+        /// are removed rather than interpreted, and tables (which cannot survive
+        /// as plain text in a narrow card) are dropped entirely.
+        /// </summary>
+        public static string ToPlainText(string markdown, int maxLines = 0)
+        {
+            if (string.IsNullOrWhiteSpace(markdown)) return string.Empty;
+
+            var lines = new List<string>();
+            foreach (var raw in markdown.Replace("\r\n", "\n").Split('\n'))
+            {
+                string line = raw.Trim();
+                if (line.Length == 0)
+                {
+                    if (lines.Count > 0 && lines[^1].Length > 0) lines.Add(string.Empty);
+                    continue;
+                }
+                if (line.StartsWith("|")) continue;                        // table row
+                if (Rx.IsMatch(line, @"^(-{3,}|\*{3,}|_{3,})$")) continue;  // horizontal rule
+
+                bool isBullet = Rx.IsMatch(line, @"^[-*+]\s+");
+                line = Rx.Replace(line, @"^#{1,6}\s*", string.Empty);
+                line = Rx.Replace(line, @"^[-*+]\s+", string.Empty);
+                line = Rx.Replace(line, @"\*\*([^*]+)\*\*", "$1");
+                line = Rx.Replace(line, @"(?<![\w*])\*([^*]+)\*(?![\w*])", "$1");
+                line = Rx.Replace(line, "`([^`]+)`", "$1");
+                line = Rx.Replace(line, @"\[([^\]]+)\]\([^)]+\)", "$1");
+
+                lines.Add(isBullet ? "  \u2022 " + line : line);
+            }
+
+            while (lines.Count > 0 && lines[^1].Length == 0) lines.RemoveAt(lines.Count - 1);
+            if (maxLines > 0 && lines.Count > maxLines)
+            {
+                lines = lines.Take(maxLines).ToList();
+                lines.Add("\u2026");
+            }
+            return string.Join(Environment.NewLine, lines);
         }
 
         private static Version ParseVersion(string text) =>
