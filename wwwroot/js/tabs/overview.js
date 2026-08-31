@@ -290,9 +290,10 @@ function renderOverviewLeaderboards(leaderboard) {
     } else {
         const appMax = Math.max(...apps.map(a => a.focusedMinutes || 0), 1);
         appsEl.innerHTML = apps.map((app, i) => `
-            <div class="lb-row app-link" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0" style="--share:${((app.focusedMinutes || 0) / appMax) * 100}%">
+            <div class="lb-row app-link" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0">
                 <div class="lb-rank">${i + 1}</div>
                 <div class="lb-name" title="${escapeHtml(app.appName)}">${escapeHtml(displayAppName(app.appName))}</div>
+                <div class="lb-bar"><div class="lb-bar-fill" style="width:${((app.focusedMinutes || 0) / appMax) * 100}%"></div></div>
                 <div class="lb-time">${formatTime(app.focusedMinutes)}</div>
             </div>`).join('');
     }
@@ -310,9 +311,10 @@ function renderOverviewLeaderboards(leaderboard) {
     } else {
         const catMax = Math.max(...cats.map(([, m]) => m), 1);
         catsEl.innerHTML = cats.map(([cat, mins], i) => `
-            <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0" style="--share:${(mins / catMax) * 100}%">
+            <div class="lb-row app-link" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">
                 <div class="lb-rank">${i + 1}</div>
                 <div class="lb-name"><span class="cat-swatch" style="background:${catColor(cat)};display:inline-block;margin-right:8px;"></span>${escapeHtml(cat)}</div>
+                <div class="lb-bar"><div class="lb-bar-fill" style="width:${(mins / catMax) * 100}%;background:${catColor(cat)}"></div></div>
                 <div class="lb-time">${formatTime(mins)}</div>
             </div>`).join('');
     }
