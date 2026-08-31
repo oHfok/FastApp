@@ -70,8 +70,16 @@
     --fs-display: 26px;   /* stat-card values */
     --fs-hero:    44px;   /* the hero stat */
 
-    --radius: 14px;
-    --radius-sm: 8px;
+    /* --- Shape -------------------------------------------------------------
+       The dashboard used to be built from bordered rectangles: a panel with a
+       1px border and a 14px radius, repeated at every scale. The redesign drops
+       the borders entirely and leans on radius instead -- surfaces are soft and
+       generous, and anything that reads as a control or a row is a full pill.
+       One wash (--panel) carries every surface; there is no second panel colour
+       and no border, so depth comes from shape and spacing rather than outline. */
+    --radius: 20px;       /* cards and panels */
+    --radius-sm: 12px;    /* small surfaces nested inside a card */
+    --radius-pill: 100px; /* rows, toggles, bars, inputs -- anything interactive */
 
     /* Chart.js reads these at render time (see getChartTheme() in utils.js) so
        canvases re-theme along with everything else instead of staying fixed. */
@@ -291,7 +299,7 @@ h1, h2, h3, .num-display {
     align-items: center;
     gap: 10px;
     padding: 10px 14px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-pill);
     color: var(--text-dim);
     font-size: var(--fs-body);
     font-weight: 600;
@@ -372,7 +380,7 @@ h1, h2, h3, .num-display {
 
 .card {
     background: var(--panel);
-    border: 1px solid var(--panel-border);
+    border: none;
     border-radius: var(--radius);
     padding: 20px;
 }
@@ -388,9 +396,9 @@ h1, h2, h3, .num-display {
 /* ---------- Segmented control (timestamp selector) ---------- */
 .segmented {
     display: inline-flex;
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius-sm);
+    background: var(--panel);
+    border: none;
+    border-radius: var(--radius-pill);
     padding: 3px;
     gap: 2px;
 }
@@ -401,7 +409,7 @@ h1, h2, h3, .num-display {
     outline: none;
     cursor: pointer;
     padding: 7px 16px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-pill);
     font-family: var(--font-mono);
     font-size: var(--fs-caption);
     font-weight: 600;
@@ -416,15 +424,14 @@ h1, h2, h3, .num-display {
 .segmented button.active {
     background: var(--brass);
     color: #1A1000;
-    box-shadow: 0 2px 10px var(--brass-glow);
 }
 
 /* ---------- Inputs ---------- */
 .field {
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius-sm);
-    padding: 8px 12px;
+    background: var(--panel);
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    padding: 9px 16px;
     color: var(--text);
     font-size: var(--fs-body);
     font-family: var(--font-body);
@@ -446,8 +453,8 @@ select.field {
 }
 
 .btn {
-    padding: 9px 18px;
-    border-radius: var(--radius-sm);
+    padding: 9px 20px;
+    border-radius: var(--radius-pill);
     font-size: var(--fs-small);
     font-weight: 700;
     font-family: var(--font-body);

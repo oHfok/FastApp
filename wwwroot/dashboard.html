@@ -204,9 +204,27 @@
                     </div>
 
                 <div class="card stat-block stat-hero" id="ov-hero-block" data-card="focus-today" data-card-name="Focus Today">
-                    <div class="card-label" id="ov-hero-label">Focus Today</div>
-                    <div class="stat-value" id="ov-hero-value" style="color:var(--brass)">0h 0m</div>
-                    <div id="ov-hero-trend"></div>
+                    <!-- The day as an arc. Two rings share one track: the outer
+                         brass one is the focused share, the muted rose beneath it
+                         adds the time spent away, so the gap at the end is time at
+                         the machine that was neither. The figure sits inside the
+                         curve rather than above a bar, which is what stops the
+                         page reading as a stack of boxes.
+
+                         Every id the render code writes to is unchanged -- this is
+                         a different arrangement of the same fields, not new data. -->
+                    <div class="hero-dial">
+                        <svg class="hero-dial-svg" viewBox="0 0 250 250" aria-hidden="true">
+                            <circle class="hero-dial-track" cx="125" cy="125" r="104"></circle>
+                            <circle class="hero-dial-afk" id="ov-dial-afk" cx="125" cy="125" r="104"></circle>
+                            <circle class="hero-dial-focus" id="ov-dial-focus" cx="125" cy="125" r="104"></circle>
+                        </svg>
+                        <div class="hero-dial-face">
+                            <div class="card-label" id="ov-hero-label">Focus Today</div>
+                            <div class="stat-value" id="ov-hero-value" style="color:var(--brass)">0h 0m</div>
+                            <div id="ov-hero-trend"></div>
+                        </div>
+                    </div>
                     <!-- Focus, AFK and uptime are not three independent facts: the
                          first two are parts of the third. Shown as three cards the
                          reader had to relate them by hand, and the most useful

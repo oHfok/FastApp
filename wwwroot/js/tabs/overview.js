@@ -194,7 +194,11 @@ function renderHeroShare(scope, ov, focusHours, uptimeHours) {
     const afkHours = { day: ov.afkToday, week: ov.afkWeek, month: ov.afkMonth, year: ov.afkYear }[scope];
 
     // Needs a real uptime figure to be a share OF anything.
-    if (!uptimeHours || uptimeHours <= 0) { host.style.display = 'none'; return; }
+    if (!uptimeHours || uptimeHours <= 0) {
+        host.style.display = 'none';
+        setHeroDial(0, 0);
+        return;
+    }
 
     const focusPct = Math.min(100, (focusHours / uptimeHours) * 100);
     const afkPct = Math.min(100 - focusPct, ((afkHours || 0) / uptimeHours) * 100);
@@ -209,6 +213,33 @@ function renderHeroShare(scope, ov, focusHours, uptimeHours) {
     document.getElementById('ov-share-caption').textContent =
         `${Math.round(focusPct)}% of ${formatHours(uptimeHours)} at the machine${afkText}`;
     host.style.display = 'block';
+
+    setHeroDial(focusPct, afkPct);
+}
+
+// The ring around the hero figure. Same two percentages the bar above uses, so
+// the dial can never disagree with the caption beside it.
+//
+// The AFK arc is drawn from the same origin and made LONGER than the focus arc
+// (focus + afk), with focus painted over the top of it. Drawing it as a separate
+// segment offset to start where focus ends looked right until a day with no AFK
+// time, where a zero-length round-capped arc still renders as a visible dot.
+const HERO_DIAL_CIRCUMFERENCE = 653.5;   // 2 * pi * r, r = 104
+
+function setHeroDial(focusPct, afkPct) {
+    const focusEl = document.getElementById('ov-dial-focus');
+    const afkEl = document.getElementById('ov-dial-afk');
+    if (!focusEl || !afkEl) return;
+
+    const offsetFor = (pct) =>
+        HERO_DIAL_CIRCUMFERENCE * (1 - Math.max(0, Math.min(100, pct)) / 100);
+
+    afkEl.style.strokeDashoffset = offsetFor(focusPct + afkPct);
+    focusEl.style.strokeDashoffset = offsetFor(focusPct);
+    // A round cap on a zero-length arc still paints a dot, which reads as a
+    // stray mark on a day with no focus or no AFK time at all.
+    afkEl.style.opacity = afkPct > 0.5 ? '1' : '0';
+    focusEl.style.opacity = focusPct > 0.5 ? '1' : '0';
 }
 
 function renderCategoryBar(leaderboard) {
