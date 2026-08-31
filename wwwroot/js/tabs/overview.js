@@ -29,7 +29,11 @@ function syncOverviewControls() {
     if (stepper) {
         // The stepper only makes sense for Day; the other scopes are rolling
         // windows ending today, so "previous day" has nothing to mean there.
-        stepper.style.display = scope === 'day' ? 'flex' : 'none';
+        // visibility, not display: the stepper sits to the LEFT of the scope
+        // pills, so display:none collapsed its width and slid the whole control
+        // group sideways every time the scope changed. Reserving the space keeps
+        // the pills still.
+        stepper.style.visibility = scope === 'day' ? 'visible' : 'hidden';
         const isToday = getSelectedDate() === getLocalTodayStr();
         document.getElementById('ov-date-next').disabled = isToday;
         document.getElementById('ov-date-today').disabled = isToday;
