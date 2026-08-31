@@ -15,8 +15,19 @@ async function loadInsights() {
                                     { signal: abortableSignal('insights') });
         if (data.error) { console.error(data.error); return; }
 
-        document.getElementById('in-longest-block').textContent = formatTime(data.longestBlock ?? 0);
-        document.getElementById('in-avg-span').textContent = formatTime(data.averageSpan ?? 0);
+        const longest = data.longestBlock ?? 0;
+        const avgSpan = data.averageSpan ?? 0;
+        const totalSpan = data.totalSpan ?? 0;
+        document.getElementById('in-longest-block').textContent = formatTime(longest);
+        document.getElementById('in-avg-span').textContent = formatTime(avgSpan);
+
+        // Each ring shows the share the figure beside it actually represents:
+        // the longest block as a fraction of everything tracked that day, and the
+        // average session as a fraction of that longest block. Both are real
+        // ratios of numbers already on screen -- a ring against an invented
+        // maximum would just be decoration shaped like data.
+        setInsightDial('in-longest-arc', totalSpan > 0 ? longest / totalSpan : 0);
+        setInsightDial('in-avg-arc', longest > 0 ? avgSpan / longest : 0);
 
         renderRhythmChart(data.rhythm ?? []);
         renderFatigueChart(data.fatigue ?? []);
@@ -52,11 +63,18 @@ function renderRhythmChart(rhythm) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { stacked: true, grid: { display: false }, ticks: { color: theme.tick, font: { family: theme.fontMono, size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
-                y: durationAxis(Math.max(...work.map((w, i) => w + play[i]), 1), theme, { stacked: true })
+                x: { stacked: true, grid: { display: false }, border: { display: false },
+                     ticks: { color: theme.tick, font: { family: theme.fontMono, size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+                // No y-axis. The shape of the day is the point, not the minute
+                // value of any one hour -- and the axis furniture (ticks, grid,
+                // border) was most of the ink in a chart made of eight bars.
+                // Exact figures stay one hover away in the tooltip.
+                y: { stacked: true, display: false, beginAtZero: true }
             },
             plugins: {
-                legend: { labels: { color: theme.tick, font: { family: theme.fontBody, size: 11 } } },
+                // The legend lives beside the heading in the markup; Chart.js was
+                // drawing a second one directly above the bars.
+                legend: { display: false },
                 tooltip: {
                     backgroundColor: theme.tooltipBg,
                     titleColor: theme.tooltipTitle,
@@ -66,6 +84,19 @@ function renderRhythmChart(rhythm) {
             }
         }
     });
+}
+
+// 2 * pi * 42, matching .insight-dial-arc's dasharray.
+const INSIGHT_DIAL_CIRCUMFERENCE = 263.9;
+
+function setInsightDial(id, fraction) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const clamped = Math.max(0, Math.min(1, fraction || 0));
+    el.style.strokeDashoffset = INSIGHT_DIAL_CIRCUMFERENCE * (1 - clamped);
+    // A round cap on a zero-length arc still paints a dot, which reads as a
+    // stray mark on a day with nothing tracked.
+    el.style.opacity = clamped > 0.005 ? '1' : '0';
 }
 
 function renderFatigueChart(fatigue) {
@@ -81,15 +112,22 @@ function renderFatigueChart(fatigue) {
         type: 'bar',
         data: {
             labels,
-            datasets: [{ label: 'Avg session length', data: values, backgroundColor: theme.teal,
-                         borderRadius: 100, borderSkipped: false, maxBarThickness: 44 }]
+            // The heaviest day is brass; the rest teal. The design marks the peak
+            // rather than leaving the reader to compare seven similar bars.
+            datasets: [{ label: 'Avg session length', data: values,
+                         backgroundColor: values.map(v => v === Math.max(...values, 0) && v > 0 ? theme.brass : theme.teal),
+                         borderRadius: 100, borderSkipped: false, maxBarThickness: 52 }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { grid: { display: false }, ticks: { color: theme.tick, font: { family: theme.fontMono, size: 11 } } },
-                y: durationAxis(Math.max(...values, 1), theme)
+                x: { grid: { display: false }, border: { display: false },
+                     ticks: { color: theme.tick, font: { family: theme.fontMono, size: 11 } } },
+                // Same reasoning as the rhythm chart: seven bars compared against
+                // each other need no axis, and the caption underneath says what
+                // the height means.
+                y: { display: false, beginAtZero: true }
             },
             plugins: {
                 legend: { display: false },
@@ -158,8 +196,13 @@ async function loadCategoryClassification() {
         // Category comes from a data-* attribute rather than being spliced into
         // the onclick string — names are free-form, so an apostrophe would have
         // broken the handler outright and markup would have been re-executed.
+        // The selected pill takes the colour that value means everywhere else on
+        // this screen -- teal is work and violet is play in the chart directly
+        // above. Filling all three with brass made the toggle say nothing about
+        // which way it was set, and spent the focus colour on something that is
+        // not focus.
         const segButton = (cat, value, label, current) =>
-            `<button class="${current === value ? 'active' : ''}" data-classify-cat="${escapeHtml(cat)}" data-classify-as="${value}">${label}</button>`;
+            `<button class="seg-${value}${current === value ? ' active' : ''}" data-classify-cat="${escapeHtml(cat)}" data-classify-as="${value}">${label}</button>`;
 
         listEl.innerHTML = `<div class="settings-list classification-list">${entries.map(({ category: cat, classification: cls, minutes }) => `
                 <div class="settings-list-item">

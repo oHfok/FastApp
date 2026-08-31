@@ -418,6 +418,12 @@ namespace FastApp.Services
                 {
                     LongestBlock = longestBlock,
                     AverageSpan = avgSpan,
+                    // The day's total, so the two figures above can be shown as the
+                    // shares they actually are rather than as bare numbers: the
+                    // longest block is a fraction of the day, and the average
+                    // session is a fraction of that longest block. A dial without a
+                    // real denominator would be decoration.
+                    TotalSpan = targetDaySessions.Sum(x => (x.EndTime - x.StartTime).TotalMinutes),
                     Heatmap = heatmap,
                     Rhythm = rhythm,
                     Fatigue = fatigue
