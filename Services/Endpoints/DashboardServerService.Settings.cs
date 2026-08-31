@@ -22,6 +22,58 @@ namespace FastApp.Services
     {
         private static void MapSettingsEndpoints(WebApplication app)
         {
+        // Card order and hidden cards, per view. Stored server-side rather than in
+        // localStorage so a layout someone arranged survives opening the
+        // dashboard in a different browser, which is where per-browser storage
+        // quietly loses work people did on purpose.
+        //
+        // The payload is treated as opaque here: the dashboard owns its own card
+        // names, and this endpoint has no business knowing them. It only checks
+        // the thing is JSON of a sane size before storing it.
+        app.MapGet("/api/settings/layout", async (HttpContext context) =>
+        {
+            try
+            {
+                using var db = new AppDbContext();
+                string stored = PinService.GetSettingValue(db, "DashboardLayout");
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(string.IsNullOrWhiteSpace(stored) ? "{}" : stored);
+            }
+            catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+        });
+
+        app.MapPost("/api/settings/layout", async (HttpContext context) =>
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                string body = (await reader.ReadToEndAsync() ?? string.Empty).Trim();
+
+                // A layout is a few dozen short strings. Anything appreciably
+                // bigger is not a layout, and this value is read back and handed
+                // to the page on every load.
+                if (body.Length > 8000)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Layout too large." });
+                    return;
+                }
+                try { using var _ = System.Text.Json.JsonDocument.Parse(body); }
+                catch
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Layout must be valid JSON." });
+                    return;
+                }
+
+                using var db = new AppDbContext();
+                await db.Database.ExecuteSqlRawAsync(
+                    "INSERT OR REPLACE INTO AppSettings (Key, Value) VALUES ('DashboardLayout', {0})", body);
+                await context.Response.WriteAsJsonAsync(new { ok = true });
+            }
+            catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+        });
+
         // Version history and what changed in each. Notes are markdown as
         // authored on the GitHub release; the dashboard renders them.
         app.MapGet("/api/releases", async (HttpContext context) =>
