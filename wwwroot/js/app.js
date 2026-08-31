@@ -189,7 +189,9 @@ function tickClock() {
     const timeEl = document.getElementById('tb-time');
     const dateEl = document.getElementById('tb-date');
     if (timeEl) timeEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    if (dateEl) dateEl.textContent = `${DAY_NAMES[isoDow(now)]}, ${fmtDateEU(now)}`;
+    // Short weekday: "MONDAY, 31.08.2026" wrapped onto a second line beside
+    // the clock and made the whole bar two rows tall.
+    if (dateEl) dateEl.textContent = `${DAY_SHORT[isoDow(now)]} ${fmtDateEU(now)}`;
 }
 
 // --- Top bar: online status, focus today, all-time -----------------------

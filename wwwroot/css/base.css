@@ -141,8 +141,11 @@ h1, h2, h3, .num-display {
 .topbar {
     display: flex;
     align-items: center;
-    gap: 28px;
-    padding: 10px 24px;
+    /* Tighter, and no left padding: the mark owns the first 72px so it lines up
+       with the rail beneath it, and the reference packs the metrics close
+       together rather than spreading them across the bar. */
+    gap: 22px;
+    padding: 10px 24px 10px 0;
     background: rgba(16, 18, 25, 0.7);
     backdrop-filter: blur(20px) saturate(140%);
     -webkit-backdrop-filter: blur(20px) saturate(140%);
@@ -151,14 +154,34 @@ h1, h2, h3, .num-display {
     z-index: 30;
 }
 
+/* The brand mark, aligned to the rail's column below it. */
+.tb-mark {
+    width: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.tb-mark::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--brass);
+}
+
+/* "Tracking" is a status line, not a title: quiet, and the same size as the
+   other secondary text in the bar. */
 .tb-status {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: var(--fs-strong);
-    letter-spacing: 0.02em;
+    gap: 9px;
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: var(--fs-small);
+    color: var(--text-dim);
+    letter-spacing: 0;
+    flex-shrink: 0;
 }
 
 .status-dot {
@@ -166,7 +189,6 @@ h1, h2, h3, .num-display {
     height: 8px;
     border-radius: 50%;
     background: var(--teal);
-    box-shadow: 0 0 8px var(--teal);
     animation: pulse-dot 2.6s ease-in-out infinite;
     flex-shrink: 0;
 }
@@ -195,6 +217,7 @@ h1, h2, h3, .num-display {
     display: flex;
     flex-direction: column;
     line-height: 1.15;
+    white-space: nowrap;
 }
 
 .tb-time {
@@ -243,17 +266,19 @@ h1, h2, h3, .num-display {
    almost nothing; Focus Today and Most Used are the reasons to glance up. */
 /* Lowered: the rail went from 208px to 72px, so the top bar has 136px more room
    than when these were chosen and was dropping metrics that now fit. */
-@media (max-width: 860px) {
-    .topbar { gap: 18px; }
+/* The reference fits mark, status, clock and all three metrics at 766px, so
+   these only take effect below that. */
+@media (max-width: 740px) {
+    .topbar { gap: 16px; }
     .tb-metric.alltime { display: none; }
 }
-@media (max-width: 700px) {
+@media (max-width: 600px) {
     .tb-metric.mostused { display: none; }
 }
 
 .tb-metric.focus .tb-metric-value { color: var(--brass); }
 .tb-metric.alltime .tb-metric-value { color: var(--text-dim); }
-.tb-metric.mostused .tb-metric-value { color: var(--teal); }
+.tb-metric.mostused .tb-metric-value { color: var(--text); }
 .tb-metric.mostused { cursor: pointer; }
 .tb-metric.mostused:hover .tb-metric-value { text-decoration: underline; }
 
