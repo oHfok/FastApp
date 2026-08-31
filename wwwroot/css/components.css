@@ -1882,3 +1882,41 @@
 .classification-list .segmented { flex-shrink: 0; padding: 2px; }
 .classification-list .segmented button { padding: 5px 10px; font-size: var(--fs-micro); }
 .classification-list .classification-mins { margin-left: 8px; flex-shrink: 0; }
+
+/* Configure Work vs. Play matches Weekday Fatigue's height and scrolls inside
+   itself, so the two halves of the pair start and end together however many
+   categories exist.
+
+   Height is taken from the row rather than hardcoded to the chart's 200px: both
+   columns stretch to the taller one, and the list is what gives, so the pair
+   stays matched if the chart is ever resized.
+
+   This restores a nested scroll that was deliberately removed earlier, when the
+   list was a full-width block on a scrolling page and the wheel did two
+   different things a few pixels apart. Bounded to half a row beside a chart, it
+   is the opposite problem: without a cap the list sets the height of the whole
+   row and drags the pair out of line. */
+.insight-pair {
+    /* start, not stretch: with eleven categories the list was the taller column,
+       so stretching made the chart grow to 646px to match it -- the reverse of
+       what is wanted. The chart sets the height; the list is capped to it. */
+    align-items: start;
+    --insight-block-h: 200px;   /* the chart's height, shared by both columns */
+}
+.insight-pair > div { display: flex; flex-direction: column; min-width: 0; }
+.insight-pair .chart-wrap-short { height: var(--insight-block-h); }
+.insight-pair .classification-list {
+    /* +28px for the caption that sits under the chart in the other column, so
+       the two columns finish on the same line. */
+    max-height: calc(var(--insight-block-h) + 28px);
+    overflow-y: auto;
+    padding-right: 6px;
+}
+/* A quiet scrollbar -- the default light track is louder than the rows. */
+.insight-pair .classification-list::-webkit-scrollbar { width: 6px; }
+.insight-pair .classification-list::-webkit-scrollbar-track { background: transparent; }
+.insight-pair .classification-list::-webkit-scrollbar-thumb {
+    background: var(--panel-border);
+    border-radius: var(--radius-pill);
+}
+.insight-pair .classification-list::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
