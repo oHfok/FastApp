@@ -402,27 +402,6 @@
 
                             <TextBlock Text="Application" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource BrandText}" Margin="0,15,0,15"/>
 
-                            <!-- What changed in the version actually running. Hidden when
-                                 the notes could not be fetched (offline, or a release with
-                                 none recorded) rather than showing an empty card. The full
-                                 history lives in the dashboard, which can render markdown. -->
-                            <ui:CardExpander Margin="0,0,0,10" IsExpanded="False"
-                                             Visibility="{Binding HasWhatsNew, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <ui:CardExpander.Header>
-                                    <StackPanel Margin="0,8,0,8">
-                                        <TextBlock Text="What's New" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource BrandText}"/>
-                                        <TextBlock Text="{Binding UpdateVersionText, StringFormat='Changes in {0}'}" Foreground="{StaticResource BrandTextDim}" FontSize="12" Margin="0,2,0,0"/>
-                                    </StackPanel>
-                                </ui:CardExpander.Header>
-                                <StackPanel Margin="0,4,0,8">
-                                    <TextBlock Text="{Binding WhatsNewText}" TextWrapping="Wrap" LineHeight="19"
-                                               Foreground="{StaticResource BrandTextDim}" FontSize="12"/>
-                                    <ui:Button Content="Full history in dashboard  &#x2197;" Icon="Globe24" Appearance="Secondary"
-                                               Command="{Binding StatisticsVM.OpenWebDashboardCommand}"
-                                               HorizontalAlignment="Left" Margin="0,12,0,0"/>
-                                </StackPanel>
-                            </ui:CardExpander>
-
                             <ui:CardControl Margin="0,0,0,10" Padding="15">
                                 <ui:CardControl.Header>
                                     <StackPanel>
@@ -466,6 +445,27 @@
                                                Visibility="{Binding HasRollbackWarning, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                     <TextBlock Text="{Binding RollbackStatusText}" TextWrapping="Wrap"
                                                Foreground="{StaticResource BrandTextDim}" FontSize="12" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </ui:CardExpander>
+
+                            <!-- What changed in the version actually running. Hidden when
+                                 the notes could not be fetched (offline, or a release with
+                                 none recorded) rather than showing an empty card. The full
+                                 history lives in the dashboard, which can render markdown. -->
+                            <ui:CardExpander Margin="0,0,0,10" IsExpanded="False"
+                                             Visibility="{Binding HasWhatsNew, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <ui:CardExpander.Header>
+                                    <StackPanel Margin="0,8,0,8">
+                                        <TextBlock Text="What's New" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource BrandText}"/>
+                                        <TextBlock Text="{Binding UpdateVersionText, StringFormat='Changes in {0}'}" Foreground="{StaticResource BrandTextDim}" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </ui:CardExpander.Header>
+                                <StackPanel Margin="0,4,0,8">
+                                    <TextBlock Text="{Binding WhatsNewText}" TextWrapping="Wrap" LineHeight="19"
+                                               Foreground="{StaticResource BrandTextDim}" FontSize="12"/>
+                                    <ui:Button Content="Full history in dashboard  &#x2197;" Icon="Globe24" Appearance="Secondary"
+                                               Command="{Binding StatisticsVM.OpenWebDashboardCommand}"
+                                               HorizontalAlignment="Left" Margin="0,12,0,0"/>
                                 </StackPanel>
                             </ui:CardExpander>
 
