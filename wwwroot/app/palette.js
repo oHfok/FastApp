@@ -223,7 +223,44 @@ function move(delta) {
 
 els.q.addEventListener('input', () => { query = els.q.value; active = 0; render(); });
 
+/* ---------------------------------------------------------------------------
+   Views
+
+   One document rather than separate pages: the palette is summoned constantly
+   and must not pay for a navigation, and the detail view wants the same bridge
+   and the same stylesheet. The host is told to resize, and to stop dismissing
+   itself on deactivation while an editing view is open, because losing
+   half-typed changes to a stray click would be unforgivable.
+   --------------------------------------------------------------------------- */
+
+const VIEWS = {
+    palette: { el: document.getElementById('view-palette'), w: 760, h: 520, pinned: false },
+    detail: { el: document.getElementById('view-detail'), w: 820, h: 560, pinned: true }
+};
+
+let view = 'palette';
+
+function show(name) {
+    view = name;
+    for (const [key, v] of Object.entries(VIEWS)) v.el.hidden = key !== name;
+
+    const target = VIEWS[name];
+    send('resize', { width: target.w, height: target.h });
+    send('set-pinned', { value: target.pinned });
+
+    if (name === 'palette') els.q.focus();
+}
+
 document.addEventListener('keydown', e => {
+    if (view === 'detail') {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            if (capturing) { stopCapture(); return; }
+            show('palette');
+        }
+        return;
+    }
+
     switch (e.key) {
         case 'ArrowDown': e.preventDefault(); move(1); break;
         case 'ArrowUp': e.preventDefault(); move(-1); break;
@@ -238,6 +275,134 @@ document.addEventListener('keydown', e => {
     }
 });
 
+/* ---------------------------------------------------------------------------
+   Detail view
+   --------------------------------------------------------------------------- */
+
+const d = {
+    avatar: document.getElementById('d-avatar'),
+    name: document.getElementById('d-name'),
+    category: document.getElementById('d-category'),
+    today: document.getElementById('d-today'),
+    triggers: document.getElementById('d-triggers'),
+    customName: document.getElementById('d-custom-name'),
+    path: document.getElementById('d-path'),
+    hotkey: document.getElementById('d-hotkey'),
+    hotkeyClear: document.getElementById('d-hotkey-clear'),
+    suppress: document.getElementById('d-suppress'),
+    autostart: document.getElementById('d-autostart'),
+    args: document.getElementById('d-args'),
+    delay: document.getElementById('d-delay'),
+    limit: document.getElementById('d-limit'),
+    force: document.getElementById('d-force'),
+    limitCard: document.getElementById('d-limit-card'),
+    locked: document.getElementById('d-locked'),
+    limitNote: document.getElementById('d-limit-note'),
+    remove: document.getElementById('d-delete')
+};
+
+let editing = null;
+let capturing = false;
+
+function setToggle(el, on) { el.setAttribute('aria-checked', on ? 'true' : 'false'); }
+function toggleOn(el) { return el.getAttribute('aria-checked') === 'true'; }
+
+function renderDetail(app) {
+    editing = app;
+
+    d.avatar.textContent = (app.displayName[0] || '?').toUpperCase();
+    d.avatar.style.background = tint(app.category);
+    d.name.textContent = app.displayName;
+    d.category.textContent = app.category || 'Other';
+    d.today.textContent = app.today || '0m';
+    d.triggers.textContent = app.triggerCount;
+
+    d.customName.value = app.customName || '';
+    d.path.textContent = app.packaged
+        ? 'Microsoft Store app'
+        : (app.executablePath || 'No executable');
+
+    d.hotkey.textContent = app.hotkeySequence ? app.hotkeyDisplay : 'None';
+    setToggle(d.suppress, app.suppressHotkeyPassthrough);
+    setToggle(d.autostart, app.launchOnStartup);
+    d.args.value = app.launchArguments || '';
+    d.delay.value = app.launchDelaySeconds ? String(app.launchDelaySeconds) : '';
+    d.limit.value = app.dailyLimitMinutes ? String(app.dailyLimitMinutes) : '';
+    setToggle(d.force, app.strictFocusMode);
+
+    // The PIN gates limits wherever they are edited from; this surface must not
+    // become a way around it.
+    d.locked.hidden = !app.limitsLocked;
+    d.limitNote.hidden = !app.limitsLocked;
+    d.limitCard.classList.toggle('disabled', app.limitsLocked);
+    d.limit.disabled = app.limitsLocked;
+    d.force.disabled = app.limitsLocked;
+
+    show('detail');
+}
+
+function saveDetail() {
+    if (!editing) return;
+    send('save-app', {
+        app: {
+            id: editing.id,
+            customName: d.customName.value,
+            hotkeySequence: editing.hotkeySequence || '',
+            hotkeyDisplay: editing.hotkeyDisplay || '',
+            suppressHotkeyPassthrough: toggleOn(d.suppress),
+            launchOnStartup: toggleOn(d.autostart),
+            launchArguments: d.args.value,
+            launchDelaySeconds: parseInt(d.delay.value, 10) || 0,
+            dailyLimitMinutes: parseInt(d.limit.value, 10) || 0,
+            strictFocusMode: toggleOn(d.force),
+            category: editing.category
+        }
+    });
+}
+
+for (const el of [d.customName, d.args, d.delay, d.limit]) {
+    el.addEventListener('change', saveDetail);
+}
+for (const el of [d.suppress, d.autostart, d.force]) {
+    el.addEventListener('click', () => {
+        if (el.disabled) return;
+        setToggle(el, !toggleOn(el));
+        saveDetail();
+    });
+}
+
+function startCapture() {
+    capturing = true;
+    d.hotkey.classList.add('capturing');
+    d.hotkey.textContent = 'Press a combination\u2026';
+    send('capture-hotkey');
+}
+
+function stopCapture() {
+    capturing = false;
+    d.hotkey.classList.remove('capturing');
+    d.hotkey.textContent = editing && editing.hotkeySequence ? editing.hotkeyDisplay : 'None';
+    send('cancel-capture');
+}
+
+d.hotkey.addEventListener('click', () => (capturing ? stopCapture() : startCapture()));
+
+d.hotkeyClear.addEventListener('click', () => {
+    if (!editing) return;
+    editing.hotkeySequence = '';
+    editing.hotkeyDisplay = 'None';
+    d.hotkey.textContent = 'None';
+    saveDetail();
+});
+
+d.remove.addEventListener('click', () => {
+    if (!editing) return;
+    send('delete-app', { id: editing.id });
+    show('palette');
+});
+
+document.querySelector('[data-back]').addEventListener('click', () => show('palette'));
+
 /* The host pushes a whole new state rather than deltas: the palette is small
    enough that reconciling partial updates would cost more than it saves. */
 if (bridge) {
@@ -248,7 +413,24 @@ if (bridge) {
         } catch {
             return;
         }
-        if (!message || message.type !== 'state') return;
+        if (!message) return;
+
+        if (message.type === 'app') { renderDetail(message.app); return; }
+
+        if (message.type === 'hotkey-captured') {
+            if (!capturing || !editing) return;
+            capturing = false;
+            d.hotkey.classList.remove('capturing');
+            editing.hotkeySequence = message.sequence;
+            editing.hotkeyDisplay = message.display;
+            d.hotkey.textContent = message.display;
+            saveDetail();
+            return;
+        }
+
+        if (message.type === 'reset') { show('palette'); return; }
+
+        if (message.type !== 'state') return;
 
         state = { ...state, ...message.state };
         els.focus.textContent = state.focusToday || '—';

@@ -9,6 +9,14 @@
 
 @import url("../css/tokens.css");
 
+/* The dashboard gets this from base.css; the palette imports only the tokens,
+   so without it every padded input with width:100% overflowed its card. */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Any explicit display beats the hidden attribute, and both views set one.
+   Without this the palette stayed on screen underneath the detail view. */
+[hidden] { display: none !important; }
+
 html, body {
     height: 100%;
     margin: 0;
@@ -189,3 +197,161 @@ body {
 @media (prefers-reduced-motion: no-preference) {
     .row { transition: background 0.12s ease; }
 }
+
+/* ---------------------------------------------------------------------------
+   Detail view
+   --------------------------------------------------------------------------- */
+
+.detail {
+    height: 100%;
+    background: var(--bg);
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+}
+
+.detail-head { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.detail-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.detail-name {
+    font-size: var(--fs-title);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.avatar-lg { width: 40px; height: 40px; font-size: var(--fs-stat); }
+
+.icon-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--panel);
+    color: var(--text-dim);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.icon-btn:hover { color: var(--text); }
+
+.stat { display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
+.stat-value {
+    font-family: var(--font-mono);
+    font-size: var(--fs-display);
+    font-weight: 700;
+    color: var(--brass);
+}
+.stat-muted { color: var(--text-dim); }
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    flex-grow: 1;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
+}
+.detail-grid::-webkit-scrollbar { width: 0; }
+
+.card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.card-head { display: flex; align-items: center; gap: 9px; }
+
+.field-label { font-size: var(--fs-small); color: var(--text-faint); }
+
+.field {
+    background: var(--bg-raised);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 11px 18px;
+    font-family: var(--font-body);
+    font-size: var(--fs-body);
+    color: var(--text);
+    outline: none;
+    width: 100%;
+    min-width: 0;
+}
+.field::placeholder { color: var(--text-faint); }
+.field:focus { box-shadow: inset 0 0 0 1.5px var(--brass-dim); }
+
+.field-button {
+    font-family: var(--font-mono);
+    text-align: left;
+    cursor: pointer;
+}
+.field-button.capturing {
+    color: var(--brass);
+    box-shadow: inset 0 0 0 1.5px var(--brass);
+}
+
+.field-row { display: flex; align-items: center; gap: 9px; }
+.field-split { display: flex; align-items: flex-end; gap: 10px; }
+.field-split > span { display: flex; flex-direction: column; gap: 7px; flex-grow: 1; min-width: 0; }
+.field-narrow { flex-grow: 0 !important; width: 120px; flex-shrink: 0; }
+
+.path {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+    text-align: left;
+}
+
+.opt { display: flex; align-items: center; gap: 14px; }
+.opt-end { align-items: center; padding-bottom: 2px; }
+.opt-text { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0; }
+.hint-sub { font-size: var(--fs-caption); color: var(--text-faint); }
+
+.toggle {
+    width: 36px; height: 20px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    padding: 0 3px;
+    display: flex; align-items: center; justify-content: flex-start;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.toggle > span {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    display: block;
+}
+.toggle[aria-checked="true"] { background: var(--brass); justify-content: flex-end; }
+.toggle[aria-checked="true"] > span { background: #1A1000; }
+.toggle:disabled { opacity: 0.5; cursor: default; }
+
+.btn {
+    background: var(--panel);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 11px 18px;
+    font-family: var(--font-body);
+    font-size: var(--fs-small);
+    color: var(--text-dim);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn:hover { color: var(--text); background: var(--bg-raised); }
+.btn-danger { color: var(--rose); background: none; }
+.btn-danger:hover { color: var(--rose); background: rgba(255, 107, 107, 0.1); }
+
+.locked { display: flex; align-items: center; gap: 7px; color: var(--brass); }
+.label-brass { color: var(--brass); }
+
+.detail-foot { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+
+.card.disabled { opacity: 0.55; }
+.card.disabled .field { pointer-events: none; }

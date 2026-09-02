@@ -292,8 +292,49 @@ namespace FastApp
             System.Windows.Input.Key.Space
         };
 
+        // ---- Hotkey capture for the palette -------------------------------
+        // The palette cannot capture a combination itself: a WebView2 only sees
+        // keys the browser chooses to surface, and never the ones another app
+        // has already swallowed. The low-level hook sees everything, so capture
+        // borrows it and reports the result back.
+        private bool _capturingHotkey;
+        private readonly HashSet<System.Windows.Input.Key> _paletteCapture = new();
+
+        /// <summary>Raised with (sequence, displayText) once the keys are released.</summary>
+        public event Action<string, string> HotkeyCaptured;
+
+        public void BeginHotkeyCapture()
+        {
+            _paletteCapture.Clear();
+            _capturingHotkey = true;
+        }
+
+        public void CancelHotkeyCapture() => _capturingHotkey = false;
+
         private void CheckPaletteHotkey(HashSet<System.Windows.Input.Key> pressed)
         {
+            if (_capturingHotkey)
+            {
+                // Grow the set while keys go down; report it once the last one
+                // comes up, so "Ctrl then Shift then S" records all three
+                // rather than just whichever arrived first.
+                if (pressed.Count > 0)
+                {
+                    foreach (var key in pressed) _paletteCapture.Add(key);
+                    return;
+                }
+
+                if (_paletteCapture.Count == 0) return;
+
+                string sequence = string.Join(",", _paletteCapture.Select(k => k.ToString()));
+                string display = string.Join(" + ", _paletteCapture.Select(k => k.ToString()));
+                _capturingHotkey = false;
+                _paletteCapture.Clear();
+
+                Dispatcher.BeginInvoke(new Action(() => HotkeyCaptured?.Invoke(sequence, display)));
+                return;
+            }
+
             if (!pressed.SetEquals(PaletteCombo) && !pressed.SetEquals(PaletteComboRight)) return;
 
             // Hop to the UI thread: this arrives on the keyboard hook's thread,
