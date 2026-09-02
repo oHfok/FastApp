@@ -79,7 +79,21 @@ Write-Host "==> Publishing self-contained win-x64 build..." -ForegroundColor Cya
 if ($LASTEXITCODE -ne 0) { throw "Publish failed." }
 
 # --- 4. Pack it into a Velopack release ------------------------------------
-Write-Host "==> Packing Velopack release..." -ForegroundColor Cyan
+# --delta None, deliberately.
+#
+# Updating 1.3.1 -> 2.0.0 through a delta produced an install that was missing
+# every file the release ADDED: the whole wwwrootpp folder and css	okens.css.
+# FastApp started, reported version 2.0.0, and showed ERR_ACCESS_DENIED where its
+# interface should have been.
+#
+# The packages were not at fault. "vpk delta patch" reconstructs 2.0.0 from
+# 1.3.1 plus the delta byte for byte -- 679 files, none missing, no size
+# differences -- so the delta itself is sound and the loss happens when the
+# client applies it. Velopack 1.2.0 is the newest release, so there is no fix to
+# upgrade to, and shipping a mechanism that silently drops files from an install
+# is not worth the bandwidth it saves. Full packages are around 60 MB; an update
+# that always works is worth more than a small one that sometimes does not.
+Write-Host "==> Packing Velopack release (full packages only)..." -ForegroundColor Cyan
 vpk pack `
     --packId FastApp `
     --packVersion $Version `
@@ -89,6 +103,7 @@ vpk pack `
     --packAuthors "oHfok" `
     --icon (Join-Path $repoRoot "Assets\app-icon.ico") `
     --runtime win-x64 `
+    --delta None `
     --outputDir $releasesDir
 if ($LASTEXITCODE -ne 0) { throw "vpk pack failed." }
 
