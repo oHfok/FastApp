@@ -250,12 +250,20 @@ namespace FastApp
         {
             base.OnSourceInitialized(e);
 
-            // 1. Self-Healing Startup Check
-            // If they moved the .exe, this instantly fixes the OS paths!
-            if (!StartupTaskService.IsStartupCorrectlyRegistered())
-            {
-                StartupTaskService.SetStartup(true);
-            }
+            // There used to be a "self-healing" startup check here: if the
+            // registered path did not match this exe, it called SetStartup(true)
+            // on the spot. That fires a UAC prompt, on the UI thread, with the
+            // window frozen behind it, without asking -- and it re-enabled
+            // startup for anyone who had deliberately turned it off. When two
+            // copies of FastApp exist (an installed build and a debug or
+            // portable one) each rewrites the other's task on launch: the
+            // startup log recorded four such re-registrations in a single day.
+            //
+            // The state is now reported instead. MainViewModel refreshes it and
+            // surfaces a Fix button in Settings when a different copy owns the
+            // registration, so the prompt only ever appears because it was asked
+            // for. See RefreshStartupStateAsync.
+            _viewModel?.RefreshStartupState();
         }
 
         // Cleanup to prevent memory leaks when the app closes

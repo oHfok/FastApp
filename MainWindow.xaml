@@ -364,8 +364,30 @@
                                         <TextBlock Text="Automatically start FastApp silently in the background when Windows boots." Foreground="{StaticResource BrandTextDim}" FontSize="12" Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </ui:CardControl.Header>
-                                <ui:ToggleSwitch IsChecked="{Binding LaunchOnSystemStartup}"/>
+                                <ui:ToggleSwitch IsChecked="{Binding LaunchOnSystemStartup}" IsEnabled="{Binding IsStartupToggleBusy, Converter={StaticResource InverseBooleanConverter}}"/>
                             </ui:CardControl>
+
+                            <!-- Only visible when another copy of FastApp owns the
+                                 startup registration. The app used to correct this
+                                 silently on every launch, which meant an unrequested
+                                 UAC prompt and two copies overwriting each other. -->
+                            <Border Margin="0,0,0,10" Padding="15" CornerRadius="8"
+                                    Background="#1A2A1F0A" BorderBrush="{StaticResource BrandAccent}" BorderThickness="1"
+                                    Visibility="{Binding HasStartupConflict, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="Startup points at another copy" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource BrandText}"/>
+                                        <TextBlock Text="{Binding StartupConflictText}" Foreground="{StaticResource BrandTextDim}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="1" Content="Use this copy" Appearance="Secondary" VerticalAlignment="Center" Margin="12,0,0,0"
+                                               Command="{Binding FixStartupRegistrationCommand}"
+                                               IsEnabled="{Binding IsStartupToggleBusy, Converter={StaticResource InverseBooleanConverter}}"/>
+                                </Grid>
+                            </Border>
 
                             <ui:CardControl Margin="0,0,0,10" Padding="15">
                                 <ui:CardControl.Header>

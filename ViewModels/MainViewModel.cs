@@ -105,6 +105,13 @@ namespace FastApp.ViewModels
         [ObservableProperty] private bool _launchOnSystemStartup;
         [ObservableProperty] private bool _isStartupToggleBusy;
 
+        // Set when something else owns the startup registration -- normally a
+        // second copy of FastApp that has claimed the scheduled task. Surfaced
+        // as a banner with a Fix button rather than corrected on sight, because
+        // correcting it costs a UAC prompt nobody asked for.
+        [ObservableProperty] private bool _hasStartupConflict;
+        [ObservableProperty] private string _startupConflictText = string.Empty;
+
         // Whether a Parental PIN is configured (checked once per tracker flush —
         // see StartProcessTrackerAsync). When set, the Daily Limit / Force Close
         // controls in the app's own Settings panel lock: editing them then has to
@@ -542,14 +549,7 @@ namespace FastApp.ViewModels
                 _ = PublishDashboardStatusAsync();
                 await RunAutoLaunchAsync();
 
-                // NEW: reflect actual current registration state in the toggle
-                bool isRegistered = StartupTaskService.IsStartupCorrectlyRegistered();
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    _suppressStartupToggleHandler = true;
-                    LaunchOnSystemStartup = isRegistered;
-                    _suppressStartupToggleHandler = false;
-                });
+                RefreshStartupState();
             });
         }
 
@@ -702,6 +702,47 @@ namespace FastApp.ViewModels
             }
         }
 
+        /// <summary>
+        /// Reads the real registration state and reflects it in the toggle and the
+        /// conflict banner. Safe to call from any thread; the queries shell out to
+        /// schtasks, so the work is pushed off whatever thread asked.
+        /// </summary>
+        public void RefreshStartupState()
+        {
+            Task.Run(() =>
+            {
+                var info = StartupTaskService.GetStartupInfo();
+
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    _suppressStartupToggleHandler = true;
+                    LaunchOnSystemStartup = info.State == StartupTaskService.StartupState.RegisteredForThisExe;
+                    _suppressStartupToggleHandler = false;
+
+                    HasStartupConflict = info.State == StartupTaskService.StartupState.RegisteredForAnotherExe;
+                    StartupConflictText = HasStartupConflict
+                        ? $"Windows currently starts a different copy of FastApp:\n{info.RegisteredPath}"
+                        : string.Empty;
+                });
+            });
+        }
+
+        /// <summary>
+        /// Points the startup registration at this copy. Only ever runs because the
+        /// user pressed Fix, so the UAC prompt it triggers is expected.
+        /// </summary>
+        [RelayCommand]
+        private void FixStartupRegistration()
+        {
+            IsStartupToggleBusy = true;
+            Task.Run(() =>
+            {
+                StartupTaskService.SetStartup(true);
+                System.Windows.Application.Current?.Dispatcher.Invoke(() => IsStartupToggleBusy = false);
+                RefreshStartupState();
+            });
+        }
+
         partial void OnLaunchOnSystemStartupChanged(bool value)
         {
             if (_suppressStartupToggleHandler) return;
@@ -722,6 +763,11 @@ namespace FastApp.ViewModels
                     _suppressStartupToggleHandler = false;
                     IsStartupToggleBusy = false;
                 });
+
+                // Then confirm against what is actually registered, rather than
+                // trusting the exit code -- this is also what clears or raises the
+                // conflict banner after the change lands.
+                RefreshStartupState();
             });
         }
 
