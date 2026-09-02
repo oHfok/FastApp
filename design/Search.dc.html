@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; background: #0A0B10; color: #F3F1EA;
+           font-family: 'Space Grotesk', system-ui, sans-serif; }
+    a { color: #E8A33D; } a:hover { color: #F0B155; }
+  </style>
+</helmet>
+
+<div style="width: 760px; height: 520px; box-sizing: border-box; background: #0A0B10; border-radius: 20px; padding: 22px 24px 0 24px; display: flex; flex-direction: column; gap: 18px; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <span style="width: 10px; height: 10px; border-radius: 50%; background: #E8A33D; flex-shrink: 0;"></span>
+    <span style="font-size: 14px; font-weight: 700; letter-spacing: -0.01em;">FastApp</span>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="width: 7px; height: 7px; border-radius: 50%; background: #34D3C4; flex-shrink: 0;"></span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">TRACKING</span>
+    </div>
+    <div style="width: 1px; height: 14px; background: rgba(255,255,255,0.08);"></div>
+    <div style="display: flex; align-items: baseline; gap: 7px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">FOCUS</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: #E8A33D;">4h 12m</span>
+    </div>
+  </div>
+
+  <!-- Typed query. The caret is the only brass in the input. -->
+  <div style="display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 0 24px; height: 60px; flex-shrink: 0;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F3F1EA" stroke-width="2" stroke-linecap="round" style="flex-shrink: 0;">
+      <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path>
+    </svg>
+    <span style="font-size: 20px; color: #F3F1EA; letter-spacing: -0.01em;">st</span>
+    <span style="width: 2px; height: 24px; background: #E8A33D; border-radius: 2px;"></span>
+    <div style="flex-grow: 1;"></div>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">6 results</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 14px; flex-grow: 1; min-height: 0; overflow: hidden;">
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">APPS</span>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+
+        <div style="display: flex; align-items: center; gap: 14px; background: rgba(232,163,61,0.09); border-radius: 100px; padding: 10px 16px;">
+          <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(139,124,255,0.18); color: #F3F1EA; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;">S</span>
+          <span style="font-size: 14px; font-weight: 700; color: #E8A33D;">Steam</span>
+          <div style="flex-grow: 1;"></div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9C9FAE; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 5px 11px;">⇧ + S + T</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #E8A33D; font-weight: 700;">FOCUS ↵</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 14px; border-radius: 100px; padding: 10px 16px;">
+          <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(29,118,109,0.28); color: #F3F1EA; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;">S</span>
+          <span style="font-size: 14px; font-weight: 500;">Spotify</span>
+          <div style="flex-grow: 1;"></div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 5px 11px;">Auto-start</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #9C9FAE;">28m</span>
+        </div>
+
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">ACTIONS</span>
+      <div style="display: flex; align-items: center; gap: 14px; border-radius: 100px; padding: 10px 16px;">
+        <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,107,107,0.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round">
+            <path d="M11 5 6 9H2v6h4l5 4V5z"></path><path d="M22 9l-6 6M16 9l6 6"></path>
+          </svg>
+        </span>
+        <span style="font-size: 14px; font-weight: 500;">Panic Mute</span>
+        <div style="flex-grow: 1;"></div>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9C9FAE; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 5px 11px;">Ctrl + M</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">Toggle mute</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">COMMANDS</span>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+
+        <div style="display: flex; align-items: center; gap: 14px; border-radius: 100px; padding: 10px 16px;">
+          <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.035); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C9FAE" stroke-width="2" stroke-linecap="round">
+              <circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path>
+            </svg>
+          </span>
+          <span style="font-size: 14px; font-weight: 500;">Set a daily limit…</span>
+          <div style="flex-grow: 1;"></div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">choose an app next</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 14px; border-radius: 100px; padding: 10px 16px;">
+          <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.035); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C9FAE" stroke-width="2" stroke-linecap="round">
+              <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path>
+            </svg>
+          </span>
+          <span style="font-size: 14px; font-weight: 500;">Scan for new applications</span>
+          <div style="flex-grow: 1;"></div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">Start menu + Store</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 14px; border-radius: 100px; padding: 10px 16px;">
+          <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.035); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C9FAE" stroke-width="2" stroke-linecap="round">
+              <path d="M3 3v18h18"></path><path d="M18.5 8.5 13 14l-3-3-4.5 4.5"></path>
+            </svg>
+          </span>
+          <span style="font-size: 14px; font-weight: 500;">Open statistics dashboard</span>
+          <div style="flex-grow: 1;"></div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">opens in browser ↗</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 20px; padding: 12px 4px 16px 4px; flex-shrink: 0;">
+    <div style="display: flex; align-items: center; gap: 7px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #F3F1EA; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 4px 9px;">↵</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">FOCUS STEAM</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 7px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #F3F1EA; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 4px 9px;">⇥</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">EDIT</span>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">ESC TO CLOSE</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

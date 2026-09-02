@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; background: #0A0B10; color: #F3F1EA;
+           font-family: 'Space Grotesk', system-ui, sans-serif; }
+    a { color: #E8A33D; } a:hover { color: #F0B155; }
+    .lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em;
+           color: #7C8194; font-weight: 700; }
+    .row { display: flex; align-items: center; gap: 14px; border-radius: 100px; padding: 9px 16px; }
+    .tick { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0; }
+  </style>
+</helmet>
+
+<div style="width: 860px; height: 640px; box-sizing: border-box; background: #0A0B10; border-radius: 20px; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 24px; font-weight: 700; letter-spacing: -0.022em;">Add applications</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">62 found in your Start menu and Microsoft Store</span>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
+      <span class="lbl">SELECTED</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: #E8A33D;">3</span>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 0 20px; height: 46px; flex-shrink: 0;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7C8194" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+    <span style="font-size: 14px; color: #7C8194;">Filter what was found</span>
+    <div style="flex-grow: 1;"></div>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9C9FAE; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 5px 11px;">Already added hidden</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-height: 0;">
+
+    <div class="row" style="background: rgba(232,163,61,0.09);">
+      <span class="tick" style="background: #E8A33D;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1A1000" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5L19 7"></path></svg>
+      </span>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(52,211,196,0.18); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">O</span>
+      <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+        <span style="font-size: 14px; font-weight: 700; color: #E8A33D;">Obsidian</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">C:\Users\piotr\AppData\Local\Obsidian\Obsidian.exe</span>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">START MENU</span>
+    </div>
+
+    <div class="row">
+      <span class="tick" style="background: #E8A33D;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1A1000" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5L19 7"></path></svg>
+      </span>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(139,124,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">N</span>
+      <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+        <span style="font-size: 14px;">Notion</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">Notion_4pk7q8w…!Notion</span>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #8B7CFF; font-weight: 700;">STORE</span>
+    </div>
+
+    <div class="row">
+      <span class="tick" style="background: #E8A33D;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1A1000" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5L19 7"></path></svg>
+      </span>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(29,118,109,0.28); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">V</span>
+      <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+        <span style="font-size: 14px;">Visual Studio Code</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">C:\Program Files\Microsoft VS Code\Code.exe</span>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">START MENU</span>
+    </div>
+
+    <div class="row">
+      <span class="tick" style="background: rgba(255,255,255,0.08);"></span>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.035); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #9C9FAE;">F</span>
+      <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+        <span style="font-size: 14px; color: #9C9FAE;">Figma</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">C:\Users\piotr\AppData\Local\Figma\Figma.exe</span>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">START MENU</span>
+    </div>
+
+    <div class="row">
+      <span class="tick" style="background: rgba(255,255,255,0.08);"></span>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.035); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #9C9FAE;">S</span>
+      <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+        <span style="font-size: 14px; color: #9C9FAE;">Slack</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">Slack_8we6y2c…!Slack</span>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #8B7CFF; font-weight: 700;">STORE</span>
+    </div>
+
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0;">
+    <span class="lbl">SPACE TO SELECT · ↵ ADD SELECTED · ESC CANCEL</span>
+    <div style="flex-grow: 1;"></div>
+    <span style="background: rgba(255,255,255,0.035); border-radius: 100px; padding: 11px 20px; font-size: 13px; color: #9C9FAE;">Cancel</span>
+    <span style="background: #E8A33D; color: #1A1000; border-radius: 100px; padding: 11px 22px; font-size: 13px; font-weight: 700;">Add 3 applications</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

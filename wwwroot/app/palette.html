@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FastApp</title>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="palette.css">
+</head>
+<body>
+
+<div class="palette">
+
+    <div class="chrome">
+        <span class="chrome-dot"></span>
+        <span class="chrome-name">FastApp</span>
+        <span class="chrome-spacer"></span>
+        <span class="status">
+            <span class="status-dot" id="status-dot"></span>
+            <span class="label" id="status-text">TRACKING</span>
+        </span>
+        <span class="chrome-sep"></span>
+        <span class="figure">
+            <span class="label">FOCUS</span>
+            <span class="figure-value" id="focus-today">—</span>
+        </span>
+    </div>
+
+    <div class="search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" style="color: var(--text-faint);">
+            <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path>
+        </svg>
+        <input id="q" type="text" placeholder="Search apps, actions and commands"
+               autocomplete="off" spellcheck="false" autofocus>
+        <span class="kbd" id="result-count"></span>
+    </div>
+
+    <div class="results" id="results"></div>
+
+    <div class="footer">
+        <span class="hint"><span class="hint-key">↑↓</span><span class="label">MOVE</span></span>
+        <span class="hint"><span class="hint-key">↵</span><span class="label" id="enter-verb">LAUNCH</span></span>
+        <span class="hint"><span class="hint-key">⇥</span><span class="label">EDIT</span></span>
+        <span class="chrome-spacer"></span>
+        <span class="label" id="counts"></span>
+    </div>
+
+</div>
+
+<script src="palette.js"></script>
+</body>
+</html>

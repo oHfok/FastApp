@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; background: #0A0B10; color: #F3F1EA;
+           font-family: 'Space Grotesk', system-ui, sans-serif; }
+    a { color: #E8A33D; } a:hover { color: #F0B155; }
+  </style>
+</helmet>
+
+<!-- DIRECTION B — "Console". The palette keeps a permanent right pane showing
+     the highlighted entry in full, so you never leave the palette to see or
+     change anything. Wider and busier than A; more of a tool, less of a flash. -->
+<div style="width: 940px; height: 520px; box-sizing: border-box; background: #0A0B10; border-radius: 20px; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 0 22px; height: 54px; flex-shrink: 0;">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#F3F1EA" stroke-width="2" stroke-linecap="round" style="flex-shrink: 0;">
+      <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path>
+    </svg>
+    <span style="font-size: 18px; color: #F3F1EA; letter-spacing: -0.01em;">val</span>
+    <span style="width: 2px; height: 22px; background: #E8A33D; border-radius: 2px;"></span>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; align-items: baseline; gap: 7px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">FOCUS TODAY</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: #E8A33D;">4h 12m</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; flex-grow: 1; min-height: 0;">
+
+    <!-- Results -->
+    <div style="display: flex; flex-direction: column; gap: 8px; min-height: 0;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">3 RESULTS</span>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+
+        <div style="display: flex; align-items: center; gap: 12px; background: rgba(232,163,61,0.09); border-radius: 100px; padding: 10px 14px;">
+          <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(139,124,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;">V</span>
+          <span style="font-size: 14px; font-weight: 700; color: #E8A33D;">Valorant</span>
+          <div style="flex-grow: 1;"></div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #E8A33D;">2h 06m</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px; border-radius: 100px; padding: 10px 14px;">
+          <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.035); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C9FAE" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+          </span>
+          <span style="font-size: 14px; font-weight: 500;">Set a limit on Valorant…</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px; border-radius: 100px; padding: 10px 14px;">
+          <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.035); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C9FAE" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          </span>
+          <span style="font-size: 14px; font-weight: 500;">Extend Valorant by 15m…</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Live detail of whatever is highlighted -->
+    <div style="background: rgba(255,255,255,0.035); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 18px; min-height: 0;">
+
+      <div style="display: flex; align-items: center; gap: 13px;">
+        <span style="width: 40px; height: 40px; border-radius: 50%; background: rgba(139,124,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex-shrink: 0;">V</span>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.01em;">Valorant</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">Gaming · #2 by focus time</span>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 22px;">
+        <div style="position: relative; width: 92px; height: 92px; flex-shrink: 0;">
+          <svg width="92" height="92" viewBox="0 0 92 92">
+            <circle cx="46" cy="46" r="38" fill="none" stroke="#15171F" stroke-width="9"></circle>
+            <circle cx="46" cy="46" r="38" fill="none" stroke="#E8A33D" stroke-width="9" stroke-linecap="round"
+                    stroke-dasharray="238.8" stroke-dashoffset="79" transform="rotate(-90 46 46)"></circle>
+          </svg>
+          <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: #E8A33D;">2h 06m</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7C8194;">of 3h</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">HOTKEY</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #F3F1EA;">V + A + L</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">TRIGGERED</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #F3F1EA;">44 times</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 9px 16px;">
+          <span style="font-size: 13px; flex-grow: 1;">Auto-start</span>
+          <span style="width: 34px; height: 19px; border-radius: 100px; background: rgba(255,255,255,0.08); display: flex; align-items: center; padding: 0 3px;">
+            <span style="width: 13px; height: 13px; border-radius: 50%; background: #7C8194;"></span>
+          </span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 9px 16px;">
+          <span style="font-size: 13px; flex-grow: 1;">Force close at limit</span>
+          <span style="width: 34px; height: 19px; border-radius: 100px; background: #E8A33D; display: flex; align-items: center; justify-content: flex-end; padding: 0 3px;">
+            <span style="width: 13px; height: 13px; border-radius: 50%; background: #1A1000;"></span>
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 18px; flex-shrink: 0;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">↑↓ MOVE · ↵ LAUNCH · ⇥ FULL EDIT · ESC CLOSE</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
