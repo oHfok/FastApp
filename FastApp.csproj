@@ -15,7 +15,7 @@
 	  <NoWin32Manifest>true</NoWin32Manifest>
 	  <!-- Bumped by scripts/release.ps1 on each release — Velopack reads this to
 	       know what version it's packaging and what to offer as an update. -->
-	  <Version>2.0.0</Version>
+	  <Version>2.0.1</Version>
   </PropertyGroup>
 
 	<ItemGroup>
