@@ -207,7 +207,7 @@ function activityRunHtml(r) {
             <div class="activity-name-col">
                 <div class="activity-name-line">
                     <span class="activity-app-name" title="${escapeHtml(r.appName)}">${escapeHtml(displayAppName(r.appName))}</span>
-                    <span class="activity-cat cat-link" style="--cat-color:${catColor(r.category)}" data-open-cat="${escapeHtml(r.category)}" role="button" tabindex="0">${escapeHtml(r.category)}</span>
+                    <span class="activity-cat cat-link" style="--cat-color:${catTextColor(r.category)}" data-open-cat="${escapeHtml(r.category)}" role="button" tabindex="0">${escapeHtml(r.category)}</span>
                     ${switchChip}
                 </div>
                 ${titleLine}
