@@ -89,6 +89,30 @@ namespace FastApp.ViewModels
         [ObservableProperty]
         private bool _launchOnStartup;
 
+        // Passed to the process on auto-launch and on a Launch-App hotkey, so a
+        // managed entry can open a specific profile, workspace or file rather
+        // than only the bare executable.
+        [ObservableProperty] private string _launchArguments = string.Empty;
+
+        // Seconds to wait before starting this one during an auto-launch pass.
+        // Some apps refuse to start, or start wrong, if a dependency is not up
+        // yet -- a game launcher before its client, a tool before its VPN.
+        [ObservableProperty] private int _launchDelaySeconds;
+
+        // Text-box friendly wrapper: an empty box means zero rather than
+        // refusing the edit, matching how DailyLimitText already behaves.
+        [NotMapped]
+        public string LaunchDelayText
+        {
+            get => LaunchDelaySeconds == 0 ? "" : LaunchDelaySeconds.ToString();
+            set
+            {
+                if (string.IsNullOrWhiteSpace(value)) LaunchDelaySeconds = 0;
+                else if (int.TryParse(value, out int parsed)) LaunchDelaySeconds = Math.Max(0, parsed);
+                OnPropertyChanged(nameof(LaunchDelayText));
+            }
+        }
+
         [ObservableProperty]
         private TimeSpan _timeRunning;       
 

@@ -211,6 +211,28 @@
                                             </StackPanel>
                                         </StackPanel>
                                     </Grid>
+
+                                    <!-- Auto-launch settings. Only shown for app
+                                         entries; system actions have nothing to
+                                         start. Launch order is the list order,
+                                         which is already drag-reorderable. -->
+                                    <Grid Margin="0,20,0,0" Visibility="{Binding AppSettingsVisibility}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" Margin="0,0,40,0">
+                                            <TextBlock Text="Launch Arguments" FontSize="12" Foreground="{StaticResource BrandTextFaint}" Margin="0,0,0,8"/>
+                                            <ui:TextBox Text="{Binding LaunchArguments, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="e.g. --profile work" MinHeight="32"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Startup Delay (Seconds)" FontSize="12" Foreground="{StaticResource BrandTextFaint}" Margin="0,0,0,8"/>
+                                            <ui:TextBox Text="{Binding LaunchDelayText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="0" MinHeight="32" Width="120"/>
+                                            <TextBlock Text="Waits this long before opening it at startup." FontSize="10" Foreground="{StaticResource BrandTextFaint}" Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="200"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </StackPanel>
                             </ui:CardExpander>
                         </DataTemplate>

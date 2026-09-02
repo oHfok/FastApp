@@ -545,7 +545,16 @@ namespace FastApp.ViewModels
                 _ = ProcessTriggersAsync();
                 _ = StartProcessTrackerAsync();
                 _ = Services.DashboardServerService.StartAsync();
-                _ = Services.UpdateService.CheckAndApplyOnStartupAsync(RequestShutdownFlushAsync);
+                // The update still downloads concurrently -- that is the slow part
+                // and there is no reason to hold it up. Only the restart waits:
+                // ApplyUpdatesAndRestart hard-kills this process, and landing that
+                // mid-pass left the user with half their apps open and nothing
+                // saying why.
+                _ = Services.UpdateService.CheckAndApplyOnStartupAsync(async () =>
+                {
+                    await _autoLaunchFinished.Task;
+                    await RequestShutdownFlushAsync();
+                });
                 _ = PublishDashboardStatusAsync();
                 await RunAutoLaunchAsync();
 
@@ -988,63 +997,119 @@ namespace FastApp.ViewModels
         // ==========================================
         // BACKGROUND SERVICES
         // ==========================================
+        /// <summary>What happened to one app during an auto-launch pass.</summary>
+        private enum LaunchOutcome { Started, AlreadyRunning, NotFound, Failed }
+
+        // Completes when the startup auto-launch pass has finished (or when there
+        // was nothing to do). The update check awaits this before restarting the
+        // process: both are kicked off together at startup, and an update landing
+        // mid-pass used to kill FastApp halfway through opening the user's apps,
+        // leaving a half-started desktop and no record of why.
+        private readonly TaskCompletionSource _autoLaunchFinished =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>
+        /// A human-readable account of the last auto-launch pass, including which
+        /// apps failed and why. Previously failures went to Debug.WriteLine, which
+        /// in a release build means nowhere at all.
+        /// </summary>
+        [ObservableProperty] private string _lastAutoLaunchReport = string.Empty;
+
         private async Task RunAutoLaunchAsync()
         {
+            try
+            {
+                await RunAutoLaunchCoreAsync();
+            }
+            finally
+            {
+                // Must be signalled on every path, or a failure here would block
+                // the updater's restart for the rest of the session.
+                _autoLaunchFinished.TrySetResult();
+            }
+        }
+
+        private async Task RunAutoLaunchCoreAsync()
+        {
+            // Startup order is the order shown in the list, which the user can
+            // already drag to rearrange -- rather than a second, invisible order
+            // they would have to keep in sync with it.
             var appsToLaunch = ManagedApps
                 .Where(app => app.LaunchOnStartup && !string.IsNullOrEmpty(app.ExecutablePath))
+                .OrderBy(app => app.OrderIndex)
                 .ToList();
 
             if (appsToLaunch.Count == 0) return;
 
             bool showProgress = ShowAutoLaunchProgress;
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            int succeeded = 0;
+            var outcomes = new List<(AppItemModel App, LaunchOutcome Outcome, string Detail)>();
+
+            // Enumerated once, not once per app. The old loop called
+            // Process.GetProcesses() on every iteration -- N full process
+            // enumerations, none of them disposed, during boot, which is exactly
+            // when the machine can least afford it. Apps started by this pass are
+            // added to the set as we go, which is what the re-enumeration was
+            // actually for.
+            var running = SnapshotProcessNames();
 
             for (int i = 0; i < appsToLaunch.Count; i++)
             {
                 var app = appsToLaunch[i];
+
+                if (app.LaunchDelaySeconds > 0)
+                {
+                    if (showProgress)
+                    {
+                        Services.AutoLaunchProgressService.ShowProgress(
+                            i + 1, appsToLaunch.Count, $"{app.Name} (waiting {app.LaunchDelaySeconds}s)");
+                    }
+                    await Task.Delay(TimeSpan.FromSeconds(app.LaunchDelaySeconds));
+                }
 
                 if (showProgress)
                 {
                     Services.AutoLaunchProgressService.ShowProgress(i + 1, appsToLaunch.Count, app.Name);
                 }
 
-                // Re-checked fresh each iteration rather than snapshotted once before the
-                // loop, so an app launched earlier in this same pass (or by something else
-                // in the meantime) is correctly seen as already running.
-                var runningProcesses = Process.GetProcesses()
-                                              .Select(p => p.ProcessName.ToLower())
-                                              .ToHashSet();
                 string exeName = Path.GetFileNameWithoutExtension(app.ExecutablePath).ToLower();
 
-                if (runningProcesses.Contains(exeName))
+                if (running.Contains(exeName))
                 {
-                    succeeded++;
+                    outcomes.Add((app, LaunchOutcome.AlreadyRunning, null));
                 }
                 else if (!File.Exists(app.ExecutablePath))
                 {
-                    Debug.WriteLine($"Skipped auto-launch of {app.Name}: executable not found at {app.ExecutablePath}");
+                    outcomes.Add((app, LaunchOutcome.NotFound, app.ExecutablePath));
                 }
                 else
                 {
                     try
                     {
-                        Process.Start(new ProcessStartInfo
+                        var psi = new ProcessStartInfo
                         {
                             FileName = app.ExecutablePath,
                             WorkingDirectory = Path.GetDirectoryName(app.ExecutablePath),
                             UseShellExecute = true
-                        });
-                        succeeded++;
+                        };
+                        if (!string.IsNullOrWhiteSpace(app.LaunchArguments))
+                        {
+                            psi.Arguments = app.LaunchArguments;
+                        }
+
+                        Process.Start(psi);
+                        running.Add(exeName);
+                        outcomes.Add((app, LaunchOutcome.Started, null));
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Failed to auto-launch {app.Name}: {ex.Message}");
+                        outcomes.Add((app, LaunchOutcome.Failed, ex.Message));
                     }
                 }
 
-                // Small stagger so launches don't all fire in the same instant (reduces
-                // launch-storm/race risk) and so the progress window is actually readable.
+                // Small stagger so launches don't all fire in the same instant
+                // (reduces launch-storm/race risk) and so the progress window is
+                // actually readable. Skipped after the last one.
                 if (i < appsToLaunch.Count - 1)
                 {
                     await Task.Delay(350);
@@ -1052,14 +1117,78 @@ namespace FastApp.ViewModels
             }
 
             stopwatch.Stop();
+            ReportAutoLaunch(outcomes, stopwatch.Elapsed, showProgress);
+        }
+
+        /// <summary>
+        /// Lower-cased names of every running process. The Process objects are
+        /// disposed: Process.GetProcesses() hands back one OS handle per process,
+        /// and this used to run several times a pass without releasing any.
+        /// </summary>
+        private static HashSet<string> SnapshotProcessNames()
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var all = Process.GetProcesses();
+            try
+            {
+                foreach (var proc in all) names.Add(proc.ProcessName.ToLower());
+            }
+            finally
+            {
+                foreach (var proc in all) proc.Dispose();
+            }
+            return names;
+        }
+
+        private void ReportAutoLaunch(
+            List<(AppItemModel App, LaunchOutcome Outcome, string Detail)> outcomes,
+            TimeSpan elapsed,
+            bool showProgress)
+        {
+            int started = outcomes.Count(o => o.Outcome == LaunchOutcome.Started);
+            int already = outcomes.Count(o => o.Outcome == LaunchOutcome.AlreadyRunning);
+            var problems = outcomes.Where(o => o.Outcome is LaunchOutcome.NotFound or LaunchOutcome.Failed).ToList();
+
+            // "Opened N apps" used to count apps that were already running, so a
+            // pass that opened nothing at all still claimed to have opened
+            // everything. Each outcome is now counted as what it was.
+            var parts = new List<string>();
+            if (started > 0) parts.Add($"Opened {started}");
+            if (already > 0) parts.Add($"{already} already running");
+            if (problems.Count > 0) parts.Add($"{problems.Count} failed");
+            if (parts.Count == 0) parts.Add("Nothing to open");
+
+            string headline = $"{string.Join(", ", parts)} in {elapsed.TotalSeconds:F1}s";
+
+            var report = new StringBuilder(headline);
+            foreach (var (app, outcome, detail) in problems)
+            {
+                report.Append(Environment.NewLine);
+                report.Append(outcome == LaunchOutcome.NotFound
+                    ? $"{app.Name}: not found at {detail}"
+                    : $"{app.Name}: {detail}");
+            }
+
+            LastAutoLaunchReport = report.ToString();
+
+            // Failures were previously Debug.WriteLine only, which is to say
+            // invisible in a release build. Until the notification work lands,
+            // they at least reach a file and the summary popup.
+            if (problems.Count > 0)
+            {
+                try
+                {
+                    File.AppendAllText(
+                        Path.Combine(AppDbContext.GetDbFolder(), "autolaunch.log"),
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {report}{Environment.NewLine}");
+                }
+                catch { /* a log that cannot be written must not break startup */ }
+            }
 
             if (showProgress)
             {
-                double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
-                string summary = succeeded == appsToLaunch.Count
-                    ? $"Opened {succeeded} app{(succeeded == 1 ? "" : "s")} in {elapsedSeconds:F1}s"
-                    : $"Opened {succeeded} of {appsToLaunch.Count} apps in {elapsedSeconds:F1}s";
-                Services.AutoLaunchProgressService.ShowSummary(summary);
+                Services.AutoLaunchProgressService.ShowSummary(
+                    problems.Count > 0 ? report.ToString() : headline);
             }
         }
 
