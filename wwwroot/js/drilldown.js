@@ -82,6 +82,12 @@ async function openDrilldown(appName) {
         const allAppsMatch = allApps.find(a => (a.appName || '').toLowerCase() === appName.toLowerCase());
         const currentCategory = (allAppsMatch && (allAppsMatch.category)) || 'Other';
 
+        // The initial takes its category's tint, like every other avatar in the
+        // dashboard. Set here rather than at open time because the category is
+        // only known once /api/all-apps has answered.
+        const iconEl = document.getElementById('dd-icon');
+        if (iconEl) iconEl.setAttribute('style', avatarStyle(currentCategory));
+
         const catSelect = document.getElementById('dd-category-select');
         let opts = allCategories.map(c => `<option value="${c}" ${currentCategory === c ? 'selected' : ''}>${c}</option>`).join('');
         if (currentCategory && !allCategories.includes(currentCategory)) opts += `<option value="${currentCategory}" selected>${currentCategory}</option>`;
