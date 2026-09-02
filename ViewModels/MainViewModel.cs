@@ -65,7 +65,14 @@ namespace FastApp.ViewModels
         [ObservableProperty]
         private ObservableCollection<AppItemModel> _detectedApps = new();
 
-        private readonly Dictionary<AppItemModel, HashSet<Key>> _compiledHotkeys = new();
+        // Read from the low-level keyboard-hook thread, rebuilt from the UI thread.
+        // Published as an immutable snapshot swapped in with one reference
+        // assignment rather than mutated in place: a Dictionary cleared and
+        // refilled while the hook thread is enumerating it throws, and an
+        // exception raised inside a hook callback is exactly how Windows tears
+        // the hook down -- after which every hotkey stops working until restart.
+        private volatile KeyValuePair<AppItemModel, HashSet<Key>>[] _compiledHotkeys =
+            Array.Empty<KeyValuePair<AppItemModel, HashSet<Key>>>();
         private readonly Channel<AppItemModel> _triggerQueue = Channel.CreateUnbounded<AppItemModel>();
         private HashSet<string> _gamingProcessNames = new(StringComparer.OrdinalIgnoreCase);
 
@@ -718,11 +725,19 @@ namespace FastApp.ViewModels
             });
         }
 
-        protected override void OnPropertyChanged(PropertyChangedEventArgs e)
-        {
-            base.OnPropertyChanged(e);
-            _dbContext?.SaveChanges();
-        }
+        // There was an OnPropertyChanged override here that called
+        // _dbContext.SaveChanges() on every property change of this view model.
+        // None of this class's observable properties are EF entities -- they are
+        // UI state, update state, or persisted elsewhere (text files, Task
+        // Scheduler) -- so it never saved any of them. What it did do was write
+        // to SQLite once per keystroke typed into the app search box, and it was
+        // the one _dbContext access in this file outside lock (_dbContext),
+        // which every other access here treats as mandatory.
+        //
+        // Entity writes are already covered three ways: SaveOnAppPropertyChanged
+        // is attached to every AppItemModel (both in the initial loop and in
+        // ManagedApps.CollectionChanged), the collection-changed handler saves,
+        // and SaveDatabase() is called explicitly where edits are committed.
 
 
         // ==========================================
@@ -730,19 +745,44 @@ namespace FastApp.ViewModels
         // ==========================================
         public void RecompileHotkeys()
         {
-            _compiledHotkeys.Clear();
+            var rebuilt = new List<KeyValuePair<AppItemModel, HashSet<Key>>>();
+
             foreach (var app in ManagedApps)
             {
-                if (!string.IsNullOrEmpty(app.HotkeySequence))
-                {
-                    var keys = app.HotkeySequence
-                                  .Split(',')
-                                  .Select(k => (Key)Enum.Parse(typeof(Key), k))
-                                  .ToHashSet();
+                if (string.IsNullOrEmpty(app.HotkeySequence)) continue;
 
-                    _compiledHotkeys[app] = keys;
+                var keys = new HashSet<Key>();
+                bool parsed = true;
+
+                foreach (var token in app.HotkeySequence.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    // Enum.Parse threw here on a single malformed token, which
+                    // escaped this whole method and left the map empty -- one
+                    // unreadable row disabled every hotkey in the app rather
+                    // than just its own. Skip the row, keep the rest.
+                    if (Enum.TryParse<Key>(token.Trim(), ignoreCase: true, out var key))
+                    {
+                        keys.Add(key);
+                    }
+                    else
+                    {
+                        parsed = false;
+                        break;
+                    }
+                }
+
+                if (parsed && keys.Count > 0)
+                {
+                    rebuilt.Add(new KeyValuePair<AppItemModel, HashSet<Key>>(app, keys));
+                }
+                else
+                {
+                    Debug.WriteLine($"Ignoring unreadable hotkey for {app.Name}: '{app.HotkeySequence}'");
                 }
             }
+
+            // The swap itself, and the only write to the field.
+            _compiledHotkeys = rebuilt.ToArray();
         }
 
         public void UpdateGamingProcessCache()
@@ -800,7 +840,13 @@ namespace FastApp.ViewModels
         {
             if (currentlyPressedKeys.Count == 0) return;
 
-            foreach (var kvp in _compiledHotkeys)
+            // One volatile read, then iterate that snapshot: RecompileHotkeys can
+            // swap a new array in at any point without this loop seeing a torn
+            // state. Kept allocation-free and lock-free because this runs inside
+            // the keyboard hook, where going slow gets the hook uninstalled.
+            var snapshot = _compiledHotkeys;
+
+            foreach (var kvp in snapshot)
             {
                 if (currentlyPressedKeys.SetEquals(kvp.Value))
                 {
@@ -1102,7 +1148,12 @@ namespace FastApp.ViewModels
 
             // Daily-limit enforcement: HasNotifiedToday is in-memory only (never
             // persisted), so it has to be reset by hand once a day rolls over.
-            DateTime? lastLimitResetDate = null;
+            // Seeded to today, not null: baselineMinutesToday below is read from
+            // the DB for today at startup, so there is no rollover owing on the
+            // first tick. Leaving it null made the first tick "roll over" and
+            // clear that freshly-seeded baseline, which stopped limits being
+            // enforced for the first minute after every launch.
+            DateTime? lastLimitResetDate = DateTime.Today;
             const int WarningThresholdMinutes = 5;
 
             // Live per-tick minutes-today, per app: baseline (what's actually
@@ -1198,6 +1249,40 @@ namespace FastApp.ViewModels
                 TimeSpan tickDuration = TimeSpan.FromSeconds(5);
                 DateTime now = DateTime.Now;
 
+                // The day rolls over here, on the tick that first sees it, rather
+                // than waiting for the 60s flush below. Enforcement (D) runs every
+                // tick against baselineMinutesToday, so leaving the reset to the
+                // flush meant that for up to a minute past midnight yesterday's
+                // totals were still in force -- a strict-mode app relaunched at
+                // 00:00 got killed again on a fresh day's allowance.
+                //
+                // Whatever accumulated since the last flush belongs to the day
+                // that just ended, so it is committed under the OLD date before
+                // anything is cleared. Flushing it afterwards, as the 60s path
+                // did, filed those final seconds under the new day.
+                if (lastLimitResetDate is DateTime previousDay && previousDay != DateTime.Today)
+                {
+                    lock (_dbContext)
+                    {
+                        FlushDailySummaries(previousDay);
+                        FlushPendingQueues();
+                        _dbContext.SaveChanges();
+
+                        foreach (var a in ManagedApps)
+                        {
+                            a.HasNotifiedToday = false;
+                            a.HasWarnedToday = false;
+                            if (a.BonusMinutesDate?.Date != DateTime.Today) a.TodayBonusMinutes = 0;
+                        }
+                    }
+
+                    timeCache.Clear();
+                    afkCache.Clear();
+                    focusCache.Clear();
+                    baselineMinutesToday.Clear();
+                    lastLimitResetDate = DateTime.Today;
+                }
+
                 // --- NEW: FOCUS & SESSION TRACKING ---
                 string rawActiveExe = GetActiveProcessName();
                 string activeAppName = null;
@@ -1261,6 +1346,7 @@ namespace FastApp.ViewModels
                     timeCache[logName] = timeCache.GetValueOrDefault(logName) + tickDuration;
                     if (isAfk) afkCache[logName] = afkCache.GetValueOrDefault(logName) + tickDuration;
                 }
+
 
                 // C & D touch properties on the shared, UI-thread-bound ManagedApps
                 // entities (TimeRunning, HasNotifiedToday, etc.) — _dbContext is not
@@ -1350,18 +1436,6 @@ namespace FastApp.ViewModels
                     // reentrant per-thread) queries it too.
                     lock (_dbContext)
                     {
-                        if (lastLimitResetDate != today)
-                        {
-                            foreach (var a in ManagedApps)
-                            {
-                                a.HasNotifiedToday = false;
-                                a.HasWarnedToday = false;
-                                if (a.BonusMinutesDate?.Date != today) a.TodayBonusMinutes = 0;
-                            }
-                            baselineMinutesToday.Clear();
-                            lastLimitResetDate = today;
-                        }
-
                         // 1. Flush Daily Summaries
                         FlushDailySummaries(today);
 
