@@ -166,10 +166,78 @@ namespace FastApp
         private static string LogPath =>
             Path.Combine(Path.GetTempPath(), "fastapp_palette.log");
 
+        /// <summary>
+        /// Where the palette's own files are served from.
+        ///
+        /// NOT the application directory. That directory belongs to Velopack: it
+        /// is replaced wholesale on every update and actively tidied afterwards,
+        /// and a WebView2 virtual host mapped into it stops serving -- navigation
+        /// fails with ConnectionAborted while every file is still sitting there,
+        /// readable, with ordinary permissions. Proven by elimination: the same
+        /// files copied anywhere else load immediately, including a sibling
+        /// folder inside the same install directory (which Velopack then deleted
+        /// on the next launch, which is the tell).
+        ///
+        /// So the UI is staged beside the database instead, where nothing but
+        /// this app writes, and re-staged whenever the version changes.
+        /// </summary>
         private static string UiFolder()
         {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            return Path.Combine(baseDir, "wwwroot");
+            string staged = Path.Combine(AppDbContext.GetDbFolder(), "ui");
+            try
+            {
+                StageUi(staged);
+                return staged;
+            }
+            catch (Exception ex)
+            {
+                // Fall back to serving in place rather than losing the interface
+                // outright; it works everywhere except an installed build.
+                System.Diagnostics.Debug.WriteLine($"Could not stage the UI: {ex.Message}");
+                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot");
+            }
+        }
+
+        /// <summary>
+        /// Mirror the shipped wwwroot into <paramref name="staged"/>, but only
+        /// when the version stamp differs, so an ordinary launch costs one file
+        /// read rather than a recursive copy.
+        /// </summary>
+        private static void StageUi(string staged)
+        {
+            string source = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot");
+            if (!Directory.Exists(source)) throw new DirectoryNotFoundException(source);
+
+            // Stamped with what the source actually is, rather than a version
+            // number: the assembly version does not track the release version
+            // here (it reported 1.2.0.0 on a 2.0.1 build), and a stamp that
+            // never changes would serve the previous release's interface
+            // forever after an update.
+            var files = Directory.GetFiles(source, "*", SearchOption.AllDirectories);
+            long newest = 0;
+            foreach (string f in files)
+            {
+                long t = File.GetLastWriteTimeUtc(f).Ticks;
+                if (t > newest) newest = t;
+            }
+            string version = $"{files.Length}:{newest}";
+
+            string stamp = Path.Combine(staged, ".staged-version");
+            if (File.Exists(stamp) && File.ReadAllText(stamp).Trim() == version) return;
+
+            if (Directory.Exists(staged)) Directory.Delete(staged, recursive: true);
+            Directory.CreateDirectory(staged);
+
+            foreach (string dir in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+            {
+                Directory.CreateDirectory(Path.Combine(staged, Path.GetRelativePath(source, dir)));
+            }
+            foreach (string file in files)
+            {
+                File.Copy(file, Path.Combine(staged, Path.GetRelativePath(source, file)), overwrite: true);
+            }
+
+            File.WriteAllText(stamp, version);
         }
 
         // ------------------------------------------------------------------
