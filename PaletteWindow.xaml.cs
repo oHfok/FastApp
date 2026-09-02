@@ -30,6 +30,9 @@ namespace FastApp
         private readonly MainViewModel _viewModel;
         private bool _ready;
 
+        /// <summary>Null when the palette works; otherwise why it does not.</summary>
+        public string Unavailable { get; private set; }
+
         private static readonly JsonSerializerOptions JsonOptions =
             new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true };
 
@@ -101,10 +104,18 @@ namespace FastApp
             }
             catch (Exception ex)
             {
-                // A missing WebView2 runtime is the realistic case. The old
-                // window is still there to fall back to, so this must not be
-                // fatal -- it just means the palette is unavailable.
+                // A missing WebView2 runtime is the realistic case. There is no
+                // longer a manager window to fall back to, so this cannot be
+                // swallowed: the reason is kept and shown when someone tries to
+                // open FastApp, or the app looks simply broken.
+                Unavailable = ex.Message;
                 System.Diagnostics.Debug.WriteLine($"Palette unavailable: {ex.Message}");
+                try
+                {
+                    File.AppendAllText(LogPath,
+                        $"[{DateTime.Now:HH:mm:ss}] palette unavailable: {ex}{Environment.NewLine}");
+                }
+                catch { }
             }
         }
 
