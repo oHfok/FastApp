@@ -525,11 +525,10 @@ select.field {
 
 .btn-ghost {
     background: var(--panel);
-    border-color: var(--panel-border);
     color: var(--text-dim);
 }
 
-.btn-ghost:hover { color: var(--text); border-color: var(--text-faint); }
+.btn-ghost:hover { color: var(--text); background: var(--bg-raised); }
 
 /* ---------- Trend pill ---------- */
 .trend-pill {

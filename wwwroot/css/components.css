@@ -913,8 +913,8 @@
     width: 440px;
     max-width: 92vw;
     background: var(--panel-solid);
-    border-left: 1px solid var(--panel-border);
-    box-shadow: -20px 0 50px rgba(0,0,0,0.5);
+    border-left: none;
+    box-shadow: -24px 0 60px rgba(0,0,0,0.55);
     transform: translateX(100%);
     transition: transform 0.25s ease;
     z-index: 70;
@@ -939,8 +939,8 @@
     gap: 10px;
     padding: 10px 12px;
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
-    border-radius: var(--radius-sm);
+    border: none;
+    border-radius: var(--radius-pill);
     cursor: pointer;
     transition: border-color 0.15s;
 }
@@ -967,9 +967,9 @@
     padding: 14px 12px 4px;
     margin-top: -4px;
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
+    border: none;
     border-top: none;
-    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    border-radius: var(--radius);
 }
 .dd-compare-chart-wrap canvas { max-height: 130px; }
 
@@ -991,7 +991,7 @@
     text-align: center;
     padding: 6px 2px;
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
+    border: none;
     border-radius: var(--radius-sm);
 }
 .dd-trend-cell-label { font-size: var(--fs-micro); color: var(--text-faint); white-space: nowrap; }
@@ -1007,9 +1007,9 @@
        out at the browser's default 13.3333px. The gear and the checkboxes have
        no text, so they are left alone rather than given a blanket size. */
     font-size: var(--fs-strong);
-    border-radius: 8px;
+    border-radius: 50%;
     background: var(--panel);
-    border: 1px solid var(--panel-border);
+    border: none;
     color: var(--text-dim);
     display: flex;
     align-items: center;
@@ -1033,15 +1033,17 @@
     flex-direction: column;
     align-items: center;
     gap: 5px;
-    padding: 10px 6px;
-    border-radius: var(--radius-sm, 8px);
+    padding: 11px 6px;
+    border-radius: var(--radius-sm);
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
+    border: none;
     opacity: 0.45;
-    transition: opacity 0.2s ease, border-color 0.2s ease;
+    transition: opacity 0.2s ease, background 0.2s ease;
 }
 .dd-tier-item.reached { opacity: 1; }
-.dd-tier-item.current { border-width: 1.5px; }
+/* The tier you are on is marked by a brass wash rather than a heavier outline,
+   since nothing else in the design uses border weight to say anything. */
+.dd-tier-item.current { background: rgba(232, 163, 61, 0.12); }
 .dd-tier-dot {
     width: 12px;
     height: 12px;
@@ -1064,7 +1066,7 @@
     height: 52px;
     border-radius: 50%;
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1083,12 +1085,12 @@
    so they all read the same way, not just the one that prompted this. */
 .dd-section {
     margin-bottom: 14px;
-    padding: 16px 18px;
+    padding: 18px 20px;
     background: var(--panel);
-    border: 1px solid var(--panel-border);
+    border: none;
     border-radius: var(--radius);
 }
-.dd-section-label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); font-weight: 700; margin-bottom: 10px; }
+.dd-section-label { font-family: var(--font-mono); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.17em; color: var(--text-faint); font-weight: 700; margin-bottom: 12px; }
 
 .dd-cat-row { display: flex; align-items: center; gap: 10px; }
 
@@ -1938,3 +1940,30 @@
    not claim it a second time -- two margin-left: autos split the gap between
    them and left 211px of dead air between the scope pills and Customise. */
 .ov-controls + .layout-edit-toggle { margin-left: 18px; }
+
+/* ---------- App Detail drawer: content on the system ---------- */
+
+/* Tiles inside a section sit on the raised tone, not a second panel wash --
+   a wash inside a wash reads as a box inside a box. */
+.dd-stat {
+    padding: 13px 15px;
+    background: var(--bg-raised);
+    border-radius: var(--radius-sm);
+}
+
+/* The app's initial takes its category's tint, the same as every other avatar
+   in the dashboard, instead of a flat grey circle. */
+.dd-icon { font-size: var(--fs-title); }
+
+/* The drawer's own tab strip matches the dashboard's segmented controls. */
+.drawer .segmented { background: var(--panel); }
+
+/* Trend pills in the drawer stay neutral -- set earlier so a column of four
+   red arrows would not read as a verdict -- but they should still be pills. */
+.dd-compare-row .trend-pill { border-radius: var(--radius-pill); }
+
+/* Actions are the same pills as everywhere else. */
+.dd-actions .btn { flex: 1; }
+
+/* A section holding a chart needs no inner frame: the chart is the content. */
+.dd-trend-chart-wrap, .dd-compare-chart-wrap { background: none; }
