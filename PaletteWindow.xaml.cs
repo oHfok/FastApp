@@ -194,6 +194,22 @@ namespace FastApp
                     _mainWindow?.CancelHotkeyCapture();
                     break;
 
+                case "reorder-app":
+                    ReorderApp(message.Id, message.Delta);
+                    break;
+
+                case "new-action":
+                    CreateAction();
+                    break;
+
+                case "browse-files":
+                    BrowseForApp();
+                    break;
+
+                case "open-scanner":
+                    OpenScanner();
+                    break;
+
                 case "resize":
                     ResizeTo(message.Width, message.Height);
                     break;
@@ -240,7 +256,11 @@ namespace FastApp
                     OpenExternally(DashboardServerService.DashboardUrl);
                     break;
                 case "manage":
+                    Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"show-manage\"}");
+                    break;
+
                 case "settings":
+                    // Still the WPF window until the settings view lands.
                     ShowManager();
                     break;
                 case "scan":
@@ -286,6 +306,7 @@ namespace FastApp
                     dailyLimitMinutes = app.DailyLimitMinutes,
                     strictFocusMode = app.StrictFocusMode,
                     limitsLocked = _viewModel.IsPinConfigured,
+                    canReorder = true,
                     triggerCount = app.HotkeyTriggerCount,
                     today = FormatSpan(todaySpan)
                 }
@@ -315,6 +336,12 @@ namespace FastApp
                 app.StrictFocusMode = edit.StrictFocusMode;
             }
 
+            if (app.IsAction)
+            {
+                app.ActionType = Math.Clamp(edit.ActionType, 1, 3);
+                app.ActionPayload = edit.ActionPayload ?? string.Empty;
+            }
+
             if (edit.HotkeySequence != null)
             {
                 app.HotkeySequence = edit.HotkeySequence;
@@ -337,6 +364,70 @@ namespace FastApp
             _viewModel.SaveDatabase();
             _viewModel.RecompileHotkeys();
             PushState();
+        }
+
+        /// <summary>
+        /// Move an entry up or down. OrderIndex is also the order startup apps
+        /// are opened in, so this is not merely cosmetic; the whole list is
+        /// renumbered afterwards because entries added over time can share an
+        /// index or leave gaps, and swapping two equal values does nothing.
+        /// </summary>
+        private void ReorderApp(string id, int delta)
+        {
+            var app = FindApp(id);
+            if (app == null || delta == 0) return;
+
+            var ordered = _viewModel.ManagedApps.OrderBy(a => a.OrderIndex).ToList();
+            int from = ordered.IndexOf(app);
+            int to = from + delta;
+            if (from < 0 || to < 0 || to >= ordered.Count) return;
+
+            ordered.RemoveAt(from);
+            ordered.Insert(to, app);
+            for (int i = 0; i < ordered.Count; i++) ordered[i].OrderIndex = i;
+
+            _viewModel.SaveDatabase();
+            PushState();
+        }
+
+        /// <summary>
+        /// Both of these defer to the view model's existing commands rather than
+        /// building an entry here. A managed app has to be added to the
+        /// DbContext and saved before it joins ManagedApps, or it never gets an
+        /// Id and never reaches the database -- which is exactly what the first
+        /// version of this did: the new action appeared in the list and was gone
+        /// on restart. One persistence path, not two.
+        /// </summary>
+        private void CreateAction()
+        {
+            if (!_viewModel.AddCustomActionCommand.CanExecute(null)) return;
+            _viewModel.AddCustomActionCommand.Execute(null);
+
+            PushState();
+            var created = _viewModel.ManagedApps.LastOrDefault();
+            if (created != null) PushApp(created.Id.ToString());
+        }
+
+        private void BrowseForApp()
+        {
+            // Pinned first: the file dialog takes the foreground, and without
+            // this the palette would dismiss itself the moment it opened.
+            _pinned = true;
+            if (_viewModel.AddCustomFileCommand.CanExecute(null))
+                _viewModel.AddCustomFileCommand.Execute(null);
+            PushState();
+        }
+
+        private void OpenScanner()
+        {
+            // The scanner is still its own WPF window in this stage; the palette
+            // steps out of the way rather than competing with it.
+            HidePalette();
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_viewModel.AddApplicationCommand.CanExecute(null))
+                    _viewModel.AddApplicationCommand.Execute(null);
+            }));
         }
 
         private void BeginCapture()
@@ -427,6 +518,8 @@ namespace FastApp
                     category = a.Category,
                     hotkey = string.IsNullOrWhiteSpace(a.HotkeySequence) ? null : a.HotkeyDisplayText,
                     autoStart = a.LaunchOnStartup,
+                    limitMinutes = a.DailyLimitMinutes,
+                    isAction = a.IsAction,
                     today = today.TryGetValue(a.Name, out var span) && span > TimeSpan.Zero
                         ? FormatSpan(span)
                         : "",
@@ -571,6 +664,7 @@ namespace FastApp
             public int Width { get; set; }
             public int Height { get; set; }
             public bool Value { get; set; }
+            public int Delta { get; set; }
         }
 
         /// <summary>
@@ -591,6 +685,8 @@ namespace FastApp
             public int DailyLimitMinutes { get; set; }
             public bool StrictFocusMode { get; set; }
             public string Category { get; set; }
+            public int ActionType { get; set; }
+            public string ActionPayload { get; set; }
         }
     }
 }

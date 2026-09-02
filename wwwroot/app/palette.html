@@ -79,8 +79,10 @@
             <span class="label">IDENTITY</span>
             <label class="field-label">Display name</label>
             <input class="field" id="d-custom-name" type="text" placeholder="Leave blank to use the real name" spellcheck="false">
-            <label class="field-label">Executable</label>
-            <span class="path" id="d-path"></span>
+            <span id="d-exec-row" class="stack">
+                <label class="field-label">Executable</label>
+                <span class="path" id="d-path"></span>
+            </span>
         </section>
 
         <section class="card">
@@ -98,7 +100,7 @@
             </div>
         </section>
 
-        <section class="card">
+        <section class="card" id="d-startup-card">
             <span class="label">STARTUP</span>
             <div class="opt">
                 <span class="opt-text">
@@ -119,6 +121,21 @@
             </div>
         </section>
 
+
+        <section class="card" id="d-action-card" hidden>
+            <span class="label">WHAT IT DOES</span>
+            <div class="pillgroup" id="d-action-type">
+                <button class="pill" type="button" data-action="1">Toggle mute</button>
+                <button class="pill" type="button" data-action="2">Centre window</button>
+                <button class="pill" type="button" data-action="3">Paste text</button>
+            </div>
+            <span class="hint-sub" id="d-action-hint"></span>
+        </section>
+
+        <section class="card" id="d-payload-card" hidden>
+            <span class="label">TEXT TO PASTE</span>
+            <input class="field" id="d-payload" type="text" placeholder="The snippet this hotkey pastes" spellcheck="false">
+        </section>
         <section class="card" id="d-limit-card">
             <div class="card-head">
                 <span class="label">DAILY LIMIT</span>
@@ -153,6 +170,43 @@
         <span class="label">ESC BACK · CHANGES SAVE AS YOU MAKE THEM</span>
         <span class="chrome-spacer"></span>
         <button class="btn btn-danger" id="d-delete" type="button">Remove from FastApp</button>
+    </div>
+
+</div>
+
+
+<div class="manage" id="view-manage" hidden>
+
+    <div class="detail-head">
+        <span class="icon-btn" data-back-manage>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </span>
+        <span class="detail-title">
+            <span class="detail-name">Manage</span>
+            <span class="row-sub">Order here is also the order startup apps open in</span>
+        </span>
+        <span class="chrome-spacer"></span>
+        <button class="btn" id="m-new-action" type="button">New action</button>
+        <button class="btn" id="m-browse" type="button">Browse files</button>
+        <button class="btn btn-primary" id="m-scan" type="button">Scan for apps</button>
+    </div>
+
+    <div class="m-cols">
+        <span></span>
+        <span class="label">ENTRY</span>
+        <span class="label">HOTKEY</span>
+        <span class="label">LIMIT</span>
+        <span class="label">AUTO</span>
+        <span class="label m-right">TODAY</span>
+    </div>
+
+    <div class="m-list" id="m-list"></div>
+
+    <div class="detail-foot">
+        <span class="label">↑↓ MOVE · ALT+↑↓ REORDER · ↵ EDIT · ESC BACK</span>
+        <span class="chrome-spacer"></span>
+        <span class="label" id="m-counts"></span>
     </div>
 
 </div>
