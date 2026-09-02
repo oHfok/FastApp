@@ -1017,6 +1017,26 @@ namespace FastApp.ViewModels
         // ==========================================
         // THE MACRO ENGINE (Zero Lag)
         // ==========================================
+        /// <summary>
+        /// Answers the keyboard hook, synchronously, on the key-down that
+        /// completes a combination: should this keystroke be withheld from the
+        /// focused application? Reads the same immutable snapshot
+        /// CheckForHotkeys does, so it allocates nothing and takes no lock --
+        /// this runs inside the hook, where being slow gets the hook removed.
+        /// </summary>
+        public bool ShouldSuppressHotkey(HashSet<Key> currentlyPressedKeys)
+        {
+            if (currentlyPressedKeys.Count == 0) return false;
+
+            var snapshot = _compiledHotkeys;
+            foreach (var kvp in snapshot)
+            {
+                if (kvp.Key.SuppressHotkeyPassthrough && currentlyPressedKeys.SetEquals(kvp.Value))
+                    return true;
+            }
+            return false;
+        }
+
         public void CheckForHotkeys(HashSet<Key> currentlyPressedKeys)
         {
             if (currentlyPressedKeys.Count == 0) return;
@@ -1076,7 +1096,18 @@ namespace FastApp.ViewModels
                     }
                 }
 
-                if (blockMacro) continue; // Throw macro in the trash
+                if (blockMacro)
+                {
+                    // Silently dropping this was indistinguishable from a broken
+                    // hotkey. The OSD says so instead -- deliberately not a
+                    // toast, since the reason you are being blocked is that you
+                    // are mid-game and a toast would be worse than the macro.
+                    if (EnableOsd)
+                    {
+                        Services.OsdService.Show($"{app.DisplayNamePrimary} blocked in game", app.IsAction);
+                    }
+                    continue;
+                }
                 // ----------------------------------
                 _pendingMacros.Enqueue(new ViewModels.MacroEventLog
                 {
@@ -1085,7 +1116,20 @@ namespace FastApp.ViewModels
                 });
 
                 // 1. Execute the heavy Action entirely in the background
-                Services.ActionHookEngine.Execute(app);
+                var result = Services.ActionHookEngine.Execute(app);
+
+                if (!result.Success)
+                {
+                    // Failures here used to vanish into a bare catch {}, so a
+                    // hotkey pointing at a moved executable behaved exactly like
+                    // one that was never bound.
+                    Services.NotificationService.Show(
+                        $"{app.DisplayNamePrimary} did not run",
+                        result.Message,
+                        Services.NotificationSeverity.Warning);
+                }
+
+                if (!result.Success) continue;
 
                 // 2. Safely hop back to the UI thread to update the counter and save the DB (BeginInvoke = Non-blocking)
                 System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>

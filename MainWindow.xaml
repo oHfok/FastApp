@@ -186,6 +186,9 @@
                                                 <ui:TextBox Text="{Binding HotkeyDisplayText}" IsReadOnly="True" GotFocus="HotkeyTextBox_GotFocus" PreviewKeyDown="HotkeyTextBox_PreviewKeyDown" PreviewKeyUp="HotkeyTextBox_PreviewKeyUp" MinHeight="32" Width="180" />
                                                 <ui:Button Content="Clear" Icon="Dismiss24" Click="ClearHotkey_Click" ToolTip="Clear Hotkey" Margin="10,0,0,0" Appearance="Secondary"/>
                                             </StackPanel>
+                                            <ui:ToggleSwitch IsChecked="{Binding SuppressHotkeyPassthrough}" Content="Don't pass through"
+                                                             ToolTip="Stop the focused app from also receiving this key combination"
+                                                             Margin="0,10,0,0"/>
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="1" Margin="0,0,40,0" Visibility="{Binding AppSettingsVisibility}">

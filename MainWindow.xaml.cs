@@ -45,6 +45,7 @@ namespace FastApp
 
             // 4. WIRE THE HOOK: Connect the live hook to the loaded ViewModel.
             _keyboardHook.KeysChanged += _viewModel.CheckForHotkeys;
+            _keyboardHook.ShouldSuppress = _viewModel.ShouldSuppressHotkey;
 
             // 5. SHUTDOWN SAFETY NET: Windows shutting down / restarting / logging
             // off never goes through the tray Exit path, so without this the most

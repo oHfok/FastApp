@@ -29,10 +29,15 @@ namespace FastApp.ViewModels
         [ObservableProperty] private string _actionPayload = string.Empty;
 
         // Smart UI toggles so the settings change based on the drop-down box
-        [NotMapped] public Visibility ShowAppPath => ActionType == 0 ? Visibility.Visible : Visibility.Collapsed;
-        [NotMapped] public Visibility ShowTextPayload => ActionType == 3 ? Visibility.Visible : Visibility.Collapsed;
+        // ActionType stays an int because that is the stored column and the
+        // ComboBox binds to it arithmetically; this just names the values so the
+        // decisions below read as something other than magic numbers.
+        [NotMapped] public Services.HotkeyAction Action => (Services.HotkeyAction)ActionType;
 
-        [NotMapped] public Visibility ShowAutoStartToggle => ActionType == 0 ? Visibility.Visible : Visibility.Collapsed;
+        [NotMapped] public Visibility ShowAppPath => Action == Services.HotkeyAction.LaunchApp ? Visibility.Visible : Visibility.Collapsed;
+        [NotMapped] public Visibility ShowTextPayload => Action == Services.HotkeyAction.PasteText ? Visibility.Visible : Visibility.Collapsed;
+
+        [NotMapped] public Visibility ShowAutoStartToggle => Action == Services.HotkeyAction.LaunchApp ? Visibility.Visible : Visibility.Collapsed;
 
         [ObservableProperty] private string _category = "Other"; // Default to Other
 
@@ -48,8 +53,8 @@ namespace FastApp.ViewModels
         [ObservableProperty] private string _customName = string.Empty;
 
         // UI Toggles: Defines whether this is an App (0) or an Action (1+)
-        [NotMapped] public bool IsApp => ActionType == 0;
-        [NotMapped] public bool IsAction => ActionType > 0;
+        [NotMapped] public bool IsApp => Action == Services.HotkeyAction.LaunchApp;
+        [NotMapped] public bool IsAction => Action != Services.HotkeyAction.LaunchApp;
 
         [NotMapped] public Visibility AppSettingsVisibility => IsApp ? Visibility.Visible : Visibility.Collapsed;
         [NotMapped] public Visibility ActionSettingsVisibility => IsAction ? Visibility.Visible : Visibility.Collapsed;
@@ -81,6 +86,7 @@ namespace FastApp.ViewModels
         // Force UI update when ActionType changes
         partial void OnActionTypeChanged(int value)
         {
+            OnPropertyChanged(nameof(Action));
             OnPropertyChanged(nameof(ShowAppPath));
             OnPropertyChanged(nameof(ShowTextPayload));
             OnPropertyChanged(nameof(ShowAutoStartToggle));
@@ -93,6 +99,10 @@ namespace FastApp.ViewModels
         // managed entry can open a specific profile, workspace or file rather
         // than only the bare executable.
         [ObservableProperty] private string _launchArguments = string.Empty;
+
+        // When set, the hotkey is swallowed and never reaches the focused app.
+        // Off by default so existing bindings keep behaving as they always have.
+        [ObservableProperty] private bool _suppressHotkeyPassthrough;
 
         // Seconds to wait before starting this one during an auto-launch pass.
         // Some apps refuse to start, or start wrong, if a dependency is not up

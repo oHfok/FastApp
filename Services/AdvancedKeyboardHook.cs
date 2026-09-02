@@ -21,6 +21,19 @@ namespace FastApp.Services
         private readonly HashSet<Key> _pressedKeys = new();
         public event Action<HashSet<Key>> KeysChanged;
 
+        /// <summary>
+        /// Asked, on the key-down that completes a combination, whether that
+        /// combination should be swallowed instead of passed to the focused app.
+        /// Called synchronously from the hook callback, so it must be fast and
+        /// must not throw -- a slow callback gets the hook uninstalled by
+        /// Windows, and an exception here escapes into the message pump.
+        ///
+        /// Only the completing key is withheld. The modifiers were delivered as
+        /// they were pressed and cannot be recalled, but on their own they do
+        /// nothing, so the app sees Ctrl+Shift held and no V.
+        /// </summary>
+        public Func<HashSet<Key>, bool> ShouldSuppress { get; set; }
+
         public AdvancedKeyboardHook()
         {
             _proc = HookCallback;
@@ -57,9 +70,26 @@ namespace FastApp.Services
                     k != currentKey &&
                     (GetAsyncKeyState(KeyInterop.VirtualKeyFromKey(k)) & 0x8000) == 0);
 
+                bool isKeyDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
+
                 if (changed || removedCount > 0)
                 {
                     KeysChanged?.Invoke(new HashSet<Key>(_pressedKeys));
+                }
+
+                if (isKeyDown && ShouldSuppress != null)
+                {
+                    try
+                    {
+                        // Returning a non-zero value here ends the chain: the
+                        // keystroke never reaches the focused application.
+                        if (ShouldSuppress(_pressedKeys)) return (IntPtr)1;
+                    }
+                    catch
+                    {
+                        // Never let a predicate fault break every key on the
+                        // machine -- fall through and pass the key on.
+                    }
                 }
             }
             return CallNextHookEx(_hookId, nCode, wParam, lParam);
@@ -67,7 +97,11 @@ namespace FastApp.Services
 
         public void Dispose()
         {
+            // Guarded and zeroed: Dispose is called from both OnClosed and the
+            // force-exit path, and unhooking a stale handle twice is undefined.
+            if (_hookId == IntPtr.Zero) return;
             UnhookWindowsHookEx(_hookId);
+            _hookId = IntPtr.Zero;
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
