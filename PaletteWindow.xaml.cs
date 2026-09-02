@@ -319,9 +319,9 @@ namespace FastApp
                     break;
 
                 case "set-pinned":
-                    // While an editing view is open, dismiss-on-deactivate would
-                    // throw away half-finished work.
-                    _pinned = message.Value;
+                    // Kept so an older cached page cannot wedge the window open;
+                    // nothing sends this any more. Every view dismisses on
+                    // click-away now, because every field saves as it changes.
                     break;
 
                 case "run-command":
@@ -372,6 +372,8 @@ namespace FastApp
             }
         }
 
+        // Suppresses dismiss-on-click-away for the duration of a modal this
+        // window opens itself. Not used for views: those all dismiss normally.
         private bool _pinned;
         private MainWindow _mainWindow;
         private bool _captureHooked;
@@ -513,12 +515,22 @@ namespace FastApp
 
         private void BrowseForApp()
         {
-            // Pinned first: the file dialog takes the foreground, and without
-            // this the palette would dismiss itself the moment it opened.
+            // The one place the flag is still needed: the file dialog takes the
+            // foreground, and the palette would otherwise dismiss itself the
+            // instant it opened. Released in a finally so a cancelled or failed
+            // dialog cannot leave the window permanently undismissable, which is
+            // what the first version of this did.
             _pinned = true;
-            if (_viewModel.AddCustomFileCommand.CanExecute(null))
-                _viewModel.AddCustomFileCommand.Execute(null);
-            PushState();
+            try
+            {
+                if (_viewModel.AddCustomFileCommand.CanExecute(null))
+                    _viewModel.AddCustomFileCommand.Execute(null);
+                PushState();
+            }
+            finally
+            {
+                _pinned = false;
+            }
         }
 
         // ------------------------------------------------------------------

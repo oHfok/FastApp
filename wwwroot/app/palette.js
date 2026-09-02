@@ -238,17 +238,21 @@ els.q.addEventListener('input', () => { query = els.q.value; active = 0; render(
 
    One document rather than separate pages: the palette is summoned constantly
    and must not pay for a navigation, and the detail view wants the same bridge
-   and the same stylesheet. The host is told to resize, and to stop dismissing
-   itself on deactivation while an editing view is open, because losing
-   half-typed changes to a stray click would be unforgivable.
+   and the same stylesheet. The host is told to resize when the view changes.
+
+   The editing views used to suppress dismiss-on-click-away, on the theory that
+   a stray click would lose half-typed changes. It could not: every field saves
+   on change, and clicking away blurs the field, which is what fires it. So the
+   protection guarded nothing and cost the behaviour people expect from a
+   palette -- click elsewhere and it goes.
    --------------------------------------------------------------------------- */
 
 const VIEWS = {
-    palette: { el: document.getElementById('view-palette'), w: 760, h: 520, pinned: false },
-    detail: { el: document.getElementById('view-detail'), w: 820, h: 560, pinned: true },
-    manage: { el: document.getElementById('view-manage'), w: 940, h: 620, pinned: true },
-    settings: { el: document.getElementById('view-settings'), w: 940, h: 700, pinned: true },
-    scanner: { el: document.getElementById('view-scanner'), w: 880, h: 640, pinned: true }
+    palette: { el: document.getElementById('view-palette'), w: 760, h: 520 },
+    detail: { el: document.getElementById('view-detail'), w: 820, h: 560 },
+    manage: { el: document.getElementById('view-manage'), w: 940, h: 620 },
+    settings: { el: document.getElementById('view-settings'), w: 940, h: 700 },
+    scanner: { el: document.getElementById('view-scanner'), w: 880, h: 640 }
 };
 
 let view = 'palette';
@@ -259,7 +263,6 @@ function show(name) {
 
     const target = VIEWS[name];
     send('resize', { width: target.w, height: target.h });
-    send('set-pinned', { value: target.pinned });
 
     if (name === 'palette') els.q.focus();
 }
