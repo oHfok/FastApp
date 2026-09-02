@@ -43,10 +43,23 @@ namespace FastApp
             Loaded += async (_, _) => await InitialiseAsync();
         }
 
-        private async Task InitialiseAsync()
-        {
-            if (_ready) return;
+        /// <summary>
+        /// Initialise once, however many callers ask.
+        ///
+        /// Two of them always do: PrewarmAsync calls this directly, and the
+        /// Show() it performs raises Loaded, which calls it too. The old
+        /// boolean guard was set only after the awaits, so both calls sailed
+        /// past it and each built its own CoreWebView2Environment -- the second
+        /// then threw "WebView2 was already initialized with a different
+        /// CoreWebView2Environment". It won the race often enough to look fine.
+        /// Memoising the task makes the second caller await the first.
+        /// </summary>
+        private Task _initialisation;
 
+        private Task InitialiseAsync() => _initialisation ??= InitialiseCoreAsync();
+
+        private async Task InitialiseCoreAsync()
+        {
             try
             {
                 // User data lives beside the database rather than next to the
