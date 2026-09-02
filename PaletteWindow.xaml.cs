@@ -811,11 +811,46 @@ namespace FastApp
             return (perApp, total);
         }
 
+        /// <summary>
+        /// When each app was last in the foreground, newest session per app.
+        ///
+        /// Bounded to the last 60 days rather than grouping the whole table:
+        /// anything older is not "recent" by any reading, and the palette is
+        /// summoned constantly enough that this query should stay small.
+        /// IX_SessionLogs_AppName_StartTime covers it.
+        /// </summary>
+        private static Dictionary<string, DateTime> ReadLastUsed()
+        {
+            var last = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                DateTime cutoff = DateTime.Now.AddDays(-60);
+                using var db = new AppDbContext();
+                var rows = db.SessionLogs.AsNoTracking()
+                    .Where(s => s.StartTime >= cutoff)
+                    .GroupBy(s => s.AppName)
+                    .Select(g => new { Name = g.Key, Last = g.Max(x => x.StartTime) })
+                    .ToList();
+
+                foreach (var row in rows)
+                {
+                    if (!string.IsNullOrEmpty(row.Name)) last[row.Name] = row.Last;
+                }
+            }
+            catch
+            {
+                // No history simply means no ordering preference; the list falls
+                // back to the order shown in Manage.
+            }
+            return last;
+        }
+
         private void PushState()
         {
             if (Web.CoreWebView2 == null) return;
 
             var (today, focusTotal) = ReadToday();
+            var lastUsed = ReadLastUsed();
 
             var apps = _viewModel.ManagedApps
                 .OrderBy(a => a.OrderIndex)
@@ -828,6 +863,9 @@ namespace FastApp
                     autoStart = a.LaunchOnStartup,
                     limitMinutes = a.DailyLimitMinutes,
                     isAction = a.IsAction,
+                    lastUsed = lastUsed.TryGetValue(a.Name, out var seen)
+                        ? seen.Ticks
+                        : 0L,
                     today = today.TryGetValue(a.Name, out var span) && span > TimeSpan.Zero
                         ? FormatSpan(span)
                         : "",

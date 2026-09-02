@@ -72,6 +72,16 @@ function visible() {
         .filter(r => r.s >= 0)
         .sort((a, b) => b.s - a.s);
 
+    // With nothing typed the heading says RECENT, so the list has to earn it:
+    // most recently used first, which for a launcher is almost always what you
+    // came for. It used to be whatever order Manage happened to be in, which
+    // made the heading a lie. Apps with no history keep their Manage order at
+    // the bottom -- the sort is stable, and they all compare equal at 0.
+    //
+    // Only the unfiltered list is reordered. Once you type, ranking by how well
+    // the name matches beats ranking by when you last opened it.
+    if (!q) apps.sort((a, b) => (b.item.lastUsed || 0) - (a.item.lastUsed || 0));
+
     const commands = state.commands
         .map(c => ({ item: c, kind: 'command', s: score(c.title, q) }))
         .filter(r => r.s >= 0)
