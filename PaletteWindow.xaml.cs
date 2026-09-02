@@ -210,6 +210,14 @@ namespace FastApp
                     OpenScanner();
                     break;
 
+                case "set-setting":
+                    ApplySetting(message.Key, message.Value, message.Text);
+                    break;
+
+                case "settings-command":
+                    RunSettingsCommand(message.Id);
+                    break;
+
                 case "resize":
                     ResizeTo(message.Width, message.Height);
                     break;
@@ -260,8 +268,7 @@ namespace FastApp
                     break;
 
                 case "settings":
-                    // Still the WPF window until the settings view lands.
-                    ShowManager();
+                    ShowSettings();
                     break;
                 case "scan":
                     ShowManager();
@@ -428,6 +435,134 @@ namespace FastApp
                 if (_viewModel.AddApplicationCommand.CanExecute(null))
                     _viewModel.AddApplicationCommand.Execute(null);
             }));
+        }
+
+        // ------------------------------------------------------------------
+        // Settings
+        // ------------------------------------------------------------------
+
+        private void ShowSettings()
+        {
+            // The version list is fetched lazily by the view model; ask for it
+            // before the view appears so the rollback picker is not empty on
+            // first open.
+            _ = _viewModel.LoadRollbackVersionsAsync().ContinueWith(_ =>
+                Dispatcher.BeginInvoke(new Action(PushSettings)));
+
+            PushSettings();
+            Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"show-settings\"}");
+        }
+
+        private void PushSettings()
+        {
+            if (Web.CoreWebView2 == null) return;
+
+            var payload = new
+            {
+                type = "settings",
+                settings = new
+                {
+                    launchOnStartup = _viewModel.LaunchOnSystemStartup,
+                    startupBusy = _viewModel.IsStartupToggleBusy,
+                    hasStartupConflict = _viewModel.HasStartupConflict,
+                    startupConflictText = _viewModel.StartupConflictText,
+
+                    enableOsd = _viewModel.EnableOsd,
+                    showAutoLaunchProgress = _viewModel.ShowAutoLaunchProgress,
+
+                    notificationsEnabled = _viewModel.NotificationsEnabled,
+                    quietHoursEnabled = _viewModel.QuietHoursEnabled,
+                    quietHoursFrom = _viewModel.QuietHoursFrom,
+                    quietHoursTo = _viewModel.QuietHoursTo,
+
+                    dashboardStatus = _viewModel.DashboardStatusText,
+                    dashboardRunning = DashboardServerService.IsRunning,
+
+                    version = _viewModel.UpdateVersionText,
+                    updateStatus = _viewModel.UpdateStatusText,
+                    checkingForUpdates = _viewModel.IsCheckingForUpdates,
+                    updateReady = _viewModel.IsUpdateReadyToApply,
+
+                    whatsNew = _viewModel.WhatsNewText,
+                    hasWhatsNew = _viewModel.HasWhatsNew,
+
+                    rollbackVersions = _viewModel.RollbackVersions.ToList(),
+                    selectedRollback = _viewModel.SelectedRollbackVersion,
+                    rollbackWarning = _viewModel.RollbackWarningText,
+                    rollbackStatus = _viewModel.RollbackStatusText,
+                    hasRollbackVersions = _viewModel.HasRollbackVersions,
+                    rollbackBusy = _viewModel.IsRollbackBusy
+                }
+            };
+
+            Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+        }
+
+        /// <summary>
+        /// Setting changes go through the view model's own properties, never
+        /// around them: each one carries the persistence and side effects
+        /// (writing the AppSettings row, re-applying quiet hours, prompting for
+        /// elevation) that the WPF settings tab already relies on.
+        /// </summary>
+        private void ApplySetting(string key, bool value, string text)
+        {
+            switch (key)
+            {
+                case "launchOnStartup": _viewModel.LaunchOnSystemStartup = value; break;
+                case "enableOsd": _viewModel.EnableOsd = value; break;
+                case "showAutoLaunchProgress": _viewModel.ShowAutoLaunchProgress = value; break;
+                case "notificationsEnabled": _viewModel.NotificationsEnabled = value; break;
+                case "quietHoursEnabled": _viewModel.QuietHoursEnabled = value; break;
+                case "quietHoursFrom": _viewModel.QuietHoursFrom = text ?? string.Empty; break;
+                case "quietHoursTo": _viewModel.QuietHoursTo = text ?? string.Empty; break;
+                case "selectedRollback": _viewModel.SelectedRollbackVersion = text; break;
+                default: return;
+            }
+
+            // Some of these are answered asynchronously (the startup toggle
+            // waits on a UAC prompt), so reflect the truth shortly after rather
+            // than trusting what was just sent.
+            Dispatcher.BeginInvoke(new Action(PushSettings),
+                System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void RunSettingsCommand(string id)
+        {
+            switch (id)
+            {
+                case "fix-startup":
+                    Execute(_viewModel.FixStartupRegistrationCommand);
+                    break;
+                case "check-updates":
+                    Execute(_viewModel.CheckForUpdatesCommand);
+                    break;
+                case "apply-update":
+                    Execute(_viewModel.ApplyPendingUpdateCommand);
+                    break;
+                case "rollback":
+                    Execute(_viewModel.RollBackCommand);
+                    break;
+                case "open-dashboard":
+                    HidePalette();
+                    OpenExternally(DashboardServerService.DashboardUrl);
+                    return;
+                default:
+                    return;
+            }
+
+            // These run for a while; poll the view model back to the page a few
+            // times rather than wiring a property-changed subscription for a
+            // view that is usually closed.
+            for (int delay = 400; delay <= 3200; delay *= 2)
+            {
+                _ = Task.Delay(delay).ContinueWith(_ =>
+                    Dispatcher.BeginInvoke(new Action(PushSettings)));
+            }
+        }
+
+        private static void Execute(System.Windows.Input.ICommand command)
+        {
+            if (command != null && command.CanExecute(null)) command.Execute(null);
         }
 
         private void BeginCapture()
@@ -665,6 +800,8 @@ namespace FastApp
             public int Height { get; set; }
             public bool Value { get; set; }
             public int Delta { get; set; }
+            public string Key { get; set; }
+            public string Text { get; set; }
         }
 
         /// <summary>

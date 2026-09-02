@@ -236,7 +236,8 @@ els.q.addEventListener('input', () => { query = els.q.value; active = 0; render(
 const VIEWS = {
     palette: { el: document.getElementById('view-palette'), w: 760, h: 520, pinned: false },
     detail: { el: document.getElementById('view-detail'), w: 820, h: 560, pinned: true },
-    manage: { el: document.getElementById('view-manage'), w: 940, h: 620, pinned: true }
+    manage: { el: document.getElementById('view-manage'), w: 940, h: 620, pinned: true },
+    settings: { el: document.getElementById('view-settings'), w: 940, h: 700, pinned: true }
 };
 
 let view = 'palette';
@@ -253,6 +254,11 @@ function show(name) {
 }
 
 document.addEventListener('keydown', e => {
+    if (view === 'settings') {
+        if (e.key === 'Escape') { e.preventDefault(); show('palette'); }
+        return;
+    }
+
     if (view === 'manage') {
         switch (e.key) {
             case 'Escape': e.preventDefault(); show('palette'); break;
@@ -306,6 +312,148 @@ document.addEventListener('keydown', e => {
         }
     }
 });
+
+/* ---------------------------------------------------------------------------
+   Settings
+
+   Nothing here is stored locally. Every change is sent to the host, which sets
+   the matching view-model property so the persistence and side effects the WPF
+   settings tab relies on all still happen, and the host then sends the whole
+   settings state back. Some of it is answered asynchronously -- the startup
+   toggle waits on a UAC prompt -- so the page always renders what came back
+   rather than what it just sent.
+   --------------------------------------------------------------------------- */
+
+const st = {
+    version: document.getElementById('s-version'),
+    versionLine: document.getElementById('s-version-line'),
+    conflict: document.getElementById('s-conflict'),
+    conflictPath: document.getElementById('s-conflict-path'),
+    fix: document.getElementById('s-fix'),
+    startup: document.getElementById('s-startup'),
+    osd: document.getElementById('s-osd'),
+    progress: document.getElementById('s-progress'),
+    notify: document.getElementById('s-notify'),
+    quiet: document.getElementById('s-quiet'),
+    quietTimes: document.getElementById('s-quiet-times'),
+    quietFrom: document.getElementById('s-quiet-from'),
+    quietTo: document.getElementById('s-quiet-to'),
+    dashboardStatus: document.getElementById('s-dashboard-status'),
+    openDashboard: document.getElementById('s-open-dashboard'),
+    updateStatus: document.getElementById('s-update-status'),
+    check: document.getElementById('s-check'),
+    apply: document.getElementById('s-apply'),
+    whatsNewCard: document.getElementById('s-whatsnew-card'),
+    whatsNewLabel: document.getElementById('s-whatsnew-label'),
+    whatsNew: document.getElementById('s-whatsnew'),
+    rollbackCard: document.getElementById('s-rollback-card'),
+    rollbackVersion: document.getElementById('s-rollback-version'),
+    rollback: document.getElementById('s-rollback'),
+    rollbackWarning: document.getElementById('s-rollback-warning'),
+    rollbackStatus: document.getElementById('s-rollback-status')
+};
+
+function renderSettings(v) {
+    st.version.textContent = v.version || '';
+    st.versionLine.textContent = v.version || 'FastApp';
+
+    st.conflict.hidden = !v.hasStartupConflict;
+    st.conflictPath.textContent = (v.startupConflictText || '').split('\n').pop();
+
+    setToggle(st.startup, v.launchOnStartup);
+    setToggle(st.osd, v.enableOsd);
+    setToggle(st.progress, v.showAutoLaunchProgress);
+    setToggle(st.notify, v.notificationsEnabled);
+    setToggle(st.quiet, v.quietHoursEnabled);
+
+    st.quietTimes.hidden = !v.quietHoursEnabled;
+    if (document.activeElement !== st.quietFrom) st.quietFrom.value = v.quietHoursFrom || '';
+    if (document.activeElement !== st.quietTo) st.quietTo.value = v.quietHoursTo || '';
+
+    st.dashboardStatus.textContent = v.dashboardStatus || '';
+    st.openDashboard.disabled = !v.dashboardRunning;
+
+    st.updateStatus.textContent = v.updateStatus || '';
+    st.check.textContent = v.checkingForUpdates ? 'Checking…' : 'Check now';
+    st.apply.hidden = !v.updateReady;
+
+    st.whatsNewCard.hidden = !v.hasWhatsNew;
+    st.whatsNewLabel.textContent = v.version ? `WHAT'S NEW IN ${v.version}` : "WHAT'S NEW";
+    renderNotes(v.whatsNew || '');
+
+    st.rollbackCard.hidden = !v.hasRollbackVersions;
+    if (v.rollbackVersions && st.rollbackVersion.options.length !== v.rollbackVersions.length) {
+        st.rollbackVersion.textContent = '';
+        for (const version of v.rollbackVersions) {
+            const option = document.createElement('option');
+            option.value = version;
+            option.textContent = version;
+            st.rollbackVersion.appendChild(option);
+        }
+    }
+    if (v.selectedRollback) st.rollbackVersion.value = v.selectedRollback;
+    st.rollbackWarning.hidden = !v.rollbackWarning;
+    st.rollbackWarning.textContent = v.rollbackWarning || '';
+    st.rollbackStatus.hidden = !v.rollbackStatus;
+    st.rollbackStatus.textContent = v.rollbackStatus || '';
+    st.rollback.textContent = v.rollbackBusy ? 'Working…' : 'Reinstall';
+    st.rollback.disabled = !!v.rollbackBusy;
+}
+
+/* The notes arrive as the release body: bullet lines and prose. Rendered as
+   text, never as markup -- it comes from a GitHub release, which is not ours
+   to trust as HTML. */
+function renderNotes(text) {
+    st.whatsNew.textContent = '';
+    for (const raw of text.split('\n')) {
+        const line = raw.trim();
+        if (!line) continue;
+
+        const note = document.createElement('div');
+        note.className = 's-note';
+
+        const bullet = line.startsWith('-') || line.startsWith('*');
+        if (bullet) {
+            const dot = document.createElement('span');
+            dot.className = 's-note-dot';
+            note.appendChild(dot);
+        }
+
+        const body = document.createElement('span');
+        body.className = 's-note-text';
+        body.textContent = (bullet ? line.slice(1) : line).replace(/\*\*/g, '').trim();
+        note.appendChild(body);
+        st.whatsNew.appendChild(note);
+    }
+}
+
+function setting(key, value) { send('set-setting', { key, value }); }
+function settingText(key, text) { send('set-setting', { key, text }); }
+
+for (const [el, key] of [
+    [st.startup, 'launchOnStartup'],
+    [st.osd, 'enableOsd'],
+    [st.progress, 'showAutoLaunchProgress'],
+    [st.notify, 'notificationsEnabled'],
+    [st.quiet, 'quietHoursEnabled']
+]) {
+    el.addEventListener('click', () => {
+        const next = !toggleOn(el);
+        setToggle(el, next);          // optimistic; the host's reply is the truth
+        setting(key, next);
+    });
+}
+
+st.quietFrom.addEventListener('change', () => settingText('quietHoursFrom', st.quietFrom.value));
+st.quietTo.addEventListener('change', () => settingText('quietHoursTo', st.quietTo.value));
+st.rollbackVersion.addEventListener('change', () => settingText('selectedRollback', st.rollbackVersion.value));
+
+st.fix.addEventListener('click', () => send('settings-command', { id: 'fix-startup' }));
+st.check.addEventListener('click', () => send('settings-command', { id: 'check-updates' }));
+st.apply.addEventListener('click', () => send('settings-command', { id: 'apply-update' }));
+st.rollback.addEventListener('click', () => send('settings-command', { id: 'rollback' }));
+st.openDashboard.addEventListener('click', () => send('settings-command', { id: 'open-dashboard' }));
+document.querySelector('[data-back-settings]').addEventListener('click', () => show('palette'));
 
 /* ---------------------------------------------------------------------------
    Manage view
@@ -571,6 +719,10 @@ if (bridge) {
         if (message.type === 'reset') { show('palette'); return; }
 
         if (message.type === 'show-manage') { manageActive = 0; renderManage(); show('manage'); return; }
+
+        if (message.type === 'show-settings') { show('settings'); return; }
+
+        if (message.type === 'settings') { renderSettings(message.settings); return; }
 
         if (message.type !== 'state') return;
 

@@ -211,6 +211,136 @@
 
 </div>
 
+
+<div class="settings" id="view-settings" hidden>
+
+    <div class="detail-head">
+        <span class="icon-btn" data-back-settings>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </span>
+        <span class="detail-title">
+            <span class="detail-name">Settings</span>
+        </span>
+        <span class="chrome-spacer"></span>
+        <span class="m-meta" id="s-version">—</span>
+    </div>
+
+    <!-- Shown only when another copy of FastApp owns the startup registration.
+         First, and looking different, because it is the one thing here that
+         wants doing rather than choosing. -->
+    <div class="banner" id="s-conflict" hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round">
+            <path d="M12 8v5M12 17h.01"></path><circle cx="12" cy="12" r="9"></circle>
+        </svg>
+        <span class="banner-text">
+            <span class="banner-title">Startup points at another copy</span>
+            <span class="path" id="s-conflict-path"></span>
+        </span>
+        <button class="btn btn-primary" id="s-fix" type="button">Use this copy</button>
+    </div>
+
+    <div class="s-grid">
+
+        <section class="card">
+            <span class="label">SYSTEM</span>
+            <div class="opt">
+                <span class="opt-text">
+                    <span>Start with Windows</span>
+                    <span class="hint-sub">Runs silently in the tray at login</span>
+                </span>
+                <button class="toggle" id="s-startup" type="button" role="switch"><span></span></button>
+            </div>
+            <div class="opt">
+                <span class="opt-text">
+                    <span>On-screen display</span>
+                    <span class="hint-sub">A small popup when a hotkey fires</span>
+                </span>
+                <button class="toggle" id="s-osd" type="button" role="switch"><span></span></button>
+            </div>
+            <div class="opt">
+                <span class="opt-text">
+                    <span>Auto-launch progress</span>
+                    <span class="hint-sub">Show progress while startup apps open</span>
+                </span>
+                <button class="toggle" id="s-progress" type="button" role="switch"><span></span></button>
+            </div>
+        </section>
+
+        <section class="card">
+            <span class="label">NOTIFICATIONS</span>
+            <div class="opt">
+                <span class="opt-text">
+                    <span>Show notifications</span>
+                    <span class="hint-sub">Limits are still enforced when off</span>
+                </span>
+                <button class="toggle" id="s-notify" type="button" role="switch"><span></span></button>
+            </div>
+            <div class="opt">
+                <span class="opt-text">
+                    <span>Quiet hours</span>
+                    <span class="hint-sub">Silent overnight; may cross midnight</span>
+                </span>
+                <button class="toggle" id="s-quiet" type="button" role="switch"><span></span></button>
+            </div>
+            <div class="field-row" id="s-quiet-times">
+                <span class="label">FROM</span>
+                <input class="field field-time" id="s-quiet-from" type="text" placeholder="22:00">
+                <span class="label">UNTIL</span>
+                <input class="field field-time" id="s-quiet-to" type="text" placeholder="07:00">
+            </div>
+        </section>
+
+        <section class="card">
+            <span class="label">DASHBOARD</span>
+            <div class="opt">
+                <span class="opt-text">
+                    <span>Statistics server</span>
+                    <span class="hint-sub" id="s-dashboard-status">—</span>
+                </span>
+                <button class="btn" id="s-open-dashboard" type="button">Open ↗</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <span class="label">VERSION</span>
+            <div class="opt">
+                <span class="opt-text">
+                    <span id="s-version-line">FastApp</span>
+                    <span class="hint-sub" id="s-update-status">—</span>
+                </span>
+                <button class="btn" id="s-check" type="button">Check now</button>
+            </div>
+            <button class="btn btn-primary" id="s-apply" type="button" hidden>Restart and update</button>
+        </section>
+
+        <section class="card" id="s-whatsnew-card" hidden>
+            <span class="label" id="s-whatsnew-label">WHAT'S NEW</span>
+            <div class="s-notes" id="s-whatsnew"></div>
+        </section>
+
+        <section class="card" id="s-rollback-card" hidden>
+            <span class="label">REINSTALL AN EARLIER VERSION</span>
+            <span class="hint-sub">Go back if a release causes trouble. Your data is backed up first.</span>
+            <div class="field-row">
+                <select class="field" id="s-rollback-version"></select>
+                <button class="btn" id="s-rollback" type="button">Reinstall</button>
+            </div>
+            <span class="warn" id="s-rollback-warning" hidden></span>
+            <span class="hint-sub" id="s-rollback-status" hidden></span>
+        </section>
+
+    </div>
+
+    <div class="detail-foot">
+        <span class="label">ESC BACK</span>
+        <span class="chrome-spacer"></span>
+        <span class="label">DATA IS STORED ON THIS PC ONLY</span>
+    </div>
+
+</div>
+
 <script src="palette.js"></script>
 </body>
 </html>
