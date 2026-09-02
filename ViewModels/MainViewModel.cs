@@ -872,10 +872,28 @@ namespace FastApp.ViewModels
         // touch concurrently from multiple threads — every access is wrapped in
         // lock (_dbContext), the same convention already used by
         // OnExcludeAfkTimeChanged in StatisticsViewModel.
-        private void SaveOnAppPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void SaveOnAppPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(AppItemModel.TimeRunning)) return;
-            lock (_dbContext) { _dbContext.SaveChanges(); }
+
+            // This runs inside a PropertyChanged handler, which is raised from a
+            // binding's source update. An exception thrown here escapes into WPF's
+            // binding machinery, where it is of no use to anyone: the edit is lost
+            // and nothing says so. SQLite can genuinely fail here transiently -- the
+            // tracker thread writes to this same connection every 60 seconds.
+            //
+            // Swallowing is safe because it is not the only chance to persist: the
+            // entity stays tracked and Modified, so the tracker's next flush calls
+            // SaveChanges again and picks it up. This only has to avoid making
+            // things worse while that happens.
+            try
+            {
+                lock (_dbContext) { _dbContext.SaveChanges(); }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Deferred saving {e.PropertyName}: {ex.Message}");
+            }
         }
 
 

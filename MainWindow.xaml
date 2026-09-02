@@ -372,7 +372,7 @@
                                  silently on every launch, which meant an unrequested
                                  UAC prompt and two copies overwriting each other. -->
                             <Border Margin="0,0,0,10" Padding="15" CornerRadius="8"
-                                    Background="#1A2A1F0A" BorderBrush="{StaticResource BrandAccent}" BorderThickness="1"
+                                    Background="#14E8A33D" BorderBrush="{StaticResource BrandBrassDim}" BorderThickness="1"
                                     Visibility="{Binding HasStartupConflict, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
