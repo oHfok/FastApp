@@ -27,7 +27,53 @@ namespace FastApp
         private PaletteWindow _palette;
         public PaletteWindow Palette => _palette;
 
-        public void ShowPalette() => _palette?.ShowPalette();
+        public void ShowPalette()
+        {
+            if (_palette != null && _palette.Unavailable == null)
+            {
+                _palette.ShowPalette();
+                return;
+            }
+
+            ExplainMissingInterface();
+        }
+
+        // FastApp has no other interface now, so a palette that cannot start
+        // leaves an app that appears to do nothing at all when you click it.
+        // WebView2 ships with Windows 11 and with recent Windows 10, but it can
+        // be absent or broken, and silence is the worst possible answer.
+        private bool _explained;
+
+        private void ExplainMissingInterface()
+        {
+            if (_explained) return;
+            _explained = true;
+
+            string reason = _palette?.Unavailable ?? "The interface could not be created.";
+            var result = System.Windows.MessageBox.Show(
+                "FastApp needs the Microsoft Edge WebView2 runtime to show its "
+                + "interface, and it could not be started on this PC.\n\n"
+                + "Tracking, hotkeys and daily limits are all still running in the "
+                + "background, and the statistics dashboard still works in your "
+                + "browser.\n\nOpen the WebView2 download page?\n\n"
+                + "Details: " + reason,
+                "FastApp",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+
+            _explained = false;
+
+            if (result != System.Windows.MessageBoxResult.Yes) return;
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "https://developer.microsoft.com/microsoft-edge/webview2/",
+                    UseShellExecute = true
+                });
+            }
+            catch { /* nothing useful to do if the shell refuses */ }
+        }
 
         /// <summary>
         /// Show the palette as soon as it exists. Launching FastApp by hand
@@ -36,7 +82,7 @@ namespace FastApp
         /// </summary>
         public void ShowPaletteWhenReady()
         {
-            if (_palette != null) { _palette.ShowPalette(); return; }
+            if (_palette != null) { ShowPalette(); return; }
             _showPaletteWhenWarm = true;
         }
 
@@ -91,7 +137,7 @@ namespace FastApp
                     if (_showPaletteWhenWarm)
                     {
                         _showPaletteWhenWarm = false;
-                        _palette.ShowPalette();
+                        ShowPalette();
                     }
                 }
                 catch (Exception ex)
@@ -100,6 +146,11 @@ namespace FastApp
                     // untouched, so this costs the palette and nothing else.
                     System.Diagnostics.Debug.WriteLine($"Palette unavailable: {ex.Message}");
                     _palette = null;
+                    if (_showPaletteWhenWarm)
+                    {
+                        _showPaletteWhenWarm = false;
+                        ExplainMissingInterface();
+                    }
                 }
             }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
