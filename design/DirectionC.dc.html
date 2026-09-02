@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; background: #0A0B10; color: #F3F1EA;
+           font-family: 'Space Grotesk', system-ui, sans-serif; }
+    a { color: #E8A33D; } a:hover { color: #F0B155; }
+  </style>
+</helmet>
+
+<!-- DIRECTION C — "Heads-up". A wide, short bar that drops from the top of the
+     screen rather than a window in the middle. The left half is always the
+     live state of your day; the right half is the input. Ambient, glanceable,
+     and it answers "how am I doing" without you typing anything. -->
+<div style="width: 1040px; height: 300px; box-sizing: border-box; background: #0A0B10; border-radius: 20px; padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; overflow: hidden;">
+
+  <div style="display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 28px; align-items: center;">
+
+    <!-- Live state, permanently on screen -->
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <div style="position: relative; width: 84px; height: 84px; flex-shrink: 0;">
+        <svg width="84" height="84" viewBox="0 0 84 84">
+          <circle cx="42" cy="42" r="34" fill="none" stroke="#15171F" stroke-width="8"></circle>
+          <circle cx="42" cy="42" r="34" fill="none" stroke="#E8A33D" stroke-width="8" stroke-linecap="round"
+                  stroke-dasharray="213.6" stroke-dashoffset="72" transform="rotate(-90 42 42)"></circle>
+        </svg>
+        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: #E8A33D;">4h 12m</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">FOCUS TODAY</span>
+          <span style="font-size: 13px; color: #9C9FAE;">Ahead of your weekday average</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px;">
+          <span style="width: 22px; height: 22px; border-radius: 50%; background: rgba(139,124,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;">V</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">now · Valorant · 54m left</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+      <div style="display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 0 24px; height: 58px;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#7C8194" stroke-width="2" stroke-linecap="round" style="flex-shrink: 0;">
+          <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path>
+        </svg>
+        <span style="font-size: 19px; color: #7C8194; letter-spacing: -0.01em;">Type to search, or press a hotkey</span>
+        <div style="flex-grow: 1;"></div>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 5px 11px;">Ctrl ⇧ Space</span>
+      </div>
+
+      <!-- Pinned apps as circles rather than rows: glanceable, one keystroke each -->
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="width: 38px; height: 38px; border-radius: 50%; background: rgba(139,124,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">V</span>
+        <span style="width: 38px; height: 38px; border-radius: 50%; background: rgba(52,211,196,0.18); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">Z</span>
+        <span style="width: 38px; height: 38px; border-radius: 50%; background: rgba(29,118,109,0.28); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">D</span>
+        <span style="width: 38px; height: 38px; border-radius: 50%; background: rgba(139,124,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">S</span>
+        <span style="width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.035); display: flex; align-items: center; justify-content: center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C8194" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+        </span>
+        <div style="flex-grow: 1;"></div>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">1-5 TO LAUNCH</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 20px; padding-top: 4px;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">MANAGE APPS</span>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">SETTINGS</span>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">DASHBOARD ↗</span>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="width: 7px; height: 7px; border-radius: 50%; background: #34D3C4;"></span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">TRACKING</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

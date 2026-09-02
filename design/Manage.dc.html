@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; background: #0A0B10; color: #F3F1EA;
+           font-family: 'Space Grotesk', system-ui, sans-serif; }
+    a { color: #E8A33D; } a:hover { color: #F0B155; }
+    .lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em;
+           color: #7C8194; font-weight: 700; }
+    .chip { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9C9FAE;
+            background: rgba(255,255,255,0.035); border-radius: 100px; padding: 5px 11px; }
+    .row { display: flex; align-items: center; gap: 14px; border-radius: 100px; padding: 10px 16px; }
+    .btn { background: rgba(255,255,255,0.035); border-radius: 100px; padding: 10px 18px;
+           font-size: 13px; color: #F3F1EA; display: flex; align-items: center; gap: 8px; }
+  </style>
+</helmet>
+
+<div style="width: 980px; height: 680px; box-sizing: border-box; background: #0A0B10; border-radius: 20px; padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <span style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.035); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9C9FAE" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
+    </span>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 24px; font-weight: 700; letter-spacing: -0.022em;">Manage</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7C8194;">Drag to reorder — this is also the order they open at login</span>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C9FAE" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+        New action
+      </span>
+      <span class="btn">Browse files</span>
+      <span class="btn" style="background: #E8A33D; color: #1A1000; font-weight: 700;">Scan for apps</span>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.035); border-radius: 100px; padding: 0 20px; height: 46px; flex-shrink: 0;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7C8194" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+    <span style="font-size: 14px; color: #7C8194;">Filter</span>
+    <div style="flex-grow: 1;"></div>
+    <span class="lbl">8 ENTRIES · 4 HOTKEYS · 4 AUTO-START</span>
+  </div>
+
+  <!-- Column headers, mono micro, so the row content needs no repeated labels -->
+  <div style="display: grid; grid-template-columns: 26px 40px minmax(0, 1fr) 132px 108px 96px 74px; gap: 14px; padding: 0 16px;">
+    <span></span><span></span>
+    <span class="lbl">APPLICATION</span>
+    <span class="lbl">HOTKEY</span>
+    <span class="lbl">LIMIT</span>
+    <span class="lbl">AUTO-START</span>
+    <span class="lbl" style="text-align: right;">TODAY</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-height: 0;">
+
+    <div class="row" style="background: rgba(232,163,61,0.09); display: grid; grid-template-columns: 26px 40px minmax(0, 1fr) 132px 108px 96px 74px; gap: 14px; align-items: center;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8A33D" stroke-width="2" stroke-linecap="round"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"></path></svg>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(139,124,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">V</span>
+      <span style="font-size: 14px; font-weight: 700; color: #E8A33D;">Valorant</span>
+      <span class="chip" style="justify-self: start;">V + A + L</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #E8A33D;">180m</span>
+      <span style="width: 36px; height: 20px; border-radius: 100px; background: #E8A33D; display: flex; align-items: center; justify-content: flex-end; padding: 0 3px;">
+        <span style="width: 14px; height: 14px; border-radius: 50%; background: #1A1000;"></span>
+      </span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #E8A33D; text-align: right;">2h 06m</span>
+    </div>
+
+    <div class="row" style="display: grid; grid-template-columns: 26px 40px minmax(0, 1fr) 132px 108px 96px 74px; gap: 14px; align-items: center;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8194" stroke-width="2" stroke-linecap="round"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"></path></svg>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(52,211,196,0.18); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">Z</span>
+      <span style="font-size: 14px;">Zen</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #7C8194;">—</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #7C8194;">—</span>
+      <span style="width: 36px; height: 20px; border-radius: 100px; background: #E8A33D; display: flex; align-items: center; justify-content: flex-end; padding: 0 3px;">
+        <span style="width: 14px; height: 14px; border-radius: 50%; background: #1A1000;"></span>
+      </span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #9C9FAE; text-align: right;">1h 48m</span>
+    </div>
+
+    <div class="row" style="display: grid; grid-template-columns: 26px 40px minmax(0, 1fr) 132px 108px 96px 74px; gap: 14px; align-items: center;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8194" stroke-width="2" stroke-linecap="round"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"></path></svg>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(29,118,109,0.28); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">D</span>
+      <span style="font-size: 14px;">Discord</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #7C8194;">—</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #7C8194;">—</span>
+      <span style="width: 36px; height: 20px; border-radius: 100px; background: #E8A33D; display: flex; align-items: center; justify-content: flex-end; padding: 0 3px;">
+        <span style="width: 14px; height: 14px; border-radius: 50%; background: #1A1000;"></span>
+      </span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #9C9FAE; text-align: right;">52m</span>
+    </div>
+
+    <div class="row" style="display: grid; grid-template-columns: 26px 40px minmax(0, 1fr) 132px 108px 96px 74px; gap: 14px; align-items: center;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8194" stroke-width="2" stroke-linecap="round"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"></path></svg>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(139,124,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">S</span>
+      <span style="font-size: 14px;">Steam</span>
+      <span class="chip" style="justify-self: start;">⇧ + S + T</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #7C8194;">—</span>
+      <span style="width: 36px; height: 20px; border-radius: 100px; background: rgba(255,255,255,0.08); display: flex; align-items: center; padding: 0 3px;">
+        <span style="width: 14px; height: 14px; border-radius: 50%; background: #7C8194;"></span>
+      </span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #9C9FAE; text-align: right;">14m</span>
+    </div>
+
+    <!-- An action entry sits in the same list, distinguished by its icon -->
+    <div class="row" style="display: grid; grid-template-columns: 26px 40px minmax(0, 1fr) 132px 108px 96px 74px; gap: 14px; align-items: center;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8194" stroke-width="2" stroke-linecap="round"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"></path></svg>
+      <span style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,107,107,0.18); display: flex; align-items: center; justify-content: center;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round"><path d="M11 5 6 9H2v6h4l5 4V5z"></path><path d="M22 9l-6 6M16 9l6 6"></path></svg>
+      </span>
+      <div style="display: flex; align-items: center; gap: 9px; min-width: 0;">
+        <span style="font-size: 14px;">Panic Mute</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.17em; color: #7C8194; font-weight: 700;">ACTION</span>
+      </div>
+      <span class="chip" style="justify-self: start;">Ctrl + M</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #7C8194;">—</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #7C8194;">—</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #7C8194; text-align: right;">—</span>
+    </div>
+
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 20px; flex-shrink: 0;">
+    <span class="lbl">↑↓ MOVE · ⌥↑↓ REORDER · ↵ EDIT · ESC BACK</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

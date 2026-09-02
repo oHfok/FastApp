@@ -19,6 +19,15 @@ namespace FastApp
         private MainViewModel _viewModel;
         public MainViewModel ViewModel => _viewModel;
 
+        // The 2.0 surface. Created once and hidden between uses rather than
+        // built on demand: a cold WebView2 costs a few hundred milliseconds to
+        // first paint, which is the difference between a palette you reach for
+        // and one you stop bothering with.
+        private PaletteWindow _palette;
+        public PaletteWindow Palette => _palette;
+
+        public void ShowPalette() => _palette?.ShowPalette();
+
         // NEW: The advanced global hook
         private AdvancedKeyboardHook _keyboardHook;
 
@@ -46,6 +55,7 @@ namespace FastApp
             // 4. WIRE THE HOOK: Connect the live hook to the loaded ViewModel.
             _keyboardHook.KeysChanged += _viewModel.CheckForHotkeys;
             _keyboardHook.ShouldSuppress = _viewModel.ShouldSuppressHotkey;
+            _keyboardHook.KeysChanged += CheckPaletteHotkey;
 
             // 5. SHUTDOWN SAFETY NET: Windows shutting down / restarting / logging
             // off never goes through the tray Exit path, so without this the most
@@ -56,6 +66,25 @@ namespace FastApp
             // 2026-08-19 corruption; the update path was hardened against it at the
             // time, but this far more frequent path was not.
             System.Windows.Application.Current.SessionEnding += OnSessionEnding;
+
+            // Warmed after the window is up so it never competes with first
+            // paint of the manager, and never on the startup path's critical
+            // section.
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try
+                {
+                    _palette = new PaletteWindow(_viewModel);
+                    await _palette.PrewarmAsync();
+                }
+                catch (Exception ex)
+                {
+                    // No WebView2 runtime, most likely. The manager window is
+                    // untouched, so this costs the palette and nothing else.
+                    System.Diagnostics.Debug.WriteLine($"Palette unavailable: {ex.Message}");
+                    _palette = null;
+                }
+            }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
 
         // Windows gives an app only a few seconds here before killing it, and it
@@ -246,6 +275,33 @@ namespace FastApp
             e.Handled = true;
         }
 
+        // Ctrl+Shift+Space summons the palette. Reserved rather than bindable:
+        // it is the way into the app, so it cannot be something the user can
+        // accidentally reassign to Notepad and then have no way back.
+        private static readonly HashSet<System.Windows.Input.Key> PaletteCombo = new()
+        {
+            System.Windows.Input.Key.LeftCtrl,
+            System.Windows.Input.Key.LeftShift,
+            System.Windows.Input.Key.Space
+        };
+
+        private static readonly HashSet<System.Windows.Input.Key> PaletteComboRight = new()
+        {
+            System.Windows.Input.Key.RightCtrl,
+            System.Windows.Input.Key.RightShift,
+            System.Windows.Input.Key.Space
+        };
+
+        private void CheckPaletteHotkey(HashSet<System.Windows.Input.Key> pressed)
+        {
+            if (!pressed.SetEquals(PaletteCombo) && !pressed.SetEquals(PaletteComboRight)) return;
+
+            // Hop to the UI thread: this arrives on the keyboard hook's thread,
+            // where touching a Window is not allowed and being slow gets the
+            // hook uninstalled.
+            Dispatcher.BeginInvoke(new Action(() => _palette?.ShowPalette()));
+        }
+
         // This fires the millisecond the window is actually created by the OS
         protected override void OnSourceInitialized(EventArgs e)
         {
@@ -270,6 +326,7 @@ namespace FastApp
         // Cleanup to prevent memory leaks when the app closes
         protected override void OnClosed(EventArgs e)
         {
+            _palette?.Close();
             _keyboardHook?.Dispose();
             base.OnClosed(e);
         }

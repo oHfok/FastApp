@@ -1,0 +1,53 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "The palette" },
+    { "id": "page-2", "name": "Screens" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "title": "A — Spotlight (idle)", "page": "page-1", "x": 0, "y": 0, "w": 760, "h": 520 },
+    { "file": "Search.dc.html", "title": "A — Spotlight (searching)", "page": "page-1", "x": 860, "y": 0, "w": 760, "h": 520 },
+    { "file": "DirectionB.dc.html", "title": "B — Console", "page": "page-1", "x": 0, "y": 680, "w": 940, "h": 520 },
+    { "file": "DirectionC.dc.html", "title": "C — Heads-up", "page": "page-1", "x": 1040, "y": 680, "w": 1040, "h": 300 },
+
+    { "file": "Manage.dc.html", "title": "Manage", "page": "page-2", "x": 0, "y": 0, "w": 980, "h": 680 },
+    { "file": "Settings.dc.html", "title": "Settings", "page": "page-2", "x": 1080, "y": 0, "w": 980, "h": 800 },
+    { "file": "AppDetail.dc.html", "title": "App detail", "page": "page-2", "x": 0, "y": 920, "w": 800, "h": 760 },
+    { "file": "ActionDetail.dc.html", "title": "Action detail", "page": "page-2", "x": 900, "y": 920, "w": 800, "h": 560 },
+    { "file": "Scanner.dc.html", "title": "Add applications", "page": "page-2", "x": 1800, "y": 920, "w": 860, "h": 640 }
+  ],
+  "annotations": [
+    {
+      "id": "pick-one",
+      "page": "page-1",
+      "x": 0,
+      "y": -230,
+      "w": 700,
+      "text": "PICK A DIRECTION FOR THE PALETTE\n\nThree ways the summoned window could work. All three use the dashboard's exact tokens - #0A0B10 ground, the rgba(255,255,255,0.035) wash, 20px surfaces, 100px pills, Space Grotesk and JetBrains Mono - so the choice is about behaviour, not styling.\n\nA is on the top row in both its states; B and C are below."
+    },
+    {
+      "id": "tradeoffs",
+      "page": "page-1",
+      "x": 1720,
+      "y": 0,
+      "w": 320,
+      "text": "A - SPOTLIGHT\nOne column, one input, nothing else. Opens fastest to read, stays honest to \"type and go\", and the same window works at any size. Costs: you must press Tab to see or change anything about an entry.\n\nB - CONSOLE\nA permanent right pane showing whatever is highlighted, so limits and toggles are one keystroke away without leaving the palette. Costs: a much wider window, and more to read every time you summon it for a plain launch.\n\nC - HEADS-UP\nDrops from the top of the screen and always shows how the day is going. Answers \"how am I doing\" with no typing. Costs: the ambient half is dead weight when you only want to launch something, and a short bar leaves little room for results."
+    },
+    {
+      "id": "coverage",
+      "page": "page-2",
+      "x": 0,
+      "y": -230,
+      "w": 700,
+      "text": "EVERYTHING THE CURRENT APP DOES, ACCOUNTED FOR\n\nThese carry direction A's language through the rest of the product. Nothing from today's app was dropped: display name, executable path, hotkey capture and clear, don't-pass-through, daily limit with force close and its PIN-locked state, launch arguments, startup delay, auto-start, per-entry stats, reordering, the scanner, and every setting including the startup-conflict banner and rollback.\n\nThe Statistics tab is the one deliberate removal - it only ever held a button to the browser."
+    },
+    {
+      "id": "open",
+      "page": "page-2",
+      "x": 1800,
+      "y": 1620,
+      "w": 320,
+      "text": "STILL OPEN\n\nWhere the tray menu's Extend time dialog lives - I have assumed it becomes a palette command rather than its own window, but it has to work when a browser is restricted, so it may deserve to stay separate.\n\nThe OSD and the auto-launch progress popup are unchanged in this pass."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

@@ -1,0 +1,99 @@
+/* ---------------------------------------------------------------------------
+   The design system's single source of truth.
+
+   Both halves of FastApp read this file: the web dashboard through base.css,
+   and the desktop app's WebView2 surface directly. They used to share nothing
+   but a rough sense of the palette -- the desktop side was Segoe UI with
+   fourteen font sizes and forty-eight spacing values, because there was no
+   system for it to follow. There is now, and it lives here.
+
+   Anything that belongs to the design rather than to one surface goes in this
+   file. Anything that styles a particular component does not.
+   --------------------------------------------------------------------------- */
+
+:root {
+    --bg: #0A0B10;
+    --bg-raised: #101219;
+    --panel: rgba(255, 255, 255, 0.035);
+    --panel-solid: #14161F;
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --panel-border-soft: rgba(255, 255, 255, 0.05);
+
+    --text: #F3F1EA;
+    --text-dim: #9C9FAE;
+    /* Was #5B5F71, which measured 3.11:1 against --bg -- below the 4.5:1 needed
+       for body text and below even the 3:1 large-text floor. It is the token
+       behind every caption, section label, hint and inactive toggle, so it
+       accounted for roughly 30 of the 40 text styles in the dashboard that
+       failed contrast. #757A90 measures 4.63:1: the smallest step that clears
+       AA while staying in the same blue-grey family and still reading as
+       clearly quieter than --text-dim (7.47:1).
+
+       #7C8194 rather than the bare minimum: much of this text sits on --panel
+       rather than directly on --bg, and that lighter surface costs roughly
+       0.4 of the ratio. Measured across every view, #757A90 left 9 styles
+       still failing and #7C8194 leaves 2 (neither of them this token);
+       going lighter again gains nothing. */
+    --text-faint: #7C8194;
+
+    --brass: #E8A33D;
+    --brass-dim: #8A6321;
+    --brass-glow: rgba(232, 163, 61, 0.35);
+
+    --teal: #34D3C4;
+    --teal-dim: #1D766D;
+
+    --rose: #FF6B6B;
+    --rose-dim: #8C3A3A;
+
+    --violet: #8B7CFF;
+    --violet-dim: #4E4599;
+
+    /* One face for everything that is not a figure. The design is set in Space
+       Grotesk -- squarer, more characterful, and it pairs with JetBrains Mono
+       rather than fighting it. Sora and Inter are gone: two faces doing one job,
+       and Inter is the most generic UI face there is. */
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* --- Type ramp ---------------------------------------------------------
+       There was no scale here: 143 font-size literals typed at the point of
+       use, so the only thing keeping two similar elements in step was whoever
+       wrote the second one remembering the first. They drifted -- the 9-17px
+       band held ten distinct sizes including a stray 11.5 and 12.5, and 1px
+       apart carries no hierarchy, it just reads as unsettled.
+
+       Six text steps, each with a job. Pick by role, never by number; if a new
+       element does not fit one of these, that is a design question, not a
+       reason to type a literal. */
+    --fs-micro:   10px;   /* uppercase micro-labels above a value */
+    --fs-caption: 11px;   /* captions, chips, secondary meta */
+    --fs-small:   12px;   /* explanatory paragraphs */
+    --fs-body:    13px;   /* default: row text and inline values */
+    --fs-strong:  14px;   /* primary row identifiers, emphasised values */
+    --fs-stat:    16px;   /* compact numeric readouts */
+
+    /* Display steps. Wrapped keeps a handful of bespoke per-slide sizes on
+       purpose -- it is a showcase surface, not a list. */
+    --fs-title:   20px;   /* drawer and panel titles */
+    --fs-view:    24px;   /* page headings */
+    --fs-display: 26px;   /* stat-card values */
+    --fs-hero:    44px;   /* the hero stat */
+
+    /* --- Shape -------------------------------------------------------------
+       The dashboard used to be built from bordered rectangles: a panel with a
+       1px border and a 14px radius, repeated at every scale. The redesign drops
+       the borders entirely and leans on radius instead -- surfaces are soft and
+       generous, and anything that reads as a control or a row is a full pill.
+       One wash (--panel) carries every surface; there is no second panel colour
+       and no border, so depth comes from shape and spacing rather than outline. */
+    --radius: 20px;       /* cards and panels */
+    --radius-sm: 12px;    /* small surfaces nested inside a card */
+    --radius-pill: 100px; /* rows, toggles, bars, inputs -- anything interactive */
+
+    /* Chart.js reads these at render time (see getChartTheme() in utils.js) so
+       canvases re-theme along with everything else instead of staying fixed. */
+    --chart-grid: rgba(243, 241, 234, 0.06);
+    --chart-tooltip-bg: rgba(20, 22, 31, 0.95);
+}

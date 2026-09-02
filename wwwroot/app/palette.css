@@ -1,0 +1,191 @@
+/* ---------------------------------------------------------------------------
+   The desktop palette. Built on the same tokens as the dashboard -- this file
+   only positions things; every colour, size and radius comes from tokens.css.
+
+   The window is frameless; its rounded corners come from DWM on the WPF side
+   rather than from this file, because the transparency WPF would need to round
+   them itself puts the window on a software path where WebView2 draws nothing.
+   --------------------------------------------------------------------------- */
+
+@import url("../css/tokens.css");
+
+html, body {
+    height: 100%;
+    margin: 0;
+    background: transparent;
+    overflow: hidden;
+    /* The whole surface is dragged to move the window; interactive things
+       opt back out with -webkit-app-region: no-drag. */
+    user-select: none;
+    cursor: default;
+}
+
+body {
+    font-family: var(--font-body);
+    color: var(--text);
+    font-size: var(--fs-body);
+}
+
+.palette {
+    height: 100%;
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 22px 24px 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow: hidden;
+}
+
+/* ---------- Chrome ---------- */
+.chrome { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.chrome-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brass); flex-shrink: 0; }
+.chrome-name { font-size: var(--fs-strong); font-weight: 700; letter-spacing: -0.01em; }
+.chrome-spacer { flex-grow: 1; }
+.chrome-sep { width: 1px; height: 14px; background: var(--panel-border); }
+
+.status { display: flex; align-items: center; gap: 8px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+
+.label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    color: var(--text-faint);
+    font-weight: 700;
+}
+
+.figure { display: flex; align-items: baseline; gap: 7px; }
+.figure-value {
+    font-family: var(--font-mono);
+    font-size: var(--fs-stat);
+    font-weight: 700;
+    color: var(--brass);
+}
+
+/* ---------- The input ---------- */
+.search {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--panel);
+    border-radius: var(--radius-pill);
+    padding: 0 24px;
+    height: 60px;
+    flex-shrink: 0;
+}
+.search input {
+    flex-grow: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: var(--font-body);
+    font-size: var(--fs-title);
+    letter-spacing: -0.01em;
+    color: var(--text);
+    caret-color: var(--brass);
+    min-width: 0;
+}
+.search input::placeholder { color: var(--text-faint); }
+.search svg { flex-shrink: 0; }
+
+.kbd:empty { display: none; }
+
+.kbd {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--text-faint);
+    background: var(--panel);
+    border-radius: var(--radius-pill);
+    padding: 5px 11px;
+    white-space: nowrap;
+}
+
+/* ---------- Results ---------- */
+.results {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex-grow: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+.results::-webkit-scrollbar { width: 0; }
+
+.group { display: flex; flex-direction: column; gap: 8px; }
+.group-rows { display: flex; flex-direction: column; gap: 3px; }
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-radius: var(--radius-pill);
+    padding: 11px 16px;
+    cursor: pointer;
+}
+.row.active { background: rgba(232, 163, 61, 0.09); }
+.row.active .row-name { color: var(--brass); font-weight: 700; }
+.row.active .row-figure { color: var(--brass); }
+
+.avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-body);
+    font-weight: 700;
+    flex-shrink: 0;
+    color: var(--text);
+}
+.row-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.row-name { font-size: var(--fs-strong); font-weight: 500; }
+.row-sub { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); }
+.row-spacer { flex-grow: 1; }
+.row-chip {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--text-dim);
+    background: var(--panel);
+    border-radius: var(--radius-pill);
+    padding: 5px 11px;
+    white-space: nowrap;
+}
+.row-figure {
+    font-family: var(--font-mono);
+    font-size: var(--fs-body);
+    font-weight: 700;
+    color: var(--text-dim);
+    /* Wide enough for "233h 19m" on one line: wrapping a figure across two
+       rows makes it unreadable and shoves the row taller than its neighbours. */
+    min-width: 78px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.empty {
+    display: flex; flex-direction: column; gap: 6px;
+    align-items: center; justify-content: center;
+    flex-grow: 1;
+    color: var(--text-faint);
+}
+
+/* ---------- Footer ---------- */
+.footer {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 4px 16px 4px;
+    flex-shrink: 0;
+}
+.hint { display: flex; align-items: center; gap: 7px; }
+.hint-key {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--text);
+    background: var(--panel);
+    border-radius: var(--radius-pill);
+    padding: 4px 9px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .row { transition: background 0.12s ease; }
+}

@@ -41,6 +41,7 @@ namespace FastApp.Services
 
             // Create a right-click menu
             _notifyIcon.ContextMenuStrip = new ContextMenuStrip();
+            _notifyIcon.ContextMenuStrip.Items.Add("Open Palette", null, (s, e) => ShowPalette());
             _notifyIcon.ContextMenuStrip.Items.Add("Open Manager", null, (s, e) => ShowWindow());
             _notifyIcon.ContextMenuStrip.Items.Add("View Stats", null, (s, e) => OpenDashboard());
             _notifyIcon.ContextMenuStrip.Items.Add("Extend App Time…", null, (s, e) => ShowExtendDialog());
@@ -69,6 +70,11 @@ namespace FastApp.Services
                         break;
                 }
             });
+        }
+
+        private void ShowPalette()
+        {
+            _mainWindow.ShowPalette();
         }
 
         private void ShowWindow()
