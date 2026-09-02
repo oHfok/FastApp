@@ -235,7 +235,8 @@ els.q.addEventListener('input', () => { query = els.q.value; active = 0; render(
 
 const VIEWS = {
     palette: { el: document.getElementById('view-palette'), w: 760, h: 520, pinned: false },
-    detail: { el: document.getElementById('view-detail'), w: 820, h: 560, pinned: true }
+    detail: { el: document.getElementById('view-detail'), w: 820, h: 560, pinned: true },
+    manage: { el: document.getElementById('view-manage'), w: 940, h: 620, pinned: true }
 };
 
 let view = 'palette';
@@ -252,6 +253,37 @@ function show(name) {
 }
 
 document.addEventListener('keydown', e => {
+    if (view === 'manage') {
+        switch (e.key) {
+            case 'Escape': e.preventDefault(); show('palette'); break;
+            case 'ArrowDown':
+            case 'ArrowUp': {
+                e.preventDefault();
+                const delta = e.key === 'ArrowDown' ? 1 : -1;
+                // Alt turns navigation into reordering, which is also the
+                // startup order, so the two live on the same keys deliberately.
+                if (e.altKey) {
+                    const entry = state.apps[manageActive];
+                    if (entry) {
+                        send('reorder-app', { id: entry.id, delta });
+                        manageActive = Math.min(Math.max(manageActive + delta, 0), state.apps.length - 1);
+                    }
+                } else {
+                    manageActive = Math.min(Math.max(manageActive + delta, 0), state.apps.length - 1);
+                    renderManage();
+                }
+                break;
+            }
+            case 'Enter': {
+                e.preventDefault();
+                const entry = state.apps[manageActive];
+                if (entry) send('edit-app', { id: entry.id });
+                break;
+            }
+        }
+        return;
+    }
+
     if (view === 'detail') {
         if (e.key === 'Escape') {
             e.preventDefault();
@@ -276,6 +308,68 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------------------------------------------------------------------------
+   Manage view
+   --------------------------------------------------------------------------- */
+
+let manageActive = 0;
+const mList = document.getElementById('m-list');
+const mCounts = document.getElementById('m-counts');
+
+function renderManage() {
+    mList.textContent = '';
+
+    state.apps.forEach((app, index) => {
+        const row = document.createElement('div');
+        row.className = 'm-row' + (index === manageActive ? ' active' : '');
+        row.addEventListener('click', () => { manageActive = index; renderManage(); });
+        row.addEventListener('dblclick', () => send('edit-app', { id: app.id }));
+
+        const avatar = document.createElement('span');
+        avatar.className = 'avatar';
+        avatar.style.width = '30px';
+        avatar.style.height = '30px';
+        avatar.style.background = tint(app.category);
+        avatar.textContent = (app.name[0] || '?').toUpperCase();
+
+        const name = document.createElement('span');
+        name.className = 'm-name';
+        name.textContent = app.name;
+
+        const hotkey = document.createElement('span');
+        hotkey.className = app.hotkey ? 'row-chip' : 'm-meta';
+        hotkey.textContent = app.hotkey || '—';
+        if (app.hotkey) hotkey.style.justifySelf = 'start';
+
+        const limit = document.createElement('span');
+        limit.className = 'm-meta';
+        limit.textContent = app.limitMinutes ? app.limitMinutes + 'm' : '—';
+
+        const auto = document.createElement('span');
+        auto.className = 'm-dot' + (app.autoStart ? '' : ' off');
+
+        const figure = document.createElement('span');
+        figure.className = 'm-figure';
+        figure.textContent = app.today || '—';
+
+        row.append(avatar, name, hotkey, limit, auto, figure);
+        mList.appendChild(row);
+    });
+
+    const withHotkeys = state.apps.filter(a => a.hotkey).length;
+    const withAuto = state.apps.filter(a => a.autoStart).length;
+    mCounts.textContent =
+        `${state.apps.length} ENTRIES · ${withHotkeys} HOTKEYS · ${withAuto} AUTO-START`;
+
+    const active = mList.querySelector('.m-row.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+document.getElementById('m-new-action').addEventListener('click', () => send('new-action'));
+document.getElementById('m-browse').addEventListener('click', () => send('browse-files'));
+document.getElementById('m-scan').addEventListener('click', () => send('open-scanner'));
+document.querySelector('[data-back-manage]').addEventListener('click', () => show('palette'));
+
+/* ---------------------------------------------------------------------------
    Detail view
    --------------------------------------------------------------------------- */
 
@@ -298,7 +392,19 @@ const d = {
     limitCard: document.getElementById('d-limit-card'),
     locked: document.getElementById('d-locked'),
     limitNote: document.getElementById('d-limit-note'),
-    remove: document.getElementById('d-delete')
+    remove: document.getElementById('d-delete'),
+    actionCard: document.getElementById('d-action-card'),
+    actionHint: document.getElementById('d-action-hint'),
+    payloadCard: document.getElementById('d-payload-card'),
+    payload: document.getElementById('d-payload'),
+    startupCard: document.getElementById('d-startup-card'),
+    execRow: document.getElementById('d-exec-row')
+};
+
+const ACTION_HINTS = {
+    1: 'Mutes or unmutes the system volume. Nothing else to configure.',
+    2: 'Centres the window you are currently in, on the screen it is on.',
+    3: 'Pastes the text below, then puts your clipboard back as it was.'
 };
 
 let editing = null;
@@ -321,6 +427,24 @@ function renderDetail(app) {
     d.path.textContent = app.packaged
         ? 'Microsoft Store app'
         : (app.executablePath || 'No executable');
+
+    // An action has no executable, nothing to auto-start and no time to limit;
+    // showing those fields greyed would only invite the question of why.
+    d.actionCard.hidden = !app.isAction;
+    d.payloadCard.hidden = !(app.isAction && app.actionType === 3);
+
+    // The mirror of the above: an action has no executable to show, nothing to
+    // open at login and no running time to limit, so those cards go entirely
+    // rather than sitting there greyed out inviting the question of why.
+    d.startupCard.hidden = app.isAction;
+    d.limitCard.hidden = app.isAction;
+    d.execRow.hidden = app.isAction;
+    d.payload.value = app.actionPayload || '';
+    for (const pill of d.actionCard.querySelectorAll('.pill')) {
+        pill.setAttribute('aria-pressed',
+            Number(pill.dataset.action) === app.actionType ? 'true' : 'false');
+    }
+    d.actionHint.textContent = ACTION_HINTS[app.actionType] || '';
 
     d.hotkey.textContent = app.hotkeySequence ? app.hotkeyDisplay : 'None';
     setToggle(d.suppress, app.suppressHotkeyPassthrough);
@@ -355,10 +479,26 @@ function saveDetail() {
             launchDelaySeconds: parseInt(d.delay.value, 10) || 0,
             dailyLimitMinutes: parseInt(d.limit.value, 10) || 0,
             strictFocusMode: toggleOn(d.force),
-            category: editing.category
+            category: editing.category,
+            actionType: editing.actionType,
+            actionPayload: d.payload.value
         }
     });
 }
+
+for (const pill of d.actionCard.querySelectorAll('.pill')) {
+    pill.addEventListener('click', () => {
+        if (!editing) return;
+        editing.actionType = Number(pill.dataset.action);
+        for (const other of d.actionCard.querySelectorAll('.pill')) {
+            other.setAttribute('aria-pressed', other === pill ? 'true' : 'false');
+        }
+        d.payloadCard.hidden = editing.actionType !== 3;
+        d.actionHint.textContent = ACTION_HINTS[editing.actionType] || '';
+        saveDetail();
+    });
+}
+d.payload.addEventListener('change', saveDetail);
 
 for (const el of [d.customName, d.args, d.delay, d.limit]) {
     el.addEventListener('change', saveDetail);
@@ -430,9 +570,12 @@ if (bridge) {
 
         if (message.type === 'reset') { show('palette'); return; }
 
+        if (message.type === 'show-manage') { manageActive = 0; renderManage(); show('manage'); return; }
+
         if (message.type !== 'state') return;
 
         state = { ...state, ...message.state };
+        if (view === 'manage') renderManage();
         els.focus.textContent = state.focusToday || '—';
         els.statusText.textContent = state.tracking ? 'TRACKING' : 'PAUSED';
         els.statusDot.style.background = state.tracking ? 'var(--teal)' : 'var(--text-faint)';
