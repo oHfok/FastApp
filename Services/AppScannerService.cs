@@ -139,7 +139,10 @@ namespace FastApp.Services
                             System.Reflection.BindingFlags.GetProperty, null, item, null) as string;
 
                         string exe = ResolvePackagedExecutable(parsingName, installLocations);
-                        if (exe != null && !string.IsNullOrWhiteSpace(name)) TryAdd(detectedApps, name, exe);
+                        // parsingName is already "<PackageFamilyName>!<ApplicationId>",
+                        // which is the AUMID. It used to be discarded in favour of the
+                        // path, and the path is the part that goes stale on update.
+                        if (exe != null && !string.IsNullOrWhiteSpace(name)) TryAdd(detectedApps, name, exe, parsingName);
                     }
                     catch
                     {
@@ -225,12 +228,51 @@ namespace FastApp.Services
             return map;
         }
 
-        private static void TryAdd(List<AppItemModel> detectedApps, string name, string executablePath)
+        private static void TryAdd(List<AppItemModel> detectedApps, string name, string executablePath,
+                                   string packagedAppId = null)
         {
             // Avoid adding duplicates if it exists in both Start Menus, or if a
             // packaged app also happens to have shipped a shortcut.
             if (detectedApps.Any(a => a.ExecutablePath.Equals(executablePath, StringComparison.OrdinalIgnoreCase))) return;
-            detectedApps.Add(new AppItemModel(name, executablePath));
+
+            detectedApps.Add(new AppItemModel(name, executablePath)
+            {
+                PackagedAppId = packagedAppId ?? string.Empty
+            });
+        }
+
+        /// <summary>
+        /// The AUMID for an installed package family, or null if it is not
+        /// installed. Used to relink entries stored before the AUMID was kept,
+        /// whose WindowsApps path died with the version folder it named.
+        /// </summary>
+        public static string TryResolveAumid(string packageFamilyName)
+        {
+            try
+            {
+                var installLocations = GetPackageInstallLocations();
+                if (!installLocations.TryGetValue(packageFamilyName, out string installLocation)) return null;
+
+                string manifestPath = Path.Combine(installLocation, "AppxManifest.xml");
+                if (!System.IO.File.Exists(manifestPath)) return null;
+
+                var manifest = XDocument.Load(manifestPath);
+
+                // The first Application that actually declares an executable:
+                // hosted/PWA-style entries declare none and cannot be launched
+                // this way either.
+                var application = manifest.Descendants()
+                    .FirstOrDefault(e => e.Name.LocalName == "Application"
+                                         && !string.IsNullOrWhiteSpace((string)e.Attribute("Executable"))
+                                         && !string.IsNullOrWhiteSpace((string)e.Attribute("Id")));
+
+                string appId = (string)application?.Attribute("Id");
+                return string.IsNullOrWhiteSpace(appId) ? null : $"{packageFamilyName}!{appId}";
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

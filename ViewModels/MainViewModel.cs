@@ -1230,32 +1230,16 @@ namespace FastApp.ViewModels
                 {
                     outcomes.Add((app, LaunchOutcome.AlreadyRunning, null));
                 }
-                else if (!File.Exists(app.ExecutablePath))
-                {
-                    outcomes.Add((app, LaunchOutcome.NotFound, app.ExecutablePath));
-                }
                 else
                 {
-                    try
+                    if (Services.AppLauncher.TryStart(app, out string error))
                     {
-                        var psi = new ProcessStartInfo
-                        {
-                            FileName = app.ExecutablePath,
-                            WorkingDirectory = Path.GetDirectoryName(app.ExecutablePath),
-                            UseShellExecute = true
-                        };
-                        if (!string.IsNullOrWhiteSpace(app.LaunchArguments))
-                        {
-                            psi.Arguments = app.LaunchArguments;
-                        }
-
-                        Process.Start(psi);
                         running.Add(exeName);
                         outcomes.Add((app, LaunchOutcome.Started, null));
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        outcomes.Add((app, LaunchOutcome.Failed, ex.Message));
+                        outcomes.Add((app, LaunchOutcome.Failed, error));
                     }
                 }
 

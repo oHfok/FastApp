@@ -104,6 +104,12 @@ namespace FastApp.ViewModels
         // Off by default so existing bindings keep behaving as they always have.
         [ObservableProperty] private bool _suppressHotkeyPassthrough;
 
+        // AppUserModelID for packaged (MSIX/Store) apps, e.g.
+        // "Claude_pzs8sxrjxfjjc!Claude". Empty for ordinary Win32 apps. Preferred
+        // over ExecutablePath when launching, because a package's folder is
+        // version-stamped and replaced on every update.
+        [ObservableProperty] private string _packagedAppId = string.Empty;
+
         // Seconds to wait before starting this one during an auto-launch pass.
         // Some apps refuse to start, or start wrong, if a dependency is not up
         // yet -- a game launcher before its client, a tool before its VPN.

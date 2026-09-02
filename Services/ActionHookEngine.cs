@@ -137,6 +137,7 @@ namespace FastApp.Services
                 return ActionResult.Fail("No executable is set for this entry.");
 
             string exeName = System.IO.Path.GetFileNameWithoutExtension(app.ExecutablePath);
+            bool wasRunning = false;
 
             var existing = Process.GetProcesses();
             try
@@ -145,31 +146,26 @@ namespace FastApp.Services
                     string.Equals(p.ProcessName, exeName, StringComparison.OrdinalIgnoreCase)
                     && p.MainWindowHandle != IntPtr.Zero);
 
-                if (target != null && FocusWindow(target.MainWindowHandle))
-                    return ActionResult.Ok;
+                if (target != null)
+                {
+                    wasRunning = true;
+                    if (FocusWindow(target.MainWindowHandle)) return ActionResult.Ok;
+                }
             }
             finally
             {
                 foreach (var p in existing) p.Dispose();
             }
 
-            if (!System.IO.File.Exists(app.ExecutablePath))
-                return ActionResult.Fail($"Not found at {app.ExecutablePath}");
+            // Failing to focus used to fall through and try to launch, which then
+            // reported "not found" about an application that was plainly open --
+            // the window just could not be raised. Say what actually happened.
+            if (wasRunning)
+                return ActionResult.Fail($"{app.Name} is running but its window would not come to the front.");
 
-            var psi = new ProcessStartInfo
-            {
-                FileName = app.ExecutablePath,
-                // Matched to auto-launch, which has always set this. Some apps
-                // resolve their own resources relative to the working directory
-                // and misbehave without it.
-                WorkingDirectory = System.IO.Path.GetDirectoryName(app.ExecutablePath),
-                UseShellExecute = true
-            };
-            if (!string.IsNullOrWhiteSpace(app.LaunchArguments))
-                psi.Arguments = app.LaunchArguments;
-
-            Process.Start(psi);
-            return ActionResult.Ok;
+            return AppLauncher.TryStart(app, out string error)
+                ? ActionResult.Ok
+                : ActionResult.Fail(error);
         }
 
         /// <summary>
