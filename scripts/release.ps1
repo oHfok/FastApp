@@ -65,7 +65,11 @@ Write-Host "==> Using MSBuild: $msbuildPath" -ForegroundColor Cyan
 
 # --- 3. Publish a self-contained win-x64 build ----------------------------
 Write-Host "==> Publishing self-contained win-x64 build..." -ForegroundColor Cyan
+# -restore, not just -t:Publish: the Publish target does not imply a restore,
+# so a newly added PackageReference fails here with a XAML tag that "does not
+# exist in the XML namespace" rather than anything mentioning NuGet.
 & $msbuildPath $csprojPath `
+    -restore `
     -t:Publish `
     -p:Configuration=Release `
     -p:RuntimeIdentifier=win-x64 `
