@@ -676,10 +676,11 @@ namespace FastApp.ViewModels
                 System.Diagnostics.Debug.WriteLine($"[PERF] RefreshStats took {sw.ElapsedMilliseconds}ms");
             }
 
-            // Settings. Fetching the notes here rather than at startup keeps the
-            // GitHub call off the launch path -- fire and forget, since nothing
-            // downstream waits on it and the card simply stays hidden on failure.
-            if (value == 2) { _ = LoadWhatsNewAsync(); _ = LoadRollbackVersionsAsync(); }
+            // The notes and the rollback list used to be fetched here, when the
+            // old window switched to its Settings tab. There are no tabs any
+            // more and this never runs, so PaletteWindow.ShowSettings asks for
+            // them instead. Keeping the call here as well would only make it
+            // look like two things trigger the load when one does.
         }
 
         // This method automatically runs every time you type a letter into the search box

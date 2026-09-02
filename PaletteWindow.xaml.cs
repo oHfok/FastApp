@@ -611,9 +611,14 @@ namespace FastApp
 
         private void ShowSettings()
         {
-            // The version list is fetched lazily by the view model; ask for it
-            // before the view appears so the rollback picker is not empty on
-            // first open.
+            // Both of these are fetched lazily by the view model, and both used
+            // to be triggered by switching to the old Settings tab. That tab is
+            // gone, so opening Settings is what has to ask for them now --
+            // without this the release notes were simply never loaded and the
+            // card sat empty forever.
+            _ = _viewModel.LoadWhatsNewAsync().ContinueWith(_ =>
+                Dispatcher.BeginInvoke(new Action(PushSettings)));
+
             _ = _viewModel.LoadRollbackVersionsAsync().ContinueWith(_ =>
                 Dispatcher.BeginInvoke(new Action(PushSettings)));
 
