@@ -27,9 +27,14 @@ namespace FastApp.Services
             _notifyIcon.Text = "FastApp Manager"; // Updated name just in case!
             _notifyIcon.Visible = true;
 
-            // Toasts (daily-limit warnings/kills) anchor to this same persistent
-            // icon instead of spinning up their own — see NotificationService.
+            // The balloon fallback anchors to this same persistent icon instead
+            // of spinning up its own — see NotificationService.
             NotificationService.RegisterTrayIcon(_notifyIcon);
+
+            // Toast buttons come back here. They deliberately reuse the tray's
+            // own handlers rather than reimplementing anything: "Extend time"
+            // opens the PIN-gated dialog, it does not grant time.
+            NotificationService.ActionInvoked += OnNotificationAction;
 
             // When you double-click the icon, show the app
             _notifyIcon.DoubleClick += (s, e) => ShowWindow();
@@ -41,6 +46,29 @@ namespace FastApp.Services
             _notifyIcon.ContextMenuStrip.Items.Add("Extend App Time…", null, (s, e) => ShowExtendDialog());
             _notifyIcon.ContextMenuStrip.Items.Add("-"); // Adds a separator line
             _notifyIcon.ContextMenuStrip.Items.Add("Exit", null, (s, e) => ExitApplication());
+        }
+
+        private void OnNotificationAction(string actionId)
+        {
+            // Raised on a WinRT callback thread; every handler below touches UI.
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            {
+                switch (actionId)
+                {
+                    case "extend":
+                        ShowExtendDialog();
+                        break;
+                    case "dashboard":
+                        OpenDashboard();
+                        break;
+                    // The toast body itself reports no argument, and the only
+                    // sensible thing a bare click can mean is "show me".
+                    case "show-window":
+                    case "":
+                        ShowWindow();
+                        break;
+                }
+            });
         }
 
         private void ShowWindow()
@@ -99,6 +127,8 @@ namespace FastApp.Services
 
         public void Dispose()
         {
+            NotificationService.ActionInvoked -= OnNotificationAction;
+
             // Removes the icon from the taskbar when the app finally dies
             _notifyIcon?.Dispose();
         }

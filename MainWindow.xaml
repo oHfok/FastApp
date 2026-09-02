@@ -432,6 +432,44 @@
                             </ui:CardControl>
 
 
+                            <TextBlock Text="Notifications" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource BrandText}" Margin="0,0,0,15"/>
+
+                            <ui:CardControl Margin="0,0,0,10" Padding="15">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Show Notifications" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource BrandText}"/>
+                                        <TextBlock Text="Daily limit warnings and startup problems, as Windows notifications. Limits are still enforced when this is off." Foreground="{StaticResource BrandTextDim}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" MaxWidth="380"/>
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch IsChecked="{Binding NotificationsEnabled}"/>
+                            </ui:CardControl>
+
+                            <ui:CardControl Margin="0,0,0,10" Padding="15">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Quiet Hours" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource BrandText}"/>
+                                        <TextBlock Text="Stay silent overnight. A window that crosses midnight is fine." Foreground="{StaticResource BrandTextDim}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" MaxWidth="380"/>
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch IsChecked="{Binding QuietHoursEnabled}"/>
+                            </ui:CardControl>
+
+                            <Grid Margin="0,0,0,30" HorizontalAlignment="Left"
+                                  Visibility="{Binding QuietHoursEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                                    <TextBlock Text="From" FontSize="12" Foreground="{StaticResource BrandTextFaint}" Margin="0,0,0,4"/>
+                                    <ui:TextBox Text="{Binding QuietHoursFrom, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="22:00" MinHeight="32" Width="110"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Until" FontSize="12" Foreground="{StaticResource BrandTextFaint}" Margin="0,0,0,4"/>
+                                    <ui:TextBox Text="{Binding QuietHoursTo, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="07:00" MinHeight="32" Width="110"/>
+                                </StackPanel>
+                            </Grid>
+
                             <TextBlock Text="Web Server Status" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource BrandText}" Margin="0,0,0,15"/>
 
                             <ui:CardControl Margin="0,0,0,10" Padding="15">

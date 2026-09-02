@@ -152,6 +152,14 @@ namespace FastApp.ViewModels
         // Centered "Opening X of Y" popup shown while auto-launch apps are starting
         [ObservableProperty] private bool _showAutoLaunchProgress;
 
+        // Notification settings. Held here for binding and mirrored into
+        // NotificationService, which is static because it is called from the
+        // tracker thread and has no view model to reach for.
+        [ObservableProperty] private bool _notificationsEnabled = true;
+        [ObservableProperty] private bool _quietHoursEnabled;
+        [ObservableProperty] private string _quietHoursFrom = "22:00";
+        [ObservableProperty] private string _quietHoursTo = "07:00";
+
         // Mirrors DashboardServerService's real state into the Settings card, which
         // previously hardcoded "The web interface is currently running on ..." and
         // said so even when the server had failed to bind its port.
@@ -316,6 +324,7 @@ namespace FastApp.ViewModels
         {
             LoadOsdSetting();
             LoadAutoLaunchProgressSetting();
+            LoadNotificationSettings();
 
             // After
             _dbContext = new AppDbContext();
@@ -697,6 +706,105 @@ namespace FastApp.ViewModels
             {
                 Debug.WriteLine($"Failed to save OSD setting: {ex.Message}");
             }
+        }
+
+        private bool _suppressNotificationSettingSave;
+
+        private const string NotificationsEnabledKey = "NotificationsEnabled";
+        private const string QuietHoursEnabledKey = "QuietHoursEnabled";
+        private const string QuietHoursFromKey = "QuietHoursFrom";
+        private const string QuietHoursToKey = "QuietHoursTo";
+
+        private void LoadNotificationSettings()
+        {
+            // Suppressed so restoring saved values does not immediately write
+            // them back, once per property, on every launch.
+            _suppressNotificationSettingSave = true;
+            try
+            {
+                NotificationsEnabled = Services.AppSettingsStore.GetBool(NotificationsEnabledKey, true);
+                QuietHoursEnabled = Services.AppSettingsStore.GetBool(QuietHoursEnabledKey, false);
+                QuietHoursFrom = Services.AppSettingsStore.Get(QuietHoursFromKey, "22:00");
+                QuietHoursTo = Services.AppSettingsStore.Get(QuietHoursToKey, "07:00");
+            }
+            finally
+            {
+                _suppressNotificationSettingSave = false;
+            }
+
+            ApplyNotificationSettings();
+        }
+
+        /// <summary>
+        /// Pushes the current settings into the static NotificationService. An
+        /// unparseable time leaves quiet hours off rather than guessing at a
+        /// window the user did not ask for.
+        /// </summary>
+        private void ApplyNotificationSettings()
+        {
+            Services.NotificationService.Enabled = NotificationsEnabled;
+
+            if (QuietHoursEnabled
+                && TryParseTimeOfDay(QuietHoursFrom, out int from)
+                && TryParseTimeOfDay(QuietHoursTo, out int to))
+            {
+                Services.NotificationService.QuietFromMinutes = from;
+                Services.NotificationService.QuietToMinutes = to;
+            }
+            else
+            {
+                Services.NotificationService.QuietFromMinutes = null;
+                Services.NotificationService.QuietToMinutes = null;
+            }
+        }
+
+        /// <summary>"22:00" or "7:5" to minutes past midnight. Invariant on purpose:
+        /// this is a stored format, not something to render in the user's locale.</summary>
+        internal static bool TryParseTimeOfDay(string text, out int minutes)
+        {
+            minutes = 0;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+
+            string[] parts = text.Trim().Split(':');
+            if (parts.Length != 2) return false;
+            if (!int.TryParse(parts[0], System.Globalization.NumberStyles.Integer,
+                              System.Globalization.CultureInfo.InvariantCulture, out int h)) return false;
+            if (!int.TryParse(parts[1], System.Globalization.NumberStyles.Integer,
+                              System.Globalization.CultureInfo.InvariantCulture, out int m)) return false;
+            if (h is < 0 or > 23 || m is < 0 or > 59) return false;
+
+            minutes = h * 60 + m;
+            return true;
+        }
+
+        partial void OnNotificationsEnabledChanged(bool value)
+        {
+            if (_suppressNotificationSettingSave) return;
+            Services.AppSettingsStore.SetBool(NotificationsEnabledKey, value);
+            ApplyNotificationSettings();
+        }
+
+        partial void OnQuietHoursEnabledChanged(bool value)
+        {
+            if (_suppressNotificationSettingSave) return;
+            Services.AppSettingsStore.SetBool(QuietHoursEnabledKey, value);
+            ApplyNotificationSettings();
+        }
+
+        partial void OnQuietHoursFromChanged(string value)
+        {
+            if (_suppressNotificationSettingSave) return;
+            if (!TryParseTimeOfDay(value, out _)) return;   // half-typed input is not a setting
+            Services.AppSettingsStore.Set(QuietHoursFromKey, value);
+            ApplyNotificationSettings();
+        }
+
+        partial void OnQuietHoursToChanged(string value)
+        {
+            if (_suppressNotificationSettingSave) return;
+            if (!TryParseTimeOfDay(value, out _)) return;
+            Services.AppSettingsStore.Set(QuietHoursToKey, value);
+            ApplyNotificationSettings();
         }
 
         partial void OnShowAutoLaunchProgressChanged(bool value)
@@ -1190,6 +1298,18 @@ namespace FastApp.ViewModels
                 Services.AutoLaunchProgressService.ShowSummary(
                     problems.Count > 0 ? report.ToString() : headline);
             }
+
+            // The progress popup is opt-in and self-dismisses in 2.5s, which is
+            // no way to learn that an app you rely on did not start. A failure
+            // is worth a notification whether or not that popup is enabled.
+            if (problems.Count > 0)
+            {
+                NotificationService.Show(
+                    problems.Count == 1 ? "A startup app did not open" : $"{problems.Count} startup apps did not open",
+                    string.Join(", ", problems.Select(pr => pr.App.Name)),
+                    NotificationSeverity.Warning,
+                    new[] { new NotificationAction("show-window", "Open FastApp") });
+            }
         }
 
         // Called from the tray "Exit" path, and from UpdateService before an
@@ -1584,9 +1704,18 @@ namespace FastApp.ViewModels
                                 limitedApp.HasNotifiedToday = true;
                                 try
                                 {
-                                    NotificationService.ShowToast(
+                                    NotificationService.Show(
                                         "Daily limit reached",
-                                        $"{limitedApp.Name} has hit its {effectiveLimit}-minute daily limit.");
+                                        $"{limitedApp.Name} has hit its {effectiveLimit}-minute daily limit.",
+                                        NotificationSeverity.Warning,
+                                        // Extending is PIN-gated, so the button opens
+                                        // that dialog rather than granting the time --
+                                        // a toast must not be a way around the PIN.
+                                        new[]
+                                        {
+                                            new NotificationAction("extend", "Extend time\u2026"),
+                                            new NotificationAction("dashboard", "Open dashboard")
+                                        });
                                 }
                                 catch { /* Toast failures should never take the tracker down */ }
                             }
@@ -1608,9 +1737,11 @@ namespace FastApp.ViewModels
                             limitedApp.HasWarnedToday = true;
                             try
                             {
-                                NotificationService.ShowToast(
+                                NotificationService.Show(
                                     "Almost at today's limit",
-                                    $"{limitedApp.Name} has about {Math.Ceiling(remaining)} minute(s) left today.");
+                                    $"{limitedApp.Name} has about {Math.Ceiling(remaining)} minute(s) left today.",
+                                    NotificationSeverity.Info,
+                                    new[] { new NotificationAction("extend", "Extend time\u2026") });
                             }
                             catch { /* Toast failures should never take the tracker down */ }
                         }

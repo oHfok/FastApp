@@ -153,13 +153,28 @@ namespace FastApp.ViewModels
             }
         }
 
+        // Persisted as the day each was last shown, following BonusMinutesDate:
+        // a stamp that is not today reads as "not yet", so the day rolls over on
+        // its own. These used to be in-memory booleans, which meant restarting
+        // FastApp re-armed them and showed the same warning again the same day.
+        [ObservableProperty] private DateTime? _limitNotifiedDate;
+        [ObservableProperty] private DateTime? _limitWarnedDate;
+
         [NotMapped]
-        public bool HasNotifiedToday { get; set; }
+        public bool HasNotifiedToday
+        {
+            get => LimitNotifiedDate?.Date == DateTime.Today;
+            set => LimitNotifiedDate = value ? DateTime.Today : null;
+        }
 
         // "Nearing limit" warning fires once per day, separately from the
         // "limit reached" notification above.
         [NotMapped]
-        public bool HasWarnedToday { get; set; }
+        public bool HasWarnedToday
+        {
+            get => LimitWarnedDate?.Date == DateTime.Today;
+            set => LimitWarnedDate = value ? DateTime.Today : null;
+        }
 
         // A same-day-only bonus granted via the dashboard's PIN-gated extension.
         // Persisted (not [NotMapped]) so the web dashboard — which reads the SQLite
