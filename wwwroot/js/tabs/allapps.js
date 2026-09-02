@@ -71,7 +71,7 @@ function renderAllApps() {
                     <div class="allapps-icon" style="${avatarStyle(cat)}">${escapeHtml((name || '?').charAt(0).toUpperCase())}</div>
                     <div style="min-width:0;">
                         <div class="allapps-name" title="${escapeHtml(name)}">${escapeHtml(displayAppName(name))}</div>
-                        <div class="allapps-cat cat-link" style="--cat-color:${catColor(cat)}" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">${escapeHtml(cat)}</div>
+                        <div class="allapps-cat cat-link" style="--cat-color:${catTextColor(cat)}" data-open-cat="${escapeHtml(cat)}" role="button" tabindex="0">${escapeHtml(cat)}</div>
                     </div>
                 </div>
                 <div class="allapps-metrics">

@@ -157,6 +157,7 @@ h1, h2, h3, .num-display {
 /* The brand mark, aligned to the rail's column below it. */
 .tb-mark {
     width: 72px;
+    margin-right: -10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -168,6 +169,15 @@ h1, h2, h3, .num-display {
     height: 10px;
     border-radius: 50%;
     background: var(--brass);
+}
+
+.tb-wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--fs-strong);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* "Tracking" is a status line, not a title: quiet, and the same size as the
@@ -639,7 +649,9 @@ select.field {
 
 /* Overview date stepper. Sits beside the scope toggle and borrows its shape so
    the two read as one control group rather than two unrelated widgets. */
-.ov-controls { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+/* margin-left: auto -- .view-head is space-between with three children, so the
+   controls floated in the middle with dead space between them and Customise. */
+.ov-controls { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; margin-left: auto; }
 
 .date-stepper {
     display: flex;

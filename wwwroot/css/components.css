@@ -202,7 +202,7 @@
 
 .full-lb-header {
     display: grid;
-    grid-template-columns: 46px 30px 1fr 110px 90px 150px;
+    grid-template-columns: 30px 30px 1fr 110px 90px 150px;
     gap: 18px;
     padding: 0 20px 12px;
     font-size: var(--fs-micro);
@@ -213,7 +213,7 @@
 }
 
 .full-lb-header.no-movement,
-.full-lb-row.no-movement { grid-template-columns: 46px 1fr 110px 90px 150px; }
+.full-lb-row.no-movement { grid-template-columns: 30px 1fr 110px 90px 150px; }
 
 .full-lb-header span:nth-child(1) { text-align: center; }
 .full-lb-header span:nth-child(4),
@@ -221,7 +221,7 @@
 
 .full-lb-row {
     display: grid;
-    grid-template-columns: 46px 30px 1fr 110px 90px 150px;
+    grid-template-columns: 30px 30px 1fr 110px 90px 150px;
     align-items: center;
     gap: 18px;
     padding: 16px 20px;
@@ -271,17 +271,26 @@
 
 .full-lb-row:hover { border-color: var(--brass-dim); }
 
+/* Every rank occupies the same 30px circle, medal or not. Before, positions 1-3
+   were 30px medals sitting at the LEFT of a 46px column while 4+ were bare text
+   centred in that same column -- so the numbers never lined up with the medals
+   above them, which is what read as off-centre. */
 .full-lb-rank {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-family: var(--font-mono);
     font-weight: 700;
-    font-size: var(--fs-strong);
+    font-size: var(--fs-small);
     color: var(--text-faint);
-    text-align: center;
 }
 
 .medal {
     width: 30px;
     height: 30px;
+    flex-shrink: 0;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -295,9 +304,9 @@
    -- effectively invisible on the three rows meant to draw the eye first. The
    fills are darkened enough to carry white text while keeping each medal's
    identity, and the glow is unchanged so they still stand out. */
-.medal-gold { background: linear-gradient(135deg, #B87C20, #77500F); color: #FFFFFF; box-shadow: 0 0 14px rgba(232,163,61,0.45); }
-.medal-silver { background: linear-gradient(135deg, #7C8290, #4F5566); color: #FFFFFF; box-shadow: 0 0 12px rgba(185,192,208,0.3); }
-.medal-bronze { background: linear-gradient(135deg, #A9683C, #6E4020); color: #FFFFFF; box-shadow: 0 0 12px rgba(176,106,59,0.3); }
+.medal-gold { background: linear-gradient(135deg, #E0A63C, #9A6B15); color: #1A1000; }
+.medal-silver { background: linear-gradient(135deg, #A8AEBC, #6B7180); color: #14161C; }
+.medal-bronze { background: linear-gradient(135deg, #C07A44, #7E4A24); color: #1A1000; }
 
 .full-lb-trend {
     display: flex;
@@ -311,7 +320,7 @@
     height: 38px;
     border-radius: 50%;
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -806,7 +815,7 @@
     height: 40px;
     border-radius: 50%;
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -867,7 +876,7 @@
     height: 32px;
     border-radius: 50%;
     background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1613,6 +1622,7 @@
 
 .layout-edit-toggle {
     margin-left: auto;
+    flex-shrink: 0;
     padding: 5px 2px;
     font-size: var(--fs-caption);
     font-weight: 500;
@@ -1810,7 +1820,9 @@
 #view-overview .lb-row:hover .lb-name { color: var(--brass); }
 
 /* ---------- Insights ---------- */
-.insight-dials { display: flex; gap: 64px; flex-wrap: wrap; }
+/* Centred: two dials left-aligned in a full-width section sat in the corner of
+   a large empty area, the same way the 30-day heatmap did. */
+.insight-dials { display: flex; gap: 64px; flex-wrap: wrap; justify-content: center; }
 .insight-dial { display: flex; align-items: center; gap: 20px; }
 
 .insight-dial-ring { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
@@ -1920,3 +1932,9 @@
     border-radius: var(--radius-pill);
 }
 .insight-pair .classification-list::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+
+/* On Overview the control group already claims the free space, so Customise must
+   not claim it a second time -- two margin-left: autos split the gap between
+   them and left 211px of dead air between the scope pills and Customise. */
+.ov-controls + .layout-edit-toggle { margin-left: 18px; }
