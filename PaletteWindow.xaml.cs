@@ -31,7 +31,7 @@ namespace FastApp
         private bool _ready;
 
         private static readonly JsonSerializerOptions JsonOptions =
-            new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true };
 
         public PaletteWindow(MainViewModel viewModel)
         {
@@ -163,6 +163,7 @@ namespace FastApp
             catch { return; }
             if (message?.Type == null) return;
 
+
             switch (message.Type)
             {
                 case "ready":
@@ -174,8 +175,33 @@ namespace FastApp
                     break;
 
                 case "edit-app":
-                    // Editing surfaces are still the WPF window in this stage.
-                    ShowManager();
+                    PushApp(message.Id);
+                    break;
+
+                case "save-app":
+                    SaveApp(message.App);
+                    break;
+
+                case "delete-app":
+                    DeleteApp(message.Id);
+                    break;
+
+                case "capture-hotkey":
+                    BeginCapture();
+                    break;
+
+                case "cancel-capture":
+                    _mainWindow?.CancelHotkeyCapture();
+                    break;
+
+                case "resize":
+                    ResizeTo(message.Width, message.Height);
+                    break;
+
+                case "set-pinned":
+                    // While an editing view is open, dismiss-on-deactivate would
+                    // throw away half-finished work.
+                    _pinned = message.Value;
                     break;
 
                 case "run-command":
@@ -221,6 +247,129 @@ namespace FastApp
                     ShowManager();
                     break;
             }
+        }
+
+        private bool _pinned;
+        private MainWindow _mainWindow;
+        private bool _captureHooked;
+
+        /// <summary>Send one app's full editable state to the palette.</summary>
+        private void PushApp(string id)
+        {
+            var app = FindApp(id);
+            if (app == null || Web.CoreWebView2 == null) return;
+
+            var (today, _) = ReadToday();
+            today.TryGetValue(app.Name, out var todaySpan);
+
+            var payload = new
+            {
+                type = "app",
+                app = new
+                {
+                    id = app.Id.ToString(),
+                    name = app.Name,
+                    displayName = app.DisplayNamePrimary,
+                    customName = app.CustomName,
+                    category = app.Category,
+                    executablePath = app.ExecutablePath,
+                    packaged = !string.IsNullOrWhiteSpace(app.PackagedAppId),
+                    isAction = app.IsAction,
+                    actionType = app.ActionType,
+                    actionPayload = app.ActionPayload,
+                    hotkeySequence = app.HotkeySequence,
+                    hotkeyDisplay = app.HotkeyDisplayText,
+                    suppressHotkeyPassthrough = app.SuppressHotkeyPassthrough,
+                    launchOnStartup = app.LaunchOnStartup,
+                    launchArguments = app.LaunchArguments,
+                    launchDelaySeconds = app.LaunchDelaySeconds,
+                    dailyLimitMinutes = app.DailyLimitMinutes,
+                    strictFocusMode = app.StrictFocusMode,
+                    limitsLocked = _viewModel.IsPinConfigured,
+                    triggerCount = app.HotkeyTriggerCount,
+                    today = FormatSpan(todaySpan)
+                }
+            };
+
+            Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+        }
+
+        private void SaveApp(AppEdit edit)
+        {
+            if (edit == null) return;
+            var app = FindApp(edit.Id);
+            if (app == null) return;
+
+            app.CustomName = edit.CustomName ?? string.Empty;
+            app.LaunchArguments = edit.LaunchArguments ?? string.Empty;
+            app.LaunchDelaySeconds = Math.Max(0, edit.LaunchDelaySeconds);
+            app.LaunchOnStartup = edit.LaunchOnStartup;
+            app.SuppressHotkeyPassthrough = edit.SuppressHotkeyPassthrough;
+            if (!string.IsNullOrWhiteSpace(edit.Category)) app.Category = edit.Category;
+
+            // Limits stay behind the PIN wherever they are edited from. A new
+            // surface must not become a way around parental control.
+            if (!_viewModel.IsPinConfigured)
+            {
+                app.DailyLimitMinutes = Math.Max(0, edit.DailyLimitMinutes);
+                app.StrictFocusMode = edit.StrictFocusMode;
+            }
+
+            if (edit.HotkeySequence != null)
+            {
+                app.HotkeySequence = edit.HotkeySequence;
+                app.HotkeyDisplayText = string.IsNullOrWhiteSpace(edit.HotkeyDisplay)
+                    ? "None"
+                    : edit.HotkeyDisplay;
+                _viewModel.RecompileHotkeys();
+            }
+
+            _viewModel.SaveDatabase();
+            PushState();
+        }
+
+        private void DeleteApp(string id)
+        {
+            var app = FindApp(id);
+            if (app == null) return;
+
+            _viewModel.ManagedApps.Remove(app);
+            _viewModel.SaveDatabase();
+            _viewModel.RecompileHotkeys();
+            PushState();
+        }
+
+        private void BeginCapture()
+        {
+            _mainWindow ??= System.Windows.Application.Current.MainWindow as MainWindow;
+            if (_mainWindow == null) return;
+
+            if (!_captureHooked)
+            {
+                _mainWindow.HotkeyCaptured += OnHotkeyCaptured;
+                _captureHooked = true;
+            }
+            _mainWindow.BeginHotkeyCapture();
+        }
+
+        private void OnHotkeyCaptured(string sequence, string display)
+        {
+            if (Web.CoreWebView2 == null) return;
+            var payload = new { type = "hotkey-captured", sequence, display };
+            Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+        }
+
+        private void ResizeTo(int width, int height)
+        {
+            if (width <= 0 || height <= 0) return;
+
+            // Kept centred on whichever screen it is on, so a taller view grows
+            // in both directions rather than pushing off the bottom.
+            double centreX = Left + Width / 2, centreY = Top + Height / 2;
+            Width = width;
+            Height = height;
+            Left = centreX - width / 2.0;
+            Top = centreY - height / 2.0;
         }
 
         private AppItemModel FindApp(string id) =>
@@ -355,6 +504,8 @@ namespace FastApp
         public void ShowPalette()
         {
             _allowAutoHide = false;
+            _pinned = false;
+            Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"reset\"}");
             Show();
             Activate();
             Web.Focus();
@@ -380,7 +531,7 @@ namespace FastApp
             base.OnDeactivated(e);
             // A palette that stays up after you click away is a window, not a
             // palette.
-            if (_allowAutoHide && IsVisible) Hide();
+            if (_allowAutoHide && !_pinned && IsVisible) Hide();
         }
 
         protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
@@ -416,6 +567,30 @@ namespace FastApp
         {
             public string Type { get; set; }
             public string Id { get; set; }
+            public AppEdit App { get; set; }
+            public int Width { get; set; }
+            public int Height { get; set; }
+            public bool Value { get; set; }
+        }
+
+        /// <summary>
+        /// The editable half of a managed app. Deliberately not the entity: the
+        /// palette may only change these fields, so anything it sends for
+        /// something else is ignored rather than trusted.
+        /// </summary>
+        private sealed class AppEdit
+        {
+            public string Id { get; set; }
+            public string CustomName { get; set; }
+            public string HotkeySequence { get; set; }
+            public string HotkeyDisplay { get; set; }
+            public bool SuppressHotkeyPassthrough { get; set; }
+            public bool LaunchOnStartup { get; set; }
+            public string LaunchArguments { get; set; }
+            public int LaunchDelaySeconds { get; set; }
+            public int DailyLimitMinutes { get; set; }
+            public bool StrictFocusMode { get; set; }
+            public string Category { get; set; }
         }
     }
 }

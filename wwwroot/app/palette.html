@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<div class="palette">
+<div class="palette" id="view-palette">
 
     <div class="chrome">
         <span class="chrome-dot"></span>
@@ -43,6 +43,116 @@
         <span class="hint"><span class="hint-key">⇥</span><span class="label">EDIT</span></span>
         <span class="chrome-spacer"></span>
         <span class="label" id="counts"></span>
+    </div>
+
+</div>
+
+<!-- One document, two views: the palette is summoned constantly and must not
+     pay for a navigation, and the detail view needs the same design system and
+     the same bridge. -->
+<div class="detail" id="view-detail" hidden>
+
+    <div class="detail-head">
+        <span class="icon-btn" data-back>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </span>
+        <span class="avatar avatar-lg" id="d-avatar"></span>
+        <span class="detail-title">
+            <span class="detail-name" id="d-name"></span>
+            <span class="row-sub" id="d-category"></span>
+        </span>
+        <span class="chrome-spacer"></span>
+        <span class="stat">
+            <span class="label">TODAY</span>
+            <span class="stat-value" id="d-today">—</span>
+        </span>
+        <span class="stat">
+            <span class="label">TRIGGERED</span>
+            <span class="stat-value stat-muted" id="d-triggers">0</span>
+        </span>
+    </div>
+
+    <div class="detail-grid">
+
+        <section class="card">
+            <span class="label">IDENTITY</span>
+            <label class="field-label">Display name</label>
+            <input class="field" id="d-custom-name" type="text" placeholder="Leave blank to use the real name" spellcheck="false">
+            <label class="field-label">Executable</label>
+            <span class="path" id="d-path"></span>
+        </section>
+
+        <section class="card">
+            <span class="label">HOTKEY</span>
+            <div class="field-row">
+                <button class="field field-button" id="d-hotkey" type="button">None</button>
+                <button class="btn" id="d-hotkey-clear" type="button">Clear</button>
+            </div>
+            <div class="opt">
+                <span class="opt-text">
+                    <span>Don't pass through</span>
+                    <span class="hint-sub">The focused app never sees these keys</span>
+                </span>
+                <button class="toggle" id="d-suppress" type="button" role="switch"><span></span></button>
+            </div>
+        </section>
+
+        <section class="card">
+            <span class="label">STARTUP</span>
+            <div class="opt">
+                <span class="opt-text">
+                    <span>Open when I log in</span>
+                    <span class="hint-sub">Position in the list sets the order</span>
+                </span>
+                <button class="toggle" id="d-autostart" type="button" role="switch"><span></span></button>
+            </div>
+            <div class="field-split">
+                <span>
+                    <label class="field-label">Arguments</label>
+                    <input class="field" id="d-args" type="text" placeholder="e.g. --profile work" spellcheck="false">
+                </span>
+                <span class="field-narrow">
+                    <label class="field-label">Delay</label>
+                    <input class="field" id="d-delay" type="text" placeholder="0" inputmode="numeric">
+                </span>
+            </div>
+        </section>
+
+        <section class="card" id="d-limit-card">
+            <div class="card-head">
+                <span class="label">DAILY LIMIT</span>
+                <span class="chrome-spacer"></span>
+                <span class="locked" id="d-locked" hidden>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round">
+                        <rect x="4" y="11" width="16" height="10" rx="2.5"></rect>
+                        <path d="M8 11V7a4 4 0 018 0v4"></path>
+                    </svg>
+                    <span class="label label-brass">PIN LOCKED</span>
+                </span>
+            </div>
+            <div class="field-split">
+                <span class="field-narrow">
+                    <label class="field-label">Minutes</label>
+                    <input class="field" id="d-limit" type="text" placeholder="0" inputmode="numeric">
+                </span>
+                <span class="opt opt-end">
+                    <span class="opt-text"><span>Force close at limit</span></span>
+                    <button class="toggle" id="d-force" type="button" role="switch"><span></span></button>
+                </span>
+            </div>
+            <span class="hint-sub" id="d-limit-note" hidden>
+                A parental PIN is set. Change limits from the dashboard, or use Extend time.
+            </span>
+        </section>
+
+    </div>
+
+    <div class="detail-foot">
+        <span class="label">ESC BACK · CHANGES SAVE AS YOU MAKE THEM</span>
+        <span class="chrome-spacer"></span>
+        <button class="btn btn-danger" id="d-delete" type="button">Remove from FastApp</button>
     </div>
 
 </div>
