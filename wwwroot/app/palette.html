@@ -315,15 +315,17 @@
             <button class="btn btn-primary" id="s-apply" type="button" hidden>Restart and update</button>
         </section>
 
-        <section class="card" id="s-whatsnew-card" hidden>
+        <section class="card" id="s-whatsnew-card">
             <span class="label" id="s-whatsnew-label">WHAT'S NEW</span>
             <div class="s-notes" id="s-whatsnew"></div>
+            <span class="hint-sub" id="s-whatsnew-empty" hidden></span>
         </section>
 
-        <section class="card" id="s-rollback-card" hidden>
+        <section class="card" id="s-rollback-card">
             <span class="label">REINSTALL AN EARLIER VERSION</span>
             <span class="hint-sub">Go back if a release causes trouble. Your data is backed up first.</span>
-            <div class="field-row">
+            <span class="hint-sub" id="s-rollback-empty" hidden></span>
+            <div class="field-row" id="s-rollback-row">
                 <select class="field" id="s-rollback-version"></select>
                 <button class="btn" id="s-rollback" type="button">Reinstall</button>
             </div>
@@ -337,6 +339,45 @@
         <span class="label">ESC BACK</span>
         <span class="chrome-spacer"></span>
         <span class="label">DATA IS STORED ON THIS PC ONLY</span>
+    </div>
+
+</div>
+
+
+<div class="scanner" id="view-scanner" hidden>
+
+    <div class="detail-head">
+        <span class="icon-btn" data-back-scanner>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </span>
+        <span class="detail-title">
+            <span class="detail-name">Add applications</span>
+            <span class="row-sub" id="sc-subtitle">Scanning…</span>
+        </span>
+        <span class="chrome-spacer"></span>
+        <span class="stat">
+            <span class="label">SELECTED</span>
+            <span class="stat-value" id="sc-count">0</span>
+        </span>
+    </div>
+
+    <div class="search search-compact">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" style="color: var(--text-faint);">
+            <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path>
+        </svg>
+        <input id="sc-filter" type="text" placeholder="Filter what was found" autocomplete="off" spellcheck="false">
+        <span class="kbd">Already added is hidden</span>
+    </div>
+
+    <div class="sc-list" id="sc-list"></div>
+
+    <div class="detail-foot">
+        <span class="label">SPACE TO SELECT · ESC BACK</span>
+        <span class="chrome-spacer"></span>
+        <button class="btn" id="sc-none" type="button">Clear</button>
+        <button class="btn btn-primary" id="sc-add" type="button" disabled>Add</button>
     </div>
 
 </div>

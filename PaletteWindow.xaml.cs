@@ -207,7 +207,11 @@ namespace FastApp
                     break;
 
                 case "open-scanner":
-                    OpenScanner();
+                    _ = RunScanAsync();
+                    break;
+
+                case "add-scanned":
+                    AddScanned(message.Paths);
                     break;
 
                 case "set-setting":
@@ -271,7 +275,7 @@ namespace FastApp
                     ShowSettings();
                     break;
                 case "scan":
-                    ShowManager();
+                    _ = RunScanAsync();
                     break;
             }
         }
@@ -425,16 +429,88 @@ namespace FastApp
             PushState();
         }
 
-        private void OpenScanner()
+        // ------------------------------------------------------------------
+        // Scanner
+        // ------------------------------------------------------------------
+
+        // The last scan's results. The page sends back paths rather than
+        // indices, so a re-scan between showing and choosing cannot silently
+        // add the wrong application.
+        private List<AppItemModel> _scanned = new();
+
+        private async Task RunScanAsync()
         {
-            // The scanner is still its own WPF window in this stage; the palette
-            // steps out of the way rather than competing with it.
-            HidePalette();
-            Dispatcher.BeginInvoke(new Action(() =>
+            if (Web.CoreWebView2 == null) return;
+
+            Web.CoreWebView2.PostWebMessageAsJson("{\"type\":\"show-scanner\"}");
+            PushScan(scanning: true);
+
+            List<AppItemModel> found;
+            try
             {
-                if (_viewModel.AddApplicationCommand.CanExecute(null))
-                    _viewModel.AddApplicationCommand.Execute(null);
-            }));
+                found = await AppScannerService.GetInstalledAppsAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Scan failed: {ex.Message}");
+                found = new List<AppItemModel>();
+            }
+
+            // Anything already managed is not a discovery; showing it only
+            // invites adding a duplicate.
+            var managed = _viewModel.ManagedApps
+                .Where(a => !string.IsNullOrEmpty(a.ExecutablePath))
+                .Select(a => a.ExecutablePath)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            _scanned = found
+                .Where(a => !string.IsNullOrEmpty(a.ExecutablePath) && !managed.Contains(a.ExecutablePath))
+                .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            PushScan(scanning: false);
+        }
+
+        private void PushScan(bool scanning)
+        {
+            if (Web.CoreWebView2 == null) return;
+
+            var payload = new
+            {
+                type = "scan",
+                scan = new
+                {
+                    scanning,
+                    apps = _scanned.Select(a => new
+                    {
+                        name = a.Name,
+                        path = a.ExecutablePath,
+                        packaged = !string.IsNullOrWhiteSpace(a.PackagedAppId)
+                    }).ToList()
+                }
+            };
+
+            Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+        }
+
+        private void AddScanned(List<string> paths)
+        {
+            if (paths == null || paths.Count == 0) return;
+
+            var wanted = paths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var app in _scanned.Where(a => wanted.Contains(a.ExecutablePath)).ToList())
+            {
+                // SaveDetectedApp is the one path that adds to the DbContext,
+                // saves, and only then joins ManagedApps. An entry added
+                // straight to the collection never gets an Id and never reaches
+                // the database.
+                if (_viewModel.SaveDetectedAppCommand.CanExecute(app))
+                    _viewModel.SaveDetectedAppCommand.Execute(app);
+            }
+
+            _scanned = _scanned.Where(a => !wanted.Contains(a.ExecutablePath)).ToList();
+            PushState();
+            PushScan(scanning: false);
         }
 
         // ------------------------------------------------------------------
@@ -802,6 +878,7 @@ namespace FastApp
             public int Delta { get; set; }
             public string Key { get; set; }
             public string Text { get; set; }
+            public List<string> Paths { get; set; }
         }
 
         /// <summary>

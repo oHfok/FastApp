@@ -237,7 +237,8 @@ const VIEWS = {
     palette: { el: document.getElementById('view-palette'), w: 760, h: 520, pinned: false },
     detail: { el: document.getElementById('view-detail'), w: 820, h: 560, pinned: true },
     manage: { el: document.getElementById('view-manage'), w: 940, h: 620, pinned: true },
-    settings: { el: document.getElementById('view-settings'), w: 940, h: 700, pinned: true }
+    settings: { el: document.getElementById('view-settings'), w: 940, h: 700, pinned: true },
+    scanner: { el: document.getElementById('view-scanner'), w: 880, h: 640, pinned: true }
 };
 
 let view = 'palette';
@@ -254,6 +255,17 @@ function show(name) {
 }
 
 document.addEventListener('keydown', e => {
+    if (view === 'scanner') {
+        switch (e.key) {
+            case 'Escape': e.preventDefault(); show('palette'); break;
+            case 'ArrowDown': e.preventDefault(); moveScan(1); break;
+            case 'ArrowUp': e.preventDefault(); moveScan(-1); break;
+            case ' ': e.preventDefault(); toggleScanPick(); break;
+            case 'Enter': e.preventDefault(); addScanned(); break;
+        }
+        return;
+    }
+
     if (view === 'settings') {
         if (e.key === 'Escape') { e.preventDefault(); show('palette'); }
         return;
@@ -314,6 +326,149 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------------------------------------------------------------------------
+   Scanner
+
+   The host owns the scan; this only chooses from it. Selections are held as
+   paths rather than positions, so a re-scan cannot silently move the choice
+   onto a different application.
+   --------------------------------------------------------------------------- */
+
+let scanApps = [];
+let scanning = false;
+let scanActive = 0;
+let scanFilter = '';
+const scanPicked = new Set();
+
+const sc = {
+    list: document.getElementById('sc-list'),
+    filter: document.getElementById('sc-filter'),
+    count: document.getElementById('sc-count'),
+    subtitle: document.getElementById('sc-subtitle'),
+    add: document.getElementById('sc-add'),
+    none: document.getElementById('sc-none')
+};
+
+function scanVisible() {
+    const q = scanFilter.trim().toLowerCase();
+    return q ? scanApps.filter(a => score(a.name, q) >= 0) : scanApps;
+}
+
+function renderScan() {
+    const rows = scanVisible();
+    if (scanActive >= rows.length) scanActive = Math.max(0, rows.length - 1);
+
+    sc.list.textContent = '';
+
+    if (scanning) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'Looking through your Start menu and the Microsoft Store…';
+        sc.list.appendChild(empty);
+    } else if (rows.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = scanFilter
+            ? `Nothing found matching "${scanFilter}"`
+            : 'Nothing new found. Everything discovered is already managed.';
+        sc.list.appendChild(empty);
+    } else {
+        rows.forEach((app, index) => sc.list.appendChild(buildScanRow(app, index)));
+    }
+
+    sc.count.textContent = String(scanPicked.size);
+    sc.add.disabled = scanPicked.size === 0;
+    sc.add.textContent = scanPicked.size === 0
+        ? 'Add'
+        : `Add ${scanPicked.size} application${scanPicked.size === 1 ? '' : 's'}`;
+
+    sc.subtitle.textContent = scanning
+        ? 'Scanning…'
+        : `${scanApps.length} found that you are not already managing`;
+
+    const active = sc.list.querySelector('.sc-row.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function buildScanRow(app, index) {
+    const row = document.createElement('div');
+    row.className = 'sc-row'
+        + (index === scanActive ? ' active' : '')
+        + (scanPicked.has(app.path) ? ' picked' : '');
+    row.addEventListener('click', () => { scanActive = index; toggleScanPick(); });
+
+    const tick = document.createElement('span');
+    tick.className = 'sc-tick';
+    if (scanPicked.has(app.path)) {
+        const mark = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        mark.setAttribute('width', '12');
+        mark.setAttribute('height', '12');
+        mark.setAttribute('viewBox', '0 0 24 24');
+        mark.setAttribute('fill', 'none');
+        mark.setAttribute('stroke', '#1A1000');
+        mark.setAttribute('stroke-width', '3');
+        mark.setAttribute('stroke-linecap', 'round');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M5 12l5 5L19 7');
+        mark.appendChild(path);
+        tick.appendChild(mark);
+    }
+
+    const avatar = document.createElement('span');
+    avatar.className = 'avatar';
+    avatar.style.width = '30px';
+    avatar.style.height = '30px';
+    avatar.style.background = 'rgba(255, 255, 255, 0.035)';
+    avatar.textContent = (app.name[0] || '?').toUpperCase();
+
+    const text = document.createElement('span');
+    text.className = 'sc-text';
+    const name = document.createElement('span');
+    name.className = 'sc-name';
+    name.textContent = app.name;
+    const path = document.createElement('span');
+    path.className = 'sc-path';
+    path.textContent = app.path;
+    text.append(name, path);
+
+    const spacer = document.createElement('span');
+    spacer.className = 'row-spacer';
+
+    const source = document.createElement('span');
+    source.className = 'sc-source' + (app.packaged ? ' store' : '');
+    source.textContent = app.packaged ? 'STORE' : 'START MENU';
+
+    row.append(tick, avatar, text, spacer, source);
+    return row;
+}
+
+function moveScan(delta) {
+    const total = scanVisible().length;
+    if (total === 0) return;
+    scanActive = Math.min(Math.max(scanActive + delta, 0), total - 1);
+    renderScan();
+}
+
+function toggleScanPick() {
+    const app = scanVisible()[scanActive];
+    if (!app) return;
+    if (scanPicked.has(app.path)) scanPicked.delete(app.path);
+    else scanPicked.add(app.path);
+    renderScan();
+}
+
+function addScanned() {
+    if (scanPicked.size === 0) return;
+    send('add-scanned', { paths: [...scanPicked] });
+    scanPicked.clear();
+    renderScan();
+}
+
+sc.filter.addEventListener('input', () => { scanFilter = sc.filter.value; scanActive = 0; renderScan(); });
+sc.add.addEventListener('click', addScanned);
+sc.none.addEventListener('click', () => { scanPicked.clear(); renderScan(); });
+document.querySelector('[data-back-scanner]').addEventListener('click', () => show('palette'));
+
+/* ---------------------------------------------------------------------------
    Settings
 
    Nothing here is stored locally. Every change is sent to the host, which sets
@@ -350,7 +505,10 @@ const st = {
     rollbackVersion: document.getElementById('s-rollback-version'),
     rollback: document.getElementById('s-rollback'),
     rollbackWarning: document.getElementById('s-rollback-warning'),
-    rollbackStatus: document.getElementById('s-rollback-status')
+    rollbackStatus: document.getElementById('s-rollback-status'),
+    whatsNewEmpty: document.getElementById('s-whatsnew-empty'),
+    rollbackRow: document.getElementById('s-rollback-row'),
+    rollbackEmpty: document.getElementById('s-rollback-empty')
 };
 
 function renderSettings(v) {
@@ -377,11 +535,25 @@ function renderSettings(v) {
     st.check.textContent = v.checkingForUpdates ? 'Checking…' : 'Check now';
     st.apply.hidden = !v.updateReady;
 
-    st.whatsNewCard.hidden = !v.hasWhatsNew;
-    st.whatsNewLabel.textContent = v.version ? `WHAT'S NEW IN ${v.version}` : "WHAT'S NEW";
-    renderNotes(v.whatsNew || '');
+    // Both of the cards below stay on screen with nothing to show. A section
+    // that vanishes entirely reads as a bug or a missing feature; one that
+    // explains why it is empty answers the question instead.
+    const devBuild = /dev/i.test(v.version || '');
 
-    st.rollbackCard.hidden = !v.hasRollbackVersions;
+    st.whatsNewLabel.textContent =
+        v.hasWhatsNew && v.version ? `WHAT'S NEW IN ${v.version}` : "WHAT'S NEW";
+    renderNotes(v.hasWhatsNew ? (v.whatsNew || '') : '');
+    st.whatsNewEmpty.hidden = v.hasWhatsNew;
+    st.whatsNewEmpty.textContent = devBuild
+        ? 'Development builds carry no release notes. They appear here for installed versions.'
+        : 'No notes were recorded for this version.';
+
+    st.rollbackRow.hidden = !v.hasRollbackVersions;
+    st.rollbackEmpty.hidden = v.hasRollbackVersions;
+    st.rollbackEmpty.textContent = devBuild
+        ? 'Not available on a development build, which Windows has no installed history for.'
+        : 'No earlier version is installed yet. After your first update, the version you came from can be reinstalled here.';
+
     if (v.rollbackVersions && st.rollbackVersion.options.length !== v.rollbackVersions.length) {
         st.rollbackVersion.textContent = '';
         for (const version of v.rollbackVersions) {
@@ -721,6 +893,22 @@ if (bridge) {
         if (message.type === 'show-manage') { manageActive = 0; renderManage(); show('manage'); return; }
 
         if (message.type === 'show-settings') { show('settings'); return; }
+
+        if (message.type === 'show-scanner') {
+            scanPicked.clear();
+            scanFilter = '';
+            sc.filter.value = '';
+            scanActive = 0;
+            show('scanner');
+            return;
+        }
+
+        if (message.type === 'scan') {
+            scanning = message.scan.scanning;
+            scanApps = message.scan.apps || [];
+            renderScan();
+            return;
+        }
 
         if (message.type === 'settings') { renderSettings(message.settings); return; }
 
