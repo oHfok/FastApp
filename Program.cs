@@ -113,11 +113,11 @@ namespace FastApp
 
                         current.Dispatcher.Invoke(() =>
                         {
-                            var window = current.MainWindow;
-                            if (window == null) return;
-                            window.Show();
-                            window.WindowState = WindowState.Normal;
-                            window.Activate();
+                            // The host window has no interface and is never
+                            // shown; raising it would put a 0x0 window on
+                            // screen. Launching FastApp again asks for the
+                            // palette, which is what the icon means now.
+                            (current.MainWindow as MainWindow)?.ShowPaletteWhenReady();
                         });
                     }
                     catch

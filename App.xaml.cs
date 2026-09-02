@@ -59,21 +59,16 @@ namespace FastApp
                 Brand("#F0B155"),   // secondary     -> accent-coloured text on dark
                 Brand("#F5C57E"));  // tertiary      -> quieter accent text
 
-            // 2. Create the window in memory. 
-            // Because your TrayService is initialized in the MainWindow constructor, 
-            // your system tray icon will instantly appear right here!
+            // 2. Create the host. It owns the tray icon, the keyboard hook, the
+            //    view model and the palette; it is never shown itself.
             var mainWindow = new MainWindow();
 
-            // 3. Check if Windows launched us via the Registry on boot
-            if (e.Args.Contains("--minimized"))
+            // 3. The host window is never shown -- it has no interface any more.
+            //    Opening FastApp by hand means opening the palette; launching at
+            //    boot means staying silent in the tray.
+            if (!e.Args.Contains("--minimized"))
             {
-                // Do NOTHING. We created the window in memory so the tray works, 
-                // but we NEVER call .Show(). The app remains completely invisible!
-            }
-            else
-            {
-                // The user double-clicked the .exe manually. Show the UI normally.
-                mainWindow.Show();
+                mainWindow.ShowPaletteWhenReady();
             }
         }
     }

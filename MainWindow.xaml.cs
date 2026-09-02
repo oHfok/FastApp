@@ -12,9 +12,10 @@ using Wpf.Ui.Controls;
 
 namespace FastApp
 {
-    public partial class MainWindow : FluentWindow
+    // No longer a FluentWindow: it is never shown, so the Fluent chrome, backdrop
+    // and title bar it brought are all cost with nothing to render.
+    public partial class MainWindow : Window
     {
-        private System.Windows.Point _dragStartPoint;
 
         private MainViewModel _viewModel;
         public MainViewModel ViewModel => _viewModel;
@@ -28,6 +29,19 @@ namespace FastApp
 
         public void ShowPalette() => _palette?.ShowPalette();
 
+        /// <summary>
+        /// Show the palette as soon as it exists. Launching FastApp by hand
+        /// arrives before the warm-up has finished, and dropping that request
+        /// would mean double-clicking the app and getting nothing at all.
+        /// </summary>
+        public void ShowPaletteWhenReady()
+        {
+            if (_palette != null) { _palette.ShowPalette(); return; }
+            _showPaletteWhenWarm = true;
+        }
+
+        private bool _showPaletteWhenWarm;
+
         // NEW: The advanced global hook
         private AdvancedKeyboardHook _keyboardHook;
 
@@ -35,8 +49,6 @@ namespace FastApp
         private bool _isForceExiting = false;
 
         // NEW: Variables to track keys while recording a hotkey on the UI
-        private HashSet<Key> _currentCaptureKeys = new();
-        private bool _isCapturing = false;
 
         public MainWindow()
         {
@@ -76,6 +88,11 @@ namespace FastApp
                 {
                     _palette = new PaletteWindow(_viewModel);
                     await _palette.PrewarmAsync();
+                    if (_showPaletteWhenWarm)
+                    {
+                        _showPaletteWhenWarm = false;
+                        _palette.ShowPalette();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -118,63 +135,6 @@ namespace FastApp
                 if (_isForceExiting) return; // a real exit is already in progress
                 try { _viewModel.RestartTrackerIfStopped(); } catch { }
             });
-        }
-
-        // ==========================================
-        // DRAG AND DROP PHYSICS
-        // ==========================================
-        private void AppList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            _dragStartPoint = e.GetPosition(null);
-        }
-
-        private void AppList_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            // Only start dragging if the left mouse button is pressed
-            if (e.LeftButton == MouseButtonState.Pressed)
-            {
-                System.Windows.Point position = e.GetPosition(null);
-
-                // Prevent accidental drags by requiring a minimum distance moved
-                if (Math.Abs(position.X - _dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
-                    Math.Abs(position.Y - _dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
-                {
-                    if (sender is System.Windows.Controls.ListBox listBox)
-                    {
-                        // Find the visual UI container of the item being dragged
-                        var listBoxItem = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
-                        if (listBoxItem != null)
-                        {
-                            var appItem = (AppItemModel)listBox.ItemContainerGenerator.ItemFromContainer(listBoxItem);
-
-                            // Initialize the native Windows drag-and-drop system
-                            DragDrop.DoDragDrop(listBoxItem, appItem, System.Windows.DragDropEffects.Move);
-                        }
-                    }
-                }
-            }
-        }
-
-        private void AppList_Drop(object sender, System.Windows.DragEventArgs e)
-        {
-            // Did we drop a valid AppItemModel?
-            if (e.Data.GetDataPresent(typeof(AppItemModel)))
-            {
-                var droppedData = (AppItemModel)e.Data.GetData(typeof(AppItemModel));
-                var target = ((FrameworkElement)e.OriginalSource).DataContext as AppItemModel;
-
-                // Ensure we aren't dropping the item onto itself
-                if (target != null && droppedData != null && target != droppedData)
-                {
-                    if (DataContext is MainViewModel vm)
-                    {
-                        int oldIndex = vm.ManagedApps.IndexOf(droppedData);
-                        int newIndex = vm.ManagedApps.IndexOf(target);
-
-                        vm.ReorderApps(oldIndex, newIndex);
-                    }
-                }
-            }
         }
 
         // Helper method to traverse the visual tree and find the ListBoxItem
@@ -222,57 +182,6 @@ namespace FastApp
             }
             catch { /* best-effort — never block exit on a flush failure */ }
             System.Windows.Application.Current.Shutdown();
-        }
-
-        private void ClearHotkey_Click(object sender, RoutedEventArgs e)
-        {
-            var button = (Wpf.Ui.Controls.Button)sender;
-            var appItem = (AppItemModel)button.DataContext;
-
-            // Reset the database model using the new string sequence
-            appItem.HotkeyDisplayText = "None";
-            appItem.HotkeySequence = string.Empty;
-
-            _viewModel.SaveDatabase();
-            _viewModel.RecompileHotkeys();
-        }
-
-        // 1. When you click inside the box, it resets to a clean slate
-        private void HotkeyTextBox_GotFocus(object sender, RoutedEventArgs e)
-        {
-            _currentCaptureKeys.Clear();
-
-            var textBox = (Wpf.Ui.Controls.TextBox)sender;
-            textBox.Text = "Listening (Press keys...)";
-        }
-
-        // 2. As you press keys, it adds them and saves instantly
-        private void HotkeyTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            e.Handled = true;
-            Key key = (e.Key == Key.System ? e.SystemKey : e.Key);
-
-            // Only update if it's a new key being added to our combo
-            if (_currentCaptureKeys.Add(key))
-            {
-                var textBox = (Wpf.Ui.Controls.TextBox)sender;
-                var appItem = (AppItemModel)textBox.DataContext;
-
-                string displayCombo = string.Join(" + ", _currentCaptureKeys.Select(k => k.ToString()));
-
-                textBox.Text = displayCombo;
-                appItem.HotkeySequence = string.Join(",", _currentCaptureKeys.Select(k => k.ToString()));
-                appItem.HotkeyDisplayText = displayCombo;
-
-                _viewModel.SaveDatabase();
-                _viewModel.RecompileHotkeys();
-            }
-        }
-
-        // 3. We completely ignore KeyUp so you don't ruin the capture by letting go too early
-        private void HotkeyTextBox_PreviewKeyUp(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            e.Handled = true;
         }
 
         // Ctrl+Shift+Space summons the palette. Reserved rather than bindable:
