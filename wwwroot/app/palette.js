@@ -888,7 +888,17 @@ if (bridge) {
             return;
         }
 
-        if (message.type === 'reset') { show('palette'); return; }
+        if (message.type === 'reset') {
+            // A summon always starts clean. The window focus handler does this
+            // too, but it does not fire when the palette is re-summoned while
+            // already focused, which left the old query and selection in place.
+            query = '';
+            els.q.value = '';
+            active = 0;
+            show('palette');
+            render();
+            return;
+        }
 
         if (message.type === 'show-manage') { manageActive = 0; renderManage(); show('manage'); return; }
 

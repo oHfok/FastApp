@@ -635,12 +635,11 @@ namespace FastApp.ViewModels
             DetailViewVisibility = Visibility.Collapsed;
         }
 
-        [RelayCommand]
-        private void AddToManagedApps()
-        {
-            _mainVM.SearchText = DetailAppName;
-            _mainVM.AddApplicationCommand.Execute(null);
-        }
+        // AddToManagedApps lived here for the old Statistics tab's detail view,
+        // which went with the manager window. Adding an app is the palette's
+        // scanner now. CloseDetails and OpenInExplorer below are from the same
+        // era and are equally unbound; they are left for a separate tidy-up
+        // rather than widening this change.
 
         [RelayCommand]
         private void OpenInExplorer()

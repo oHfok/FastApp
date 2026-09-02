@@ -577,14 +577,6 @@ namespace FastApp.ViewModels
         [ObservableProperty]
         private bool _isCompactMode = false;
 
-        [RelayCommand]
-        private void ExpandCompactApp(AppItemModel app)
-        {
-            // When a user clicks a tiny row, immediately turn off compact mode 
-            // so they can see the expanded details of the app they just clicked!
-            IsCompactMode = false;
-        }
-
         // Method to handle DB-backed Drag and Drop Reordering
         public void ReorderApps(int oldIndex, int newIndex)
         {
@@ -1942,42 +1934,6 @@ namespace FastApp.ViewModels
         public void SaveDatabase()
         {
             lock (_dbContext) { _dbContext.SaveChanges(); }
-        }
-
-        [RelayCommand]
-        private async Task AddApplication()
-        {
-            SearchText = string.Empty;
-            DetectedApps.Clear();
-
-            // Awaited rather than called inline: the scan takes about a second
-            // and a half on a normal machine, which was a visible freeze of the
-            // whole window between clicking "Scan PC For Applications" and the
-            // dialog appearing.
-            var foundApps = await AppScannerService.GetInstalledAppsAsync();
-            foreach (var app in foundApps)
-            {
-                if (!ManagedApps.Any(m => m.ExecutablePath == app.ExecutablePath))
-                {
-                    DetectedApps.Add(app);
-                }
-            }
-
-            DetectedAppsView = CollectionViewSource.GetDefaultView(DetectedApps);
-            DetectedAppsView.Filter = item =>
-            {
-                if (string.IsNullOrWhiteSpace(SearchText)) return true;
-                var app = (AppItemModel)item;
-                return app.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
-            };
-
-            var scannerWindow = new AppScannerWindow
-            {
-                DataContext = this,
-                Owner = App.Current.MainWindow
-            };
-
-            scannerWindow.ShowDialog();
         }
 
         [RelayCommand]

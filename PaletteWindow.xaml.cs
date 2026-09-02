@@ -844,19 +844,6 @@ namespace FastApp
             base.OnKeyDown(e);
         }
 
-        private void ShowManager()
-        {
-            HidePalette();
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                var main = System.Windows.Application.Current.MainWindow;
-                if (main == null) return;
-                main.Show();
-                main.WindowState = System.Windows.WindowState.Normal;
-                main.Activate();
-            }));
-        }
-
         private static void OpenExternally(string url)
         {
             try

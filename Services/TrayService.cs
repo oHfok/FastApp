@@ -37,12 +37,11 @@ namespace FastApp.Services
             NotificationService.ActionInvoked += OnNotificationAction;
 
             // When you double-click the icon, show the app
-            _notifyIcon.DoubleClick += (s, e) => ShowWindow();
+            _notifyIcon.DoubleClick += (s, e) => ShowPalette();
 
             // Create a right-click menu
             _notifyIcon.ContextMenuStrip = new ContextMenuStrip();
-            _notifyIcon.ContextMenuStrip.Items.Add("Open Palette", null, (s, e) => ShowPalette());
-            _notifyIcon.ContextMenuStrip.Items.Add("Open Manager", null, (s, e) => ShowWindow());
+            _notifyIcon.ContextMenuStrip.Items.Add("Open FastApp", null, (s, e) => ShowPalette());
             _notifyIcon.ContextMenuStrip.Items.Add("View Stats", null, (s, e) => OpenDashboard());
             _notifyIcon.ContextMenuStrip.Items.Add("Extend App Time…", null, (s, e) => ShowExtendDialog());
             _notifyIcon.ContextMenuStrip.Items.Add("-"); // Adds a separator line
@@ -66,7 +65,7 @@ namespace FastApp.Services
                     // sensible thing a bare click can mean is "show me".
                     case "show-window":
                     case "":
-                        ShowWindow();
+                        ShowPalette();
                         break;
                 }
             });
@@ -75,13 +74,6 @@ namespace FastApp.Services
         private void ShowPalette()
         {
             _mainWindow.ShowPalette();
-        }
-
-        private void ShowWindow()
-        {
-            _mainWindow.Show();
-            _mainWindow.WindowState = System.Windows.WindowState.Normal;
-            _mainWindow.Activate(); // Brings it to the front
         }
 
         private void OpenDashboard()
