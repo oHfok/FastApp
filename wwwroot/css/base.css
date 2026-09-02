@@ -142,7 +142,8 @@ h1, h2, h3, .num-display {
     display: flex;
     align-items: center;
     /* Tighter, and no left padding: the mark owns the first 72px so it lines up
-       with the rail beneath it, and the reference packs the metrics close
+       with the rail beneath it -- the icons hold that line whether the rail is
+       collapsed or expanded -- and the reference packs the metrics close
        together rather than spreading them across the bar. */
     gap: 22px;
     padding: 10px 24px 10px 0;
@@ -154,7 +155,8 @@ h1, h2, h3, .num-display {
     z-index: 30;
 }
 
-/* The brand mark, aligned to the rail's column below it. */
+/* The brand mark, aligned to the icon column below it -- which sits in the
+   same place in both rail states, so this needs no collapsed variant. */
 .tb-mark {
     width: 72px;
     margin-right: -10px;
@@ -323,18 +325,44 @@ h1, h2, h3, .num-display {
     min-height: 0;
 }
 
-/* Icon-only, 72px. The labelled 208px rail spent a sixth of the window on six
-   words that never change, and its border drew another line down the page. The
-   icons carry a title attribute so the name is still one hover away. */
+/* Labelled by default, collapsible to icons. The collapsed state is the whole
+   point of the redesign's rail -- 72px instead of 208px, no border down the
+   page -- but naming the views outright is worth the width to most people, so
+   it is the default and the preference is remembered.
+
+   The geometry lives in these six custom properties rather than in the rules,
+   because two separate things collapse the rail -- an explicit choice, and a
+   window too narrow to afford the labels -- and duplicating the whole block
+   for each is how the two drift apart. The rules below read the tokens; the
+   two triggers only reset them.
+
+   Expanded is the token default, so the state the markup ships in is the
+   state it renders in if the script never runs. */
+:root {
+    /* 188px: the widest label, "All Applications", needs 181px including both
+       paddings. Measured rather than guessed, so the rail is 20px narrower
+       than the labelled one this replaces. */
+    --rail-w: 188px;
+    --rail-pad: 12px;
+    --rail-gap: 3px;
+    --rail-item-w: 100%;
+    --rail-item-pad: 14px;
+    --rail-item-radius: var(--radius-pill);
+    --rail-label: inline;
+    --rail-chevron: none;
+}
+
 .rail {
-    width: 72px;
+    width: var(--rail-w);
     flex-shrink: 0;
-    padding: 14px 0;
+    padding: 14px var(--rail-pad);
     border-right: none;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 6px;
+    align-items: stretch;
+    gap: var(--rail-gap);
+    overflow: hidden;
+    transition: width 0.18s ease, padding 0.18s ease;
 }
 
 /* A real <button>, not a div — the rail is the primary navigation and was
@@ -344,18 +372,18 @@ h1, h2, h3, .num-display {
 .rail-item {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 0;
-    border-radius: 50%;
+    justify-content: flex-start;
+    gap: 13px;
+    padding: 0 var(--rail-item-pad);
+    border-radius: var(--rail-item-radius);
     color: var(--text-dim);
     font-size: var(--fs-body);
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.15s, color 0.15s, width 0.18s ease, padding 0.18s ease;
     border-left: none;
     /* button reset */
-    width: 44px;
+    width: var(--rail-item-w);
     height: 44px;
     background: none;
     border-top: none;
@@ -367,8 +395,13 @@ h1, h2, h3, .num-display {
     appearance: none;
 }
 
-.rail-item span.label-text { display: none; }
+.rail-item span.label-text { white-space: nowrap; display: var(--rail-label); }
 .rail-item svg { width: 19px; height: 19px; flex-shrink: 0; opacity: 0.85; }
+
+/* The toggle sits at the foot of the rail, away from the six views so it never
+   reads as a seventh one. */
+.rail-toggle { margin-top: auto; color: var(--text-faint); }
+.rail-toggle svg { transition: transform 0.18s ease; transform: var(--rail-chevron); }
 
 .rail-item:hover:not(.active) {
     background: var(--panel);
@@ -382,6 +415,41 @@ h1, h2, h3, .num-display {
 }
 
 .rail-item.active svg { opacity: 1; }
+
+/* ---------- Collapsed rail ---------- */
+/* Icon-only. Neither state centres anything: the two paddings are swapped
+   (12/14 expanded, 14/12 collapsed) so they sum to 26px either way and the
+   icons sit on the same line in both. That matters mid-transition -- centring
+   the icons when collapsed would fling them to the middle of a rail that is
+   still 188px wide, and they would slide back as it narrowed. */
+:root[data-rail="collapsed"] {
+    --rail-w: 72px;
+    --rail-pad: 14px;
+    --rail-gap: 6px;
+    --rail-item-w: 44px;
+    --rail-item-pad: 12px;
+    --rail-item-radius: 50%;
+    --rail-label: none;
+    --rail-chevron: rotate(180deg);
+}
+
+/* Below 1040px the labels cost more than they are worth: every other
+   breakpoint in these stylesheets was measured against a 72px rail, so an
+   expanded one silently takes 116px off the width they were tuned for. This
+   only applies when the reader has expressed no preference -- an explicit
+   choice is stamped either "expanded" or "collapsed", and both beat this. */
+@media (max-width: 1040px) {
+    :root:not([data-rail]) {
+        --rail-w: 72px;
+        --rail-pad: 14px;
+        --rail-gap: 6px;
+        --rail-item-w: 44px;
+        --rail-item-pad: 12px;
+        --rail-item-radius: 50%;
+        --rail-label: none;
+        --rail-chevron: rotate(180deg);
+    }
+}
 
 .main {
     flex: 1;
@@ -607,6 +675,10 @@ select.field {
 /* Respect a reduced-motion preference: keep the placeholder, drop the sweep. */
 @media (prefers-reduced-motion: reduce) {
     .skeleton-row { animation: none; }
+    /* Collapsing the rail slides 116px of layout and reflows every chart on
+       the page with it -- the largest movement in the dashboard, and the one
+       most worth dropping here. The rail still collapses, it just arrives. */
+    .rail, .rail-item, .rail-toggle svg { transition: none; }
 }
 
 /* First-run explainer. Brass rather than the warning tone of .stale-banner —

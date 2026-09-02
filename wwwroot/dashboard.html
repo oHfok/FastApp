@@ -24,6 +24,13 @@
     (function () {
         var saved = localStorage.getItem('fastapp-theme');
         if (saved) document.documentElement.setAttribute('data-theme', saved);
+        // Both states are stamped, because "no attribute" is a third thing:
+        // it lets a narrow window collapse the rail on its own. A stored
+        // preference outranks that; a failed read leaves it to the window.
+        var rail = localStorage.getItem('fastapp-rail');
+        if (rail === 'collapsed' || rail === 'expanded') {
+            document.documentElement.setAttribute('data-rail', rail);
+        }
     })();
 </script>
 </head>
@@ -150,6 +157,11 @@
             <button type="button" class="rail-item" data-view="allapps" title="All Applications" aria-label="All Applications">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
                 <span class="label-text">All Applications</span>
+            </button>
+
+            <button type="button" class="rail-item rail-toggle" id="rail-toggle" onclick="toggleRail()" title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 17l-5-5 5-5M19 17l-5-5 5-5"></path></svg>
+                <span class="label-text">Collapse</span>
             </button>
         </nav>
 

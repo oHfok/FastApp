@@ -107,7 +107,48 @@ function initNav() {
     document.querySelectorAll('.rail-item[data-view]').forEach(el => {
         el.addEventListener('click', () => switchView(el.dataset.view));
     });
+    syncRailToggle();
 }
+
+const RAIL_KEY = 'fastapp-rail';
+
+/* Read the state the rail is actually in, not the one the attribute asks for.
+   With no preference set, a narrow window collapses the rail on its own, and a
+   toggle that trusted the attribute would decide it was expanded and "collapse"
+   an already-collapsed rail -- a press that visibly does nothing. The width
+   token carries the rendered answer in both cases, and unlike the element's
+   measured width it is not mid-transition when we read it. */
+function railIsCollapsed() {
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue('--rail-w').trim() === '72px';
+}
+
+/* Point the toggle's chevrons, and its accessible name, at what pressing it
+   will do rather than at the state the rail is currently in. */
+function syncRailToggle() {
+    const btn = document.getElementById('rail-toggle');
+    if (!btn) return;
+    const collapsed = railIsCollapsed();
+    const action = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    btn.setAttribute('aria-label', action);
+    btn.title = action;
+}
+
+function toggleRail() {
+    // Both outcomes are stamped explicitly. "expanded" is not the same as no
+    // attribute at all: it is what outranks the narrow-window rule, so asking
+    // for labels in a small window keeps them.
+    const next = railIsCollapsed() ? 'expanded' : 'collapsed';
+    document.documentElement.setAttribute('data-rail', next);
+    try { localStorage.setItem(RAIL_KEY, next); }
+    catch { /* preference is lost on reload, the toggle still works */ }
+    syncRailToggle();
+}
+
+/* The narrow-window rule can flip the rail without anyone pressing anything,
+   which leaves the toggle describing the wrong action. */
+window.addEventListener('resize', syncRailToggle);
 
 // --- Delegated open handlers ------------------------------------------------
 // Every "open this app / category / period" click in the dashboard routes
