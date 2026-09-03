@@ -82,7 +82,12 @@ namespace FastApp.Services
             // Read on open rather than on a timer: the figure is only ever
             // looked at in the second the menu is up, and polling the database
             // for a line nobody is reading would be worse than useless.
-            menu.Opening += (s, e) => { _status.Text = StatusLine(); RefreshPauseItem(); };
+            menu.Opening += (s, e) =>
+            {
+                _status.Text = StatusLine();
+                RefreshPauseItem();
+                TrayMenuTheme.Refresh(menu);
+            };
 
             menu.Items.AddRange(new ToolStripItem[]
             {

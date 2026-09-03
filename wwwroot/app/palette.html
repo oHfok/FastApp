@@ -180,9 +180,13 @@
                     <button class="toggle" id="d-force" type="button" role="switch"><span></span></button>
                 </span>
             </div>
+            <!-- The old note named the dashboard and stopped there, which left
+                 you to go and find the app, open it and find the tab. This is
+                 the same sentence with the door attached. -->
             <span class="hint-sub" id="d-limit-note" hidden>
-                A parental PIN is set. Change limits from the dashboard, or use Extend time.
+                A parental PIN is set. Changing this limit asks for it; Extend time adds minutes for today only.
             </span>
+            <button class="out-link" id="d-limit-link" type="button" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Change this limit in the dashboard</span></button>
         </section>
 
     </div>
@@ -288,6 +292,20 @@
                 </span>
                 <button class="toggle" id="s-progress" type="button" role="switch"><span></span></button>
             </div>
+        </section>
+
+        <section class="card">
+            <span class="label">APPEARANCE</span>
+            <!-- 3.0.0 followed Windows and offered nothing else, which is the
+                 right default and not the same thing as a choice: a window
+                 that sits on top of whatever you are doing is exactly the one
+                 people want to make an exception for. -->
+            <div class="pillgroup" id="s-theme" role="group" aria-label="Theme">
+                <button class="pill" type="button" data-theme-pref="system" aria-pressed="true">System</button>
+                <button class="pill" type="button" data-theme-pref="dark" aria-pressed="false">Dark</button>
+                <button class="pill" type="button" data-theme-pref="light" aria-pressed="false">Light</button>
+            </div>
+            <span class="hint-sub" id="s-theme-hint"></span>
         </section>
 
         <section class="card">

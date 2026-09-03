@@ -184,6 +184,7 @@ namespace FastApp
 
             ApplyWindowTheme();
             Services.SystemTheme.Changed += ApplyWindowTheme;
+            Services.SystemTheme.Changed += PushTheme;
 
             // Rounded corners and the system drop shadow, from the compositor
             // rather than from WPF. Doing it this way is what lets the window
@@ -364,7 +365,12 @@ namespace FastApp
                     break;
 
                 case "open-dashboard-app":
-                    OpenDashboard($"?app={Uri.EscapeDataString(message.Text ?? string.Empty)}");
+                    // Id names the drawer tab to land on. Only the limits tab
+                    // is ever asked for, by the PIN-locked note in the app
+                    // panel, which otherwise sent people to the dashboard's
+                    // front door to go and find the thing themselves.
+                    OpenDashboard($"?app={Uri.EscapeDataString(message.Text ?? string.Empty)}"
+                        + (message.Id == "limits" ? "&tab=limits" : string.Empty));
                     break;
 
                 case "add-tracked":
@@ -894,6 +900,11 @@ namespace FastApp
                     enableOsd = _viewModel.EnableOsd,
                     showAutoLaunchProgress = _viewModel.ShowAutoLaunchProgress,
 
+                    // The choice, not the outcome: the picker has to be able to
+                    // show Follow Windows as selected while the app is dark.
+                    themePreference = Services.SystemTheme.Preference,
+                    systemIsLight = Services.SystemTheme.IsLight,
+
                     notificationsEnabled = _viewModel.NotificationsEnabled,
                     quietHoursEnabled = _viewModel.QuietHoursEnabled,
                     quietHoursFrom = _viewModel.QuietHoursFrom,
@@ -940,6 +951,15 @@ namespace FastApp
                 case "quietHoursFrom": _viewModel.QuietHoursFrom = text ?? string.Empty; break;
                 case "quietHoursTo": _viewModel.QuietHoursTo = text ?? string.Empty; break;
                 case "selectedRollback": _viewModel.SelectedRollbackVersion = text; break;
+
+                // Not a view-model property: this one is drawn by four surfaces
+                // that have no view model between them -- the window, the tray
+                // menu and the two overlays -- so SystemTheme is where it lives
+                // and where the change is announced from.
+                case "theme":
+                    Services.SystemTheme.SetPreference(text);
+                    PushTheme();
+                    break;
                 default: return;
             }
 
@@ -1176,6 +1196,30 @@ namespace FastApp
                 }
             };
 
+            Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+
+            // With the state, so a page that has only just finished loading is
+            // stamped by the first push it ever receives rather than staying on
+            // the CSS default until something else changes.
+            PushTheme();
+        }
+
+        /// <summary>
+        /// Stamp the resolved theme onto the page.
+        ///
+        /// The page used to read prefers-color-scheme, which answers for
+        /// Windows and nothing else. Now that the theme can be overridden in
+        /// Settings, the OS is no longer the authority on it -- so the host,
+        /// which is, says which of the two to draw and the page stops guessing.
+        /// Sent as its own message rather than folded into the state payload
+        /// because it also has to arrive when nothing else changed: someone
+        /// switching Windows to light with the palette already open.
+        /// </summary>
+        private void PushTheme()
+        {
+            if (Web.CoreWebView2 == null) return;
+
+            var payload = new { type = "theme", theme = Services.SystemTheme.IsLight ? "light" : "dark" };
             Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
         }
 

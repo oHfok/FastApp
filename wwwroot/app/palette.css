@@ -476,8 +476,14 @@ body {
 
 .detail-foot { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 
-.card.disabled { opacity: 0.55; }
-.card.disabled .field { pointer-events: none; }
+/* The card is not disabled; two of its controls are. Dimming the whole thing
+   at 0.55 also faded the PIN LOCKED badge, which is the line that explains why
+   the field is dead, and the link to the one place the limit can actually be
+   changed -- the only thing left in the card worth clicking. So the dimming
+   follows the lock: .field-split is exactly the pair the PIN holds shut. */
+.card.disabled .field-split { opacity: 0.55; }
+.card.disabled .field,
+.card.disabled .toggle { pointer-events: none; }
 
 
 /* ---------------------------------------------------------------------------

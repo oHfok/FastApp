@@ -100,6 +100,31 @@ namespace FastApp.Services
         }
 
         /// <summary>
+        /// Re-read the palette onto a menu that already exists.
+        ///
+        /// Apply() sets BackColor and ForeColor once, and the tray menu is
+        /// built at login and kept for the life of the process -- so the two
+        /// values it captured were the only part of this file that could not
+        /// follow a theme change. That was hard to notice when the theme only
+        /// moved if you went to Windows' own settings; with a switch in FastApp
+        /// it is the first thing you would try. Called from Opening, which is
+        /// the only moment the colours are looked at.
+        /// </summary>
+        public static void Refresh(ToolStripDropDownMenu menu)
+        {
+            if (menu == null) return;
+
+            menu.BackColor = Surface;
+            menu.ForeColor = Text;
+
+            foreach (ToolStripItem item in menu.Items)
+            {
+                if (item is ToolStripMenuItem parent && parent.HasDropDownItems)
+                    Refresh(parent.DropDown as ToolStripDropDownMenu);
+            }
+        }
+
+        /// <summary>
         /// A row. Padded here rather than at each call site so the vertical
         /// rhythm is set in one place. Only the vertical half of that padding
         /// takes effect -- a drop-down positions item text from its own margins

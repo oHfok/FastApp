@@ -34,9 +34,18 @@ function readUrlState() {
         // boot and then dropped from the URL by writeUrlState, which is right:
         // they describe an arrival, not a view worth bookmarking.
         app: (params.get('app') || '').trim() || null,
+
+        // Which tab of that drawer. The desktop app's PIN-locked limit note
+        // links here, and landing on Overview would have left the last step --
+        // find the Limits tab -- as the reader's problem, which is the step the
+        // link exists to remove. Only meaningful alongside app.
+        appTab: DRILLDOWN_TABS.includes(params.get('tab')) ? params.get('tab') : null,
+
         settingsTab: SETTINGS_TABS.includes(params.get('settings')) ? params.get('settings') : null
     };
 }
+
+const DRILLDOWN_TABS = ['overview', 'limits'];
 
 const SETTINGS_TABS = ['appearance', 'data', 'privacy', 'whatsnew'];
 
@@ -378,7 +387,7 @@ async function boot() {
 
     // After the view exists, so the drawer opens over a rendered page rather
     // than over an empty one that fills in behind it.
-    if (urlState.app) openDrilldown(urlState.app);
+    if (urlState.app) openDrilldown(urlState.app, urlState.appTab);
     if (urlState.settingsTab) {
         openSettings();
         setSettingsTab(urlState.settingsTab,

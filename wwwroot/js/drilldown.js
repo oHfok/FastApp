@@ -24,7 +24,10 @@ let compareChartInstances = {};
 let trendChartInstance = null;
 let currentDrilldownAppName = null;
 
-async function openDrilldown(appName) {
+/// `tab` is only ever passed by the arrival from the desktop app, which knows
+/// which half of this drawer it is sending you to. Every other caller opens a
+/// drawer to look at an app, and gets Overview.
+async function openDrilldown(appName, tab) {
     // Opening an app from inside the Category drawer used to close it via the
     // row's own inline handler. Now that the click is delegated, that has to
     // happen here — otherwise the two drawers stack and dismissing the top one
@@ -34,8 +37,11 @@ async function openDrilldown(appName) {
     document.getElementById('dd-overlay').classList.add('open');
     document.getElementById('dd-drawer').classList.add('open');
     // Always land back on Overview — reopening a different app while still on
-    // Limits from a previous look would be a surprising place to land.
-    setDrilldownTab('overview', document.querySelector('#dd-tab-toggle button[data-tab="overview"]'));
+    // Limits from a previous look would be a surprising place to land. Unless
+    // the caller named a tab, which is a deliberate destination rather than
+    // whatever the drawer happened to be left on.
+    const landing = tab === 'limits' ? 'limits' : 'overview';
+    setDrilldownTab(landing, document.querySelector(`#dd-tab-toggle button[data-tab="${landing}"]`));
 
     Object.values(compareChartInstances).forEach(chart => chart.destroy());
     compareChartInstances = {};
