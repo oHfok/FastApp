@@ -308,7 +308,8 @@ const VIEWS = {
     detail: { el: document.getElementById('view-detail'), w: 820, h: 560 },
     manage: { el: document.getElementById('view-manage'), w: 940, h: 620 },
     settings: { el: document.getElementById('view-settings'), w: 940, h: 700 },
-    scanner: { el: document.getElementById('view-scanner'), w: 880, h: 640 }
+    scanner: { el: document.getElementById('view-scanner'), w: 880, h: 640 },
+    extend: { el: document.getElementById('view-extend'), w: 620, h: 470 }
 };
 
 let view = 'palette';
@@ -337,6 +338,14 @@ document.addEventListener('keydown', e => {
 
     if (view === 'settings') {
         if (e.key === 'Escape') { e.preventDefault(); show('palette'); }
+        return;
+    }
+
+    if (view === 'extend') {
+        if (e.key === 'Escape') { e.preventDefault(); show('palette'); }
+        // Enter anywhere in the form submits it, so the PIN can be typed and
+        // confirmed without reaching for the mouse.
+        if (e.key === 'Enter') { e.preventDefault(); grantExtension(); }
         return;
     }
 
@@ -393,6 +402,110 @@ document.addEventListener('keydown', e => {
         }
     }
 });
+
+/* ---------------------------------------------------------------------------
+   Extend time
+
+   Granting extra minutes needs the PIN, so this is the one view that can fail
+   on correct-looking input. Everything it says goes in one line under the PIN
+   box, which holds its height whether or not it is saying anything -- a message
+   that appears and pushes the button down is a message you click through.
+   --------------------------------------------------------------------------- */
+const x = {
+    app: document.getElementById('x-app'),
+    usage: document.getElementById('x-usage'),
+    minutes: document.getElementById('x-minutes'),
+    pin: document.getElementById('x-pin'),
+    message: document.getElementById('x-message'),
+    grant: document.getElementById('x-grant'),
+    count: document.getElementById('x-count'),
+    form: document.getElementById('x-form'),
+    empty: document.getElementById('x-empty'),
+    emptyText: document.getElementById('x-empty-text')
+};
+
+const MINUTE_CHOICES = [10, 15, 30, 60];
+let extendState = { apps: [], hasPin: false };
+let extendMinutes = 15;
+
+function renderExtend() {
+    const apps = extendState.apps || [];
+    x.count.textContent = apps.length;
+
+    // Two ways to have nothing to do here, and they need different answers:
+    // no limits set, or limits set but no PIN to authorise lifting them.
+    const blocked = apps.length === 0 || !extendState.hasPin;
+    x.form.hidden = blocked;
+    x.empty.hidden = !blocked;
+    x.grant.disabled = blocked;
+
+    if (blocked) {
+        x.emptyText.textContent = apps.length === 0
+            ? 'No app has a daily limit set. Give one a limit in its details first.'
+            : 'A PIN has to be set before extra time can be granted. Settings has one.';
+        return;
+    }
+
+    // Rebuilding the options throws the selection away, so it is put back.
+    // Without this, picking a different duration silently reset the app to the
+    // first in the list and granted the time to the wrong one.
+    const chosen = x.app.value;
+    x.app.textContent = '';
+    for (const app of apps) {
+        const option = document.createElement('option');
+        option.value = app.id;
+        option.textContent = app.name;
+        x.app.appendChild(option);
+    }
+    if (apps.some(a => String(a.id) === String(chosen))) x.app.value = chosen;
+
+    renderExtendMinutes();
+}
+
+// Split out because choosing a duration must not touch the app list: see above.
+function renderExtendMinutes() {
+    x.minutes.textContent = '';
+    for (const minutes of MINUTE_CHOICES) {
+        const pill = document.createElement('span');
+        pill.className = 'x-minute' + (minutes === extendMinutes ? ' picked' : '');
+        pill.textContent = `${minutes} min`;
+        pill.addEventListener('click', () => { extendMinutes = minutes; renderExtendMinutes(); });
+        x.minutes.appendChild(pill);
+    }
+
+    renderExtendUsage();
+    x.grant.textContent = `Grant ${extendMinutes} minutes`;
+}
+
+function renderExtendUsage() {
+    const app = (extendState.apps || []).find(a => String(a.id) === String(x.app.value));
+    if (!app) { x.usage.textContent = ''; return; }
+
+    const bonus = app.bonusToday ? ` · ${app.bonusToday}m already granted today` : '';
+    x.usage.textContent = `${app.usedToday} of ${app.limitMinutes} minutes used today${bonus}`;
+}
+
+function setExtendMessage(text, kind) {
+    x.message.textContent = text || '';
+    x.message.className = 'field-label x-message' + (kind ? ' ' + kind : '');
+}
+
+function grantExtension() {
+    if (x.grant.disabled) return;
+
+    const id = x.app.value;
+    const pin = x.pin.value;
+    if (!id) return;
+    if (!pin) { setExtendMessage('Enter your PIN.', 'bad'); x.pin.focus(); return; }
+
+    setExtendMessage('Checking…');
+    send('extend-grant', { id, minutes: extendMinutes, pin });
+}
+
+x.app.addEventListener('change', renderExtendUsage);
+x.grant.addEventListener('click', grantExtension);
+x.pin.addEventListener('input', () => setExtendMessage(''));
+document.querySelector('[data-back-extend]').addEventListener('click', () => show('palette'));
 
 /* ---------------------------------------------------------------------------
    Scanner
@@ -987,6 +1100,29 @@ if (bridge) {
         if (message.type === 'show-manage') { manageActive = 0; renderManage(); show('manage'); return; }
 
         if (message.type === 'show-settings') { show('settings'); return; }
+
+        if (message.type === 'extend') {
+            extendState = message.extend;
+            x.pin.value = '';
+            setExtendMessage('');
+            renderExtend();
+            return;
+        }
+
+        if (message.type === 'show-extend') {
+            show('extend');
+            // Straight to the PIN: the app and the amount both have sensible
+            // defaults, and the PIN is the only field with no answer already.
+            if (!x.grant.disabled) x.pin.focus();
+            return;
+        }
+
+        if (message.type === 'extend-result') {
+            setExtendMessage(message.text, message.value ? 'good' : 'bad');
+            if (message.value) x.pin.value = '';
+            else x.pin.select();
+            return;
+        }
 
         if (message.type === 'show-scanner') {
             scanPicked.clear();

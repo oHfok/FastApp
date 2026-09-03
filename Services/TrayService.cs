@@ -151,18 +151,12 @@ namespace FastApp.Services
             }
         }
 
-        // Reachable without opening the main window or a browser — this is the
-        // whole point: it has to still work even if browser access is restricted.
-        // ViewModel is read lazily here (not captured at TrayService construction
-        // time), since the tray is created before the ViewModel is.
-        private void ShowExtendDialog()
-        {
-            var viewModel = _mainWindow.ViewModel;
-            if (viewModel == null) return;
-
-            using var dialog = new ExtendTimeDialog(viewModel);
-            dialog.ShowDialog();
-        }
+        // Reachable without a browser — this is the whole point: it has to still
+        // work when browser access is restricted, which includes the case where
+        // the app being limited is the browser. It used to be a WinForms dialog
+        // for that reason; the palette is FastApp's own window and satisfies the
+        // same requirement, on the same design as everything else.
+        private void ShowExtendDialog() => ShowPalette(PaletteView.Extend);
 
         private void ExitApplication()
         {

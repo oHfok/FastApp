@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using FastApp.Services;
 using FastApp.ViewModels;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,8 @@ namespace FastApp
     {
         Search,
         Manage,
-        Settings
+        Settings,
+        Extend
     }
 
     /// <summary>
@@ -332,6 +334,10 @@ namespace FastApp
                     // click-away now, because every field saves as it changes.
                     break;
 
+                case "extend-grant":
+                    GrantExtension(message.Id, message.Minutes, message.Pin);
+                    break;
+
                 case "run-command":
                     RunCommand(message.Id);
                     break;
@@ -373,6 +379,9 @@ namespace FastApp
 
                 case "settings":
                     ShowSettings();
+                    break;
+                case "extend":
+                    ShowExtend();
                     break;
                 case "scan":
                     _ = RunScanAsync();
@@ -628,6 +637,95 @@ namespace FastApp
         }
 
         // ------------------------------------------------------------------
+        // Extend time
+        //
+        // Replaces a WinForms dialog. The reason it exists at all is that the
+        // web dashboard's version is useless in the case that matters most --
+        // when the app being limited IS the browser, or a browser is off limits
+        // entirely -- so it has to be reachable from FastApp's own window.
+        // ------------------------------------------------------------------
+
+        private void ShowExtend()
+        {
+            PushExtend();
+            Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"show-extend\"}");
+        }
+
+        private void PushExtend()
+        {
+            if (Web.CoreWebView2 == null) return;
+
+            var (today, _) = TodayUsage.Read();
+            bool hasPin;
+            try
+            {
+                using var db = new AppDbContext();
+                hasPin = PinService.GetPinInfo(db).HasPin;
+            }
+            catch
+            {
+                // Unreadable means unverifiable, and granting without a check is
+                // the one outcome this feature must never produce.
+                hasPin = false;
+            }
+
+            var apps = _viewModel.ManagedApps
+                .Where(a => a.DailyLimitMinutes > 0)
+                .OrderBy(a => a.DisplayNamePrimary)
+                .Select(a => new
+                {
+                    id = a.Id.ToString(),
+                    name = a.DisplayNamePrimary,
+                    limitMinutes = a.DailyLimitMinutes,
+                    usedToday = today.TryGetValue(a.Name, out var span) ? (int)span.TotalMinutes : 0,
+                    bonusToday = a.BonusMinutesDate?.Date == DateTime.Today ? a.TodayBonusMinutes : 0
+                })
+                .ToList();
+
+            var payload = new { type = "extend", extend = new { apps, hasPin } };
+            Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+        }
+
+        private void GrantExtension(string id, int minutes, string pin)
+        {
+            var app = FindApp(id);
+            if (app == null) { ExtendResult(false, "That app is no longer in the list."); return; }
+            if (minutes <= 0) { ExtendResult(false, "Pick how much time to grant."); return; }
+
+            bool verified;
+            try
+            {
+                using var db = new AppDbContext();
+                var (hasPin, salt, hash) = PinService.GetPinInfo(db);
+                if (!hasPin) { ExtendResult(false, "No PIN is set. Set one in Settings first."); return; }
+                verified = PinService.VerifyPin(pin, salt, hash);
+            }
+            catch (Exception ex)
+            {
+                ExtendResult(false, $"The PIN could not be checked: {ex.Message}");
+                return;
+            }
+
+            if (!verified) { ExtendResult(false, "That PIN is not right."); return; }
+
+            // The same message the dashboard's /api/extend-limit sends, so both
+            // routes land in one handler and cannot drift apart.
+            WeakReferenceMessenger.Default.Send(
+                new ViewModels.GrantExtensionCommand(app.Name, minutes));
+
+            ExtendResult(true, $"{app.DisplayNamePrimary} has {minutes} more minutes today.");
+
+            // Re-read so the usage line reflects the grant that just happened.
+            Dispatcher.BeginInvoke(new Action(PushExtend));
+        }
+
+        private void ExtendResult(bool ok, string text)
+        {
+            var payload = new { type = "extend-result", value = ok, text };
+            Web.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+        }
+
+        // ------------------------------------------------------------------
         // Settings
         // ------------------------------------------------------------------
 
@@ -874,6 +972,7 @@ namespace FastApp
                 new { id = "manage",    title = "Manage applications", hint = "add, reorder, remove" },
                 new { id = "scan",      title = "Scan for new applications", hint = "Start menu + Store" },
                 new { id = "settings",  title = "Settings", hint = (string)null },
+                new { id = "extend",    title = "Extend app time", hint = "needs your PIN" },
                 new { id = "dashboard", title = "Open statistics dashboard", hint = "opens in browser ↗" }
             };
 
@@ -949,6 +1048,7 @@ namespace FastApp
             Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"reset\"}");
             if (view == PaletteView.Manage) ShowManage();
             else if (view == PaletteView.Settings) ShowSettings();
+            else if (view == PaletteView.Extend) ShowExtend();
             Show();
             Activate();
             Web.Focus();
@@ -977,11 +1077,13 @@ namespace FastApp
             if (_allowAutoHide && !_pinned && IsVisible) Hide();
         }
 
-        protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape) { Hide(); e.Handled = true; }
-            base.OnKeyDown(e);
-        }
+        // Escape is deliberately NOT handled here. WebView2 forwards it to the
+        // host as an accelerator key, so this used to fire on every view and
+        // hide the whole window -- which meant Escape in Settings or Manage
+        // closed FastApp instead of going back, even though the page had
+        // already handled it and moved to the previous view. The page knows
+        // which view it is on; it sends "close" itself when there is nowhere
+        // left to go back to.
 
         private static void OpenExternally(string url)
         {
@@ -1005,6 +1107,8 @@ namespace FastApp
             public string Key { get; set; }
             public string Text { get; set; }
             public List<string> Paths { get; set; }
+            public int Minutes { get; set; }
+            public string Pin { get; set; }
         }
 
         /// <summary>

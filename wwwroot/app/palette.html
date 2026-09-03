@@ -388,6 +388,58 @@
 
 </div>
 
+<!-- Extend time. Lives here rather than in a native dialog because the whole
+     point of the feature is to work when the browser is off limits -- often
+     because the browser is the app being limited. -->
+<div class="extend" id="view-extend" hidden>
+
+    <div class="detail-head">
+        <span class="icon-btn" data-back-extend>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </span>
+        <span class="detail-title">
+            <span class="detail-name">Extend app time</span>
+            <span class="row-sub">Today only. Tomorrow's limit is unchanged.</span>
+        </span>
+        <span class="chrome-spacer"></span>
+        <span class="stat">
+            <span class="label">LIMITED</span>
+            <span class="stat-value" id="x-count">0</span>
+        </span>
+    </div>
+
+    <div class="detail-grid extend-grid">
+
+        <section class="card" id="x-form">
+            <span class="label">APP</span>
+            <select class="field" id="x-app"></select>
+            <span class="field-label" id="x-usage"></span>
+
+            <span class="label" style="margin-top: 4px;">EXTRA TIME</span>
+            <div class="x-minutes" id="x-minutes"></div>
+
+            <span class="label" style="margin-top: 4px;">PIN</span>
+            <input class="field" id="x-pin" type="password" inputmode="numeric"
+                   placeholder="Required" autocomplete="off">
+            <span class="field-label x-message" id="x-message"></span>
+        </section>
+
+        <section class="card" id="x-empty" hidden>
+            <span class="label">NOTHING TO EXTEND</span>
+            <span class="field-label" id="x-empty-text">No app has a daily limit set.</span>
+        </section>
+
+    </div>
+
+    <div class="detail-foot">
+        <span class="label">ESC BACK</span>
+        <span class="chrome-spacer"></span>
+        <button class="btn btn-primary" id="x-grant" type="button">Grant</button>
+    </div>
+
+</div>
+
 <script src="palette.js"></script>
 </body>
 </html>
