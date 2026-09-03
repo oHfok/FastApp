@@ -49,6 +49,37 @@
     --violet: #8B7CFF;
     --violet-dim: #4E4599;
 
+    /* --- The accent, twice -------------------------------------------------
+       On a dark ground one brass does both jobs: it reads as text and it works
+       as a button. On a light ground it cannot -- #E8A33D measures 2:1 as text
+       on white -- so the two split. --brass is the accent that has to be READ
+       and changes with the theme; --brass-fill is the accent that gets SAT ON,
+       vivid in both themes, always under --ink-on-fill. */
+    --brass-fill: #E8A33D;
+    --teal-fill: #34D3C4;
+    --violet-fill: #8B7CFF;
+    --ink-on-fill: #1A1000;
+
+    /* --- Washes -------------------------------------------------------------
+       Accent tints used as backgrounds, and the reason this file has them at
+       all: their alpha is not a constant across themes. A 16% brass wash on
+       near-black is a hint; the same wash on off-white darkens the ground
+       enough to drop the brass text sitting on it below AA. Measured rather
+       than guessed -- 0.11 is the most a light ground takes before
+       brass-on-brass fails, and rose needs a darker text to survive at all. */
+    --wash-brass: rgba(232, 163, 61, 0.09);
+    --wash-brass-strong: rgba(232, 163, 61, 0.16);
+    --wash-teal: rgba(52, 211, 196, 0.16);
+    --wash-rose: rgba(255, 107, 107, 0.10);
+    --wash-rose-soft: rgba(255, 107, 107, 0.08);
+
+    /* Surface lifts and scrims. White over a dark ground, black over a light
+       one, which is why they cannot stay literals. */
+    --lift: rgba(255, 255, 255, 0.08);
+    --lift-strong: rgba(255, 255, 255, 0.12);
+    --scrim: rgba(0, 0, 0, 0.55);
+    --shadow-soft: rgba(0, 0, 0, 0.25);
+
     /* One face for everything that is not a figure. The design is set in Space
        Grotesk -- squarer, more characterful, and it pairs with JetBrains Mono
        rather than fighting it. Sora and Inter are gone: two faces doing one job,
@@ -96,4 +127,138 @@
        canvases re-theme along with everything else instead of staying fixed. */
     --chart-grid: rgba(243, 241, 234, 0.06);
     --chart-tooltip-bg: rgba(20, 22, 31, 0.95);
+}
+
+/* ---------------------------------------------------------------------------
+   Light.
+
+   FastApp was dark with no way out of it: WPF-UI pinned to Dark, nothing
+   reading the Windows theme, and all three dashboard themes dark. Someone
+   running Windows in Light got a permanently dark application and no setting
+   to change it, which reads as unfinished rather than as a decision.
+
+   The values live once, as --l-* below, and are mapped onto the real tokens
+   twice: for an explicit light choice, and for no choice at all on a machine
+   set to light. Written out twice instead, the two copies drifted within
+   minutes -- the selected row kept a wash the other copy had already been
+   corrected for, and measured 4.46:1 on the rendered page.
+
+   Only tokens are mapped. Every component styles itself through them, so
+   nothing below this line needs a light-specific rule -- and a colour written
+   as a literal in a component is a colour this section cannot reach, which is
+   why the washes became tokens in the first place.
+
+   The ground is warm rather than a pure white, biased slightly toward the
+   brass so the palette reads as chosen instead of defaulted. Every value was
+   measured in the pairing it actually appears in, including accent text on its
+   own wash, which is where a naive inversion fails.
+   --------------------------------------------------------------------------- */
+:root {
+    --l-bg: #F5F3EF;
+    --l-bg-raised: #FFFFFF;
+    --l-panel: rgba(22, 23, 29, 0.04);
+    --l-panel-solid: #FFFFFF;
+    --l-panel-border: rgba(22, 23, 29, 0.12);
+    --l-panel-border-soft: rgba(22, 23, 29, 0.07);
+
+    --l-text: #16171D;
+    --l-text-dim: #4E5262;
+    --l-text-faint: #63687A;
+
+    /* Read, not sat on: #8A6321 clears AA on the ground (4.87:1), on a white
+       card (5.40:1) and on its own wash (4.61:1). --brass-fill stays vivid in
+       both themes for anything with dark ink on top of it. */
+    --l-brass: #8A6321;
+    --l-brass-dim: #B08A4A;
+    --l-brass-glow: rgba(138, 99, 33, 0.30);
+
+    --l-teal: #0F6B61;
+    --l-teal-dim: #7FC4BC;
+
+    /* Darker than the obvious #C43C3C, which fails on its own hover wash
+       (4.24:1). #A32929 clears it at 5.93:1. */
+    --l-rose: #A32929;
+    --l-rose-dim: #D89A9A;
+
+    --l-violet: #5B4FC7;
+    --l-violet-dim: #A9A2E0;
+
+    /* A narrow range: brass text on its own wash clears AA up to 0.11 and no
+       further, so the selected row sits at 0.07 and the pressed chip at 0.11,
+       rather than the 0.09/0.16 the dark theme can afford. */
+    --l-wash-brass: rgba(232, 163, 61, 0.07);
+    --l-wash-brass-strong: rgba(232, 163, 61, 0.11);
+    --l-wash-teal: rgba(52, 211, 196, 0.20);
+    --l-wash-rose: rgba(255, 107, 107, 0.10);
+    --l-wash-rose-soft: rgba(255, 107, 107, 0.08);
+
+    --l-lift: rgba(22, 23, 29, 0.07);
+    --l-lift-strong: rgba(22, 23, 29, 0.11);
+    --l-scrim: rgba(22, 23, 29, 0.35);
+    --l-shadow-soft: rgba(22, 23, 29, 0.10);
+}
+
+/* An explicit choice, and no choice at all on a machine set to light. The
+   media rule is guarded so a stamped theme -- the dark default and the two
+   alternates included -- still beats the OS. */
+:root[data-theme="light"] {
+    --bg: var(--l-bg);
+    --bg-raised: var(--l-bg-raised);
+    --panel: var(--l-panel);
+    --panel-solid: var(--l-panel-solid);
+    --panel-border: var(--l-panel-border);
+    --panel-border-soft: var(--l-panel-border-soft);
+    --text: var(--l-text);
+    --text-dim: var(--l-text-dim);
+    --text-faint: var(--l-text-faint);
+    --brass: var(--l-brass);
+    --brass-dim: var(--l-brass-dim);
+    --brass-glow: var(--l-brass-glow);
+    --teal: var(--l-teal);
+    --teal-dim: var(--l-teal-dim);
+    --rose: var(--l-rose);
+    --rose-dim: var(--l-rose-dim);
+    --violet: var(--l-violet);
+    --violet-dim: var(--l-violet-dim);
+    --wash-brass: var(--l-wash-brass);
+    --wash-brass-strong: var(--l-wash-brass-strong);
+    --wash-teal: var(--l-wash-teal);
+    --wash-rose: var(--l-wash-rose);
+    --wash-rose-soft: var(--l-wash-rose-soft);
+    --lift: var(--l-lift);
+    --lift-strong: var(--l-lift-strong);
+    --scrim: var(--l-scrim);
+    --shadow-soft: var(--l-shadow-soft);
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+        --bg: var(--l-bg);
+        --bg-raised: var(--l-bg-raised);
+        --panel: var(--l-panel);
+        --panel-solid: var(--l-panel-solid);
+        --panel-border: var(--l-panel-border);
+        --panel-border-soft: var(--l-panel-border-soft);
+        --text: var(--l-text);
+        --text-dim: var(--l-text-dim);
+        --text-faint: var(--l-text-faint);
+        --brass: var(--l-brass);
+        --brass-dim: var(--l-brass-dim);
+        --brass-glow: var(--l-brass-glow);
+        --teal: var(--l-teal);
+        --teal-dim: var(--l-teal-dim);
+        --rose: var(--l-rose);
+        --rose-dim: var(--l-rose-dim);
+        --violet: var(--l-violet);
+        --violet-dim: var(--l-violet-dim);
+        --wash-brass: var(--l-wash-brass);
+        --wash-brass-strong: var(--l-wash-brass-strong);
+        --wash-teal: var(--l-wash-teal);
+        --wash-rose: var(--l-wash-rose);
+        --wash-rose-soft: var(--l-wash-rose-soft);
+        --lift: var(--l-lift);
+        --lift-strong: var(--l-lift-strong);
+        --scrim: var(--l-scrim);
+        --shadow-soft: var(--l-shadow-soft);
+    }
 }

@@ -23,9 +23,21 @@ namespace FastApp
 
     public partial class OsdWindow : Window
     {
-        private static readonly Brush Brass = Frozen("#E8A33D");
-        private static readonly Brush Violet = Frozen("#8B7CFF");
-        private static readonly Brush Rose = Frozen("#FF6B6B");
+        // Per theme, for the same reason as the progress list: a frozen literal
+        // is a colour the theme cannot reach.
+        private static bool Light => Services.SystemTheme.IsLight;
+
+        private static Brush Brass => Light ? LightBrass : DarkBrass;
+        private static Brush Violet => Light ? LightViolet : DarkViolet;
+        private static Brush Rose => Light ? LightRose : DarkRose;
+
+        private static readonly Brush DarkBrass = Frozen("#E8A33D");
+        private static readonly Brush DarkViolet = Frozen("#8B7CFF");
+        private static readonly Brush DarkRose = Frozen("#FF6B6B");
+
+        private static readonly Brush LightBrass = Frozen("#8A6321");
+        private static readonly Brush LightViolet = Frozen("#5B4FC7");
+        private static readonly Brush LightRose = Frozen("#A32929");
 
         private readonly DispatcherTimer _hideTimer;
 

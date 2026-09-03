@@ -152,9 +152,38 @@ namespace FastApp
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
+        /// <summary>
+        /// The window behind the page, and the colour the WebView2 paints
+        /// before the page has drawn anything.
+        ///
+        /// Both were the literal #0A0B10, so on a light desktop the palette
+        /// flashed a black rectangle on every summon and kept a black edge
+        /// around a light page. The page itself follows the OS on its own,
+        /// through prefers-color-scheme; this is the frame it sits in.
+        /// </summary>
+        private void ApplyWindowTheme()
+        {
+            var ground = Services.SystemTheme.IsLight
+                ? System.Windows.Media.Color.FromRgb(0xF5, 0xF3, 0xEF)
+                : System.Windows.Media.Color.FromRgb(0x0A, 0x0B, 0x10);
+
+            Background = new System.Windows.Media.SolidColorBrush(ground);
+
+            // Only once the control exists: setting it before initialisation
+            // throws rather than being remembered.
+            if (Web?.CoreWebView2 != null || Web != null)
+            {
+                try { Web.DefaultBackgroundColor = System.Drawing.Color.FromArgb(ground.R, ground.G, ground.B); }
+                catch { /* not ready yet; the next call covers it */ }
+            }
+        }
+
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
+
+            ApplyWindowTheme();
+            Services.SystemTheme.Changed += ApplyWindowTheme;
 
             // Rounded corners and the system drop shadow, from the compositor
             // rather than from WPF. Doing it this way is what lets the window

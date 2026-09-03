@@ -12,6 +12,33 @@ namespace FastApp
     /// </summary>
     public partial class App : System.Windows.Application
     {
+        private static readonly Uri LightBrandUri =
+            new("pack://application:,,,/Themes/Brand.Light.xaml", UriKind.Absolute);
+
+        /// <summary>
+        /// Merge the light dictionary over the brand palette, or take it away.
+        ///
+        /// Merged rather than swapped wholesale: Brand.Light.xaml carries only
+        /// the keys whose meaning changes, so everything it does not mention
+        /// keeps the value Brand.xaml gave it and the two files cannot drift
+        /// apart on the values they share.
+        /// </summary>
+        private static void ApplySystemTheme()
+        {
+            var merged = Current?.Resources?.MergedDictionaries;
+            if (merged == null) return;
+
+            for (int i = merged.Count - 1; i >= 0; i--)
+            {
+                if (merged[i].Source == LightBrandUri) merged.RemoveAt(i);
+            }
+
+            if (Services.SystemTheme.IsLight)
+            {
+                merged.Add(new ResourceDictionary { Source = LightBrandUri });
+            }
+        }
+
         // Kept in step with BrandBrassColor in Themes/Brand.xaml and --brass in
         // wwwroot/css/base.css. WPF-UI's accent has to be applied in code, so
         // this one value cannot live in the dictionary with the others.
@@ -22,6 +49,12 @@ namespace FastApp
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Before anything renders, so the first window is already the right
+            // colour rather than repainting on its first frame.
+            Services.SystemTheme.Start();
+            ApplySystemTheme();
+            Services.SystemTheme.Changed += ApplySystemTheme;
+
             // 1. Global Error Traps: Catch silent crashes before the app closes!
             AppDomain.CurrentDomain.UnhandledException += (s, ex) =>
             {

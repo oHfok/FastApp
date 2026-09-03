@@ -23,18 +23,40 @@ namespace FastApp.Services
     /// </summary>
     internal static class TrayMenuTheme
     {
-        // --panel-solid #14161F, the menu surface
-        private static readonly Color Surface = Color.FromArgb(0x14, 0x16, 0x1F);
+        // Two palettes rather than one, because this menu is drawn by hand and
+        // cannot inherit a theme the way the web surfaces do. Properties rather
+        // than readonly fields: the theme can change while the app is running,
+        // and a field captured at class load would keep the colours it started
+        // with.
+        private static bool Light => SystemTheme.IsLight;
+
+        // --panel-solid, the menu surface
+        private static Color Surface => Light
+            ? Color.FromArgb(0xFF, 0xFF, 0xFF)
+            : Color.FromArgb(0x14, 0x16, 0x1F);
         // --panel-border rgba(255,255,255,0.08) over that surface
-        private static readonly Color Border = Color.FromArgb(0x2B, 0x2D, 0x35);
+        private static Color Border => Light
+            ? Color.FromArgb(0xE0, 0xDE, 0xD9)
+            : Color.FromArgb(0x2B, 0x2D, 0x35);
         // --panel-border-soft, for the dividers
-        private static readonly Color Divider = Color.FromArgb(0x23, 0x25, 0x2C);
+        private static Color Divider => Light
+            ? Color.FromArgb(0xEC, 0xEA, 0xE6)
+            : Color.FromArgb(0x23, 0x25, 0x2C);
         // --text and --text-faint
-        private static readonly Color Text = Color.FromArgb(0xF3, 0xF1, 0xEA);
-        private static readonly Color TextFaint = Color.FromArgb(0x7C, 0x81, 0x94);
+        private static Color Text => Light
+            ? Color.FromArgb(0x16, 0x17, 0x1D)
+            : Color.FromArgb(0xF3, 0xF1, 0xEA);
+        private static Color TextFaint => Light
+            ? Color.FromArgb(0x63, 0x68, 0x7A)
+            : Color.FromArgb(0x7C, 0x81, 0x94);
         // --brass, and --brass at 0.12 over the surface: focus, and only focus
-        private static readonly Color Brass = Color.FromArgb(0xE8, 0xA3, 0x3D);
-        private static readonly Color BrassWash = Color.FromArgb(0x2D, 0x27, 0x23);
+        // Darker on light, where the vivid brass measures 2:1 as text.
+        private static Color Brass => Light
+            ? Color.FromArgb(0x8A, 0x63, 0x21)
+            : Color.FromArgb(0xE8, 0xA3, 0x3D);
+        private static Color BrassWash => Light
+            ? Color.FromArgb(0xF7, 0xEC, 0xDC)
+            : Color.FromArgb(0x2D, 0x27, 0x23);
 
         private const int DwmwaWindowCornerPreference = 33;
         private const int DwmwcpRound = 2;

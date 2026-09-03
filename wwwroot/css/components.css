@@ -76,7 +76,7 @@
 .cat-bar-seg {
     height: 100%;
     transition: width 0.4s ease;
-    border-right: 1px solid rgba(0,0,0,0.25);
+    border-right: 1px solid var(--shadow-soft);
 }
 
 .cat-legend {
@@ -146,7 +146,7 @@
     transition: background 0.15s;
 }
 
-.lb-row:hover { background: rgba(255, 255, 255, 0.06); }
+.lb-row:hover { background: var(--panel); }
 
 .lb-bar {
     height: 6px;
@@ -304,9 +304,9 @@
    -- effectively invisible on the three rows meant to draw the eye first. The
    fills are darkened enough to carry white text while keeping each medal's
    identity, and the glow is unchanged so they still stand out. */
-.medal-gold { background: linear-gradient(135deg, #E0A63C, #9A6B15); color: #1A1000; }
+.medal-gold { background: linear-gradient(135deg, #E0A63C, #9A6B15); color: var(--ink-on-fill); }
 .medal-silver { background: linear-gradient(135deg, #A8AEBC, #6B7180); color: #14161C; }
-.medal-bronze { background: linear-gradient(135deg, #C07A44, #7E4A24); color: #1A1000; }
+.medal-bronze { background: linear-gradient(135deg, #C07A44, #7E4A24); color: var(--ink-on-fill); }
 
 .full-lb-trend {
     display: flex;
@@ -461,7 +461,7 @@
     bottom: 3px;
     border-radius: 4px;
     cursor: pointer;
-    border-right: 1px solid rgba(0,0,0,0.3);
+    border-right: 1px solid var(--shadow-soft);
     transition: filter 0.12s;
 }
 
@@ -486,7 +486,7 @@
 /* Ink is picked per block from the colour underneath it -- see
    labelWideTimelineSegments. The shadow is a halo in the opposite direction from
    the text, so a block that sits mid-range stays legible either way. */
-.timeline-seg-label.on-dark  { color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55); }
+.timeline-seg-label.on-dark  { color: #FFFFFF; text-shadow: 0 1px 2px var(--scrim); }
 .timeline-seg-label.on-light { color: #14161C; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.45); }
 
 /* ---------- Weeks & Months tab ---------- */
@@ -527,7 +527,7 @@
     flex-shrink: 0;
 }
 
-.period-rank-badge.rank-1 { color: #1A1000; background: var(--brass); }
+.period-rank-badge.rank-1 { color: var(--ink-on-fill); background: var(--brass-fill); }
 
 .period-main { min-width: 0; }
 .period-label { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -709,7 +709,7 @@
 }
 
 .compare-block { padding: 14px 16px; text-align: center; }
-.compare-block.is-current { border-color: var(--brass-dim); background: rgba(232,163,61,0.06); }
+.compare-block.is-current { border-color: var(--brass-dim); background: var(--wash-brass); }
 /* The period being viewed is the number that should catch your eye first —
    Previous/Next/Current are comparison anchors, not the headline. Uptime
    never gets its own number here at all (just the bar's caption line),
@@ -896,7 +896,7 @@
 .drawer-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.55);
+    background: var(--scrim);
     z-index: 60;
     opacity: 0;
     pointer-events: none;
@@ -914,7 +914,7 @@
     max-width: 92vw;
     background: var(--panel-solid);
     border-left: none;
-    box-shadow: -24px 0 60px rgba(0,0,0,0.55);
+    box-shadow: -24px 0 60px var(--scrim);
     transform: translateX(100%);
     transition: transform 0.25s ease;
     z-index: 70;
@@ -1043,7 +1043,7 @@
 .dd-tier-item.reached { opacity: 1; }
 /* The tier you are on is marked by a brass wash rather than a heavier outline,
    since nothing else in the design uses border weight to say anything. */
-.dd-tier-item.current { background: rgba(232, 163, 61, 0.12); }
+.dd-tier-item.current { background: var(--wash-brass); }
 .dd-tier-dot {
     width: 12px;
     height: 12px;
@@ -1153,14 +1153,14 @@
     transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .theme-swatch:hover { border-color: var(--brass-dim); }
-.theme-swatch.active { border-color: var(--brass); color: var(--text); background: rgba(232, 163, 61, 0.08); }
+.theme-swatch.active { border-color: var(--brass); color: var(--text); background: var(--wash-brass); }
 
 .theme-swatch-dot {
     width: 12px;
     height: 12px;
     border-radius: 50%;
     flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid var(--lift-strong);
 }
 
 /* ---------- Settings view ---------- */
@@ -1216,7 +1216,7 @@
     padding: 7px 14px 7px 11px;
     border-radius: var(--radius-pill);
     border: none;
-    background: rgba(232, 163, 61, 0.10);
+    background: var(--wash-brass);
     color: var(--brass);
     font-family: var(--font-display);
     font-size: var(--fs-body);
@@ -1226,7 +1226,7 @@
     flex-shrink: 0;
     transition: background 0.15s;
 }
-.tb-wrapped-btn:hover { background: linear-gradient(180deg, rgba(232, 163, 61, 0.24), rgba(232, 163, 61, 0.08)); }
+.tb-wrapped-btn:hover { background: linear-gradient(180deg, var(--wash-brass-strong), var(--wash-brass)); }
 .tb-wrapped-btn svg { width: 15px; height: 15px; }
 .tb-wrapped-ready-dot {
     width: 6px; height: 6px; border-radius: 50%;
@@ -1242,7 +1242,7 @@
     border-radius: 14px;
     border: 1px solid var(--panel-border);
     background: var(--panel-solid);
-    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 24px 48px -12px var(--scrim);
     padding: 16px;
     z-index: 40;
 }
@@ -1259,7 +1259,7 @@
     cursor: pointer;
     transition: background 0.15s;
 }
-.wrapped-card:hover { background: rgba(232, 163, 61, 0.08); border-color: var(--brass-dim); }
+.wrapped-card:hover { background: var(--wash-brass); border-color: var(--brass-dim); }
 .wrapped-card:last-of-type { margin-bottom: 0; }
 .wrapped-card-eyebrow { font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
 .wrapped-card-teaser { font-size: var(--fs-body); color: var(--text); margin-top: 3px; }
@@ -1274,8 +1274,31 @@
     text-align: center;
 }
 
-/* --- Story overlay --- */
+/* --- Story overlay ---
+   Wrapped is a cinematic full-screen story and stays dark whatever the page
+   is: a year in review is not a form. Rather than special-casing every slide,
+   the overlay redeclares the dark tokens for its own subtree, so every rule
+   inside it keeps resolving the way it was designed. */
 .wrapped-overlay {
+    --bg: #0A0B10;
+    --bg-raised: #101219;
+    --panel: rgba(255, 255, 255, 0.035);
+    --panel-solid: #14161F;
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --panel-border-soft: rgba(255, 255, 255, 0.05);
+    --text: #F3F1EA;
+    --text-dim: #9C9FAE;
+    --text-faint: #7C8194;
+    --brass: #E8A33D;
+    --brass-dim: #8A6321;
+    --teal: #34D3C4;
+    --rose: #FF6B6B;
+    --violet: #8B7CFF;
+    --wash-brass: rgba(232, 163, 61, 0.09);
+    --wash-brass-strong: rgba(232, 163, 61, 0.16);
+    --lift: rgba(255, 255, 255, 0.08);
+    --lift-strong: rgba(255, 255, 255, 0.12);
+
     position: fixed;
     inset: 0;
     background: rgba(5, 6, 9, 0.82);
@@ -1290,7 +1313,7 @@
     width: 36px; height: 36px;
     border-radius: 50%;
     border: 1px solid var(--panel-border);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--panel);
     color: var(--text-dim);
     font-size: var(--fs-title);
     line-height: 1;
@@ -1359,14 +1382,14 @@
     display: flex;
     flex-direction: column;
     padding: 28px 26px 22px;
-    box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 40px 80px -20px var(--scrim);
     pointer-events: none; /* the nav zones above handle clicks; content is decorative */
 }
 .wrapped-slide::before {
     content: "";
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-image: radial-gradient(var(--panel) 1px, transparent 1px);
     background-size: 14px 14px;
     mask-image: radial-gradient(circle at 50% 35%, black 0%, transparent 70%);
 }
@@ -1380,7 +1403,7 @@
 .wrapped-slide #wrapped-slide-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 .wrapped-slide .progress-row { display: flex; gap: 5px; margin-bottom: 20px; }
-.wrapped-slide .progress-seg { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); }
+.wrapped-slide .progress-seg { flex: 1; height: 3px; border-radius: 2px; background: var(--lift-strong); }
 .wrapped-slide .progress-seg.done { background: var(--brass-dim); }
 .wrapped-slide .progress-seg.active { background: var(--brass); }
 
@@ -1433,7 +1456,7 @@
 .wrapped-slide .hero-caption { font-size: var(--fs-strong); color: var(--text-dim); max-width: 260px; }
 
 .wrapped-slide .foot { display: grid; gap: 10px; margin-top: 22px; }
-.wrapped-slide .foot-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--panel-border-soft); border-radius: var(--radius); padding: 12px 14px; }
+.wrapped-slide .foot-card { background: var(--panel); border: 1px solid var(--panel-border-soft); border-radius: var(--radius); padding: 12px 14px; }
 .wrapped-slide .foot-label { font-size: var(--fs-micro); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
 .wrapped-slide .foot-value { font-family: var(--font-mono); font-size: var(--fs-strong); font-weight: 700; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .wrapped-slide .foot-value.teal { color: var(--teal); }
@@ -1448,7 +1471,7 @@
 .wrapped-slide .bar-track { width: 100%; flex: 1; display: flex; align-items: flex-end; }
 .wrapped-slide .bar-fill { width: 100%; min-height: 3px; border-radius: 4px 4px 2px 2px; background: var(--brass-dim); transition: height 0.3s ease; }
 .wrapped-slide .bar-fill.is-peak { background: var(--brass); box-shadow: 0 0 20px var(--brass-glow); }
-.wrapped-slide .bar-fill.is-future { background: rgba(255, 255, 255, 0.06); }
+.wrapped-slide .bar-fill.is-future { background: var(--panel); }
 .wrapped-slide .bar-label { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-faint); }
 
 /* --- Category breakdown: dominant category as the hero stat, the rest of
@@ -1527,8 +1550,8 @@
     letter-spacing: 0.06em;
     padding: 3px 7px;
     border-radius: 4px;
-    background: var(--brass);
-    color: #1A1000;
+    background: var(--brass-fill);
+    color: var(--ink-on-fill);
 }
 .release-body { padding: 2px 16px 16px; border-top: 1px solid var(--panel-border-soft); }
 .release-nonotes { color: var(--text-faint); font-size: var(--fs-small); font-style: italic; }
@@ -1877,9 +1900,9 @@
 
 /* Work/Play toggles are coloured by what they mean, matching the chart legend
    above them, rather than all taking the brass that means focus. */
-.classification-list .segmented button.seg-work.active    { background: var(--teal);   color: #06231F; }
-.classification-list .segmented button.seg-play.active    { background: var(--violet); color: #14102B; }
-.classification-list .segmented button.seg-neutral.active { background: rgba(255,255,255,0.12); color: var(--text); }
+.classification-list .segmented button.seg-work.active    { background: var(--teal-fill);   color: var(--ink-on-fill); }
+.classification-list .segmented button.seg-play.active    { background: var(--violet-fill); color: var(--ink-on-fill); }
+.classification-list .segmented button.seg-neutral.active { background: var(--lift-strong); color: var(--text); }
 
 /* Configure Work vs. Play sits in half a row now, so the item has to hold its
    line at ~370px: the pills lose their generous padding, and the category name

@@ -1,0 +1,39 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        The light half of the brand palette, merged over Brand.xaml when Windows
+        is set to light. Only the keys whose meaning changes are here; anything
+        absent keeps the value Brand.xaml gave it, which is the point of merging
+        rather than duplicating the whole file.
+
+        The same values as the light block in wwwroot/css/tokens.css, so the two
+        surfaces of the same application agree. They were measured there against
+        WCAG AA in the pairings they actually appear in, including accent text
+        sitting on its own wash, which is where a naive inversion fails.
+    -->
+
+    <!-- Read, not sat on. #8A6321 clears AA on the light ground; #E8A33D is
+         2:1 there. Anything with dark ink on top keeps the vivid fill below. -->
+    <Color x:Key="BrandBrassColor">#8A6321</Color>
+    <SolidColorBrush x:Key="BrandBrass" Color="{StaticResource BrandBrassColor}"/>
+    <SolidColorBrush x:Key="BrandBrassDim" Color="#B08A4A"/>
+
+    <SolidColorBrush x:Key="BrandAction" Color="#5B4FC7"/>
+
+    <SolidColorBrush x:Key="BrandText" Color="#16171D"/>
+    <SolidColorBrush x:Key="BrandTextDim" Color="#4E5262"/>
+    <SolidColorBrush x:Key="BrandTextFaint" Color="#63687A"/>
+
+    <!-- The overlays sit over whatever is on screen, so they stay nearly
+         opaque; what changes is which way the wash goes. -->
+    <SolidColorBrush x:Key="BrandOverlayBackground" Color="#F2FBFAF7"/>
+    <SolidColorBrush x:Key="BrandOverlayBorder" Color="#2216171D"/>
+    <SolidColorBrush x:Key="BrandOverlayTrack" Color="#1416171D"/>
+
+    <SolidColorBrush x:Key="BrandTeal" Color="#0F6B61"/>
+    <SolidColorBrush x:Key="BrandRose" Color="#A32929"/>
+
+    <SolidColorBrush x:Key="BrandChipBackground" Color="#1216171D"/>
+
+</ResourceDictionary>

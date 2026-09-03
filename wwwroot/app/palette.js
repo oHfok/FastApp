@@ -1102,7 +1102,7 @@ function buildScanRow(app, index) {
         mark.setAttribute('height', '12');
         mark.setAttribute('viewBox', '0 0 24 24');
         mark.setAttribute('fill', 'none');
-        mark.setAttribute('stroke', '#1A1000');
+        mark.setAttribute('stroke', 'currentColor');
         mark.setAttribute('stroke-width', '3');
         mark.setAttribute('stroke-linecap', 'round');
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -1115,7 +1115,7 @@ function buildScanRow(app, index) {
     avatar.className = 'avatar';
     avatar.style.width = '30px';
     avatar.style.height = '30px';
-    avatar.style.background = 'rgba(255, 255, 255, 0.035)';
+    avatar.style.background = 'var(--panel)';
     avatar.textContent = (app.name[0] || '?').toUpperCase();
 
     const text = document.createElement('span');

@@ -23,7 +23,7 @@ html, body {
 body {
     background: var(--bg);
     background-image:
-        radial-gradient(ellipse 900px 500px at 15% -10%, rgba(232, 163, 61, 0.07), transparent 60%),
+        radial-gradient(ellipse 900px 500px at 15% -10%, var(--wash-brass), transparent 60%),
         radial-gradient(ellipse 700px 500px at 100% 10%, rgba(139, 124, 255, 0.06), transparent 60%);
     color: var(--text);
     font-family: var(--font-body);
@@ -325,7 +325,7 @@ h1, h2, h3, .num-display {
 }
 
 .rail-item.active {
-    background: rgba(232, 163, 61, 0.09);
+    background: var(--wash-brass);
     color: var(--brass);
     border-left-color: var(--brass);
 }
@@ -459,8 +459,8 @@ h1, h2, h3, .num-display {
 .segmented button:hover:not(.active) { color: var(--text-dim); }
 
 .segmented button.active {
-    background: var(--brass);
-    color: #1A1000;
+    background: var(--brass-fill);
+    color: var(--ink-on-fill);
 }
 
 /* ---------- Inputs ---------- */
@@ -501,8 +501,8 @@ select.field {
 }
 
 .btn-brass {
-    background: var(--brass);
-    color: #1A1000;
+    background: var(--brass-fill);
+    color: var(--ink-on-fill);
 }
 
 .btn-brass:hover { filter: brightness(1.08); }
@@ -527,8 +527,8 @@ select.field {
     cursor: default;
 }
 
-.trend-up { background: rgba(52, 211, 196, 0.12); color: var(--teal); }
-.trend-down { background: rgba(255, 107, 107, 0.12); color: var(--rose); }
+.trend-up { background: var(--wash-teal); color: var(--teal); }
+.trend-down { background: var(--wash-rose); color: var(--rose); }
 
 /* App Detail's comparison rows are the one place where all four trends describe
    a single app's own usage going up or down. Using an app less is not a failure
@@ -542,7 +542,7 @@ select.field {
     color: var(--text-dim);
 }
 .trend-flat { background: rgba(156, 159, 174, 0.1); color: var(--text-faint); }
-.trend-new { background: rgba(232, 163, 61, 0.12); color: var(--brass); }
+.trend-new { background: var(--wash-brass); color: var(--brass); }
 
 /* ---------- Tooltip (custom, fixed-position) ---------- */
 .tooltip-box {
@@ -559,7 +559,7 @@ select.field {
     z-index: 999;
     display: none;
     white-space: pre-line;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 12px 30px var(--scrim);
     max-width: 240px;
 }
 
@@ -603,7 +603,7 @@ select.field {
     padding: 18px 20px;
     margin-bottom: 22px;
     border-radius: var(--radius-sm);
-    background: rgba(232, 163, 61, 0.06);
+    background: var(--wash-brass);
     border: 1px solid var(--brass-dim);
 }
 .first-run-title {
@@ -660,7 +660,7 @@ select.field {
     transition: background 0.12s, color 0.12s;
 }
 .date-stepper button + button { border-left: none; }
-.date-stepper button:hover:not(:disabled) { background: rgba(255,255,255,0.05); color: var(--text); }
+.date-stepper button:hover:not(:disabled) { background: var(--panel); color: var(--text); }
 .date-stepper button:disabled { opacity: 0.35; cursor: default; }
 #ov-date-prev, #ov-date-next { font-size: var(--fs-stat); line-height: 1; padding: 6px 12px; }
 
@@ -675,7 +675,7 @@ select.field {
     padding: 12px 16px;
     margin-bottom: 20px;
     border-radius: var(--radius-sm);
-    background: rgba(255, 107, 107, 0.08);
+    background: var(--wash-rose-soft);
     border: 1px solid var(--rose-dim, rgba(255, 107, 107, 0.35));
     color: var(--text);
     font-size: var(--fs-body);
@@ -719,8 +719,8 @@ select.field {
     left: -9999px;
     top: 0;
     z-index: 200;
-    background: var(--brass);
-    color: #10121A;
+    background: var(--brass-fill);
+    color: var(--ink-on-fill);
     padding: 10px 18px;
     font-weight: 700;
     font-size: var(--fs-body);

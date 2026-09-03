@@ -5,7 +5,6 @@
         Title="FastApp"
         Width="820" Height="560"
         WindowStyle="None"
-        Background="#0A0B10"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         Topmost="True"
@@ -20,5 +19,5 @@
          The rounded corners and the shadow come from DWM instead, set in
          OnSourceInitialized, which is also where every other Windows 11 app gets
          them. -->
-    <wv2:WebView2 x:Name="Web" DefaultBackgroundColor="#0A0B10"/>
+    <wv2:WebView2 x:Name="Web"/>
 </Window>

@@ -190,12 +190,33 @@ namespace FastApp
     /// </summary>
     public sealed class LaunchRow : INotifyPropertyChanged
     {
-        private static readonly Brush Text = Frozen("#F3F1EA");
-        private static readonly Brush Dim = Frozen("#9C9FAE");
-        private static readonly Brush Faint = Frozen("#7C8194");
-        private static readonly Brush Brass = Frozen("#E8A33D");
-        private static readonly Brush Teal = Frozen("#34D3C4");
-        private static readonly Brush Rose = Frozen("#FF6B6B");
+        // Resolved per theme rather than frozen at class load. These are
+        // deliberately not StaticResource -- a mistyped key in a DataTemplate
+        // fails at render time, during login -- but a literal is a colour the
+        // theme cannot reach, and on a light desktop every app name in this
+        // list was near-white on near-white.
+        private static bool Light => Services.SystemTheme.IsLight;
+
+        private static Brush Text => Light ? LightText : DarkText;
+        private static Brush Dim => Light ? LightDim : DarkDim;
+        private static Brush Faint => Light ? LightFaint : DarkFaint;
+        private static Brush Brass => Light ? LightBrass : DarkBrass;
+        private static Brush Teal => Light ? LightTeal : DarkTeal;
+        private static Brush Rose => Light ? LightRose : DarkRose;
+
+        private static readonly Brush DarkText = Frozen("#F3F1EA");
+        private static readonly Brush DarkDim = Frozen("#9C9FAE");
+        private static readonly Brush DarkFaint = Frozen("#7C8194");
+        private static readonly Brush DarkBrass = Frozen("#E8A33D");
+        private static readonly Brush DarkTeal = Frozen("#34D3C4");
+        private static readonly Brush DarkRose = Frozen("#FF6B6B");
+
+        private static readonly Brush LightText = Frozen("#16171D");
+        private static readonly Brush LightDim = Frozen("#4E5262");
+        private static readonly Brush LightFaint = Frozen("#63687A");
+        private static readonly Brush LightBrass = Frozen("#8A6321");
+        private static readonly Brush LightTeal = Frozen("#0F6B61");
+        private static readonly Brush LightRose = Frozen("#A32929");
 
         public LaunchRow(string name) { Name = name; }
 

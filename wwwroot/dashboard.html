@@ -23,7 +23,10 @@
     // this has to run before the stylesheets above finish, not after.
     (function () {
         var saved = localStorage.getItem('fastapp-theme');
-        if (saved) document.documentElement.setAttribute('data-theme', saved);
+        // "system" is stored as a choice but applied as the absence of one:
+        // with no attribute the stylesheet's prefers-color-scheme rule decides,
+        // which is what following Windows means.
+        if (saved && saved !== 'system') document.documentElement.setAttribute('data-theme', saved);
         // Both states are stamped, because "no attribute" is a third thing:
         // it lets a narrow window collapse the rail on its own. A stored
         // preference outranks that; a failed read leaves it to the window.
@@ -500,6 +503,14 @@
             More than a color swap — typography, shape, and density change too. Applies instantly, saved on this device only.
         </p>
         <div class="theme-picker" id="theme-picker">
+            <button class="theme-swatch" data-theme-value="system" onclick="setDashboardTheme('system')">
+                <span class="theme-swatch-dot" style="background:linear-gradient(135deg,#F5F3EF 50%,#0A0B10 50%);"></span>
+                Follow Windows
+            </button>
+            <button class="theme-swatch" data-theme-value="light" onclick="setDashboardTheme('light')">
+                <span class="theme-swatch-dot" style="background:#F5F3EF;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.2);"></span>
+                Daylight
+            </button>
             <button class="theme-swatch" data-theme-value="instrument" onclick="setDashboardTheme('instrument')">
                 <span class="theme-swatch-dot" style="background:#E8A33D;"></span>
                 Instrument Panel

@@ -18,12 +18,18 @@ function setSettingsTab(tab, btnEl) {
 }
 
 function loadDashboardTheme() {
-    const current = localStorage.getItem(DASHBOARD_THEME_KEY) || 'instrument';
+    // No stored choice means Windows decides, which is the new default: the
+    // app used to be dark whatever the OS was set to, with no way out.
+    const current = localStorage.getItem(DASHBOARD_THEME_KEY) || 'system';
     updateThemePickerActiveState(current);
 }
 
 function setDashboardTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
+    // Following Windows is the absence of a stamp, so the media query in
+    // tokens.css gets to decide. Stamping "system" would just be a third
+    // theme that happens to look like one of the other two.
+    if (theme === 'system') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(DASHBOARD_THEME_KEY, theme);
     updateThemePickerActiveState(theme);
     // Chart.js canvases and the JS-computed heatmap fills only re-theme when
