@@ -39,10 +39,104 @@ param(
 
     # Path to a markdown file to use as the GitHub release's body. Only takes
     # effect with -Publish; ignored otherwise.
-    [string]$NotesFile
+    [string]$NotesFile,
+
+    # How many recent full packages to keep in .\Releases after a successful
+    # publish. Everything older is deleted, but only once its version has been
+    # confirmed live on GitHub -- see Remove-PublishedPackages.
+    #
+    # This exists because the folder never cleaned itself: it had accumulated
+    # every package back to 1.0.6, 3.8 GB of them, and eventually filled the
+    # disk mid-pack. A full disk is also one of the ways SQLite corrupts a
+    # database, so this is not only about tidiness.
+    [int]$KeepPackages = 2,
+
+    # Skip the cleanup entirely, for when you want the local history.
+    [switch]$NoPrune
 )
 
 $ErrorActionPreference = "Stop"
+
+<#
+.SYNOPSIS
+    Delete local packages that are already published, keeping the most recent.
+
+.DESCRIPTION
+    Only ever removes a package whose version is present in `gh release list`.
+    That is the whole safety argument: a package that never made it upstream --
+    a local build done without -Publish, or an upload that failed halfway -- is
+    the only copy there is, and is left alone.
+
+    If the published list cannot be fetched, nothing is deleted. Failing to
+    tidy up is free; deleting the only copy of something is not.
+#>
+function Remove-PublishedPackages {
+    param(
+        [Parameter(Mandatory = $true)][string]$ReleasesDir,
+        [Parameter(Mandatory = $true)][int]$Keep
+    )
+
+    if (-not (Test-Path $ReleasesDir)) { return }
+
+    $published = $null
+    try {
+        $published = gh release list --repo oHfok/FastApp --limit 200 --json tagName |
+                     ConvertFrom-Json | ForEach-Object { $_.tagName }
+    }
+    catch {
+        Write-Host "==> Skipping cleanup: could not list published releases." -ForegroundColor Yellow
+        return
+    }
+    if (-not $published) {
+        Write-Host "==> Skipping cleanup: no published releases came back." -ForegroundColor Yellow
+        return
+    }
+
+    $publishedSet = @{}
+    foreach ($tag in $published) { $publishedSet[$tag] = $true }
+
+    # Sorted by version, not by name: a string sort puts 1.0.9 after 1.0.10.
+    $packages =
+        Get-ChildItem $ReleasesDir -File -Filter "FastApp-*-full.nupkg" |
+        ForEach-Object {
+            $v = $_.Name -replace '^FastApp-', '' -replace '-full\.nupkg$', ''
+            $parsed = $null
+            if ([version]::TryParse($v, [ref]$parsed)) {
+                [pscustomobject]@{ File = $_; Version = $v; Parsed = $parsed }
+            }
+        } |
+        Sort-Object Parsed -Descending
+
+    if ($packages.Count -le $Keep) { return }
+
+    $stale = $packages | Select-Object -Skip $Keep
+    $removed = 0
+    $freed = 0
+
+    foreach ($package in $stale) {
+        if (-not $publishedSet.ContainsKey($package.Version)) {
+            Write-Host "   keeping $($package.Version): not published, so this is the only copy." -ForegroundColor Yellow
+            continue
+        }
+
+        $freed += $package.File.Length
+        Remove-Item $package.File.FullName -Force
+        $removed++
+
+        # Its delta, if one was ever built, goes with it.
+        $delta = Join-Path $ReleasesDir "FastApp-$($package.Version)-delta.nupkg"
+        if (Test-Path $delta) {
+            $freed += (Get-Item $delta).Length
+            Remove-Item $delta -Force
+        }
+    }
+
+    if ($removed -gt 0) {
+        $mb = [math]::Round($freed / 1MB, 0)
+        Write-Host "==> Cleaned up $removed published package(s), freeing $mb MB." -ForegroundColor Green
+    }
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
@@ -159,6 +253,11 @@ if ($Publish) {
     }
 
     Write-Host "==> v$Version is live. Installed copies of FastApp will pick it up automatically on next launch." -ForegroundColor Green
+
+    # Last, deliberately: everything above can throw, and a package that has not
+    # been confirmed live is a package worth keeping. By this line the upload
+    # succeeded and the notes are set.
+    if (-not $NoPrune) { Remove-PublishedPackages -ReleasesDir $releasesDir -Keep $KeepPackages }
 } else {
     Write-Host "==> Not published (pass -Publish to push this live to GitHub Releases)." -ForegroundColor Yellow
 }
