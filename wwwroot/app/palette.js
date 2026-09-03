@@ -52,17 +52,10 @@ const ICON_UPDATE =
     + '<path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path>'
     + '</svg>';
 
-const CATEGORY_TINT = {
-    Gaming: 'rgba(139, 124, 255, 0.18)',
-    Browsing: 'rgba(52, 211, 196, 0.18)',
-    Communication: 'rgba(29, 118, 109, 0.28)',
-    Development: 'rgba(139, 124, 255, 0.18)',
-    Other: 'rgba(255, 255, 255, 0.035)'
-};
-
-function tint(category) {
-    return CATEGORY_TINT[category] || CATEGORY_TINT.Other;
-}
+/* Category colours come from js/categories.js, shared with the dashboard. The
+   list here used to hold five of the eleven categories, so Music, Media
+   Production, Productivity, Fun, Education and Utilities all rendered in the
+   grey that means "uncategorised". */
 
 /* A plain subsequence match, so "vlr" finds Valorant. Ranked so that a prefix
    beats a word start, which beats a loose match anywhere. */
@@ -243,6 +236,24 @@ const MAX_HEIGHT = 760;
 /// a search result gives no other feedback -- the row it came from disappears
 /// as the list re-renders, which on its own reads like the click missed.
 let toastTimer = null;
+
+/// Put the caret in the search box, and check that it landed.
+///
+/// The host asks for this the instant it has taken the foreground, which can
+/// be a beat before the WebView2 is ready to accept focus -- the call then does
+/// nothing and the window sits there ignoring the keyboard. One retry on the
+/// next frame covers that without a timer that could fight the user if they
+/// have already clicked somewhere else.
+function focusSearch() {
+    if (view !== 'palette') return;
+
+    els.q.focus();
+    if (document.activeElement === els.q) return;
+
+    requestAnimationFrame(() => {
+        if (view === 'palette' && document.activeElement !== els.q) els.q.focus();
+    });
+}
 
 function showToast(text) {
     if (!text) return;
@@ -478,7 +489,7 @@ function buildRow(row, index, columns) {
 
     if (row.kind === 'trackable') {
         const candidate = row.item;
-        avatar.style.background = CATEGORY_TINT.Other;
+        avatar.style.background = catTint('Other');
         avatar.textContent = (candidate.name[0] || '?').toUpperCase();
         name.textContent = candidate.name;
 
@@ -506,7 +517,7 @@ function buildRow(row, index, columns) {
 
     if (row.kind === 'app') {
         const app = row.item;
-        avatar.style.background = tint(app.category);
+        avatar.style.background = catTint(app.category);
         if (app.running) avatar.classList.add('live');
         avatar.textContent = (app.name[0] || '?').toUpperCase();
         name.textContent = app.name;
@@ -583,7 +594,7 @@ function buildRow(row, index, columns) {
         el.appendChild(buildRunButton(row));
     } else {
         const command = row.item;
-        avatar.style.background = CATEGORY_TINT.Other;
+        avatar.style.background = catTint('Other');
         avatar.textContent = '›';
         avatar.style.color = 'var(--text-dim)';
         name.textContent = command.title;
@@ -1237,7 +1248,7 @@ function renderManage() {
         avatar.className = 'avatar';
         avatar.style.width = '30px';
         avatar.style.height = '30px';
-        avatar.style.background = tint(app.category);
+        avatar.style.background = catTint(app.category);
         avatar.textContent = (app.name[0] || '?').toUpperCase();
 
         const name = document.createElement('span');
@@ -1309,6 +1320,7 @@ const d = {
     startupCard: document.getElementById('d-startup-card'),
     execRow: document.getElementById('d-exec-row'),
     run: document.getElementById('d-run'),
+    dashboard: document.getElementById('d-dashboard'),
     runIcon: document.getElementById('d-run-icon'),
     runLabel: document.getElementById('d-run-label')
 };
@@ -1316,6 +1328,16 @@ const d = {
 d.run.addEventListener('click', () => {
     if (editing) send('activate-app', { id: editing.id });
 });
+
+// This panel holds what you can change about an app; the dashboard holds what
+// it has done. Sending the tracked name rather than the display name, because
+// that is the key the history is filed under.
+d.dashboard.addEventListener('click', () => {
+    if (editing) send('open-dashboard-app', { text: editing.name });
+});
+
+document.getElementById('s-all-notes').addEventListener('click', () =>
+    send('settings-command', { id: 'open-release-notes' }));
 
 const ACTION_HINTS = {
     1: 'Mutes or unmutes the system volume. Nothing else to configure.',
@@ -1333,7 +1355,7 @@ function renderDetail(app) {
     editing = app;
 
     d.avatar.textContent = (app.displayName[0] || '?').toUpperCase();
-    d.avatar.style.background = tint(app.category);
+    d.avatar.style.background = catTint(app.category);
     d.name.textContent = app.displayName;
     d.category.textContent = app.category || 'Other';
     d.today.textContent = app.today || '0m';
@@ -1346,6 +1368,9 @@ function renderDetail(app) {
     d.runLabel.textContent = app.isAction ? 'RUN' : running ? 'FOCUS' : 'LAUNCH';
     d.run.title = `${d.runLabel.textContent[0]}${d.runLabel.textContent.slice(1).toLowerCase()} ${app.displayName}`;
     d.run.setAttribute('aria-label', d.run.title);
+
+    // Nothing tracks an action's time, so there is no history page for one.
+    d.dashboard.hidden = !!app.isAction;
 
     d.customName.value = app.customName || '';
     d.path.textContent = app.packaged
@@ -1502,6 +1527,7 @@ if (bridge) {
             facet = 'all';
             show('palette');
             render();
+            focusSearch();
             return;
         }
 
@@ -1510,6 +1536,8 @@ if (bridge) {
         if (message.type === 'show-settings') { show('settings'); return; }
 
         if (message.type === 'toast') { showToast(message.text); return; }
+
+        if (message.type === 'focus-input') { focusSearch(); return; }
 
         if (message.type === 'extend') {
             extendState = message.extend;
@@ -1569,8 +1597,8 @@ window.addEventListener('focus', () => {
     query = '';
     els.q.value = '';
     active = 0;
-    els.q.focus();
     render();
+    focusSearch();
     send('ready');
 });
 

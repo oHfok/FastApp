@@ -27,9 +27,18 @@ function readUrlState() {
         scope: ['day', 'week', 'month', 'year'].includes(params.get('scope')) ? params.get('scope') : null,
         // Only accept a real yyyy-mm-dd, so a hand-edited URL can't push a
         // malformed string into every date-keyed request the tab makes.
-        date: /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') || '') ? params.get('date') : null
+        date: /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') || '') ? params.get('date') : null,
+
+        // Two one-shot destinations, so the desktop app can send you straight
+        // to a place in here instead of to the front door. Acted on once at
+        // boot and then dropped from the URL by writeUrlState, which is right:
+        // they describe an arrival, not a view worth bookmarking.
+        app: (params.get('app') || '').trim() || null,
+        settingsTab: SETTINGS_TABS.includes(params.get('settings')) ? params.get('settings') : null
     };
 }
+
+const SETTINGS_TABS = ['appearance', 'data', 'privacy', 'whatsnew'];
 
 function writeUrlState(replace) {
     const params = new URLSearchParams();
@@ -366,6 +375,15 @@ async function boot() {
     // and avoids cards visibly jumping once the layout comes back.
     loadLayout();
     switchView(urlState.view || 'overview', { replace: true });
+
+    // After the view exists, so the drawer opens over a rendered page rather
+    // than over an empty one that fills in behind it.
+    if (urlState.app) openDrilldown(urlState.app);
+    if (urlState.settingsTab) {
+        openSettings();
+        setSettingsTab(urlState.settingsTab,
+            document.querySelector(`#settings-tab-toggle button[data-tab="${urlState.settingsTab}"]`));
+    }
 
     checkFirstRun();
 }

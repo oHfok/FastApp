@@ -334,6 +334,10 @@ namespace FastApp
                     // click-away now, because every field saves as it changes.
                     break;
 
+                case "open-dashboard-app":
+                    OpenDashboard($"?app={Uri.EscapeDataString(message.Text ?? string.Empty)}");
+                    break;
+
                 case "add-tracked":
                     AddTracked(message.Text);
                     break;
@@ -374,8 +378,7 @@ namespace FastApp
             switch (id)
             {
                 case "dashboard":
-                    HidePalette();
-                    OpenExternally(DashboardServerService.DashboardUrl);
+                    OpenDashboard(null);
                     break;
                 case "manage":
                     ShowManage();
@@ -417,7 +420,7 @@ namespace FastApp
                     name = app.Name,
                     displayName = app.DisplayNamePrimary,
                     customName = app.CustomName,
-                    category = app.Category,
+                    category = CategoryMap.For(CategoryMap.Build(), app.Name),
                     executablePath = app.ExecutablePath,
                     packaged = !string.IsNullOrWhiteSpace(app.PackagedAppId),
                     isAction = app.IsAction,
@@ -921,6 +924,10 @@ namespace FastApp
                 case "rollback":
                     Execute(_viewModel.RollBackCommand);
                     break;
+                case "open-release-notes":
+                    OpenDashboard("?settings=whatsnew");
+                    break;
+
                 case "open-dashboard":
                     HidePalette();
                     OpenExternally(DashboardServerService.DashboardUrl);
@@ -1028,6 +1035,7 @@ namespace FastApp
             // palette never once offered to focus an app it could see was
             // already open -- it only ever offered to launch it again.
             var windowOwners = RunningApps.WindowOwners();
+            var categories = CategoryMap.Build();
 
             // Where each auto-launching app falls in the launch sequence. Its
             // position, not its OrderIndex: OrderIndex spans every managed app,
@@ -1053,7 +1061,7 @@ namespace FastApp
                     {
                         id = a.Id.ToString(),
                         name = a.DisplayNamePrimary,
-                        category = a.Category,
+                        category = CategoryMap.For(categories, a.Name),
                         hotkey = string.IsNullOrWhiteSpace(a.HotkeySequence) ? null : a.HotkeyDisplayText,
                         // Never shown before, and only this app can know it: a
                         // binding used twice in two months is not earning its keys.
@@ -1174,9 +1182,23 @@ namespace FastApp
             if (view == PaletteView.Manage) ShowManage();
             else if (view == PaletteView.Settings) ShowSettings();
             else if (view == PaletteView.Extend) ShowExtend();
+
             Show();
             Activate();
+
+            // Activate() alone loses to the foreground lock: whatever you were
+            // using owns the foreground and Windows refuses to hand it to a
+            // background process, so the palette appeared without the keyboard
+            // and had to be clicked before it could be typed into.
+            WindowFocus.Bring(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+
             Web.Focus();
+
+            // And the caret. Window focus does not put it in the search box:
+            // that is inside the page, which has to be told once the control
+            // actually holds focus -- hence after the two calls above rather
+            // than as part of the reset that preceded them.
+            Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"focus-input\"}");
 
             // Some foregrounds refuse to yield activation. Rather than sit
             // there un-dismissable, arm the auto-hide shortly after showing
@@ -1209,6 +1231,30 @@ namespace FastApp
         // already handled it and moved to the previous view. The page knows
         // which view it is on; it sends "close" itself when there is nowhere
         // left to go back to.
+
+        /// <summary>
+        /// Open the dashboard, optionally at somewhere in particular.
+        ///
+        /// The window goes away first: it is about to lose the foreground to a
+        /// browser anyway, and leaving it up behind the tab it just opened
+        /// looks like the click did nothing.
+        /// </summary>
+        private void OpenDashboard(string query)
+        {
+            HidePalette();
+
+            if (!DashboardServerService.IsRunning)
+            {
+                System.Windows.MessageBox.Show(
+                    DashboardServerService.StatusMessage,
+                    "Dashboard unavailable",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            OpenExternally(DashboardServerService.DashboardUrl + (query ?? string.Empty));
+        }
 
         private static void OpenExternally(string url)
         {

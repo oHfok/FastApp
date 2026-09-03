@@ -180,6 +180,7 @@
     </div>
 
     <div class="detail-foot">
+        <span class="out-link" id="d-dashboard" role="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>See the full history</span></span>
         <span class="label">ESC BACK · CHANGES SAVE AS YOU MAKE THEM</span>
         <span class="chrome-spacer"></span>
         <button class="btn btn-danger" id="d-delete" type="button">Remove from FastApp</button>
@@ -329,7 +330,11 @@
         </section>
 
         <section class="card" id="s-whatsnew-card">
-            <span class="label" id="s-whatsnew-label">WHAT'S NEW</span>
+            <span class="card-head">
+                <span class="label" id="s-whatsnew-label">WHAT'S NEW</span>
+                <span class="chrome-spacer"></span>
+                <span class="out-link" id="s-all-notes" role="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Every version</span></span>
+            </span>
             <div class="s-notes" id="s-whatsnew"></div>
             <span class="hint-sub" id="s-whatsnew-empty" hidden></span>
         </section>
@@ -447,6 +452,7 @@
 
 </div>
 
+<script src="../js/categories.js"></script>
 <script src="palette.js"></script>
 </body>
 </html>

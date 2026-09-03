@@ -126,24 +126,10 @@ namespace FastApp.Services
             return result.Read() && result.GetString(0) == "true";
         }
 
-        private static async Task<Dictionary<string, string>> GetAppCategoriesSafely(AppDbContext db)
-        {
-            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var appCats = await db.AppCategories.ToListAsync();
-            foreach (var c in appCats)
-            {
-                if (!string.IsNullOrEmpty(c.AppName)) dict[c.AppName] = c.Category ?? "Other";
-            }
-            var managedApps = await db.ManagedApps.ToListAsync();
-            foreach (var m in managedApps)
-            {
-                if (!string.IsNullOrEmpty(m.Name) && !dict.ContainsKey(m.Name))
-                {
-                    dict[m.Name] = m.Category ?? "Other";
-                }
-            }
-            return dict;
-        }
+        // The rule moved to CategoryMap so the desktop palette resolves
+        // categories the same way this does; they used to disagree.
+        private static Task<Dictionary<string, string>> GetAppCategoriesSafely(AppDbContext db) =>
+            Task.FromResult(CategoryMap.Build(db));
 
         private static DateTime GetMondayStartOfWeek(DateTime date)
         {

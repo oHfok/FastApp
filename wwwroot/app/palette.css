@@ -818,3 +818,17 @@ select.field option { background: var(--panel-solid); color: var(--text); }
     z-index: 10;
 }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* A way out to the dashboard. The desktop window owns configuration and the
+   dashboard owns history, so the places where you want the other one are worth
+   marking rather than leaving you to go and find it. */
+.out-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: var(--fs-caption);
+    color: var(--text-faint);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.out-link:hover { color: var(--brass); }

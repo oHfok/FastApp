@@ -174,29 +174,9 @@ namespace FastApp.Services
         /// for the call, which is less invasive than the other common trick of
         /// synthesising an ALT press (that one opens menus in the target app).
         /// </summary>
-        private static bool FocusWindow(IntPtr hWnd)
-        {
-            if (hWnd == IntPtr.Zero) return false;
-            if (IsIconic(hWnd)) ShowWindow(hWnd, SW_RESTORE);
-
-            IntPtr foreground = GetForegroundWindow();
-            uint currentThread = GetCurrentThreadId();
-            uint foregroundThread = foreground == IntPtr.Zero
-                ? 0
-                : GetWindowThreadProcessId(foreground, out _);
-
-            bool attached = foregroundThread != 0
-                            && foregroundThread != currentThread
-                            && AttachThreadInput(currentThread, foregroundThread, true);
-            try
-            {
-                return SetForegroundWindow(hWnd);
-            }
-            finally
-            {
-                if (attached) AttachThreadInput(currentThread, foregroundThread, false);
-            }
-        }
+        // Shared with the palette, which needs the same trick to be typed
+        // into the moment it is summoned -- see Services/WindowFocus.cs.
+        private static bool FocusWindow(IntPtr hWnd) => WindowFocus.Bring(hWnd);
 
         private static ActionResult ToggleMute()
         {
