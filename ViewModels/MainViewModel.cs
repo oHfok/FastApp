@@ -552,7 +552,7 @@ namespace FastApp.ViewModels
                 // loop all actually start immediately instead of waiting on auto-launch
                 // to finish first; none of them depend on it.
                 _ = ProcessTriggersAsync();
-                _ = StartProcessTrackerAsync();
+                StartTracker();
                 _ = Services.DashboardServerService.StartAsync();
                 // The update still downloads concurrently -- that is the slow part
                 // and there is no reason to hold it up. Only the restart waits:
@@ -1411,7 +1411,7 @@ namespace FastApp.ViewModels
                 _trackerCts.Dispose();
                 _trackerCts = new CancellationTokenSource();
                 _trackerStoppedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                _ = StartProcessTrackerAsync();
+                StartTracker();
             }
         }
 
@@ -1470,6 +1470,23 @@ namespace FastApp.ViewModels
                 // and no way to resurrect it in-place.
                 try { RestartAndExit(); } catch { /* truly best-effort at this point */ }
             }
+        }
+
+        /// <summary>
+        /// Start the tracking loop and, crucially, watch it.
+        ///
+        /// This was `_ = StartProcessTrackerAsync()`. An unhandled exception in an
+        /// unobserved task is not reported anywhere -- the loop ends, the app
+        /// carries on looking fine, and no time is recorded again until someone
+        /// restarts it. That is exactly what happened on 2026-09-02.
+        /// </summary>
+        private void StartTracker()
+        {
+            _ = StartProcessTrackerAsync().ContinueWith(
+                t => Services.DatabaseHealth.ReportTrackerStopped(t.Exception),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
         }
 
         private async Task StartProcessTrackerAsync()
@@ -1600,7 +1617,17 @@ namespace FastApp.ViewModels
                     {
                         FlushDailySummaries(previousDay);
                         FlushPendingQueues();
-                        _dbContext.SaveChanges();
+                        try
+                        {
+                            _dbContext.SaveChanges();
+                            Services.DatabaseHealth.ReportWriteSucceeded();
+                        }
+                        catch (Exception ex)
+                        {
+                            // Same reasoning as the 60s flush: midnight is a
+                            // spectacularly bad moment to stop tracking.
+                            Services.DatabaseHealth.ReportWriteFailed(ex);
+                        }
 
                         foreach (var a in ManagedApps)
                         {
@@ -1787,8 +1814,24 @@ namespace FastApp.ViewModels
                         // 2 & 3. Flush Shadow Sessions & Macros
                         FlushPendingQueues();
 
-                        _dbContext.SaveChanges();
-                        StatisticsVM?.RefreshStats();
+                        // A failed save must not leave this loop. It used to:
+                        // the exception escaped into a fire-and-forget task and
+                        // tracking stopped dead, silently, for twelve hours on
+                        // 2026-09-02. The caches are folded into tracked entities
+                        // by the two calls above and are cleared below either
+                        // way, so the work is not lost or double-counted -- the
+                        // entities stay pending and the next successful save
+                        // writes them along with everything since.
+                        try
+                        {
+                            _dbContext.SaveChanges();
+                            Services.DatabaseHealth.ReportWriteSucceeded();
+                            StatisticsVM?.RefreshStats();
+                        }
+                        catch (Exception ex)
+                        {
+                            Services.DatabaseHealth.ReportWriteFailed(ex);
+                        }
                     }
 
                     // Re-read the window-title opt-in each flush. A short-lived,

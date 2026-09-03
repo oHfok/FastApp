@@ -73,13 +73,20 @@ namespace FastApp.Services
                 : m >= from || m < to;       // 22:00-07:00, wrapping midnight
         }
 
+        /// <param name="force">
+        /// Show this even with notifications switched off or during quiet hours.
+        /// Reserved for faults the user has to know about -- being unable to save
+        /// their data, chiefly -- because those settings mean "do not interrupt
+        /// me about ordinary things", not "hide it when the app breaks".
+        /// </param>
         public static void Show(
             string title,
             string message,
             NotificationSeverity severity = NotificationSeverity.Info,
-            IReadOnlyList<NotificationAction> actions = null)
+            IReadOnlyList<NotificationAction> actions = null,
+            bool force = false)
         {
-            if (!Enabled || InQuietHours(DateTime.Now)) return;
+            if (!force && (!Enabled || InQuietHours(DateTime.Now))) return;
 
             if (TryShowToast(title, message, severity, actions)) return;
 
