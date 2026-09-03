@@ -27,7 +27,7 @@ namespace FastApp.Services
 
         public static DateTime? LastSuccessfulWrite { get; private set; }
         public static DateTime? FailingSince { get; private set; }
-        public static string LastError { get; private set; }
+        public static string? LastError { get; private set; }
 
         // One dropped write means very little -- a flush can lose a race with a
         // backup or a retention sweep. Two in a row is a fault.
@@ -61,7 +61,7 @@ namespace FastApp.Services
                 force: true);
         }
 
-        public static void ReportWriteFailed(Exception ex)
+        public static void ReportWriteFailed(Exception? ex)
         {
             bool announce;
             lock (Gate)
@@ -103,7 +103,7 @@ namespace FastApp.Services
         /// The tracking loop exited on an exception rather than on shutdown. This
         /// is the case that used to be invisible.
         /// </summary>
-        public static void ReportTrackerStopped(Exception ex)
+        public static void ReportTrackerStopped(Exception? ex)
         {
             lock (Gate) { IsWritable = false; LastError = ex?.Message; }
 
