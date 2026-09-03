@@ -316,19 +316,115 @@ function showToast(text) {
     toastTimer = setTimeout(() => toast.classList.remove('on'), 2600);
 }
 
+/// A glyph per command. Six words in a row is a list; six words with marks
+/// beside them is something you can find your way around without reading all of
+/// it, which is what a strip you pass every time you open the window needs.
+const COMMAND_ICONS = {
+    manage: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round">
+               <path d="M4 7h8.5"></path><path d="M17.5 7h2.5"></path><circle cx="15" cy="7" r="2.2"></circle>
+               <path d="M4 17h2.5"></path><path d="M11.5 17h8.5"></path><circle cx="9" cy="17" r="2.2"></circle>
+             </svg>`,
+    extend: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round">
+               <circle cx="11" cy="13" r="7.5"></circle><path d="M11 9v4l3 1.8"></path>
+               <path d="M19 2.5v4.5"></path><path d="M16.75 4.75h4.5"></path>
+             </svg>`,
+    pause:  `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2.4" stroke-linecap="round">
+               <path d="M9.5 6v12"></path><path d="M14.5 6v12"></path>
+             </svg>`,
+    resume: `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"
+                  stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+               <path d="M8 5.5v13l11-6.5z"></path>
+             </svg>`,
+    scan:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round">
+               <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path>
+               <path d="M11 8v6"></path><path d="M8 11h6"></path>
+             </svg>`,
+    settings: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                 <circle cx="12" cy="12" r="3"></circle>
+                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+               </svg>`,
+    dashboard: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round">
+                  <path d="M4 20h16"></path><path d="M7 20v-5"></path>
+                  <path d="M12 20V7"></path><path d="M17 20v-9"></path>
+                </svg>`
+};
+
+/// The two that are setup you do once, and the one that hands you over to the
+/// browser. Everything not named here is something you came here to do, and
+/// keeps its words.
+const UTILITY_COMMANDS = new Set(['scan', 'settings', 'dashboard']);
+
+/// Six commands, all the same size, in the same dim grey, wrapping onto a
+/// second row: managing what is tracked and granting an app more time carried
+/// exactly the weight of Settings, so the whole strip read as something to skim
+/// past rather than the controls of the application.
+///
+/// They are ranked now. The three you would open this window to do keep their
+/// names and gain an icon; setup and the dashboard shrink to icon buttons at
+/// the far end. Nothing is taken away -- all six still answer to typing, which
+/// is what the tooltips and the accessible names are for -- but the row no
+/// longer pretends they are equally likely.
 function renderCommandBar() {
     const bar = els.commandBar;
     bar.textContent = '';
     bar.hidden = !!query || state.apps.length === 0;
     if (bar.hidden) return;
 
+    const named = document.createElement('div');
+    named.className = 'command-group';
+
+    const utility = document.createElement('div');
+    utility.className = 'command-group';
+
     for (const command of state.commands) {
+        const minor = UTILITY_COMMANDS.has(command.id);
+
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.className = 'command-chip';
-        chip.textContent = command.title;
+        chip.className = minor ? 'command-icon' : 'command-chip';
+
+        // The hint is the only place the cost of a command is written down --
+        // that extending wants the PIN, that pausing means half an hour -- and
+        // it used to appear only once you had already searched for the thing.
+        chip.title = command.hint ? command.title + ' \u2014 ' + command.hint : command.title;
+        // Named or not, the name is what a screen reader should read: an icon
+        // button with no words is silent otherwise.
+        chip.setAttribute('aria-label', command.title);
+        chip.innerHTML = COMMAND_ICONS[command.id] || '';
+
+        if (!minor) {
+            const words = document.createElement('span');
+            words.textContent = command.title;
+            chip.appendChild(words);
+        }
+
+        // Deciding what this app watches is the one job that exists only in
+        // this window; the dashboard does everything else better. So it is the
+        // one command lifted onto a surface of its own.
+        if (command.id === 'manage') chip.classList.add('lead');
+
+        // Tracking being off is not a preference, it is a gap in the record.
+        // The status dot says so at the top of the window; saying it again on
+        // the control that undoes it costs nothing and is where you will look.
+        if (command.id === 'resume') chip.classList.add('paused');
+
         chip.addEventListener('click', () => send('run-command', { id: command.id }));
-        bar.appendChild(chip);
+        (minor ? utility : named).appendChild(chip);
+    }
+
+    bar.appendChild(named);
+
+    if (utility.children.length) {
+        const spacer = document.createElement('span');
+        spacer.className = 'chrome-spacer';
+        bar.appendChild(spacer);
+        bar.appendChild(utility);
     }
 }
 

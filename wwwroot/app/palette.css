@@ -47,6 +47,7 @@ button {
 .row-add:focus-visible,
 .facet:focus-visible,
 .command-chip:focus-visible,
+.command-icon:focus-visible,
 .attention-action:focus-visible,
 .run-btn:focus-visible {
     outline-offset: -2px;
@@ -818,18 +819,82 @@ select.field option { background: var(--panel-solid); color: var(--text); }
    The commands used to be five full rows on the idle screen, taking more of it
    than the apps they sat under. They are one line now, and still turn back
    into proper rows the moment you type. */
-.command-bar { display: flex; flex-wrap: wrap; gap: 7px; flex-shrink: 0; }
-.command-bar:empty { display: none; }
-.command-chip {
-    font-size: var(--fs-caption);
-    color: var(--text-dim);
+/* Six chips of one weight, in --text-dim, on the window's own background, over
+   two wrapped rows. Nothing in that says which of them matters, and sitting
+   directly on the ground with no surface of their own is what made the row read
+   as decoration below the list rather than the controls of the application.
+
+   It is a toolbar now: one surface, the way the search field above it is one
+   surface, holding the named actions on the left and setup on the right. Full
+   --text rather than --text-dim, because these are not captions. */
+.command-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     background: var(--panel);
     border-radius: var(--radius-pill);
-    padding: 7px 14px;
+    padding: 6px 8px;
+    flex-shrink: 0;
+}
+.command-bar:empty { display: none; }
+.command-group { display: flex; align-items: center; gap: 4px; }
+
+.command-chip {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: var(--fs-body);
+    /* Pinned rather than left to the font, so a chip and an icon button are the
+       same height and the row sits on one baseline. */
+    line-height: 18px;
+    color: var(--text);
+    border-radius: var(--radius-pill);
+    padding: 8px 14px;
     cursor: pointer;
     white-space: nowrap;
 }
-.command-chip:hover { color: var(--text); background: var(--bg-raised); }
+.command-chip svg { color: var(--text-faint); flex-shrink: 0; }
+.command-chip:hover { background: var(--lift); }
+.command-chip:hover svg { color: var(--text); }
+
+/* One step up again for the command this window exists for. Brass would say
+   "focused" and teal would say "running", so the emphasis is a surface: over
+   the bar's own tint, --panel-solid is the one value that reads as raised in
+   both themes. */
+.command-chip.lead {
+    background: var(--panel-solid);
+    box-shadow: inset 0 0 0 1px var(--panel-border);
+    font-weight: 600;
+}
+.command-chip.lead svg { color: var(--text); }
+.command-chip.lead:hover { box-shadow: inset 0 0 0 1px var(--lift-strong); }
+
+/* Only ever on Resume, so this is the strip carrying a state rather than
+   colouring a button: the same brass the status dot turns when the clock is
+   stopped.
+
+   The tint and the glyph carry it; the words stay --text. Brass words on a
+   brass wash measured 4.32:1 in the light theme -- under AA, and this is the
+   one control you want readable when the clock has stopped. */
+.command-chip.paused { background: var(--wash-brass-strong); }
+.command-chip.paused svg,
+.command-chip.paused:hover svg { color: var(--brass); }
+.command-chip.paused:hover { background: var(--wash-brass-strong); box-shadow: inset 0 0 0 1px var(--brass-dim); }
+
+/* Scan, Settings and the dashboard: still one press away, no longer competing
+   with the three actions for the same reading. */
+.command-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-pill);
+    color: var(--text-faint);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.command-icon:hover { background: var(--lift); color: var(--text); }
 
 /* ---------- Adding something you already use ---------- */
 .row-add {
