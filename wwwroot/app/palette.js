@@ -18,7 +18,7 @@ function send(type, payload) {
     bridge.postMessage(JSON.stringify({ type, ...(payload || {}) }));
 }
 
-let state = { apps: [], commands: [], focusToday: '—', tracking: true };
+let state = { apps: [], trackable: [], commands: [], focusToday: '—', tracking: true };
 let query = '';
 let active = 0;
 
@@ -117,16 +117,29 @@ function visible() {
     // Commands are full rows only once you are looking for one. Idle, the five
     // of them took more of the screen than the apps did, which is most of why
     // opening FastApp told you nothing -- they became a chip bar instead.
+    // Applications FastApp has watched you use but was never told about. Only
+    // ever while searching: idle, this screen is what you manage, and eleven
+    // suggestions under it would be exactly the noise the redesign removed.
+    // Capped, because a loose subsequence match over a few hundred names can
+    // return most of them.
+    const managed = new Set(state.apps.map(a => a.name.toLowerCase()));
+    const trackable = !q ? [] : (state.trackable || [])
+        .filter(t => !managed.has(t.name.toLowerCase()))
+        .map(t => ({ item: t, kind: 'trackable', s: score(t.name, q) }))
+        .filter(r => r.s >= 0)
+        .sort((a, b) => b.s - a.s || b.item.minutes - a.item.minutes)
+        .slice(0, 6);
+
     const commands = !q ? [] : state.commands
         .map(c => ({ item: c, kind: 'command', s: score(c.title, q) }))
         .filter(r => r.s >= 0)
         .sort((a, b) => b.s - a.s);
 
-    return { apps, commands, all: [...apps, ...commands] };
+    return { apps, trackable, commands, all: [...apps, ...trackable, ...commands] };
 }
 
 function render() {
-    const { apps, commands, all } = visible();
+    const { apps, trackable, commands, all } = visible();
     if (active >= all.length) active = Math.max(0, all.length - 1);
 
     renderAttention();
@@ -154,6 +167,7 @@ function render() {
         let index = 0;
         index = appendGroup(query ? 'APPS' : 'YOUR APPS', programs, index, activeColumns(programs));
         index = appendGroup('ACTIONS', actions, index, activeColumns(actions));
+        index = appendGroup('YOU USE THESE, BUT HAVE NOT ADDED THEM', trackable, index, null);
         appendGroup('COMMANDS', commands, index, null);
     }
 
@@ -180,6 +194,7 @@ function render() {
     els.enterVerb.textContent =
         !current ? 'LAUNCH'
         : current.kind === 'command' ? 'RUN'
+        : current.kind === 'trackable' ? 'ADD'
         : current.item.running ? 'FOCUS' : 'LAUNCH';
 }
 
@@ -223,6 +238,29 @@ function fitWindow() {
 const MIN_HEIGHT = 420;
 // Past this the window stops being a palette and the list scrolls instead.
 const MAX_HEIGHT = 760;
+
+/// A line that says what just happened and then goes away. Adding an app from
+/// a search result gives no other feedback -- the row it came from disappears
+/// as the list re-renders, which on its own reads like the click missed.
+let toastTimer = null;
+
+function showToast(text) {
+    if (!text) return;
+
+    let toast = document.getElementById('toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+    }
+
+    toast.textContent = text;
+    toast.classList.add('on');
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('on'), 2600);
+}
 
 function renderCommandBar() {
     if (query || state.apps.length === 0) return;
@@ -328,6 +366,13 @@ function renderNothingAdded() {
 
 /// Which columns this list is worth drawing. A column no app uses is not
 /// rendered at all, rather than rendered empty.
+function formatMinutes(total) {
+    if (total < 60) return `${total}m`;
+    const hours = Math.floor(total / 60);
+    const minutes = total % 60;
+    return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+}
+
 function ordinal(n) {
     // 1st, 2nd, 3rd, 4th -- and 11th/12th/13th, which the naive rule gets wrong.
     const rest = n % 100;
@@ -430,6 +475,34 @@ function buildRow(row, index, columns) {
 
     const name = document.createElement('span');
     name.className = 'row-name';
+
+    if (row.kind === 'trackable') {
+        const candidate = row.item;
+        avatar.style.background = CATEGORY_TINT.Other;
+        avatar.textContent = (candidate.name[0] || '?').toUpperCase();
+        name.textContent = candidate.name;
+
+        const sub = document.createElement('span');
+        sub.className = 'row-sub';
+        sub.textContent = `${formatMinutes(candidate.minutes)} tracked`;
+        text.append(name, sub);
+        el.append(avatar, text);
+
+        const spacer = document.createElement('span');
+        spacer.className = 'row-spacer';
+        el.appendChild(spacer);
+
+        const add = document.createElement('span');
+        add.className = 'row-add';
+        add.textContent = 'ADD';
+        add.addEventListener('click', event => {
+            event.stopPropagation();
+            send('add-tracked', { text: candidate.name });
+        });
+        el.appendChild(add);
+
+        return el;
+    }
 
     if (row.kind === 'app') {
         const app = row.item;
@@ -540,6 +613,7 @@ function activate(row) {
     if (!current) return;
 
     if (current.kind === 'app') send('activate-app', { id: current.item.id });
+    else if (current.kind === 'trackable') send('add-tracked', { text: current.item.name });
     else send('run-command', { id: current.item.id });
 }
 
@@ -548,7 +622,10 @@ function primary(row) {
     const current = row || visible().all[active];
     if (!current) return;
 
+    // A candidate has nothing to open yet, so both the row and its button do
+    // the only thing available: add it.
     if (current.kind === 'app') send('edit-app', { id: current.item.id });
+    else if (current.kind === 'trackable') send('add-tracked', { text: current.item.name });
     else send('run-command', { id: current.item.id });
 }
 
@@ -1431,6 +1508,8 @@ if (bridge) {
         if (message.type === 'show-manage') { manageActive = 0; renderManage(); show('manage'); return; }
 
         if (message.type === 'show-settings') { show('settings'); return; }
+
+        if (message.type === 'toast') { showToast(message.text); return; }
 
         if (message.type === 'extend') {
             extendState = message.extend;

@@ -334,6 +334,10 @@ namespace FastApp
                     // click-away now, because every field saves as it changes.
                     break;
 
+                case "add-tracked":
+                    AddTracked(message.Text);
+                    break;
+
                 case "extend-grant":
                     GrantExtension(message.Id, message.Minutes, message.Pin);
                     break;
@@ -634,6 +638,85 @@ namespace FastApp
             _scanned = _scanned.Where(a => !wanted.Contains(a.ExecutablePath)).ToList();
             PushState();
             PushScan(scanning: false);
+        }
+
+        /// <summary>
+        /// Add an application FastApp has been tracking but was never told
+        /// about.
+        ///
+        /// The logs hold a process name and nothing else, so the executable has
+        /// to be found: from the running process if it happens to be open, and
+        /// otherwise from a scan of what is installed. When neither answers,
+        /// say so and open the file picker rather than adding a broken entry --
+        /// an app with no path cannot be launched, and would sit in the list
+        /// looking configured.
+        /// </summary>
+        private async void AddTracked(string trackedName)
+        {
+            if (string.IsNullOrWhiteSpace(trackedName)) return;
+
+            string path = TrackedApps.ResolvePath(trackedName);
+
+            if (path == null)
+            {
+                // Scanning the Start menu and the Store takes a second or two,
+                // and it happens after a click that otherwise shows nothing.
+                Notify($"Looking for {trackedName}…");
+
+                List<string> installed;
+                try
+                {
+                    var found = await AppScannerService.GetInstalledAppsAsync();
+                    installed = found.Select(a => a.ExecutablePath).ToList();
+                }
+                catch
+                {
+                    installed = new List<string>();
+                }
+
+                path = TrackedApps.ResolvePath(trackedName, installed);
+            }
+
+            if (path == null)
+            {
+                Notify($"FastApp could not find where {trackedName} is installed. Pick it yourself.");
+                BrowseForApp();
+                return;
+            }
+
+            if (_viewModel.ManagedApps.Any(a =>
+                    string.Equals(a.ExecutablePath, path, StringComparison.OrdinalIgnoreCase)))
+            {
+                Notify($"{trackedName} is already in your list.");
+                return;
+            }
+
+            // Named after the tracked name rather than something friendlier:
+            // the tracker keys its logs on the executable name, so calling it
+            // anything else here would start a second history alongside the one
+            // this app already has.
+            var entry = new AppItemModel
+            {
+                Name = trackedName,
+                ExecutablePath = path,
+                Category = "Other",
+                OrderIndex = _viewModel.ManagedApps.Count
+            };
+
+            // SaveDetectedApp is the one path that adds to the DbContext, saves,
+            // and only then joins ManagedApps. An entry added straight to the
+            // collection never gets an Id and never reaches the database.
+            if (_viewModel.SaveDetectedAppCommand.CanExecute(entry))
+                _viewModel.SaveDetectedAppCommand.Execute(entry);
+
+            PushState();
+            Notify($"{trackedName} added.");
+        }
+
+        private void Notify(string text)
+        {
+            var payload = new { type = "toast", text };
+            Web.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
         }
 
         // ------------------------------------------------------------------
@@ -998,12 +1081,22 @@ namespace FastApp
                 new { id = "dashboard", title = "Open statistics dashboard", hint = "opens in browser ↗" }
             };
 
+            // Sent whole rather than queried per keystroke: it is a few hundred
+            // names, it changes about as often as you use a new program, and a
+            // round trip per character would make the search feel worse than
+            // not having it.
+            var trackable = TrackedApps
+                .Unmanaged(_viewModel.ManagedApps.Select(a => a.Name))
+                .Select(c => new { name = c.Name, minutes = c.Minutes })
+                .ToList();
+
             var payload = new
             {
                 type = "state",
                 state = new
                 {
                     apps,
+                    trackable,
                     commands,
                     focusToday = FormatSpan(focusTotal),
                     tracking = true,

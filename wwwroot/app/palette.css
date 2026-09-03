@@ -781,3 +781,40 @@ select.field option { background: var(--panel-solid); color: var(--text); }
     white-space: nowrap;
 }
 .command-chip:hover { color: var(--text); background: var(--bg-raised); }
+
+/* ---------- Adding something you already use ---------- */
+.row-add {
+    display: flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    letter-spacing: 0.17em;
+    font-weight: 700;
+    color: var(--brass);
+    background: rgba(232, 163, 61, 0.16);
+    border-radius: var(--radius-pill);
+    padding: 7px 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.row-add:hover { background: var(--brass); color: #1A1000; }
+
+/* Adding from a search result removes the row it came from, which without a
+   word looks like the click missed. */
+.toast {
+    position: fixed;
+    left: 50%;
+    /* Clear of the footer: sitting on top of the key hints read as a glitch. */
+    bottom: 72px;
+    transform: translate(-50%, 14px);
+    background: var(--panel-solid);
+    color: var(--text);
+    font-size: var(--fs-body);
+    border-radius: var(--radius-pill);
+    padding: 11px 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    z-index: 10;
+}
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
