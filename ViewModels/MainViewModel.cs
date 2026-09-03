@@ -264,6 +264,15 @@ namespace FastApp.ViewModels
                     RollbackVersions.Add(r.Version);
                 }
                 HasRollbackVersions = RollbackVersions.Count > 0;
+
+                // A dropdown shows its first option whether or not anyone has
+                // chosen it, and this property was only ever written by the
+                // page's change event. So the card read "3.1.3" while the view
+                // model held null, and Reinstall -- which starts by checking
+                // this -- returned without a word. Nothing on screen was wrong;
+                // there was simply no answer behind it.
+                if (string.IsNullOrWhiteSpace(SelectedRollbackVersion))
+                    SelectedRollbackVersion = RollbackVersions.FirstOrDefault();
             }
             catch { /* leaves the picker empty, which hides the card */ }
         }
@@ -271,7 +280,15 @@ namespace FastApp.ViewModels
         [RelayCommand]
         private async Task RollBack()
         {
-            if (IsRollbackBusy || string.IsNullOrWhiteSpace(SelectedRollbackVersion)) return;
+            if (IsRollbackBusy) return;
+
+            // Belt and braces for the above: a click that does nothing must at
+            // least say that it did nothing.
+            if (string.IsNullOrWhiteSpace(SelectedRollbackVersion))
+            {
+                RollbackStatusText = "Choose a version to reinstall first.";
+                return;
+            }
 
             // This restarts the app and replaces the installed build, so it asks
             // first rather than acting on a single click.

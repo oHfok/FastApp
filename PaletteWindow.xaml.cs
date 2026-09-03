@@ -54,6 +54,13 @@ namespace FastApp
 
         private int _settingsPushQueued;
 
+        // Auto-hide is off while a command is holding a dialog of its own open.
+        // A modal takes the foreground, which deactivates this window, so the
+        // rollback confirmation would have arrived on a bare desktop with the
+        // palette gone from behind it -- and the progress it reports afterwards
+        // would have had nowhere to appear.
+        private bool _modalOpen;
+
         public PaletteWindow(MainViewModel viewModel)
         {
             InitializeComponent();
@@ -1065,9 +1072,21 @@ namespace FastApp
             // moves, for as long as these take.
         }
 
-        private static void Execute(System.Windows.Input.ICommand command)
+        /// <summary>
+        /// Run a view-model command, with auto-hide suspended for as long as it
+        /// might be holding a dialog up.
+        ///
+        /// An async command runs synchronously as far as its first await, and
+        /// every dialog these raise -- the rollback confirmation, the elevation
+        /// prompt -- comes before that, so the flag covers the modal exactly.
+        /// </summary>
+        private void Execute(System.Windows.Input.ICommand command)
         {
-            if (command != null && command.CanExecute(null)) command.Execute(null);
+            if (command == null || !command.CanExecute(null)) return;
+
+            _modalOpen = true;
+            try { command.Execute(null); }
+            finally { _modalOpen = false; }
         }
 
         private void OnHotkeyCaptureProgress(string text)
@@ -1392,7 +1411,7 @@ namespace FastApp
 
             // A palette that stays up after you click away is a window, not a
             // palette -- but one that closes before you have seen it is worse.
-            if (!_allowAutoHide || _pinned || !IsVisible) return;
+            if (!_allowAutoHide || _pinned || _modalOpen || !IsVisible) return;
             if (DateTime.UtcNow - _shownAtUtc < SettleWindow) return;
 
             Hide();
