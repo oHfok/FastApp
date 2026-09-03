@@ -273,6 +273,10 @@ function showToast(text) {
         toast = document.createElement('div');
         toast.id = 'toast';
         toast.className = 'toast';
+        // Announced, because it is the only confirmation the window gives that
+        // an app was added, and it was silent to a screen reader.
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
         document.body.appendChild(toast);
     }
 
@@ -290,7 +294,8 @@ function renderCommandBar() {
     bar.className = 'command-bar';
 
     for (const command of state.commands) {
-        const chip = document.createElement('span');
+        const chip = document.createElement('button');
+        chip.type = 'button';
         chip.className = 'command-chip';
         chip.textContent = command.title;
         chip.addEventListener('click', () => send('run-command', { id: command.id }));
@@ -309,10 +314,13 @@ function renderFacets() {
     if (els.facets.hidden) return;
 
     for (const entry of available) {
-        const chip = document.createElement('span');
+        const chip = document.createElement('button');
+        chip.type = 'button';
         chip.className = 'facet' + (entry.id === facet ? ' on' : '');
         const count = entry.id === 'all' ? state.apps.length : state.apps.filter(entry.match).length;
         chip.textContent = entry.label + ' ' + count;
+        // Which filter is on is state, not decoration, so it is announced.
+        chip.setAttribute('aria-pressed', entry.id === facet ? 'true' : 'false');
         chip.addEventListener('click', () => { facet = entry.id; active = 0; render(); });
         els.facets.appendChild(chip);
     }
@@ -335,7 +343,8 @@ function renderAttention() {
         spacer.className = 'chrome-spacer';
         el.appendChild(spacer);
 
-        const button = document.createElement('span');
+        const button = document.createElement('button');
+        button.type = 'button';
         button.className = 'attention-action';
         button.textContent = action;
         button.addEventListener('click', onClick);
@@ -513,9 +522,14 @@ function buildRow(row, index, columns) {
         spacer.className = 'row-spacer';
         el.appendChild(spacer);
 
-        const add = document.createElement('span');
+        const add = document.createElement('button');
+        add.type = 'button';
+        // Same reasoning as the run button: Enter on the highlighted candidate
+        // adds it.
+        add.tabIndex = -1;
         add.className = 'row-add';
         add.textContent = 'ADD';
+        add.setAttribute('aria-label', `Add ${candidate.name} to FastApp`);
         add.addEventListener('click', event => {
             event.stopPropagation();
             send('add-tracked', { text: candidate.name });
@@ -669,9 +683,15 @@ function buildRunButton(row) {
     const app = row.item;
     const running = !!app.running;
 
-    const button = document.createElement('span');
+    const button = document.createElement('button');
+    button.type = 'button';
+    // Out of the tab order deliberately, not by omission: Enter on the
+    // highlighted row already launches it, so eight of these in the traversal
+    // would be eight stops that do what the previous key did. Still a real
+    // button, so it is clickable, announced, and operable once a screen reader
+    // reaches it directly.
+    button.tabIndex = -1;
     button.className = 'row-run' + (running ? ' running' : '');
-    button.setAttribute('role', 'button');
     button.title = running ? `Focus ${app.name}` : `Launch ${app.name}`;
     button.setAttribute('aria-label', button.title);
     button.innerHTML = runIcon(running, 14);
@@ -790,6 +810,16 @@ document.addEventListener('keydown', e => {
         return;
     }
 
+    if (view === 'palette' && e.key === 'Escape'
+        && document.activeElement && document.activeElement !== els.q
+        && document.activeElement !== document.body) {
+        // Tab must not be a one-way trip: Escape from a focused control puts
+        // the caret back in the search box rather than closing the window.
+        e.preventDefault();
+        focusSearch();
+        return;
+    }
+
     if (view === 'detail') {
         if (e.key === 'Escape') {
             e.preventDefault();
@@ -822,7 +852,12 @@ document.addEventListener('keydown', e => {
         }
         case 'Enter': e.preventDefault(); activate(); break;
         case 'Escape': e.preventDefault(); send('close'); break;
-        case 'Tab': {
+
+        // Tab used to open the highlighted app, which meant Tab never moved
+        // focus and every control that was not the search box was unreachable
+        // by keyboard. Drilling in moved to the right arrow, which is what a
+        // list does anyway, and Tab went back to being Tab.
+        case 'ArrowRight': {
             e.preventDefault();
             const current = visible().all[active];
             if (current && current.kind === 'app') send('edit-app', { id: current.item.id });

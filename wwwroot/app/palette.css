@@ -17,6 +17,42 @@
    Without this the palette stayed on screen underneath the detail view. */
 [hidden] { display: none !important; }
 
+/* Every control that behaves like a button IS a button now, rather than a
+   span with a click handler: that is what gives it a tab stop, Enter and
+   Space, and a role a screen reader can announce. The reset is so switching
+   the tag changed nothing visually -- a button does not inherit type. */
+button {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    background: none;
+    border: 0;
+    margin: 0;
+    text-align: inherit;
+}
+
+/* Focus has to be visible now that these things can hold it. Ported from the
+   dashboard's base.css, which had this and the palette did not.
+   :focus-visible rather than :focus, so the ring appears for the keyboard
+   without drawing a box around every mouse click. */
+:focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+/* Rows and pills sit flush against their neighbours, so an outward ring is
+   clipped by whatever is next; inset it and follow the pill. */
+.row:focus-visible,
+.row-run:focus-visible,
+.row-add:focus-visible,
+.facet:focus-visible,
+.command-chip:focus-visible,
+.attention-action:focus-visible,
+.run-btn:focus-visible {
+    outline-offset: -2px;
+    border-radius: var(--radius-pill);
+}
+
 html, body {
     height: 100%;
     margin: 0;
@@ -95,6 +131,15 @@ body {
     min-width: 0;
 }
 .search input::placeholder { color: var(--text-faint); }
+
+/* The input suppresses its own outline (above), which was fine while it was
+   the only focusable thing in the view. Now that Tab traverses, coming back to
+   it has to show something, so the ring goes on the pill instead of the bare
+   input inside it. */
+.search:has(input:focus-visible) {
+    outline: 2px solid var(--brass);
+    outline-offset: 2px;
+}
 .search svg { flex-shrink: 0; }
 
 .kbd:empty { display: none; }

@@ -39,15 +39,16 @@
          hotkeys and nothing else never sees a filter it cannot use. -->
     <div class="facets" id="facets" hidden></div>
 
-    <div class="attention-stack" id="attention"></div>
+    <div class="attention-stack" id="attention" role="status" aria-live="polite"></div>
 
     <div class="results" id="results"></div>
 
     <div class="footer">
         <span class="hint"><span class="hint-key">↑↓</span><span class="label">MOVE</span></span>
         <span class="hint"><span class="hint-key">↵</span><span class="label" id="enter-verb">LAUNCH</span></span>
-        <span class="hint"><span class="hint-key">⇥</span><span class="label">OPEN</span></span>
+        <span class="hint"><span class="hint-key">→</span><span class="label">OPEN</span></span>
         <span class="hint" id="hint-reorder"><span class="hint-key">⌥↑↓</span><span class="label">REORDER</span></span>
+        <span class="hint"><span class="hint-key">⇥</span><span class="label">CONTROLS</span></span>
         <span class="chrome-spacer"></span>
         <span class="label" id="counts"></span>
     </div>
@@ -72,10 +73,10 @@
         <span class="chrome-spacer"></span>
         <!-- Clicking a search row lands here now, so the panel cannot be a dead
              end for the one thing the row used to do. -->
-        <span class="run-btn" id="d-run" role="button">
+        <button class="run-btn" id="d-run" type="button">
             <span class="run-btn-icon" id="d-run-icon"></span>
             <span class="label" id="d-run-label">LAUNCH</span>
-        </span>
+        </button>
         <span class="stat">
             <span class="label">TODAY</span>
             <span class="stat-value" id="d-today">—</span>
@@ -180,7 +181,7 @@
     </div>
 
     <div class="detail-foot">
-        <span class="out-link" id="d-dashboard" role="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>See the full history</span></span>
+        <button class="out-link" id="d-dashboard" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>See the full history</span></button>
         <span class="label">ESC BACK · CHANGES SAVE AS YOU MAKE THEM</span>
         <span class="chrome-spacer"></span>
         <button class="btn btn-danger" id="d-delete" type="button">Remove from FastApp</button>
@@ -333,7 +334,7 @@
             <span class="card-head">
                 <span class="label" id="s-whatsnew-label">WHAT'S NEW</span>
                 <span class="chrome-spacer"></span>
-                <span class="out-link" id="s-all-notes" role="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Every version</span></span>
+                <button class="out-link" id="s-all-notes" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Every version</span></button>
             </span>
             <div class="s-notes" id="s-whatsnew"></div>
             <span class="hint-sub" id="s-whatsnew-empty" hidden></span>
