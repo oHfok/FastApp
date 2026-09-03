@@ -147,7 +147,13 @@ function buildRow(row, index) {
     const el = document.createElement('div');
     el.className = 'row' + (index === active ? ' active' : '');
     el.addEventListener('mousemove', () => { if (active !== index) { active = index; render(); } });
-    el.addEventListener('click', () => { active = index; activate(); });
+
+    // Clicking the row opens it rather than running it. An app row is two
+    // things at once -- something to launch and something to configure -- and
+    // the row is much the larger target, so the reading with no undo is the one
+    // that gets the small explicit button. A command row has nothing to open,
+    // so there running stays the click.
+    el.addEventListener('click', () => { active = index; primary(row); });
 
     const avatar = document.createElement('span');
     avatar.className = 'avatar';
@@ -190,6 +196,8 @@ function buildRow(row, index) {
         figure.className = 'row-figure';
         figure.textContent = app.today || '';
         el.appendChild(figure);
+
+        el.appendChild(buildRunButton(row));
     } else {
         const command = row.item;
         avatar.style.background = CATEGORY_TINT.Other;
@@ -214,12 +222,60 @@ function buildRow(row, index) {
     return el;
 }
 
-function activate() {
-    const current = visible().all[active];
+/// Launch an app, or focus it if it is already running. The row is passed in
+/// rather than read from `active`, because the run button belongs to one
+/// specific row and must not act on whatever the keyboard last highlighted.
+function activate(row) {
+    const current = row || visible().all[active];
     if (!current) return;
 
     if (current.kind === 'app') send('activate-app', { id: current.item.id });
     else send('run-command', { id: current.item.id });
+}
+
+/// What clicking the row itself does: open an app, run a command.
+function primary(row) {
+    const current = row || visible().all[active];
+    if (!current) return;
+
+    if (current.kind === 'app') send('edit-app', { id: current.item.id });
+    else send('run-command', { id: current.item.id });
+}
+
+// A triangle to start something, an arrow out of a box to go to something
+// already started, so the control says which of the two is about to happen.
+function runIcon(running, size) {
+    return running
+        ? `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path>
+             <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path>
+           </svg>`
+        : `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"
+                stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+             <path d="M8 5.5v13l11-6.5z"></path>
+           </svg>`;
+}
+
+function buildRunButton(row) {
+    const app = row.item;
+    const running = !!app.running;
+
+    const button = document.createElement('span');
+    button.className = 'row-run' + (running ? ' running' : '');
+    button.setAttribute('role', 'button');
+    button.title = running ? `Focus ${app.name}` : `Launch ${app.name}`;
+    button.setAttribute('aria-label', button.title);
+    button.innerHTML = runIcon(running, 14);
+
+    // Without this the row's own handler fires straight afterwards and opens
+    // the panel on top of the app that was just launched.
+    button.addEventListener('click', event => {
+        event.stopPropagation();
+        activate(row);
+    });
+
+    return button;
 }
 
 function move(delta) {
@@ -731,8 +787,15 @@ const d = {
     payloadCard: document.getElementById('d-payload-card'),
     payload: document.getElementById('d-payload'),
     startupCard: document.getElementById('d-startup-card'),
-    execRow: document.getElementById('d-exec-row')
+    execRow: document.getElementById('d-exec-row'),
+    run: document.getElementById('d-run'),
+    runIcon: document.getElementById('d-run-icon'),
+    runLabel: document.getElementById('d-run-label')
 };
+
+d.run.addEventListener('click', () => {
+    if (editing) send('activate-app', { id: editing.id });
+});
 
 const ACTION_HINTS = {
     1: 'Mutes or unmutes the system volume. Nothing else to configure.',
@@ -755,6 +818,14 @@ function renderDetail(app) {
     d.category.textContent = app.category || 'Other';
     d.today.textContent = app.today || '0m';
     d.triggers.textContent = app.triggerCount;
+
+    // An action has no window to go back to, so it only ever runs.
+    const running = !!app.running;
+    d.run.className = 'run-btn' + (running ? ' running' : '');
+    d.runIcon.innerHTML = runIcon(running, 15);
+    d.runLabel.textContent = app.isAction ? 'RUN' : running ? 'FOCUS' : 'LAUNCH';
+    d.run.title = `${d.runLabel.textContent[0]}${d.runLabel.textContent.slice(1).toLowerCase()} ${app.displayName}`;
+    d.run.setAttribute('aria-label', d.run.title);
 
     d.customName.value = app.customName || '';
     d.path.textContent = app.packaged

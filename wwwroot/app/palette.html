@@ -40,7 +40,7 @@
     <div class="footer">
         <span class="hint"><span class="hint-key">↑↓</span><span class="label">MOVE</span></span>
         <span class="hint"><span class="hint-key">↵</span><span class="label" id="enter-verb">LAUNCH</span></span>
-        <span class="hint"><span class="hint-key">⇥</span><span class="label">EDIT</span></span>
+        <span class="hint"><span class="hint-key">⇥</span><span class="label">OPEN</span></span>
         <span class="chrome-spacer"></span>
         <span class="label" id="counts"></span>
     </div>
@@ -63,6 +63,12 @@
             <span class="row-sub" id="d-category"></span>
         </span>
         <span class="chrome-spacer"></span>
+        <!-- Clicking a search row lands here now, so the panel cannot be a dead
+             end for the one thing the row used to do. -->
+        <span class="run-btn" id="d-run" role="button">
+            <span class="run-btn-icon" id="d-run-icon"></span>
+            <span class="label" id="d-run-label">LAUNCH</span>
+        </span>
         <span class="stat">
             <span class="label">TODAY</span>
             <span class="stat-value" id="d-today">—</span>

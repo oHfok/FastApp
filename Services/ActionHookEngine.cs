@@ -136,15 +136,14 @@ namespace FastApp.Services
             if (string.IsNullOrEmpty(app.ExecutablePath))
                 return ActionResult.Fail("No executable is set for this entry.");
 
-            string exeName = System.IO.Path.GetFileNameWithoutExtension(app.ExecutablePath);
             bool wasRunning = false;
 
             var existing = Process.GetProcesses();
             try
             {
-                var target = existing.FirstOrDefault(p =>
-                    string.Equals(p.ProcessName, exeName, StringComparison.OrdinalIgnoreCase)
-                    && p.MainWindowHandle != IntPtr.Zero);
+                // Shared with the palette so a row that offers to focus an app
+                // actually focuses it -- see RunningApps.
+                var target = existing.FirstOrDefault(p => RunningApps.Matches(p, app.ExecutablePath));
 
                 if (target != null)
                 {

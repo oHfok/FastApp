@@ -421,7 +421,9 @@ namespace FastApp
                     limitsLocked = _viewModel.IsPinConfigured,
                     canReorder = true,
                     triggerCount = app.HotkeyTriggerCount,
-                    today = FormatSpan(todaySpan)
+                    today = FormatSpan(todaySpan),
+                    running = !app.IsAction
+                              && RunningApps.IsRunning(RunningApps.WindowOwners(), app.ExecutablePath)
                 }
             };
 
@@ -840,6 +842,12 @@ namespace FastApp
             var (today, focusTotal) = TodayUsage.Read();
             var lastUsed = ReadLastUsed();
 
+            // One pass over the process table for the whole list, rather than
+            // one per row. This used to be hardcoded false, which meant the
+            // palette never once offered to focus an app it could see was
+            // already open -- it only ever offered to launch it again.
+            var windowOwners = RunningApps.WindowOwners();
+
             var apps = _viewModel.ManagedApps
                 .OrderBy(a => a.OrderIndex)
                 .Select(a => new
@@ -857,7 +865,7 @@ namespace FastApp
                     today = today.TryGetValue(a.Name, out var span) && span > TimeSpan.Zero
                         ? FormatSpan(span)
                         : "",
-                    running = false
+                    running = !a.IsAction && RunningApps.IsRunning(windowOwners, a.ExecutablePath)
                 })
                 .ToList();
 

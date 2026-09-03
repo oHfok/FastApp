@@ -169,6 +169,31 @@ body {
     white-space: nowrap;
 }
 
+/* The one thing on a row that runs the app. Present on every row rather than
+   revealed on hover, because an affordance you have to discover is no use to
+   someone who does not yet know the row stopped launching things -- but held
+   back at half strength until the row is the one in play, so a long list still
+   reads as names rather than as a column of buttons. */
+.row-run {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--panel);
+    color: var(--text-faint);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    opacity: 0.45;
+}
+.row.active .row-run { opacity: 1; }
+.row-run:hover {
+    opacity: 1;
+    color: var(--brass);
+    background: rgba(232, 163, 61, 0.16);
+}
+/* Already running, so this focuses rather than starts. */
+.row-run.running { color: var(--teal); }
+.row-run.running:hover { color: var(--teal); background: rgba(52, 211, 196, 0.16); }
+
 .empty {
     display: flex; flex-direction: column; gap: 6px;
     align-items: center; justify-content: center;
@@ -234,6 +259,26 @@ body {
     cursor: pointer;
 }
 .icon-btn:hover { color: var(--text); }
+
+/* The detail view's counterpart to .row-run. Labelled rather than a bare
+   glyph, because here there is room and no ambiguity about which row it
+   belongs to. */
+.run-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border-radius: var(--radius-pill);
+    padding: 9px 16px;
+    background: var(--panel);
+    color: var(--text-dim);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.run-btn:hover { color: var(--brass); background: rgba(232, 163, 61, 0.16); }
+.run-btn.running { color: var(--teal); }
+.run-btn.running:hover { color: var(--teal); background: rgba(52, 211, 196, 0.16); }
+.run-btn .label { color: inherit; }
+.run-btn-icon { display: flex; }
 
 .stat { display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
 .stat-value {
