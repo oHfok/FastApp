@@ -38,7 +38,21 @@ function escapeHtml(str) {
 async function apiFetch(url, options) {
     try {
         const res = await fetch(url, options);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+            // The backend answers a failure with {"error": "..."}. Reading it is
+            // what lets the banner distinguish "nothing answered" from "answered,
+            // but could not produce the data" -- and say which. Throwing a bare
+            // "HTTP 500" here is why a corrupt database spent twelve hours
+            // reported as "can't reach FastApp" while FastApp was running fine
+            // and answering every request.
+            let detail = '';
+            try { detail = (await res.json())?.error || ''; } catch { /* not JSON */ }
+
+            const err = new Error(`HTTP ${res.status}${detail ? `: ${detail}` : ''}`);
+            err.status = res.status;
+            err.detail = detail;
+            throw err;
+        }
         const data = await res.json();
         DataHealth.reportOk();
         return data;
@@ -46,7 +60,7 @@ async function apiFetch(url, options) {
         // An aborted request is us cancelling deliberately, not the backend
         // failing -- it must not count towards the failure streak.
         if (err && err.name === 'AbortError') throw err;
-        DataHealth.reportFail();
+        DataHealth.reportFail(err);
         throw err;
     }
 }
@@ -72,14 +86,37 @@ const DataHealth = {
     lastOkAt: null,
     FAILURES_BEFORE_WARNING: 2,
 
+    lastFailure: null,
+
     reportOk() {
         this.consecutiveFailures = 0;
         this.lastOkAt = Date.now();
+        this.lastFailure = null;
         this._render();
     },
-    reportFail() {
+    reportFail(err) {
         this.consecutiveFailures++;
+        this.lastFailure = err || null;
         this._render();
+    },
+
+    /// What to tell someone standing in front of stale numbers. The distinction
+    /// that matters is whether anything answered at all: "can't reach FastApp"
+    /// sends you to check whether the app is running, which is the wrong place
+    /// to look when the app is running and the database underneath it is not
+    /// readable.
+    _reason() {
+        const err = this.lastFailure;
+
+        // fetch() itself rejected: no HTTP response, so nothing is listening.
+        if (!err || !err.status) return "FastApp isn't responding";
+
+        const detail = String(err.detail || '');
+        if (/sqlite|database|disk image|malformed/i.test(detail)) {
+            return "FastApp is running, but its database can't be read";
+        }
+        if (err.status >= 500) return "FastApp is running, but couldn't produce the data";
+        return `FastApp refused the request (HTTP ${err.status})`;
     },
     _render() {
         const el = document.getElementById('stale-banner');
@@ -93,7 +130,13 @@ const DataHealth = {
             ? `Last updated ${describeAgo(this.lastOkAt)}.`
             : 'No data has loaded yet.';
         el.querySelector('.stale-banner-text').textContent =
-            `Not updating — can't reach FastApp. ${since}`;
+            `Not updating — ${this._reason()}. ${since}`;
+
+        // The server's own words, for anyone who wants them, without putting a
+        // SQLite error code in front of everyone else.
+        const detail = this.lastFailure && this.lastFailure.detail;
+        if (detail) el.title = detail; else el.removeAttribute('title');
+
         el.style.display = 'flex';
     }
 };
