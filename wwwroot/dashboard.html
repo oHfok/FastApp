@@ -591,6 +591,41 @@
         </div>
     </div>
 
+    <!-- Export sits above Backup on purpose: a backup is for FastApp to read
+         back, an export is for you to read, and people looking for the second
+         one kept finding the first. -->
+    <div class="dd-section">
+        <div class="dd-section-label">Export</div>
+        <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">
+            Your tracked time as a spreadsheet or a data file. <strong>Summary</strong> is one row per application
+            over the period. <strong>Sessions</strong> is the raw record, one row per stretch of use.
+        </p>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <label style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                <span class="card-label">Period</span>
+                <select id="export-period" class="field">
+                    <option value="day">Today</option>
+                    <option value="week">This week</option>
+                    <option value="month" selected>Last 30 days</option>
+                    <option value="year">Last 365 days</option>
+                    <option value="all">Everything</option>
+                </select>
+            </label>
+            <label style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                <span class="card-label">Contents</span>
+                <select id="export-what" class="field">
+                    <option value="summary" selected>Summary per app</option>
+                    <option value="sessions">Every session</option>
+                </select>
+            </label>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button class="btn btn-brass" style="flex:1;" onclick="downloadExport('csv')">Download CSV</button>
+            <button class="btn" style="flex:1;" onclick="downloadExport('json')">Download JSON</button>
+        </div>
+        <div class="retention-status" id="export-status">Saved.</div>
+    </div>
+
     <div class="dd-section">
         <div class="dd-section-label">Backup &amp; Restore</div>
         <p style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:12px;">

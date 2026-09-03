@@ -674,6 +674,7 @@ namespace FastApp.Services
             MapPeriodsEndpoints(app);
             MapWrappedEndpoints(app);
             MapDataEndpoints(app);
+            MapExportEndpoints(app);
             MapSettingsEndpoints(app);
 
             // RunAsync is where a failed port bind actually surfaces. This used to

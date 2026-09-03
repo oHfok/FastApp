@@ -18,13 +18,15 @@ function send(type, payload) {
     bridge.postMessage(JSON.stringify({ type, ...(payload || {}) }));
 }
 
-let state = { apps: [], trackable: [], commands: [], focusToday: '—', tracking: true };
+let state = { apps: [], trackable: [], commands: [], focusToday: '—', tracking: true, trackingText: 'Tracking' };
 let query = '';
 let active = 0;
 
 const els = {
     q: document.getElementById('q'),
     results: document.getElementById('results'),
+    statusText: document.getElementById('status-text'),
+    statusDot: document.getElementById('status-dot'),
     facets: document.getElementById('facets'),
     attention: document.getElementById('attention'),
     reorderHint: document.getElementById('hint-reorder'),
@@ -135,6 +137,7 @@ function render() {
     const { apps, trackable, commands, all } = visible();
     if (active >= all.length) active = Math.max(0, all.length - 1);
 
+    renderStatus();
     renderAttention();
     renderFacets();
 
@@ -303,6 +306,15 @@ function renderCommandBar() {
     }
 
     els.results.appendChild(bar);
+}
+
+/// The status pill. It read TRACKING unconditionally, because the host sent a
+/// literal true; it is the one place a person looks to know whether their time
+/// is being recorded, so it now says which.
+function renderStatus() {
+    const paused = state.tracking === false;
+    els.statusText.textContent = (state.trackingText || (paused ? 'Paused' : 'Tracking')).toUpperCase();
+    els.statusDot.classList.toggle('paused', paused);
 }
 
 function renderFacets() {

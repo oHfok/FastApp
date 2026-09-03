@@ -390,6 +390,14 @@ namespace FastApp
                 case "extend":
                     ShowExtend();
                     break;
+                case "pause":
+                    _viewModel.PauseTracking(TimeSpan.FromMinutes(30));
+                    PushState();
+                    break;
+                case "resume":
+                    _viewModel.ResumeTracking();
+                    PushState();
+                    break;
                 case "scan":
                     _ = RunScanAsync();
                     break;
@@ -1100,6 +1108,9 @@ namespace FastApp
                 new { id = "scan",      title = "Scan for new applications", hint = "Start menu + Store" },
                 new { id = "settings",  title = "Settings", hint = (string)null },
                 new { id = "extend",    title = "Extend app time", hint = "needs your PIN" },
+                _viewModel.IsTrackingPaused
+                    ? new { id = "resume", title = "Resume tracking", hint = (string)_viewModel.PauseDescription }
+                    : new { id = "pause",  title = "Pause tracking", hint = (string)"for 30 minutes" },
                 new { id = "dashboard", title = "Open statistics dashboard", hint = "opens in browser ↗" }
             };
 
@@ -1121,7 +1132,8 @@ namespace FastApp
                     trackable,
                     commands,
                     focusToday = FormatSpan(focusTotal),
-                    tracking = true,
+                    tracking = !_viewModel.IsTrackingPaused,
+                    trackingText = _viewModel.PauseDescription,
 
                     // Things the first screen should raise rather than bury in
                     // Settings. Both are already detected; neither was shown

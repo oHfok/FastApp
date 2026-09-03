@@ -42,8 +42,17 @@ namespace FastApp.Services
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
-        public static void Apply(ContextMenuStrip menu)
+        /// <summary>
+        /// Takes a ToolStripDropDownMenu rather than a ContextMenuStrip, which
+        /// is its subclass: a submenu's DropDown is the base type, so typing
+        /// this to ContextMenuStrip meant `item.DropDown as ContextMenuStrip`
+        /// silently produced null and the first property set threw -- inside the
+        /// tray constructor, which runs before anything else in the app.
+        /// </summary>
+        public static void Apply(ToolStripDropDownMenu menu)
         {
+            if (menu == null) return;
+
             menu.RenderMode = ToolStripRenderMode.Professional;
             menu.Renderer = new DarkRenderer();
             menu.BackColor = Surface;

@@ -10,6 +10,7 @@ namespace FastApp.Services
         private NotifyIcon _notifyIcon;
         private MainWindow _mainWindow;
         private ToolStripMenuItem _status;
+        private ToolStripMenuItem _pause;
 
         public TrayService(MainWindow mainWindow)
         {
@@ -55,10 +56,28 @@ namespace FastApp.Services
 
             _status = TrayMenuTheme.Header(string.Empty);
 
+            // Pausing belongs here above all: the whole point is to stop
+            // recording without opening anything, and the tray is the surface
+            // you can already reach.
+            _pause = TrayMenuTheme.Item("Pause tracking", (s, e) =>
+            {
+                // Only reachable while paused: with the durations hidden there
+                // is no submenu to open, so the click lands here.
+                if (_mainWindow?.ViewModel?.IsTrackingPaused == true)
+                    _mainWindow.ViewModel.ResumeTracking();
+            });
+            _pause.DropDownItems.Add(TrayMenuTheme.Item("For 30 minutes",
+                (s, e) => Pause(TimeSpan.FromMinutes(30))));
+            _pause.DropDownItems.Add(TrayMenuTheme.Item("For 2 hours",
+                (s, e) => Pause(TimeSpan.FromHours(2))));
+            _pause.DropDownItems.Add(TrayMenuTheme.Item("Until I turn it back on",
+                (s, e) => Pause(null)));
+            TrayMenuTheme.Apply(_pause.DropDown as ToolStripDropDownMenu);
+
             // Read on open rather than on a timer: the figure is only ever
             // looked at in the second the menu is up, and polling the database
             // for a line nobody is reading would be worse than useless.
-            menu.Opening += (s, e) => _status.Text = StatusLine();
+            menu.Opening += (s, e) => { _status.Text = StatusLine(); RefreshPauseItem(); };
 
             menu.Items.AddRange(new ToolStripItem[]
             {
@@ -69,6 +88,7 @@ namespace FastApp.Services
                 TrayMenuTheme.Item("Manage applications", (s, e) => ShowPalette(PaletteView.Manage)),
                 TrayMenuTheme.Item("Settings", (s, e) => ShowPalette(PaletteView.Settings)),
                 new ToolStripSeparator(),
+                _pause,
                 TrayMenuTheme.Item("Statistics dashboard", (s, e) => OpenDashboard()),
                 TrayMenuTheme.Item("Extend app time…", (s, e) => ShowExtendDialog()),
                 new ToolStripSeparator(),
@@ -83,12 +103,41 @@ namespace FastApp.Services
         /// running, and how much has been tracked today. Both are questions the
         /// tray used to answer only by opening something.
         /// </summary>
-        private static string StatusLine()
+        private string StatusLine()
         {
             string version = System.Reflection.Assembly.GetExecutingAssembly()
                 .GetName().Version?.ToString(3) ?? "?";
             var (_, total) = TodayUsage.Read();
+
+            // A paused app says so here first. "2h 14m today" beside a stopped
+            // tracker reads as though it is still counting.
+            var viewModel = _mainWindow?.ViewModel;
+            if (viewModel != null && viewModel.IsTrackingPaused)
+                return $"FastApp {version}  ·  {viewModel.PauseDescription}";
+
             return $"FastApp {version}  ·  {TodayUsage.Describe(total)}";
+        }
+
+        /// <summary>
+        /// One item that is either the pause or the way out of it, rather than
+        /// two that contradict each other.
+        /// </summary>
+        private void RefreshPauseItem()
+        {
+            var viewModel = _mainWindow?.ViewModel;
+            bool paused = viewModel?.IsTrackingPaused == true;
+
+            _pause.DropDown.Visible = false;
+            _pause.Text = paused ? "Resume tracking" : "Pause tracking";
+
+            // A resume has nothing to choose, so the submenu goes away rather
+            // than offering durations for something already stopped.
+            foreach (ToolStripItem item in _pause.DropDownItems) item.Available = !paused;
+        }
+
+        private void Pause(TimeSpan? duration)
+        {
+            _mainWindow?.ViewModel?.PauseTracking(duration);
         }
 
         private void OnNotificationAction(string actionId)

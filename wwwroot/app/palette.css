@@ -90,6 +90,9 @@ body {
 
 .status { display: flex; align-items: center; gap: 8px; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+/* Paused is a state to notice, not an error: brass rather than rose, and the
+   dot stops reading as "live". */
+.status-dot.paused { background: var(--brass); box-shadow: inset 0 0 0 2px var(--bg); }
 
 .label {
     font-family: var(--font-mono);

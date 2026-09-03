@@ -300,6 +300,35 @@ Dashboard.tabs.settings = {
    silently vanishing -- releases before 1.0.5 predate the habit
    of writing them, and a gap in the list would read as a bug.
    ========================================================== */
+/* ==========================================================
+   EXPORT
+
+   A plain navigation rather than a fetch: the response carries
+   Content-Disposition, so letting the browser handle it gets the save dialog,
+   the right filename and a progress indicator for free. Fetching it would
+   mean holding the whole file in memory to rebuild all three.
+   ========================================================== */
+function downloadExport(format) {
+    const period = document.getElementById('export-period').value;
+    const what = document.getElementById('export-what').value;
+    const status = document.getElementById('export-status');
+
+    const url = `/api/export?what=${encodeURIComponent(what)}`
+              + `&format=${encodeURIComponent(format)}`
+              + `&period=${encodeURIComponent(period)}`
+              + `&date=${encodeURIComponent(getLocalTodayStr())}`;
+
+    // The download replaces the page's own navigation for an instant, so say
+    // something: a button that appears to do nothing gets pressed again.
+    if (status) {
+        status.textContent = `Preparing ${format.toUpperCase()}…`;
+        status.style.display = 'block';
+        setTimeout(() => { status.style.display = 'none'; }, 2500);
+    }
+
+    window.location.href = url;
+}
+
 let releasesLoaded = false;
 
 async function loadReleaseNotes(force) {

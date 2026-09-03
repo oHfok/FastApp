@@ -703,6 +703,90 @@ namespace FastApp.ViewModels
 
         private bool _suppressNotificationSettingSave;
 
+        // ==========================================
+        // PAUSING
+        // ==========================================
+        // Nothing could stop tracking. The status indicator was the literal
+        // `tracking = true`, and the only ways to stop recording were to quit
+        // the app or let it record -- which is the wrong answer before a
+        // private call, an interview, or handing the machine to someone else.
+        //
+        // One nullable deadline carries all three states: null is running,
+        // DateTime.MaxValue is paused until told otherwise, and anything else
+        // is a timed pause that expires on its own. Persisted, so a restart
+        // during a pause does not silently resume.
+        private const string PauseUntilKey = "TrackingPausedUntil";
+
+        [ObservableProperty] private DateTime? _pauseUntil;
+
+        /// <summary>Not measuring and not recording.</summary>
+        public bool IsTrackingPaused => PauseUntil.HasValue;
+
+        /// <summary>"Paused" or "Paused until 14:30", for whatever is showing it.</summary>
+        public string PauseDescription =>
+            PauseUntil is not DateTime until ? "Tracking"
+            : until == DateTime.MaxValue ? "Paused"
+            : $"Paused until {until:HH:mm}";
+
+        /// <param name="duration">null pauses until it is turned back on.</param>
+        public void PauseTracking(TimeSpan? duration)
+        {
+            PauseUntil = duration.HasValue ? DateTime.Now + duration.Value : DateTime.MaxValue;
+            Services.AppSettingsStore.Set(PauseUntilKey, PauseUntil.Value.ToString("o"));
+
+            OnPropertyChanged(nameof(IsTrackingPaused));
+            OnPropertyChanged(nameof(PauseDescription));
+
+            Services.NotificationService.Show(
+                "Tracking paused",
+                duration.HasValue
+                    ? $"Nothing will be recorded until {PauseUntil:HH:mm}."
+                    : "Nothing will be recorded until you turn it back on.",
+                Services.NotificationSeverity.Info);
+        }
+
+        public void ResumeTracking(bool automatic = false)
+        {
+            if (!PauseUntil.HasValue) return;
+
+            PauseUntil = null;
+            Services.AppSettingsStore.Set(PauseUntilKey, string.Empty);
+
+            OnPropertyChanged(nameof(IsTrackingPaused));
+            OnPropertyChanged(nameof(PauseDescription));
+
+            // Announced when it expires by itself, because otherwise the only
+            // sign that recording came back is that the numbers move again.
+            if (automatic)
+            {
+                Services.NotificationService.Show(
+                    "Tracking resumed",
+                    "The pause has ended and time is being recorded again.",
+                    Services.NotificationSeverity.Success);
+            }
+        }
+
+        private void LoadPauseState()
+        {
+            string stored = Services.AppSettingsStore.Get(PauseUntilKey);
+            if (string.IsNullOrWhiteSpace(stored)) return;
+
+            if (!DateTime.TryParse(stored, null,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out var until)) return;
+
+            // A timed pause that expired while the app was closed is simply
+            // over; restoring it would pause a fresh session for no reason.
+            if (until <= DateTime.Now)
+            {
+                Services.AppSettingsStore.Set(PauseUntilKey, string.Empty);
+                return;
+            }
+
+            PauseUntil = until;
+            OnPropertyChanged(nameof(IsTrackingPaused));
+            OnPropertyChanged(nameof(PauseDescription));
+        }
+
         private const string NotificationsEnabledKey = "NotificationsEnabled";
         private const string QuietHoursEnabledKey = "QuietHoursEnabled";
         private const string QuietHoursFromKey = "QuietHoursFrom";
@@ -716,6 +800,7 @@ namespace FastApp.ViewModels
             try
             {
                 NotificationsEnabled = Services.AppSettingsStore.GetBool(NotificationsEnabledKey, true);
+                LoadPauseState();
                 QuietHoursEnabled = Services.AppSettingsStore.GetBool(QuietHoursEnabledKey, false);
                 QuietHoursFrom = Services.AppSettingsStore.Get(QuietHoursFromKey, "22:00");
                 QuietHoursTo = Services.AppSettingsStore.Get(QuietHoursToKey, "07:00");
@@ -1604,6 +1689,40 @@ namespace FastApp.ViewModels
             {
             while (await timer.WaitForNextTickAsync(_trackerCts.Token))
             {
+                // A timed pause expires here rather than on a timer of its own:
+                // this loop already runs every five seconds, which is finer
+                // granularity than a pause needs.
+                if (PauseUntil is DateTime until && until != DateTime.MaxValue && DateTime.Now >= until)
+                {
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(
+                        () => ResumeTracking(automatic: true));
+                }
+
+                if (IsTrackingPaused)
+                {
+                    // The open session is closed at the moment of the pause so
+                    // the time up to it is kept, and the paused interval is
+                    // discarded rather than buffered. A pause that quietly went
+                    // on counting would be a lie, and this is the one feature
+                    // whose entire value is being believed.
+                    if (currentFocusedApp != null && currentSessionStart.HasValue)
+                    {
+                        _pendingSessions.Enqueue(new ViewModels.SessionLog
+                        {
+                            AppName = currentFocusedApp,
+                            StartTime = currentSessionStart.Value,
+                            EndTime = DateTime.Now,
+                            WindowTitle = currentSessionTitle
+                        });
+
+                        currentFocusedApp = null;
+                        currentSessionStart = null;
+                        currentSessionTitle = null;
+                    }
+
+                    continue;
+                }
+
                 var allProcesses = Process.GetProcesses();
                 var allProcessNames = allProcesses.Select(p => p.ProcessName.ToLower()).ToHashSet();
 
