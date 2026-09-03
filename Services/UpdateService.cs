@@ -73,9 +73,24 @@ namespace FastApp.Services
             }
         }
 
-        // User-initiated check from the Settings tab. Downloads eagerly so the
-        // caller can offer an immediate restart-to-apply once this returns.
-        public static async Task<UpdateCheckResult> CheckForUpdatesAsync()
+        // How long to wait for GitHub to answer before giving up on the check.
+        //
+        // Only the question, not the download: a 113 MB package legitimately
+        // takes minutes on a slow line, and cutting that off would be worse than
+        // waiting for it. This is the part that can hang with nothing to show.
+        private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(20);
+
+        // User-initiated check from Settings. Downloads eagerly so the caller
+        // can offer an immediate restart-to-apply once this returns.
+        //
+        // onStatus is called as the phase changes, because "Checking for
+        // updates" used to cover the whole of this method and the slow part of
+        // it is not the check. When a release is waiting, this fetches the
+        // entire package -- 113 MB at the time of writing -- and said nothing
+        // about it, so a perfectly healthy download read as a jammed button.
+        // It is called from whatever thread Velopack reports on; the caller
+        // marshals.
+        public static async Task<UpdateCheckResult> CheckForUpdatesAsync(Action<string> onStatus = null)
         {
             try
             {
@@ -83,12 +98,45 @@ namespace FastApp.Services
                 if (!mgr.IsInstalled)
                     return new UpdateCheckResult(false, "Not available — this copy wasn't installed via Setup.exe.", null);
 
-                var newVersion = await mgr.CheckForUpdatesAsync();
+                onStatus?.Invoke("Asking GitHub for the latest version…");
+
+                // Raced rather than cancelled: Velopack's CheckForUpdatesAsync
+                // takes no CancellationToken, so there is no way to call it off.
+                // The loser keeps running -- it is a read-only HTTP call and
+                // harmless -- and its exception is observed here so a late
+                // failure cannot surface as an unobserved task.
+                var check = mgr.CheckForUpdatesAsync();
+                if (await Task.WhenAny(check, Task.Delay(CheckTimeout)) != check)
+                {
+                    _ = check.ContinueWith(
+                        t => { _ = t.Exception; },
+                        TaskContinuationOptions.OnlyOnFaulted);
+
+                    return new UpdateCheckResult(
+                        false,
+                        $"No answer from GitHub after {CheckTimeout.TotalSeconds:0} seconds. Check your connection and try again.",
+                        null);
+                }
+
+                var newVersion = await check;
                 if (newVersion == null)
                     return new UpdateCheckResult(true, $"Up to date ({CurrentVersionText}).", null);
 
-                await mgr.DownloadUpdatesAsync(newVersion);
-                return new UpdateCheckResult(true, $"Update v{newVersion.TargetFullRelease.Version} ready to install.", newVersion);
+                string version = newVersion.TargetFullRelease.Version.ToString();
+
+                // Whole percents only. Velopack reports far more often than that,
+                // and every report crosses to the UI thread and pushes a settings
+                // payload to the page.
+                int reported = -1;
+                onStatus?.Invoke($"Downloading v{version}…");
+                await mgr.DownloadUpdatesAsync(newVersion, percent =>
+                {
+                    if (percent == reported) return;
+                    reported = percent;
+                    onStatus?.Invoke($"Downloading v{version} — {percent}%");
+                });
+
+                return new UpdateCheckResult(true, $"Update v{version} ready to install.", newVersion);
             }
             catch (Exception ex)
             {

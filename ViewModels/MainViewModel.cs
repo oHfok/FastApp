@@ -307,12 +307,24 @@ namespace FastApp.ViewModels
             IsUpdateReadyToApply = false;
             UpdateStatusText = "Checking for updates…";
 
-            var result = await Services.UpdateService.CheckForUpdatesAsync();
+            var result = await Services.UpdateService.CheckForUpdatesAsync(ReportUpdateStatus);
 
             UpdateStatusText = result.Message;
             _pendingUpdateInfo = result.UpdateInfo;
             IsUpdateReadyToApply = result.Success && result.UpdateInfo != null;
             IsCheckingForUpdates = false;
+        }
+
+        // Velopack reports download progress from whatever thread the download is
+        // running on, and UpdateStatusText is read by two surfaces that both want
+        // the UI thread: a WPF binding, and the palette's push into its WebView2.
+        // Posted rather than sent, so a slow repaint never holds up the download
+        // that is reporting it.
+        private void ReportUpdateStatus(string text)
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher == null || dispatcher.CheckAccess()) UpdateStatusText = text;
+            else dispatcher.BeginInvoke(new Action(() => UpdateStatusText = text));
         }
 
         [RelayCommand]

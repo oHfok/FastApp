@@ -896,7 +896,10 @@ function show(name) {
     for (const [key, v] of Object.entries(VIEWS)) v.el.hidden = key !== name;
 
     const target = VIEWS[name];
-    send('resize', { width: target.w, height: target.h });
+    // The view goes with the size: the host has no other way to know which of
+    // these is on screen, and it needs to know so it can keep Settings up to
+    // date while something slow is running behind it.
+    send('resize', { width: target.w, height: target.h, view: name });
     // Leaving and returning re-measures: the list may have changed while away.
     if (name !== 'palette') sentHeight = 0;
 
@@ -1328,7 +1331,10 @@ function renderSettings(v) {
     st.openDashboard.disabled = !v.dashboardRunning;
 
     st.updateStatus.textContent = v.updateStatus || '';
+    // Disabled while it runs, so the button itself says something is happening
+    // rather than leaving that entirely to a line of grey text beside it.
     st.check.textContent = v.checkingForUpdates ? 'Checking…' : 'Check now';
+    st.check.disabled = !!v.checkingForUpdates;
     st.apply.hidden = !v.updateReady;
 
     // Both of the cards below stay on screen with nothing to show. A section

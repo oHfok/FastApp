@@ -46,11 +46,54 @@ namespace FastApp
         private static readonly JsonSerializerOptions JsonOptions =
             new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true };
 
+        /// <summary>
+        /// Which view the page is showing, as the page last reported it. Only
+        /// used to decide whether a settings push is worth making.
+        /// </summary>
+        private string _pageView;
+
+        private int _settingsPushQueued;
+
         public PaletteWindow(MainViewModel viewModel)
         {
             InitializeComponent();
             _viewModel = viewModel;
+            _viewModel.PropertyChanged += OnViewModelChanged;
             Loaded += async (_, _) => await InitialiseAsync();
+        }
+
+        /// <summary>
+        /// Keep an open Settings view in step with the view model.
+        ///
+        /// It used to be pushed four times on a timer after a command was run,
+        /// at 400ms, 800ms, 1.6s and 3.2s, on the reasoning that these things
+        /// "run for a while". Anything that took longer than 3.2 seconds
+        /// finished into a page that had stopped listening: the update check is
+        /// the obvious one, since finding a release makes it download the whole
+        /// package, and the button sat on "Checking" for the rest of the
+        /// session however well the check had gone. Rollback and the startup
+        /// repair had the same hole.
+        ///
+        /// Every property change is a candidate rather than a named list, so a
+        /// property added to PushSettings later cannot quietly fall out of this.
+        /// The cost is kept off the rest of the app by two things: the page has
+        /// to actually be on Settings, and a burst of changes is coalesced into
+        /// one push at background priority.
+        /// </summary>
+        private void OnViewModelChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (_pageView != "settings") return;
+
+            // Raised from the tracker and download threads as well as this one.
+            if (System.Threading.Interlocked.Exchange(ref _settingsPushQueued, 1) == 1) return;
+
+            Dispatcher.BeginInvoke(
+                new Action(() =>
+                {
+                    System.Threading.Interlocked.Exchange(ref _settingsPushQueued, 0);
+                    PushSettings();
+                }),
+                System.Windows.Threading.DispatcherPriority.Background);
         }
 
         /// <summary>
@@ -355,6 +398,7 @@ namespace FastApp
                     break;
 
                 case "resize":
+                    _pageView = message.View;
                     ResizeTo(message.Width, message.Height);
                     break;
 
@@ -1017,14 +1061,8 @@ namespace FastApp
                     return;
             }
 
-            // These run for a while; poll the view model back to the page a few
-            // times rather than wiring a property-changed subscription for a
-            // view that is usually closed.
-            for (int delay = 400; delay <= 3200; delay *= 2)
-            {
-                _ = Task.Delay(delay).ContinueWith(_ =>
-                    Dispatcher.BeginInvoke(new Action(PushSettings)));
-            }
+            // Nothing to poll: OnViewModelChanged pushes whenever the view model
+            // moves, for as long as these take.
         }
 
         private static void Execute(System.Windows.Input.ICommand command)
@@ -1413,6 +1451,7 @@ namespace FastApp
             public int Delta { get; set; }
             public string Key { get; set; }
             public string Text { get; set; }
+            public string View { get; set; }
             public List<string> Paths { get; set; }
             public int Minutes { get; set; }
             public string Pin { get; set; }
