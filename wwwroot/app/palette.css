@@ -607,19 +607,46 @@ body {
     overflow: hidden;
 }
 
+/* The scroller. Nothing else: it holds the two-column block of settings cards
+   and, beneath it, the release notes. */
 .s-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    /* The trailing card margin inside the column block does not extend it, so
+       the space before the notes has to come from here. Measured at 14px in
+       every state the page has -- banner up or down, quiet hours open, no
+       rollback versions. */
     gap: 14px;
-    align-content: start;
-    /* Cards take the height of their contents. A grid item stretches to its
-       row by default, so the two-line VERSION card was being pulled to the full
-       height of the release notes beside it and rendered as a large empty
-       panel with a version number in the corner. */
-    align-items: start;
     flex-grow: 1;
     min-height: 0;
     overflow-y: auto;
+}
+
+/* Columns, not a grid.
+
+   A grid keeps uniform rows, so the shorter card in each pair either stretched
+   to its neighbour's height -- which turned the two-line VERSION card into a
+   large empty panel -- or, once that was stopped, left a ragged gap under
+   itself waiting for the next row to begin. Both are the same fact: these
+   cards have nothing to do with one another and no reason to share a baseline.
+   Columns drop the rows and pack each card directly under the one above it.
+
+   Separate from the scroller on purpose. When one element was both, the columns
+   took their height from the visible area rather than from their contents, so
+   the space between the last card and the notes moved with the window size and
+   with whether the startup banner happened to be showing -- 14px in one state
+   and 81px in another. */
+.s-cards {
+    columns: 2;
+    column-gap: 14px;
+}
+/* A column-gap only separates the columns; down the page the spacing is the
+   card's own, and break-inside keeps a card from being split across the two.
+   The last card's margin is also what sets the notes card off from the block,
+   so the scroller adds no gap of its own. */
+.s-cards > .card {
+    break-inside: avoid;
+    margin-bottom: 14px;
 }
 .s-grid::-webkit-scrollbar { width: 0; }
 
@@ -638,9 +665,9 @@ body {
 
 .field-time { width: 96px; flex-grow: 0; text-align: center; font-family: var(--font-mono); }
 
-/* Across both columns, and last. Its own width is the grid's; the text inside
+/* Across both columns, and last. Its own width is the page's; the text inside
    it is not, because a line 850px long is not a line anyone reads. */
-#s-whatsnew-card { grid-column: 1 / -1; }
+#s-whatsnew-card { margin: 0; }
 .s-notes {
     display: flex;
     flex-direction: column;
