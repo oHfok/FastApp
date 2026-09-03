@@ -1198,23 +1198,37 @@ namespace FastApp.ViewModels
             // actually for.
             var running = SnapshotProcessNames();
 
+            // The window is told the whole sequence first, so it can show what
+            // is coming rather than one name at a time.
+            if (showProgress)
+            {
+                Services.AutoLaunchProgressService.ShowPlan(
+                    appsToLaunch.Select(a => a.DisplayNamePrimary).ToList());
+            }
+
             for (int i = 0; i < appsToLaunch.Count; i++)
             {
                 var app = appsToLaunch[i];
 
                 if (app.LaunchDelaySeconds > 0)
                 {
-                    if (showProgress)
+                    // Counted down rather than stated once: a row that has said
+                    // "waiting 30s" for half a minute is indistinguishable from
+                    // one that has hung.
+                    for (int left = app.LaunchDelaySeconds; left > 0; left--)
                     {
-                        Services.AutoLaunchProgressService.ShowProgress(
-                            i + 1, appsToLaunch.Count, $"{app.Name} (waiting {app.LaunchDelaySeconds}s)");
+                        if (showProgress)
+                        {
+                            Services.AutoLaunchProgressService.SetStep(
+                                i, LaunchStep.Waiting, $"in {left}s");
+                        }
+                        await Task.Delay(TimeSpan.FromSeconds(1));
                     }
-                    await Task.Delay(TimeSpan.FromSeconds(app.LaunchDelaySeconds));
                 }
 
                 if (showProgress)
                 {
-                    Services.AutoLaunchProgressService.ShowProgress(i + 1, appsToLaunch.Count, app.Name);
+                    Services.AutoLaunchProgressService.SetStep(i, LaunchStep.Opening);
                 }
 
                 string exeName = Path.GetFileNameWithoutExtension(app.ExecutablePath).ToLower();
@@ -1222,6 +1236,8 @@ namespace FastApp.ViewModels
                 if (running.Contains(exeName))
                 {
                     outcomes.Add((app, LaunchOutcome.AlreadyRunning, null));
+                    if (showProgress)
+                        Services.AutoLaunchProgressService.SetStep(i, LaunchStep.AlreadyRunning);
                 }
                 else
                 {
@@ -1229,10 +1245,14 @@ namespace FastApp.ViewModels
                     {
                         running.Add(exeName);
                         outcomes.Add((app, LaunchOutcome.Started, null));
+                        if (showProgress)
+                            Services.AutoLaunchProgressService.SetStep(i, LaunchStep.Started);
                     }
                     else
                     {
                         outcomes.Add((app, LaunchOutcome.Failed, error));
+                        if (showProgress)
+                            Services.AutoLaunchProgressService.SetStep(i, LaunchStep.Failed);
                     }
                 }
 

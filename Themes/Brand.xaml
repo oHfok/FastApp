@@ -46,6 +46,12 @@
     <SolidColorBrush x:Key="BrandOverlayBorder" Color="#33FFFFFF"/>
     <SolidColorBrush x:Key="BrandOverlayTrack" Color="#22FFFFFF"/>
 
+    <!-- Outcome colours, matching —teal and —rose in wwwroot/css/tokens.css:
+         teal for something that is up and running, rose for something that
+         failed. Used by the auto-launch progress list. -->
+    <SolidColorBrush x:Key="BrandTeal" Color="#34D3C4"/>
+    <SolidColorBrush x:Key="BrandRose" Color="#FF6B6B"/>
+
     <!-- Subtle raised chip inside a card (the hotkey pill). -->
     <SolidColorBrush x:Key="BrandChipBackground" Color="#1AFFFFFF"/>
 
