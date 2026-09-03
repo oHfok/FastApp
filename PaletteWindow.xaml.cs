@@ -1160,12 +1160,23 @@ namespace FastApp
         }
 
         // Auto-hide-on-deactivate is what makes this a palette rather than a
-        // window, but it must not fire during the show itself: Show() briefly
-        // deactivates before Activate() lands, and if something else owns the
-        // foreground -- a fullscreen game, say -- the palette dismissed itself
-        // the instant it appeared. Armed only once it has genuinely been
-        // activated, so the first deactivation it acts on is the user leaving.
+        // window, but it must not fire during the show itself.
+        //
+        // Arming on OnActivated was not enough, and in fact defeated the delay
+        // below: activation lands within a millisecond or two of Show(), so the
+        // window was armed almost immediately and then dismissed itself on the
+        // very next deactivation -- which routinely arrives while the summon is
+        // still settling. Taking the foreground from another process, and the
+        // hotkey's own keys coming back up, both produce one. The window
+        // appeared and vanished, and looked like a hotkey that had not worked.
+        //
+        // So arming is not the whole guard: there is also a floor. Nothing
+        // dismisses the window within SettleWindow of a summon, however armed
+        // it is. After that the first genuine deactivation closes it.
         private bool _allowAutoHide;
+        private DateTime _shownAtUtc = DateTime.MinValue;
+
+        private static readonly TimeSpan SettleWindow = TimeSpan.FromMilliseconds(450);
 
         /// <summary>
         /// Summon it. Hidden rather than closed, so this is instant.
@@ -1178,6 +1189,7 @@ namespace FastApp
         {
             _allowAutoHide = false;
             _pinned = false;
+            _shownAtUtc = DateTime.UtcNow;
             Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"reset\"}");
             if (view == PaletteView.Manage) ShowManage();
             else if (view == PaletteView.Settings) ShowSettings();
@@ -1202,9 +1214,11 @@ namespace FastApp
 
             // Some foregrounds refuse to yield activation. Rather than sit
             // there un-dismissable, arm the auto-hide shortly after showing
-            // even if Activated never arrives.
+            // even if Activated never arrives. The floor in OnDeactivated is
+            // what actually protects the summon; this only guarantees the
+            // window can always be dismissed.
             Dispatcher.BeginInvoke(new Action(PushState));
-            _ = Task.Delay(400).ContinueWith(_ =>
+            _ = Task.Delay(SettleWindow).ContinueWith(_ =>
                 Dispatcher.BeginInvoke(new Action(() => _allowAutoHide = true)));
         }
 
@@ -1219,9 +1233,13 @@ namespace FastApp
         protected override void OnDeactivated(EventArgs e)
         {
             base.OnDeactivated(e);
+
             // A palette that stays up after you click away is a window, not a
-            // palette.
-            if (_allowAutoHide && !_pinned && IsVisible) Hide();
+            // palette -- but one that closes before you have seen it is worse.
+            if (!_allowAutoHide || _pinned || !IsVisible) return;
+            if (DateTime.UtcNow - _shownAtUtc < SettleWindow) return;
+
+            Hide();
         }
 
         // Escape is deliberately NOT handled here. WebView2 forwards it to the
