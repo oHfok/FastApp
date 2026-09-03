@@ -1097,7 +1097,7 @@ namespace FastApp.ViewModels
                     // are mid-game and a toast would be worse than the macro.
                     if (EnableOsd)
                     {
-                        Services.OsdService.Show($"{app.DisplayNamePrimary} blocked in game", app.IsAction);
+                        Services.OsdService.Show(app.DisplayNamePrimary, OsdKind.Blocked);
                     }
                     continue;
                 }
@@ -1133,7 +1133,8 @@ namespace FastApp.ViewModels
                 // 3. Show OSD
                 if (EnableOsd)
                 {
-                    Services.OsdService.Show($"{app.DisplayNamePrimary} Activated", app.IsAction);
+                    Services.OsdService.Show(app.DisplayNamePrimary,
+                        app.IsAction ? OsdKind.Action : OsdKind.App);
                 }
             }
         }

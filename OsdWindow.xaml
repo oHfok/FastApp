@@ -1,19 +1,50 @@
 ﻿<Window x:Class="FastApp.OsdWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-        Title="OSD" Height="80" Width="320"
+        Title="OSD" SizeToContent="WidthAndHeight" MinWidth="230" MaxWidth="420"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize" WindowStartupLocation="Manual">
 
-    <Border x:Name="OsdBorder" Background="{StaticResource BrandOverlayBackground}" CornerRadius="8" BorderBrush="{StaticResource BrandOverlayBorder}" BorderThickness="1" Padding="20,0" Opacity="0" Margin="50,0,-50,0">
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <!-- We keep both icons here and toggle visibility to avoid version conflicts in C# -->
-            <ui:SymbolIcon x:Name="ActionIcon" Symbol="Flash24" FontSize="24" Foreground="{StaticResource BrandAction}" Margin="0,0,15,0" Visibility="Collapsed"/>
-            <ui:SymbolIcon x:Name="AppIcon" Symbol="Apps24" FontSize="24" Foreground="{StaticResource BrandBrass}" Margin="0,0,15,0" Visibility="Collapsed"/>
+    <!--
+        The same surface as AutoLaunchProgressWindow: 20px radius, the overlay
+        wash, a Consolas micro label over the thing it is telling you about.
+        These two are the only chrome FastApp draws itself, and they were drawn
+        differently.
 
-            <TextBlock x:Name="OsdText" Text="Macro Activated" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource BrandText}" VerticalAlignment="Center"/>
+        It also stopped being handed a finished sentence. "Valorant Activated"
+        arrived as one string, so the window could not tell the name from the
+        verb and had no way to lay them out; it just printed it beside a generic
+        icon. It now receives the name and what happened, and composes them.
+    -->
+    <Border x:Name="OsdBorder"
+            Background="{StaticResource BrandOverlayBackground}"
+            BorderBrush="{StaticResource BrandOverlayBorder}"
+            BorderThickness="1"
+            CornerRadius="20"
+            Padding="22,15"
+            Opacity="0">
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="SlideTransform" X="40"/>
+        </Border.RenderTransform>
+
+        <StackPanel>
+            <TextBlock x:Name="KindText" Text="HOTKEY"
+                       FontFamily="Consolas" FontSize="11" FontWeight="Bold"
+                       Foreground="{StaticResource BrandTextFaint}"
+                       Margin="0,0,0,7"/>
+
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="MarkerText" Text="&#x25CF;"
+                           FontSize="13" FontWeight="Bold"
+                           Foreground="{StaticResource BrandBrass}"
+                           VerticalAlignment="Center" Margin="0,0,11,0"/>
+
+                <TextBlock x:Name="OsdText" Text="Valorant"
+                           FontSize="16" Foreground="{StaticResource BrandText}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
         </StackPanel>
     </Border>
 </Window>

@@ -1,14 +1,33 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using Brush = System.Windows.Media.Brush;
+using Color = System.Windows.Media.Color;
+using ColorConverter = System.Windows.Media.ColorConverter;
 
 namespace FastApp
 {
+    /// <summary>Why the OSD is on screen.</summary>
+    public enum OsdKind
+    {
+        /// <summary>A hotkey launched or focused an application.</summary>
+        App,
+        /// <summary>A hotkey ran an action: mute, centre window, paste.</summary>
+        Action,
+        /// <summary>A hotkey was deliberately not passed through to a game.</summary>
+        Blocked
+    }
+
     public partial class OsdWindow : Window
     {
-        private DispatcherTimer _hideTimer;
+        private static readonly Brush Brass = Frozen("#E8A33D");
+        private static readonly Brush Violet = Frozen("#8B7CFF");
+        private static readonly Brush Rose = Frozen("#FF6B6B");
+
+        private readonly DispatcherTimer _hideTimer;
 
         public OsdWindow()
         {
@@ -21,49 +40,93 @@ namespace FastApp
         {
             base.OnSourceInitialized(e);
 
-            // WIN32 MAGIC: Makes the window un-clickable (clicks pass through) and prevents it from ever stealing focus
+            // WIN32 MAGIC: Makes the window un-clickable (clicks pass through)
+            // and prevents it from ever stealing focus.
             IntPtr hwnd = new WindowInteropHelper(this).Handle;
             int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
             SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT);
         }
 
-        public void ShowMessage(string message, bool isAction)
+        /// <summary>
+        /// Say what just happened, and to what.
+        ///
+        /// The name and the event arrive separately. They used to be joined into
+        /// one string by the caller, which left the window printing a sentence
+        /// beside a generic icon with no idea which half was which.
+        /// </summary>
+        public void ShowMessage(string name, OsdKind kind)
         {
-            // Set Text and Icon
-            OsdText.Text = message;
-            ActionIcon.Visibility = isAction ? Visibility.Visible : Visibility.Collapsed;
-            AppIcon.Visibility = isAction ? Visibility.Collapsed : Visibility.Visible;
+            OsdText.Text = name;
 
-            // Position at bottom-right of the primary screen
-            var workArea = SystemParameters.WorkArea;
-            this.Left = workArea.Right - this.Width - 30;
-            this.Top = workArea.Bottom - this.Height - 30;
-
-            this.Show();
-
-            // Smooth Slide-In & Fade-In Animation
-            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250));
-            var slideIn = new ThicknessAnimation(new Thickness(50, 0, -50, 0), new Thickness(0), TimeSpan.FromMilliseconds(250))
+            switch (kind)
             {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
+                case OsdKind.Action:
+                    KindText.Text = "ACTION";
+                    MarkerText.Text = "●";
+                    MarkerText.Foreground = Violet;
+                    break;
+                case OsdKind.Blocked:
+                    // The same words the setting uses ("Don't pass through"),
+                    // rather than a second phrase for one behaviour. The old
+                    // "blocked in game" could also be read as FastApp being the
+                    // thing that was blocked.
+                    KindText.Text = "NOT PASSED THROUGH";
+                    MarkerText.Text = "✕";
+                    MarkerText.Foreground = Rose;
+                    break;
+                default:
+                    KindText.Text = "HOTKEY";
+                    MarkerText.Text = "●";
+                    MarkerText.Foreground = Brass;
+                    break;
+            }
 
-            OsdBorder.BeginAnimation(OpacityProperty, fadeIn);
-            OsdBorder.BeginAnimation(MarginProperty, slideIn);
+            // Laid out before it is placed: the window sizes itself to the name,
+            // so its width is not known until the content has measured, and
+            // positioning from a stale width left it hanging off the edge.
+            UpdateLayout();
+            PositionBottomRight();
 
-            // Reset the 2-second auto-close timer
+            Show();
+            Dispatcher.BeginInvoke(new Action(PositionBottomRight), DispatcherPriority.Loaded);
+
+            OsdBorder.BeginAnimation(OpacityProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250)));
+
+            // Slid by a transform rather than by animating Margin. A margin is
+            // layout, so the old animation resized the window on every frame,
+            // which a window that sizes itself to its content cannot survive.
+            SlideTransform.BeginAnimation(TranslateTransform.XProperty,
+                new DoubleAnimation(40, 0, TimeSpan.FromMilliseconds(250))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                });
+
             _hideTimer.Stop();
             _hideTimer.Start();
+        }
+
+        private void PositionBottomRight()
+        {
+            var workArea = SystemParameters.WorkArea;
+            Left = workArea.Right - ActualWidth - 30;
+            Top = workArea.Bottom - ActualHeight - 30;
         }
 
         private void HideOsd()
         {
             _hideTimer.Stop();
 
-            // Smooth Fade-Out
             var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300));
-            fadeOut.Completed += (s, e) => this.Hide();
+            fadeOut.Completed += (s, e) => Hide();
             OsdBorder.BeginAnimation(OpacityProperty, fadeOut);
+        }
+
+        private static Brush Frozen(string hex)
+        {
+            var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+            brush.Freeze();
+            return brush;
         }
 
         // --- Win32 Imports ---

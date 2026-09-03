@@ -6,20 +6,22 @@ namespace FastApp.Services
     {
         private static OsdWindow _osdWindow;
 
-        public static void Show(string message, bool isAction)
+        /// <summary>
+        /// The name and what happened to it, kept apart. This took a finished
+        /// sentence and a bool, which meant the window could not lay out the two
+        /// halves it was being shown.
+        /// </summary>
+        public static void Show(string name, OsdKind kind)
         {
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
-                if (_osdWindow == null)
-                {
-                    _osdWindow = new OsdWindow();
-                }
+                _osdWindow ??= new OsdWindow();
 
                 // Keep it on top of other fullscreen apps
                 _osdWindow.Topmost = false;
                 _osdWindow.Topmost = true;
 
-                _osdWindow.ShowMessage(message, isAction);
+                _osdWindow.ShowMessage(name, kind);
             });
         }
     }
