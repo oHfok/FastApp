@@ -35,12 +35,19 @@
         <span class="kbd" id="result-count"></span>
     </div>
 
+    <!-- Filled only when more than one facet is populated: a setup that uses
+         hotkeys and nothing else never sees a filter it cannot use. -->
+    <div class="facets" id="facets" hidden></div>
+
+    <div class="attention-stack" id="attention"></div>
+
     <div class="results" id="results"></div>
 
     <div class="footer">
         <span class="hint"><span class="hint-key">↑↓</span><span class="label">MOVE</span></span>
         <span class="hint"><span class="hint-key">↵</span><span class="label" id="enter-verb">LAUNCH</span></span>
         <span class="hint"><span class="hint-key">⇥</span><span class="label">OPEN</span></span>
+        <span class="hint" id="hint-reorder"><span class="hint-key">⌥↑↓</span><span class="label">REORDER</span></span>
         <span class="chrome-spacer"></span>
         <span class="label" id="counts"></span>
     </div>

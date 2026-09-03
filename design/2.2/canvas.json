@@ -1,0 +1,54 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 820, "h": 560, "title": "Main — this PC" },
+    { "file": "Mixed.dc.html", "x": 920, "y": 0, "w": 820, "h": 560, "title": "Mixed — overlapping purposes" },
+    { "file": "Searching.dc.html", "x": 1840, "y": 0, "w": 820, "h": 560, "title": "Typing — add what you use" },
+    { "file": "Attention.dc.html", "x": 0, "y": 720, "w": 820, "h": 560, "title": "Something needs attention" },
+    { "file": "FirstRun.dc.html", "x": 920, "y": 720, "w": 820, "h": 560, "title": "Nothing added yet" }
+  ],
+  "annotations": [
+    {
+      "id": "premise",
+      "x": 0,
+      "y": -190,
+      "w": 380,
+      "text": "The Windows app does what the dashboard cannot: hotkeys, startup order, limits, launching.\n\nSo the first screen is a control surface for those, not a second dashboard. No totals, no top-apps, no weekly trend — that is the dashboard's job."
+    },
+    {
+      "id": "columns",
+      "x": 920,
+      "y": -190,
+      "w": 380,
+      "text": "One list, fixed columns — NOT groups.\n\nGrouping by purpose only works if an app has exactly one. Figma here has a hotkey AND startup AND a limit. Columns hold every combination; a column costs nothing when nobody uses it, which is why Main shows no LIMIT column at all."
+    },
+    {
+      "id": "uses",
+      "x": 1840,
+      "y": -190,
+      "w": 380,
+      "text": "Two things only this app knows.\n\nHotkey usage: Steam 44, Valorant 2. A binding that isn't earning its keys is worth seeing.\n\nAnd the 144 apps already tracked make far better add-candidates than scanning the Start menu."
+    },
+    {
+      "id": "attention-note",
+      "x": 0,
+      "y": 1320,
+      "w": 380,
+      "text": "Strips appear only when something is actually wrong. Both states here are already detected today and buried in Settings.\n\nOn a healthy machine this artboard looks exactly like Main."
+    },
+    {
+      "id": "firstrun-note",
+      "x": 920,
+      "y": 1320,
+      "w": 380,
+      "text": "Today a new user sees \"Nothing to show yet\" and no way forward.\n\nThe app is already tracking everything they use, so the first offer should be to add from that."
+    },
+    {
+      "id": "open",
+      "x": 1840,
+      "y": 1320,
+      "w": 380,
+      "text": "Open question: ordering.\n\nThis list is in your configured order, which is also the auto-launch order and is what ⌥↑↓ reorders. That reverses the 2.0.4 change that sorted by most-recently-used — but \"RECENT\" is no longer the heading, so nothing promises recency any more."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

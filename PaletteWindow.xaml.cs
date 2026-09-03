@@ -946,24 +946,46 @@ namespace FastApp
             // already open -- it only ever offered to launch it again.
             var windowOwners = RunningApps.WindowOwners();
 
+            // Where each auto-launching app falls in the launch sequence. Its
+            // position, not its OrderIndex: OrderIndex spans every managed app,
+            // so an app that starts fourth in a list of eight is "1st" if the
+            // three above it do not launch at login. The number people care
+            // about is when it starts, not where it sits.
+            var startupOrder = _viewModel.ManagedApps
+                .Where(a => a.LaunchOnStartup)
+                .OrderBy(a => a.OrderIndex)
+                .Select((a, index) => new { a.Id, Position = index + 1 })
+                .ToDictionary(x => x.Id, x => x.Position);
+
             var apps = _viewModel.ManagedApps
                 .OrderBy(a => a.OrderIndex)
-                .Select(a => new
+                .Select(a =>
                 {
-                    id = a.Id.ToString(),
-                    name = a.DisplayNamePrimary,
-                    category = a.Category,
-                    hotkey = string.IsNullOrWhiteSpace(a.HotkeySequence) ? null : a.HotkeyDisplayText,
-                    autoStart = a.LaunchOnStartup,
-                    limitMinutes = a.DailyLimitMinutes,
-                    isAction = a.IsAction,
-                    lastUsed = lastUsed.TryGetValue(a.Name, out var seen)
-                        ? seen.Ticks
-                        : 0L,
-                    today = today.TryGetValue(a.Name, out var span) && span > TimeSpan.Zero
-                        ? FormatSpan(span)
-                        : "",
-                    running = !a.IsAction && RunningApps.IsRunning(windowOwners, a.ExecutablePath)
+                    int usedToday = today.TryGetValue(a.Name, out var span)
+                        ? (int)span.TotalMinutes
+                        : 0;
+                    int bonus = a.BonusMinutesDate?.Date == DateTime.Today ? a.TodayBonusMinutes : 0;
+
+                    return new
+                    {
+                        id = a.Id.ToString(),
+                        name = a.DisplayNamePrimary,
+                        category = a.Category,
+                        hotkey = string.IsNullOrWhiteSpace(a.HotkeySequence) ? null : a.HotkeyDisplayText,
+                        // Never shown before, and only this app can know it: a
+                        // binding used twice in two months is not earning its keys.
+                        hotkeyUses = a.HotkeyTriggerCount,
+                        autoStart = a.LaunchOnStartup,
+                        startupPosition = startupOrder.TryGetValue(a.Id, out var position) ? position : 0,
+                        limitMinutes = a.DailyLimitMinutes,
+                        limitRemaining = a.DailyLimitMinutes > 0
+                            ? a.DailyLimitMinutes + bonus - usedToday
+                            : 0,
+                        isAction = a.IsAction,
+                        lastUsed = lastUsed.TryGetValue(a.Name, out var seen) ? seen.Ticks : 0L,
+                        today = span > TimeSpan.Zero ? FormatSpan(span) : "",
+                        running = !a.IsAction && RunningApps.IsRunning(windowOwners, a.ExecutablePath)
+                    };
                 })
                 .ToList();
 
@@ -984,7 +1006,17 @@ namespace FastApp
                     apps,
                     commands,
                     focusToday = FormatSpan(focusTotal),
-                    tracking = true
+                    tracking = true,
+
+                    // Things the first screen should raise rather than bury in
+                    // Settings. Both are already detected; neither was shown
+                    // anywhere you would look.
+                    attention = new
+                    {
+                        startupConflict = _viewModel.HasStartupConflict,
+                        startupConflictText = _viewModel.StartupConflictText,
+                        updateReady = _viewModel.IsUpdateReadyToApply
+                    }
                 }
             };
 

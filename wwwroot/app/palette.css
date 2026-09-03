@@ -41,7 +41,7 @@ body {
     padding: 22px 24px 0 24px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 16px;
     overflow: hidden;
 }
 
@@ -128,12 +128,16 @@ body {
     align-items: center;
     gap: 14px;
     border-radius: var(--radius-pill);
-    padding: 11px 16px;
+    padding: 8px 16px;
     cursor: pointer;
 }
 .row.active { background: rgba(232, 163, 61, 0.09); }
 .row.active .row-name { color: var(--brass); font-weight: 700; }
 .row.active .row-figure { color: var(--brass); }
+
+/* Running, so the button focuses rather than starts. Same teal the button
+   uses, said once more where the eye lands first. */
+.avatar.live { box-shadow: 0 0 0 1.5px var(--teal); }
 
 .avatar {
     width: 32px; height: 32px;
@@ -148,6 +152,31 @@ body {
 .row-name { font-size: var(--fs-strong); font-weight: 500; }
 .row-sub { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); }
 .row-spacer { flex-grow: 1; }
+
+/* ---------- The columns ----------
+   Fixed positions rather than groups. Grouping the list by what each app is
+   configured FOR only works while nothing is configured for two things at
+   once, and an app can perfectly well have a hotkey, launch at login and carry
+   a daily limit. Columns hold every combination, and a column nobody uses is
+   not rendered at all -- so a machine with no limits set never sees a LIMIT
+   column taking up room. */
+.head-row { display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+.head-spacer { flex-grow: 1; }
+.head-end { width: 30px; flex-shrink: 0; }
+
+.col-hotkey { width: 158px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.col-startup { width: 84px; flex-shrink: 0; }
+.col-limit { width: 104px; flex-shrink: 0; }
+
+.uses { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); white-space: nowrap; }
+/* A binding barely used is worth noticing, not scolding: the same faint size,
+   a different hue. */
+.uses.cold { color: var(--rose); }
+
+.limit { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--teal); white-space: nowrap; }
+.limit.low { color: var(--brass); }
+.limit.out { color: var(--rose); }
+
 .row-chip {
     font-family: var(--font-mono);
     font-size: var(--fs-caption);
@@ -681,3 +710,74 @@ select.field option { background: var(--panel-solid); color: var(--text); }
 .x-message { min-height: 17px; }
 .x-message.bad { color: var(--rose); }
 .x-message.good { color: var(--teal); }
+
+/* ---------- Facets ---------- */
+.facets { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.facet {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    font-weight: 700;
+    color: var(--text-faint);
+    background: var(--panel);
+    border-radius: var(--radius-pill);
+    padding: 6px 13px;
+    cursor: pointer;
+}
+.facet:hover { color: var(--text-dim); }
+.facet.on { background: rgba(232, 163, 61, 0.16); color: var(--brass); }
+
+/* ---------- Attention ----------
+   Drawn only when something is actually wrong, so a healthy machine loses no
+   space to it. Both states below were already detected and only visible if you
+   went looking in Settings. */
+.attention-stack { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
+.attention-stack:empty { display: none; }
+.attention {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-body);
+}
+.attention.warn { background: rgba(255, 107, 107, 0.08); }
+.attention.warn svg { color: var(--rose); flex-shrink: 0; }
+.attention.info { background: rgba(232, 163, 61, 0.09); }
+.attention.info svg { color: var(--brass); flex-shrink: 0; }
+.attention-action {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--text);
+    background: var(--panel);
+    border-radius: var(--radius-pill);
+    padding: 5px 13px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.attention-action:hover { background: var(--bg-raised); }
+
+/* ---------- Nothing added yet ----------
+   The old empty state said "Nothing to show yet" and stopped there, which is
+   no help at all on a machine that is already tracking everything you open. */
+.blank { display: flex; flex-direction: column; gap: 10px; align-items: center;
+         justify-content: center; flex-grow: 1; text-align: center; }
+.blank-title { font-size: var(--fs-title); font-weight: 500; color: var(--text); }
+.blank-body { font-size: var(--fs-body); color: var(--text-faint); max-width: 420px; line-height: 1.5; }
+.blank-actions { display: flex; gap: 9px; margin-top: 6px; }
+
+/* ---------- Command bar ----------
+   The commands used to be five full rows on the idle screen, taking more of it
+   than the apps they sat under. They are one line now, and still turn back
+   into proper rows the moment you type. */
+.command-bar { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 4px; }
+.command-chip {
+    font-size: var(--fs-caption);
+    color: var(--text-dim);
+    background: var(--panel);
+    border-radius: var(--radius-pill);
+    padding: 7px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.command-chip:hover { color: var(--text); background: var(--bg-raised); }

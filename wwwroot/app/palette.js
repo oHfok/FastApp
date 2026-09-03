@@ -25,6 +25,9 @@ let active = 0;
 const els = {
     q: document.getElementById('q'),
     results: document.getElementById('results'),
+    facets: document.getElementById('facets'),
+    attention: document.getElementById('attention'),
+    reorderHint: document.getElementById('hint-reorder'),
     focus: document.getElementById('focus-today'),
     statusDot: document.getElementById('status-dot'),
     statusText: document.getElementById('status-text'),
@@ -36,6 +39,19 @@ const els = {
 /* Colours come from the same category palette the dashboard uses; the host
    sends the category and the tint is resolved here so the two surfaces cannot
    drift apart on it. */
+const ICON_WARN =
+    '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    + 'stroke-width="2" stroke-linecap="round">'
+    + '<path d="M12 9v4M12 17h.01"></path>'
+    + '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path>'
+    + '</svg>';
+
+const ICON_UPDATE =
+    '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path>'
+    + '</svg>';
+
 const CATEGORY_TINT = {
     Gaming: 'rgba(139, 124, 255, 0.18)',
     Browsing: 'rgba(52, 211, 196, 0.18)',
@@ -64,25 +80,44 @@ function score(name, q) {
     return -1;
 }
 
+/* Which facets this machine actually has anything in. A setup that only uses
+   hotkeys should never be offered a STARTUP filter that returns nothing. */
+const FACETS = [
+    { id: 'all', label: 'ALL', match: () => true },
+    { id: 'hotkeys', label: 'HOTKEYS', match: a => !!a.hotkey },
+    { id: 'startup', label: 'STARTUP', match: a => a.autoStart },
+    { id: 'limited', label: 'LIMITED', match: a => a.limitMinutes > 0 },
+    { id: 'actions', label: 'ACTIONS', match: a => a.isAction }
+];
+
+let facet = 'all';
+
+function populatedFacets() {
+    return FACETS.filter(f => f.id === 'all' || state.apps.some(f.match));
+}
+
 function visible() {
     const q = query.trim().toLowerCase();
+    const chosen = FACETS.find(f => f.id === facet) || FACETS[0];
 
     const apps = state.apps
+        .filter(a => q ? true : chosen.match(a))
         .map(a => ({ item: a, kind: 'app', s: score(a.name, q) }))
         .filter(r => r.s >= 0)
         .sort((a, b) => b.s - a.s);
 
-    // With nothing typed the heading says RECENT, so the list has to earn it:
-    // most recently used first, which for a launcher is almost always what you
-    // came for. It used to be whatever order Manage happened to be in, which
-    // made the heading a lie. Apps with no history keep their Manage order at
-    // the bottom -- the sort is stable, and they all compare equal at 0.
+    // Unfiltered, the list stays in the order you arranged, because that order
+    // is not decoration: it is the sequence auto-launch follows, and it is what
+    // Alt+Arrow rearranges. Sorting by most-recently-used (2.0.4) made sense
+    // while the heading said RECENT and the list was a launcher; it hid the one
+    // property of this list you can actually set.
     //
-    // Only the unfiltered list is reordered. Once you type, ranking by how well
-    // the name matches beats ranking by when you last opened it.
-    if (!q) apps.sort((a, b) => (b.item.lastUsed || 0) - (a.item.lastUsed || 0));
+    // Typing still ranks by how well the name matches, which beats both.
 
-    const commands = state.commands
+    // Commands are full rows only once you are looking for one. Idle, the five
+    // of them took more of the screen than the apps did, which is most of why
+    // opening FastApp told you nothing -- they became a chip bar instead.
+    const commands = !q ? [] : state.commands
         .map(c => ({ item: c, kind: 'command', s: score(c.title, q) }))
         .filter(r => r.s >= 0)
         .sort((a, b) => b.s - a.s);
@@ -94,22 +129,52 @@ function render() {
     const { apps, commands, all } = visible();
     if (active >= all.length) active = Math.max(0, all.length - 1);
 
+    renderAttention();
+    renderFacets();
+
     els.results.textContent = '';
 
-    if (all.length === 0) {
+    if (state.apps.length === 0 && !query) {
+        renderNothingAdded();
+    } else if (all.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'empty';
-        empty.textContent = query ? `Nothing matches "${query}"` : 'Nothing to show yet';
+        empty.textContent = query ? `Nothing matches "${query}"` : 'Nothing in this filter';
         els.results.appendChild(empty);
     } else {
+        // Actions get their own group: they have no window to focus, no startup
+        // position and no daily limit, so listing them among the apps put three
+        // permanently empty columns beside every one of them.
+        const programs = apps.filter(r => !r.item.isAction);
+        const actions = apps.filter(r => r.item.isAction);
+
+        // Each group is measured on its own contents, so the actions group does
+        // not carry a STARTUP or LIMIT heading over four permanently empty
+        // cells just because some app elsewhere in the list has one.
         let index = 0;
-        index = appendGroup(query ? 'APPS' : 'RECENT', apps, index);
-        appendGroup('COMMANDS', commands, index);
+        index = appendGroup(query ? 'APPS' : 'YOUR APPS', programs, index, activeColumns(programs));
+        index = appendGroup('ACTIONS', actions, index, activeColumns(actions));
+        appendGroup('COMMANDS', commands, index, null);
     }
 
+    renderCommandBar();
+    fitWindow();
+
     els.count.textContent = query ? `${all.length} result${all.length === 1 ? '' : 's'}` : '';
-    els.counts.textContent =
-        `${state.apps.length} APPS · ${state.apps.filter(a => a.hotkey).length} HOTKEYS`;
+    // Actions are not apps, and counting them as such made "6 APPS" out of four
+    // programs and two macros.
+    const programCount = state.apps.filter(a => !a.isAction).length;
+    const actionCount = state.apps.length - programCount;
+    const hotkeyCount = state.apps.filter(a => a.hotkey).length;
+    els.counts.textContent = [
+        `${programCount} APPS`,
+        actionCount ? `${actionCount} ACTIONS` : null,
+        `${hotkeyCount} HOTKEYS`
+    ].filter(Boolean).join(' · ');
+
+    // Reordering only means anything on the unfiltered, untyped list, where the
+    // position is the thing being edited.
+    els.reorderHint.hidden = !!query || facet !== 'all';
 
     const current = all[active];
     els.enterVerb.textContent =
@@ -118,23 +183,218 @@ function render() {
         : current.item.running ? 'FOCUS' : 'LAUNCH';
 }
 
-function appendGroup(label, rows, startIndex) {
+/// The commands, as one row of chips under the list. Still reachable by typing;
+/// this is so they remain reachable without knowing that.
+/// Grow the window to the configuration rather than picking one height for
+/// everybody: three managed apps should not open a window sized for twenty, and
+/// twenty should not be shown five at a time.
+///
+/// Only on the idle screen. Resizing while someone types would move the window
+/// under them on every keystroke as the result count changed.
+let sentHeight = 0;
+
+function fitWindow() {
+    if (view !== 'palette' || query) return;
+
+    // The nothing-added panel grows to fill whatever height it is given, so
+    // measuring it just returns the height it already has. Nothing to fit.
+    if (state.apps.length === 0) {
+        if (sentHeight === MIN_HEIGHT) return;
+        sentHeight = MIN_HEIGHT;
+        VIEWS.palette.h = MIN_HEIGHT;
+        send('resize', { width: VIEWS.palette.w, height: MIN_HEIGHT });
+        return;
+    }
+
+    const palette = VIEWS.palette;
+    const chrome = els.results.getBoundingClientRect().top - document.body.getBoundingClientRect().top;
+    const footer = document.querySelector('.footer').getBoundingClientRect().height;
+
+    // 22 is the palette's own bottom breathing room; the rest is measured.
+    const wanted = Math.round(chrome + els.results.scrollHeight + footer + 22);
+    const height = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, wanted));
+
+    if (height === sentHeight) return;
+    sentHeight = height;
+    palette.h = height;
+    send('resize', { width: palette.w, height });
+}
+
+const MIN_HEIGHT = 420;
+// Past this the window stops being a palette and the list scrolls instead.
+const MAX_HEIGHT = 760;
+
+function renderCommandBar() {
+    if (query || state.apps.length === 0) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'command-bar';
+
+    for (const command of state.commands) {
+        const chip = document.createElement('span');
+        chip.className = 'command-chip';
+        chip.textContent = command.title;
+        chip.addEventListener('click', () => send('run-command', { id: command.id }));
+        bar.appendChild(chip);
+    }
+
+    els.results.appendChild(bar);
+}
+
+function renderFacets() {
+    const available = populatedFacets();
+
+    // ALL plus one other facet is not a choice; it is the same list twice.
+    els.facets.hidden = available.length < 3 || !!query;
+    els.facets.textContent = '';
+    if (els.facets.hidden) return;
+
+    for (const entry of available) {
+        const chip = document.createElement('span');
+        chip.className = 'facet' + (entry.id === facet ? ' on' : '');
+        const count = entry.id === 'all' ? state.apps.length : state.apps.filter(entry.match).length;
+        chip.textContent = entry.label + ' ' + count;
+        chip.addEventListener('click', () => { facet = entry.id; active = 0; render(); });
+        els.facets.appendChild(chip);
+    }
+}
+
+function renderAttention() {
+    els.attention.textContent = '';
+    const attention = state.attention || {};
+
+    const strip = (kind, icon, text, action, onClick) => {
+        const el = document.createElement('div');
+        el.className = 'attention ' + kind;
+        el.innerHTML = icon;
+
+        const words = document.createElement('span');
+        words.textContent = text;
+        el.appendChild(words);
+
+        const spacer = document.createElement('span');
+        spacer.className = 'chrome-spacer';
+        el.appendChild(spacer);
+
+        const button = document.createElement('span');
+        button.className = 'attention-action';
+        button.textContent = action;
+        button.addEventListener('click', onClick);
+        el.appendChild(button);
+
+        els.attention.appendChild(el);
+    };
+
+    if (attention.startupConflict) {
+        strip('warn', ICON_WARN,
+            attention.startupConflictText || 'Startup is registered to a different copy of FastApp.',
+            'FIX', () => send('settings-command', { id: 'fix-startup' }));
+    }
+    if (attention.updateReady) {
+        strip('info', ICON_UPDATE, 'A new version of FastApp is ready to install.',
+            'RESTART', () => send('settings-command', { id: 'apply-update' }));
+    }
+}
+
+function renderNothingAdded() {
+    const blank = document.createElement('div');
+    blank.className = 'blank';
+
+    const title = document.createElement('span');
+    title.className = 'blank-title';
+    title.textContent = 'Nothing added yet';
+
+    const body = document.createElement('span');
+    body.className = 'blank-body';
+    body.textContent =
+        'Add the applications you want a hotkey for, or want launched when you log in.';
+
+    const actions = document.createElement('span');
+    actions.className = 'blank-actions';
+    const button = (text, primary, onClick) => {
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'btn' + (primary ? ' btn-primary' : '');
+        el.textContent = text;
+        el.addEventListener('click', onClick);
+        actions.appendChild(el);
+    };
+    button('Scan this PC', true, () => send('run-command', { id: 'scan' }));
+    button('Browse files', false, () => send('browse-files'));
+
+    blank.append(title, body, actions);
+    els.results.appendChild(blank);
+}
+
+/// Which columns this list is worth drawing. A column no app uses is not
+/// rendered at all, rather than rendered empty.
+function ordinal(n) {
+    // 1st, 2nd, 3rd, 4th -- and 11th/12th/13th, which the naive rule gets wrong.
+    const rest = n % 100;
+    if (rest >= 11 && rest <= 13) return `${n}th`;
+    return n + (['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+}
+
+function activeColumns(rows) {
+    const items = rows.map(r => r.item);
+    return {
+        hotkey: items.some(a => a.hotkey),
+        startup: items.some(a => a.autoStart),
+        limit: items.some(a => a.limitMinutes > 0),
+        // An action has no window and accumulates no focus time, so the column
+        // would be blank down its whole length.
+        today: items.some(a => !a.isAction)
+    };
+}
+
+function columnHeader(label, columns) {
+    const head = document.createElement('div');
+    head.className = 'head-row';
+
+    const name = document.createElement('span');
+    name.className = 'label';
+    name.textContent = label;
+    head.appendChild(name);
+
+    const spacer = document.createElement('span');
+    spacer.className = 'head-spacer';
+    head.appendChild(spacer);
+
+    const column = (cls, text) => {
+        const cell = document.createElement('span');
+        cell.className = cls;
+        const inner = document.createElement('span');
+        inner.className = 'label';
+        inner.textContent = text;
+        cell.appendChild(inner);
+        head.appendChild(cell);
+    };
+
+    if (columns.hotkey) column('col-hotkey', 'HOTKEY');
+    if (columns.startup) column('col-startup', 'STARTUP');
+    if (columns.limit) column('col-limit', 'LIMIT');
+    if (columns.today) column('row-figure', 'TODAY');
+
+    const end = document.createElement('span');
+    end.className = 'head-end';
+    head.appendChild(end);
+
+    return head;
+}
+
+function appendGroup(label, rows, startIndex, columns) {
     if (rows.length === 0) return startIndex;
 
     const group = document.createElement('div');
     group.className = 'group';
-
-    const heading = document.createElement('span');
-    heading.className = 'label';
-    heading.textContent = label;
-    group.appendChild(heading);
+    group.appendChild(columns ? columnHeader(label, columns) : plainHeading(label));
 
     const list = document.createElement('div');
     list.className = 'group-rows';
 
     let index = startIndex;
     for (const row of rows) {
-        list.appendChild(buildRow(row, index));
+        list.appendChild(buildRow(row, index, columns));
         index++;
     }
 
@@ -143,7 +403,14 @@ function appendGroup(label, rows, startIndex) {
     return index;
 }
 
-function buildRow(row, index) {
+function plainHeading(label) {
+    const heading = document.createElement('span');
+    heading.className = 'label';
+    heading.textContent = label;
+    return heading;
+}
+
+function buildRow(row, index, columns) {
     const el = document.createElement('div');
     el.className = 'row' + (index === active ? ' active' : '');
     el.addEventListener('mousemove', () => { if (active !== index) { active = index; render(); } });
@@ -167,6 +434,7 @@ function buildRow(row, index) {
     if (row.kind === 'app') {
         const app = row.item;
         avatar.style.background = tint(app.category);
+        if (app.running) avatar.classList.add('live');
         avatar.textContent = (app.name[0] || '?').toUpperCase();
         name.textContent = app.name;
 
@@ -180,22 +448,64 @@ function buildRow(row, index) {
         spacer.className = 'row-spacer';
         el.appendChild(spacer);
 
-        if (app.hotkey) {
-            const chip = document.createElement('span');
-            chip.className = 'row-chip';
-            chip.textContent = app.hotkey;
-            el.appendChild(chip);
-        } else if (app.autoStart) {
-            const chip = document.createElement('span');
-            chip.className = 'row-chip';
-            chip.textContent = 'Auto-start';
-            el.appendChild(chip);
+        // The row used to show one chip: the hotkey, or "Auto-start" if there
+        // was no hotkey. Which meant an app with both simply never mentioned
+        // the second one. Each property now has its own column and they all
+        // show at once.
+        const cols = columns || { hotkey: false, startup: false, limit: false };
+
+        if (cols.hotkey) {
+            const cell = document.createElement('span');
+            cell.className = 'col-hotkey';
+            if (app.hotkey) {
+                const chip = document.createElement('span');
+                chip.className = 'row-chip';
+                chip.textContent = app.hotkey;
+                cell.appendChild(chip);
+
+                const uses = document.createElement('span');
+                // Under ten in the app's whole lifetime is a binding you have
+                // not adopted, which is worth knowing before you blame it.
+                uses.className = 'uses' + (app.hotkeyUses < 10 ? ' cold' : '');
+                uses.textContent = `${app.hotkeyUses} use${app.hotkeyUses === 1 ? '' : 's'}`;
+                cell.appendChild(uses);
+            }
+            el.appendChild(cell);
         }
 
-        const figure = document.createElement('span');
-        figure.className = 'row-figure';
-        figure.textContent = app.today || '';
-        el.appendChild(figure);
+        if (cols.startup) {
+            const cell = document.createElement('span');
+            cell.className = 'col-startup';
+            if (app.autoStart && app.startupPosition) {
+                const chip = document.createElement('span');
+                chip.className = 'row-chip';
+                chip.textContent = ordinal(app.startupPosition);
+                cell.appendChild(chip);
+            }
+            el.appendChild(cell);
+        }
+
+        if (cols.limit) {
+            const cell = document.createElement('span');
+            cell.className = 'col-limit';
+            if (app.limitMinutes > 0) {
+                const left = document.createElement('span');
+                const remaining = app.limitRemaining;
+                left.className = 'limit' + (remaining <= 0 ? ' out' : remaining <= 15 ? ' low' : '');
+                left.textContent = remaining > 0
+                    ? `${remaining}m left`
+                    : remaining === 0 ? 'none left' : `over by ${-remaining}m`;
+                cell.appendChild(left);
+            }
+            el.appendChild(cell);
+        }
+
+        if (cols.today) {
+            const figure = document.createElement('span');
+            figure.className = 'row-figure';
+            figure.textContent = app.today || '';
+            el.appendChild(figure);
+        }
 
         el.appendChild(buildRunButton(row));
     } else {
@@ -304,7 +614,7 @@ els.q.addEventListener('input', () => { query = els.q.value; active = 0; render(
    --------------------------------------------------------------------------- */
 
 const VIEWS = {
-    palette: { el: document.getElementById('view-palette'), w: 760, h: 520 },
+    palette: { el: document.getElementById('view-palette'), w: 820, h: 560 },
     detail: { el: document.getElementById('view-detail'), w: 820, h: 560 },
     manage: { el: document.getElementById('view-manage'), w: 940, h: 620 },
     settings: { el: document.getElementById('view-settings'), w: 940, h: 700 },
@@ -320,6 +630,8 @@ function show(name) {
 
     const target = VIEWS[name];
     send('resize', { width: target.w, height: target.h });
+    // Leaving and returning re-measures: the list may have changed while away.
+    if (name !== 'palette') sentHeight = 0;
 
     if (name === 'palette') els.q.focus();
 }
@@ -390,8 +702,26 @@ document.addEventListener('keydown', e => {
     }
 
     switch (e.key) {
-        case 'ArrowDown': e.preventDefault(); move(1); break;
-        case 'ArrowUp': e.preventDefault(); move(-1); break;
+        case 'ArrowDown':
+        case 'ArrowUp': {
+            e.preventDefault();
+            const delta = e.key === 'ArrowDown' ? 1 : -1;
+
+            // Alt turns navigation into reordering, the same as in Manage, and
+            // for the same reason: this order is the auto-launch sequence, so
+            // being able to change it where you can see it is the point of
+            // showing it here at all. Only on the plain list -- reordering a
+            // filtered or searched view would move things you cannot see.
+            const entry = visible().all[active];
+            if (e.altKey && !query && facet === 'all' && entry && entry.kind === 'app') {
+                send('reorder-app', { id: entry.item.id, delta });
+                active = Math.min(Math.max(active + delta, 0), visible().all.length - 1);
+                break;
+            }
+
+            move(delta);
+            break;
+        }
         case 'Enter': e.preventDefault(); activate(); break;
         case 'Escape': e.preventDefault(); send('close'); break;
         case 'Tab': {
@@ -1092,6 +1422,7 @@ if (bridge) {
             query = '';
             els.q.value = '';
             active = 0;
+            facet = 'all';
             show('palette');
             render();
             return;

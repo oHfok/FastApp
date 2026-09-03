@@ -1,0 +1,261 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    /* tokens.css, verbatim */
+    :root {
+        --bg: #0A0B10;
+        --bg-raised: #101219;
+        --panel: rgba(255, 255, 255, 0.035);
+        --panel-solid: #14161F;
+        --panel-border: rgba(255, 255, 255, 0.08);
+        --text: #F3F1EA;
+        --text-dim: #9C9FAE;
+        --text-faint: #7C8194;
+        --brass: #E8A33D;
+        --teal: #34D3C4;
+        --rose: #FF6B6B;
+        --violet: #8B7CFF;
+        --font-body: 'Space Grotesk', system-ui, sans-serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+        --radius: 20px;
+        --radius-pill: 100px;
+    }
+
+    * , *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font-body); color: var(--text); font-size: 13px; }
+    a { color: var(--brass); } a:hover { color: #f0b45e; }
+
+    .palette {
+        width: 820px; height: 560px;
+        background: var(--bg);
+        border-radius: var(--radius);
+        padding: 22px 24px 0 24px;
+        display: flex; flex-direction: column; gap: 18px;
+        overflow: hidden;
+    }
+
+    .chrome { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .chrome-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brass); flex-shrink: 0; }
+    .chrome-name { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; }
+    .chrome-spacer { flex-grow: 1; }
+    .chrome-sep { width: 1px; height: 14px; background: var(--panel-border); }
+    .status { display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+
+    .label {
+        font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.17em;
+        color: var(--text-faint); font-weight: 700;
+    }
+    .figure { display: flex; align-items: baseline; gap: 7px; }
+    .figure-value { font-family: var(--font-mono); font-size: 16px; font-weight: 700; color: var(--brass); }
+
+    .search {
+        display: flex; align-items: center; gap: 14px;
+        background: var(--panel); border-radius: var(--radius-pill);
+        padding: 0 24px; height: 60px; flex-shrink: 0;
+    }
+    .search-text { flex-grow: 1; font-size: 20px; letter-spacing: -0.01em; }
+    .search-text.placeholder { color: var(--text-faint); }
+    .caret { display: inline-block; width: 1.5px; height: 22px; background: var(--brass); vertical-align: -4px; }
+
+    .kbd {
+        font-family: var(--font-mono); font-size: 11px; color: var(--text-faint);
+        background: var(--panel); border-radius: var(--radius-pill);
+        padding: 5px 11px; white-space: nowrap;
+    }
+
+    /* Facet chips. Shown only when more than one facet is populated, so a
+       one-purpose setup never sees them. */
+    .facets { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+    .facet {
+        font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.17em; font-weight: 700;
+        color: var(--text-faint); background: var(--panel);
+        border-radius: var(--radius-pill); padding: 6px 13px;
+    }
+    .facet.on { background: rgba(232, 163, 61, 0.16); color: var(--brass); }
+
+    .results { display: flex; flex-direction: column; gap: 14px; flex-grow: 1; min-height: 0; overflow: hidden; }
+    .group { display: flex; flex-direction: column; gap: 8px; }
+    .group-rows { display: flex; flex-direction: column; gap: 3px; }
+
+    /* The column header. Same 10px mono label as everywhere else, positioned
+       over the columns so the list scans without looking like a table. */
+    .head-row { display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+    .head-spacer { flex-grow: 1; }
+
+    .row { display: flex; align-items: center; gap: 14px; border-radius: var(--radius-pill); padding: 11px 16px; }
+    .row.active { background: rgba(232, 163, 61, 0.09); }
+    .row.active .row-name { color: var(--brass); font-weight: 700; }
+
+    .avatar {
+        width: 32px; height: 32px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 700; flex-shrink: 0; color: var(--text);
+    }
+    /* Running: a teal ring, matching the teal the run button already uses for
+       "focus this" rather than "start this". */
+    .avatar.live { box-shadow: 0 0 0 1.5px var(--teal); }
+
+    .row-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .row-name { font-size: 14px; font-weight: 500; }
+    .row-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); }
+    .row-spacer { flex-grow: 1; }
+
+    /* Fixed columns, empty where unset -- an app can carry every one of them
+       at once, which grouping by purpose could not represent. */
+    .col-hotkey { width: 158px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .col-startup { width: 84px; flex-shrink: 0; }
+    .col-limit { width: 104px; flex-shrink: 0; }
+    .col-today {
+        width: 74px; flex-shrink: 0; text-align: right;
+        font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text-dim);
+    }
+
+    .chip {
+        font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+        background: var(--panel); border-radius: var(--radius-pill);
+        padding: 5px 11px; white-space: nowrap;
+    }
+    .uses { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+    .uses.cold { color: var(--rose); }
+    .limit { font-family: var(--font-mono); font-size: 11px; color: var(--teal); white-space: nowrap; }
+    .limit.low { color: var(--brass); }
+    .limit.out { color: var(--rose); }
+
+    .row-run {
+        width: 30px; height: 30px; border-radius: 50%;
+        background: var(--panel); color: var(--text-faint);
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: 0.45;
+    }
+    .row.active .row-run { opacity: 1; }
+    .row-run.running { color: var(--teal); opacity: 1; }
+    .row-add {
+        display: flex; align-items: center; gap: 7px;
+        font-family: var(--font-mono); font-size: 11px; color: var(--brass);
+        background: rgba(232, 163, 61, 0.16); border-radius: var(--radius-pill);
+        padding: 6px 13px; white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* Only drawn when something actually needs attention. */
+    .attention {
+        display: flex; align-items: center; gap: 12px;
+        padding: 11px 16px; border-radius: var(--radius-pill);
+        font-size: 13px; flex-shrink: 0;
+    }
+    .attention.warn { background: rgba(255, 107, 107, 0.08); color: var(--text); }
+    .attention.warn svg { color: var(--rose); }
+    .attention.info { background: rgba(232, 163, 61, 0.09); color: var(--text); }
+    .attention.info svg { color: var(--brass); }
+    .attention-action {
+        font-family: var(--font-mono); font-size: 11px; color: var(--text);
+        background: var(--panel); border-radius: var(--radius-pill); padding: 5px 13px;
+    }
+
+    .footer { display: flex; align-items: center; gap: 20px; padding: 14px 4px 16px 4px; flex-shrink: 0; }
+    .hint { display: flex; align-items: center; gap: 7px; }
+    .hint-key {
+        font-family: var(--font-mono); font-size: 11px; color: var(--text);
+        background: var(--panel); border-radius: var(--radius-pill); padding: 4px 9px;
+    }
+
+    .blank {
+        display: flex; flex-direction: column; gap: 10px;
+        align-items: center; justify-content: center; flex-grow: 1; text-align: center;
+    }
+    .blank-title { font-size: 20px; font-weight: 500; }
+    .blank-body { font-size: 13px; color: var(--text-faint); max-width: 420px; line-height: 1.5; }
+    .blank-actions { display: flex; gap: 9px; margin-top: 6px; }
+    .blank-btn {
+        font-size: 13px; color: var(--text-dim); background: var(--panel);
+        border-radius: var(--radius-pill); padding: 10px 18px;
+    }
+    .blank-btn.primary { background: var(--brass); color: #1A1000; font-weight: 700; }
+</style>
+</helmet>
+<div class="palette">
+      <div class="chrome">
+        <span class="chrome-dot"></span>
+        <span class="chrome-name">FastApp</span>
+        <span class="chrome-spacer"></span>
+        <span class="status"><span class="status-dot"></span><span class="label">TRACKING</span></span>
+        <span class="chrome-sep"></span>
+        <span class="figure"><span class="label">FOCUS</span><span class="figure-value">4h 12m</span></span>
+      </div>
+      <div class="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color: var(--text-faint); flex-shrink: 0;"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+        <span class="search-text placeholder">Search apps, actions and commands</span>
+      </div>
+      <div class="attention warn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink: 0;"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg><span>Startup is registered to a different copy of FastApp.</span><span class="chrome-spacer"></span><span class="attention-action">FIX</span></div>
+      <div class="attention info"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg><span>FastApp 2.2.0 is ready to install.</span><span class="chrome-spacer"></span><span class="attention-action">RESTART</span></div>
+      <div class="results">
+        <div class="group">
+      <div class="head-row">
+        <span class="label">YOUR APPS &#183; 8</span>
+        <span class="head-spacer"></span>
+        <span class="col-hotkey"><span class="label">HOTKEY</span></span>
+        <span class="col-startup"><span class="label">STARTUP</span></span>
+        <span class="col-today"><span class="label">TODAY</span></span>
+        <span style="width: 30px;"></span>
+      </div>
+          <div class="group-rows">
+        <div class="row">
+          <span class="avatar live" style="background: rgba(255, 255, 255, 0.035);">S</span>
+          <span class="row-text"><span class="row-name">Steam</span><span class="row-sub">Other</span></span>
+          <span class="row-spacer"></span>
+          <span class="col-hotkey"><span class="chip">&#8679; + S + T</span><span class="uses">44 uses</span></span>
+          <span class="col-startup"></span>
+          <span class="col-today">22m</span>
+          <span class="row-run running"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></span>
+        </div>
+        <div class="row">
+          <span class="avatar" style="background: rgba(255, 255, 255, 0.035);">P</span>
+          <span class="row-text"><span class="row-name">Prism Launcher</span><span class="row-sub">Other</span></span>
+          <span class="row-spacer"></span>
+          <span class="col-hotkey"><span class="chip">P + O + I</span><span class="uses">24 uses</span></span>
+          <span class="col-startup"></span>
+          <span class="col-today"></span>
+          <span class="row-run"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M8 5.5v13l11-6.5z"></path></svg></span>
+        </div>
+        <div class="row">
+          <span class="avatar" style="background: rgba(139, 124, 255, 0.18);">V</span>
+          <span class="row-text"><span class="row-name">Valorant</span><span class="row-sub">Gaming</span></span>
+          <span class="row-spacer"></span>
+          <span class="col-hotkey"><span class="chip">V + A + L</span><span class="uses cold">2 uses</span></span>
+          <span class="col-startup"></span>
+          <span class="col-today">1h 48m</span>
+          <span class="row-run"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M8 5.5v13l11-6.5z"></path></svg></span>
+        </div>
+        <div class="row">
+          <span class="avatar live" style="background: rgba(139, 124, 255, 0.18);">C</span>
+          <span class="row-text"><span class="row-name">Claude</span><span class="row-sub">Development</span></span>
+          <span class="row-spacer"></span>
+          <span class="col-hotkey"><span class="chip">C + L + A</span><span class="uses cold">4 uses</span></span>
+          <span class="col-startup"></span>
+          <span class="col-today">52m</span>
+          <span class="row-run running"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></span>
+        </div>
+        <div class="row">
+          <span class="avatar live" style="background: rgba(52, 211, 196, 0.18);">Z</span>
+          <span class="row-text"><span class="row-name">Zen</span><span class="row-sub">Browsing</span></span>
+          <span class="row-spacer"></span>
+          <span class="col-hotkey"></span>
+          <span class="col-startup"><span class="chip">1st</span></span>
+          <span class="col-today">28m</span>
+          <span class="row-run running"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></span>
+        </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span class="hint"><span class="hint-key">&#8593;&#8595;</span><span class="label">MOVE</span></span><span class="hint"><span class="hint-key">&#8629;</span><span class="label">LAUNCH</span></span><span class="hint"><span class="hint-key">&#8677;</span><span class="label">OPEN</span></span><span class="chrome-spacer"></span><span class="label">8 APPS &#183; 4 HOTKEYS</span></div>
+</div>
+</x-dc>
+</body>
+</html>

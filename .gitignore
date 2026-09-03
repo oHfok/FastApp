@@ -363,3 +363,7 @@ MigrationBackup/
 FodyWeavers.xsd
 # Local preview-server config created ad hoc while verifying the dashboard.
 .claude/launch.json
+
+# The seeded design canvas: ~2MB of editor payload, rebuilt from the
+# .dc.html artboards and canvas.json beside it whenever it is needed.
+design/**/fastapp-*.html
