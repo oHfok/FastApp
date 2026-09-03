@@ -1370,19 +1370,62 @@ function renderSettings(v) {
     renderTheme(v.themePreference, v.systemIsLight);
 }
 
-/* The notes arrive as the release body: bullet lines and prose. Rendered as
-   text, never as markup -- it comes from a GitHub release, which is not ours
-   to trust as HTML. */
+/* The release body, rendered with the shape it was written in.
+   Text nodes and elements, never innerHTML: this is a GitHub release body,
+   ours to display and not ours to trust as markup. */
+
+/// Inline spans within one line. Links keep their words and lose their target,
+/// because there is nowhere in this window to follow one to -- "Every version"
+/// in the card header is the way out to the dashboard.
+const INLINE = /\*\*([^*]+)\*\*|`([^`]+)`|(?<![\w*])\*([^*]+)\*(?![\w*])/g;
+
+function inline(el, text) {
+    const rest = String(text).replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+    INLINE.lastIndex = 0;
+    let at = 0;
+    let match;
+    while ((match = INLINE.exec(rest)) !== null) {
+        if (match.index > at) {
+            el.appendChild(document.createTextNode(rest.slice(at, match.index)));
+        }
+        const tag = match[1] ? 'strong' : match[2] ? 'code' : 'em';
+        const span = document.createElement(tag);
+        span.textContent = match[1] || match[2] || match[3];
+        el.appendChild(span);
+        at = INLINE.lastIndex;
+    }
+    if (at < rest.length) el.appendChild(document.createTextNode(rest.slice(at)));
+}
+
+/// Headings were arriving as ordinary sentences, bold as plain text, and the
+/// bullet branch below could never run: the host had already replaced the
+/// leading "-" with a literal dot, so nothing here started with one and the
+/// brass dot was unreachable code. Four sections of notes read as one
+/// undifferentiated block, and stopped mid-sentence on an ellipsis.
 function renderNotes(text) {
     st.whatsNew.textContent = '';
-    for (const raw of text.split('\n')) {
+
+    for (const raw of String(text || '').replace(/\r\n/g, '\n').split('\n')) {
         const line = raw.trim();
         if (!line) continue;
+        if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) continue;   // horizontal rule
+        if (line.startsWith('|')) continue;                  // table row
+
+        const heading = line.match(/^#{1,6}\s+(.*)$/);
+        if (heading) {
+            const head = document.createElement('div');
+            head.className = 's-note-head';
+            inline(head, heading[1]);
+            st.whatsNew.appendChild(head);
+            continue;
+        }
+
+        const bullet = line.match(/^[-*+]\s+(.*)$/);
 
         const note = document.createElement('div');
         note.className = 's-note';
 
-        const bullet = line.startsWith('-') || line.startsWith('*');
         if (bullet) {
             const dot = document.createElement('span');
             dot.className = 's-note-dot';
@@ -1390,8 +1433,12 @@ function renderNotes(text) {
         }
 
         const body = document.createElement('span');
-        body.className = 's-note-text';
-        body.textContent = (bullet ? line.slice(1) : line).replace(/\*\*/g, '').trim();
+        // The opening sentence, before anything else, is the release in one
+        // line -- the one part of this worth reading at a glance.
+        body.className = 's-note-text'
+            + (!bullet && st.whatsNew.children.length === 0 ? ' s-note-lead' : '');
+        inline(body, bullet ? bullet[1] : line);
+
         note.appendChild(body);
         st.whatsNew.appendChild(note);
     }

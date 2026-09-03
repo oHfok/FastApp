@@ -612,6 +612,11 @@ body {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 14px;
     align-content: start;
+    /* Cards take the height of their contents. A grid item stretches to its
+       row by default, so the two-line VERSION card was being pulled to the full
+       height of the release notes beside it and rendered as a large empty
+       panel with a version number in the corner. */
+    align-items: start;
     flex-grow: 1;
     min-height: 0;
     overflow-y: auto;
@@ -633,16 +638,59 @@ body {
 
 .field-time { width: 96px; flex-grow: 0; text-align: center; font-family: var(--font-mono); }
 
-.s-notes { display: flex; flex-direction: column; gap: 8px; }
+/* Across both columns, and last. Its own width is the grid's; the text inside
+   it is not, because a line 850px long is not a line anyone reads. */
+#s-whatsnew-card { grid-column: 1 / -1; }
+.s-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    /* Prose wants 45-75 characters a line. The card is 892px wide; left to
+       fill it these would set at about 140. */
+    max-width: 70ch;
+}
+
+/* A heading reads as a heading again. The host stripped the #s before the page
+   ever saw them, so a release with four sections arrived as one column of
+   paragraphs at one weight, with nothing to skim by. */
+.s-note-head {
+    font-size: var(--fs-body);
+    font-weight: 700;
+    color: var(--text);
+    /* More above than below, so a heading belongs to what follows it rather
+       than floating between two blocks. */
+    margin: 10px 0 1px 0;
+}
+.s-note-head:first-child { margin-top: 0; }
+
 .s-note { display: flex; gap: 10px; }
 .s-note-dot {
     width: 5px; height: 5px;
     border-radius: 50%;
     background: var(--brass);
+    /* Centred on the first line rather than on the block: a bullet whose text
+       wraps to three lines had its dot floating near the top of the paragraph. */
     margin-top: 7px;
     flex-shrink: 0;
 }
-.s-note-text { font-size: var(--fs-small); color: var(--text-dim); }
+.s-note-text {
+    font-size: var(--fs-small);
+    color: var(--text-dim);
+    /* These are sentences, not table cells. At 1.2 they set as a slab. */
+    line-height: 1.55;
+}
+
+/* The first line is the release in one sentence, so it is the one line here
+   worth full --text. */
+.s-note-lead { font-size: var(--fs-body); color: var(--text); }
+
+.s-note-text strong, .s-note-head strong { color: var(--text); font-weight: 700; }
+.s-note-text em { font-style: italic; }
+.s-note-text code {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--brass);
+}
 
 .warn { font-size: var(--fs-caption); color: var(--rose); }
 

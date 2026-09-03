@@ -192,7 +192,14 @@ namespace FastApp.ViewModels
                 var release = await Services.ReleaseFeedService.GetReleaseAsync(UpdateVersionText);
                 if (release == null || string.IsNullOrWhiteSpace(release.NotesMarkdown)) return;
 
-                WhatsNewText = Services.ReleaseFeedService.ToPlainText(release.NotesMarkdown, maxLines: 14);
+                // The markdown, as written. It used to be flattened here --
+                // headings stripped of their #s, bold stripped of its stars,
+                // bullets turned into a literal dot character, and the whole
+                // thing cut at fourteen lines with an ellipsis. What reached the
+                // page was one wall of prose at a single weight, missing its
+                // ending. Structure is the page's job; this hands it over
+                // intact.
+                WhatsNewText = release.NotesMarkdown;
                 HasWhatsNew = !string.IsNullOrWhiteSpace(WhatsNewText);
             }
             catch

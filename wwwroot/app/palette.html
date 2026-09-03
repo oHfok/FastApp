@@ -355,16 +355,6 @@
             <button class="btn btn-primary" id="s-apply" type="button" hidden>Restart and update</button>
         </section>
 
-        <section class="card" id="s-whatsnew-card">
-            <span class="card-head">
-                <span class="label" id="s-whatsnew-label">WHAT'S NEW</span>
-                <span class="chrome-spacer"></span>
-                <button class="out-link" id="s-all-notes" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Every version</span></button>
-            </span>
-            <div class="s-notes" id="s-whatsnew"></div>
-            <span class="hint-sub" id="s-whatsnew-empty" hidden></span>
-        </section>
-
         <section class="card" id="s-rollback-card">
             <span class="label">REINSTALL AN EARLIER VERSION</span>
             <span class="hint-sub">Go back if a release causes trouble. Your data is backed up first.</span>
@@ -375,6 +365,21 @@
             </div>
             <span class="warn" id="s-rollback-warning" hidden></span>
             <span class="hint-sub" id="s-rollback-status" hidden></span>
+        </section>
+
+        <!-- Last, and across both columns. The notes are a document, not a
+             setting: sat in a half-width column they made a card three times
+             the height of anything beside it and left the other column empty
+             down the whole page. Full width with the text held to a readable
+             measure costs the grid nothing and reads properly. -->
+        <section class="card" id="s-whatsnew-card">
+            <span class="card-head">
+                <span class="label" id="s-whatsnew-label">WHAT'S NEW</span>
+                <span class="chrome-spacer"></span>
+                <button class="out-link" id="s-all-notes" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Every version</span></button>
+            </span>
+            <div class="s-notes" id="s-whatsnew"></div>
+            <span class="hint-sub" id="s-whatsnew-empty" hidden></span>
         </section>
 
     </div>
