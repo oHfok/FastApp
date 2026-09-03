@@ -534,13 +534,32 @@ namespace FastApp
             PushState();
         }
 
+        /// <summary>
+        /// Remove an entry for good.
+        ///
+        /// This used to take the app out of ManagedApps and call SaveDatabase(),
+        /// which looks like it deletes and does not: ManagedApps is an
+        /// ObservableCollection, not the DbSet, so removing from it tells EF
+        /// nothing -- the row stays tracked as Unchanged and SaveChanges writes
+        /// no delete for it. The entry vanished from the window and came back on
+        /// the next launch, which is the worst shape a bug can take: it looks
+        /// like it worked, and only disagrees with you tomorrow.
+        ///
+        /// It read as correct because every *add* in this app pairs the
+        /// collection with the DbSet at the call site, and the collection's
+        /// CollectionChanged handler then calls SaveChanges -- so adding through
+        /// the collection alone does persist, and removing through it does not.
+        ///
+        /// Routed through the view model's own command rather than repairing it
+        /// here, for the same reason settings are: that method already pairs the
+        /// two, and a second copy of the pairing is a second thing to get wrong.
+        /// </summary>
         private void DeleteApp(string id)
         {
             var app = FindApp(id);
             if (app == null) return;
 
-            _viewModel.ManagedApps.Remove(app);
-            _viewModel.SaveDatabase();
+            _viewModel.RemoveApplicationCommand.Execute(app);
             _viewModel.RecompileHotkeys();
             PushState();
         }
