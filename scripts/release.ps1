@@ -73,19 +73,32 @@ $ErrorActionPreference = "Stop"
 function Remove-PublishedPackages {
     param(
         [Parameter(Mandatory = $true)][string]$ReleasesDir,
-        [Parameter(Mandatory = $true)][int]$Keep
+        [Parameter(Mandatory = $true)][int]$Keep,
+        # Handed in rather than left to `gh` to resolve, for the same reason the
+        # notes step does it: `gh` invoked from this script re-resolves its own
+        # credentials and that lookup does not survive into this context. Found
+        # the hard way on 3.1.0, where this printed "no published releases came
+        # back" on a machine perfectly well authenticated -- which is the safe
+        # answer, and the wrong one.
+        [Parameter(Mandatory = $true)][string]$Token
     )
 
     if (-not (Test-Path $ReleasesDir)) { return }
 
     $published = $null
+    $priorGhToken = $env:GH_TOKEN
+    $env:GH_TOKEN = $Token
     try {
         $published = gh release list --repo oHfok/FastApp --limit 200 --json tagName |
                      ConvertFrom-Json | ForEach-Object { $_.tagName }
+        if ($LASTEXITCODE -ne 0) { $published = $null }
     }
     catch {
         Write-Host "==> Skipping cleanup: could not list published releases." -ForegroundColor Yellow
         return
+    }
+    finally {
+        $env:GH_TOKEN = $priorGhToken
     }
     if (-not $published) {
         Write-Host "==> Skipping cleanup: no published releases came back." -ForegroundColor Yellow
@@ -257,7 +270,9 @@ if ($Publish) {
     # Last, deliberately: everything above can throw, and a package that has not
     # been confirmed live is a package worth keeping. By this line the upload
     # succeeded and the notes are set.
-    if (-not $NoPrune) { Remove-PublishedPackages -ReleasesDir $releasesDir -Keep $KeepPackages }
+    if (-not $NoPrune) {
+        Remove-PublishedPackages -ReleasesDir $releasesDir -Keep $KeepPackages -Token $ghToken
+    }
 } else {
     Write-Host "==> Not published (pass -Publish to push this live to GitHub Releases)." -ForegroundColor Yellow
 }
