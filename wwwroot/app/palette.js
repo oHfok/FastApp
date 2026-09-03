@@ -218,8 +218,18 @@ function fitWindow() {
     const chrome = els.results.getBoundingClientRect().top - document.body.getBoundingClientRect().top;
     const footer = document.querySelector('.footer').getBoundingClientRect().height;
 
+    // Measured from the children, NOT from results.scrollHeight. scrollHeight
+    // is never less than the element's own height, so once the window had grown
+    // it reported the grown size as the content size and the window could only
+    // ever ratchet upwards -- which is where the empty space below the list came
+    // from. The children know how tall they actually are.
+    const gap = parseFloat(getComputedStyle(els.results).rowGap) || 0;
+    const children = [...els.results.children];
+    const content = children.reduce((total, el) => total + el.getBoundingClientRect().height, 0)
+                    + Math.max(0, children.length - 1) * gap;
+
     // 22 is the palette's own bottom breathing room; the rest is measured.
-    const wanted = Math.round(chrome + els.results.scrollHeight + footer + 22);
+    const wanted = Math.round(chrome + content + footer + 22);
     const height = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, wanted));
 
     if (height === sentHeight) return;

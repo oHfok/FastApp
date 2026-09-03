@@ -244,19 +244,44 @@ namespace FastApp
         // Ctrl+Shift+Space summons the palette. Reserved rather than bindable:
         // it is the way into the app, so it cannot be something the user can
         // accidentally reassign to Notepad and then have no way back.
-        private static readonly HashSet<System.Windows.Input.Key> PaletteCombo = new()
+        //
+        // Matched by which modifiers are down, not by which physical keys. This
+        // used to compare the pressed set against {LeftCtrl, LeftShift, Space}
+        // or {RightCtrl, RightShift, Space}, so the perfectly ordinary habit of
+        // holding left Ctrl and right Shift -- or right Ctrl and left Shift --
+        // matched neither and the hotkey simply did nothing. That is the
+        // "sometimes it does not work": it depended on which shift key your hand
+        // happened to reach.
+        private static bool IsPaletteCombo(HashSet<System.Windows.Input.Key> pressed)
         {
-            System.Windows.Input.Key.LeftCtrl,
-            System.Windows.Input.Key.LeftShift,
-            System.Windows.Input.Key.Space
-        };
+            if (pressed == null || !pressed.Contains(System.Windows.Input.Key.Space)) return false;
 
-        private static readonly HashSet<System.Windows.Input.Key> PaletteComboRight = new()
-        {
-            System.Windows.Input.Key.RightCtrl,
-            System.Windows.Input.Key.RightShift,
-            System.Windows.Input.Key.Space
-        };
+            bool ctrl = pressed.Contains(System.Windows.Input.Key.LeftCtrl)
+                        || pressed.Contains(System.Windows.Input.Key.RightCtrl);
+            bool shift = pressed.Contains(System.Windows.Input.Key.LeftShift)
+                         || pressed.Contains(System.Windows.Input.Key.RightShift);
+            if (!ctrl || !shift) return false;
+
+            // Nothing else held. Ctrl+Shift+Space is ours; Ctrl+Alt+Shift+Space
+            // belongs to whatever the user has bound it to, and swallowing it
+            // would make FastApp the thing that broke their shortcut.
+            foreach (var key in pressed)
+            {
+                switch (key)
+                {
+                    case System.Windows.Input.Key.Space:
+                    case System.Windows.Input.Key.LeftCtrl:
+                    case System.Windows.Input.Key.RightCtrl:
+                    case System.Windows.Input.Key.LeftShift:
+                    case System.Windows.Input.Key.RightShift:
+                        continue;
+                    default:
+                        return false;
+                }
+            }
+
+            return true;
+        }
 
         // ---- Hotkey capture for the palette -------------------------------
         // The palette cannot capture a combination itself: a WebView2 only sees
@@ -301,12 +326,17 @@ namespace FastApp
                 return;
             }
 
-            if (!pressed.SetEquals(PaletteCombo) && !pressed.SetEquals(PaletteComboRight)) return;
+            if (!IsPaletteCombo(pressed)) return;
 
             // Hop to the UI thread: this arrives on the keyboard hook's thread,
             // where touching a Window is not allowed and being slow gets the
             // hook uninstalled.
-            Dispatcher.BeginInvoke(new Action(() => _palette?.ShowPalette()));
+            //
+            // ShowPaletteWhenReady rather than _palette?.ShowPalette(): the
+            // palette is warmed a moment after launch, and pressing the hotkey
+            // before that finished used to fall through the null-conditional
+            // and do nothing at all.
+            Dispatcher.BeginInvoke(new Action(ShowPaletteWhenReady));
         }
 
         // This fires the millisecond the window is actually created by the OS
