@@ -12,7 +12,10 @@
 	  <NoWarn>NU1903</NoWarn>
 	  <StartupObject>FastApp.Program</StartupObject>
 	  <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
-	  <NoWin32Manifest>true</NoWin32Manifest>
+	  <!-- Was NoWin32Manifest. Without a manifest the app declared no DPI
+	       awareness at all, so its WPF and WinForms halves disagreed about
+	       scaling; see app.manifest. -->
+	  <ApplicationManifest>app.manifest</ApplicationManifest>
 	  <!-- Bumped by scripts/release.ps1 on each release — Velopack reads this to
 	       know what version it's packaging and what to offer as an update. -->
 	  <Version>2.4.1</Version>

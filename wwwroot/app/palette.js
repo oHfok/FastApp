@@ -25,6 +25,7 @@ let active = 0;
 const els = {
     q: document.getElementById('q'),
     results: document.getElementById('results'),
+    commandBar: document.getElementById('command-bar'),
     statusText: document.getElementById('status-text'),
     statusDot: document.getElementById('status-dot'),
     facets: document.getElementById('facets'),
@@ -186,6 +187,14 @@ function render() {
     // position is the thing being edited.
     els.reorderHint.hidden = !!query || facet !== 'all';
 
+    // What the combobox is currently pointing at. Cleared rather than left
+    // stale when there is nothing to point at, since a dangling reference
+    // announces the wrong row.
+    const activeRow = els.results.querySelector('.row.active');
+    if (activeRow) els.q.setAttribute('aria-activedescendant', activeRow.id);
+    else els.q.removeAttribute('aria-activedescendant');
+    els.q.setAttribute('aria-expanded', all.length > 0 ? 'true' : 'false');
+
     const current = all[active];
     els.enterVerb.textContent =
         !current ? 'LAUNCH'
@@ -218,21 +227,38 @@ function fitWindow() {
     }
 
     const palette = VIEWS.palette;
-    const chrome = els.results.getBoundingClientRect().top - document.body.getBoundingClientRect().top;
-    const footer = document.querySelector('.footer').getBoundingClientRect().height;
+    const shell = els.results.parentElement;
+    const shellStyle = getComputedStyle(shell);
+    const shellGap = parseFloat(shellStyle.rowGap) || 0;
 
     // Measured from the children, NOT from results.scrollHeight. scrollHeight
     // is never less than the element's own height, so once the window had grown
     // it reported the grown size as the content size and the window could only
     // ever ratchet upwards -- which is where the empty space below the list came
     // from. The children know how tall they actually are.
-    const gap = parseFloat(getComputedStyle(els.results).rowGap) || 0;
-    const children = [...els.results.children];
-    const content = children.reduce((total, el) => total + el.getBoundingClientRect().height, 0)
-                    + Math.max(0, children.length - 1) * gap;
+    //
+    // Everything but the list is naturally sized; the list is the one that
+    // stretches, so only it needs measuring from its own contents. Written this
+    // way so a new sibling (the command bar, once it left the list) is counted
+    // without anyone having to remember to add it.
+    const listGap = parseFloat(getComputedStyle(els.results).rowGap) || 0;
+    const rows = [...els.results.children];
+    const listContent = rows.reduce((total, el) => total + el.getBoundingClientRect().height, 0)
+                        + Math.max(0, rows.length - 1) * listGap;
 
-    // 22 is the palette's own bottom breathing room; the rest is measured.
-    const wanted = Math.round(chrome + content + footer + 22);
+    // Only rendered siblings: a flex gap does not appear beside a child that is
+    // display:none, and the attention strip collapses itself when there is
+    // nothing wrong. Counting it added a phantom gap on every healthy launch.
+    const siblings = [...shell.children]
+        .filter(el => el !== els.results && el.getBoundingClientRect().height > 0);
+    const around = siblings.reduce((total, el) => total + el.getBoundingClientRect().height, 0);
+
+    // The list plus its rendered siblings sit in a row with a gap between each
+    // pair, so the number of gaps is the number of siblings.
+    const gaps = siblings.length * shellGap;
+
+    const padding = parseFloat(shellStyle.paddingTop) + 22;
+    const wanted = Math.round(padding + around + gaps + listContent);
     const height = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, wanted));
 
     if (height === sentHeight) return;
@@ -291,10 +317,10 @@ function showToast(text) {
 }
 
 function renderCommandBar() {
-    if (query || state.apps.length === 0) return;
-
-    const bar = document.createElement('div');
-    bar.className = 'command-bar';
+    const bar = els.commandBar;
+    bar.textContent = '';
+    bar.hidden = !!query || state.apps.length === 0;
+    if (bar.hidden) return;
 
     for (const command of state.commands) {
         const chip = document.createElement('button');
@@ -304,8 +330,6 @@ function renderCommandBar() {
         chip.addEventListener('click', () => send('run-command', { id: command.id }));
         bar.appendChild(chip);
     }
-
-    els.results.appendChild(bar);
 }
 
 /// The status pill. It read TRACKING unconditionally, because the host sent a
@@ -437,6 +461,8 @@ function activeColumns(rows) {
 function columnHeader(label, columns) {
     const head = document.createElement('div');
     head.className = 'head-row';
+    // Column captions, read once as the group's label rather than again per row.
+    head.setAttribute('role', 'presentation');
 
     const name = document.createElement('span');
     name.className = 'label';
@@ -474,10 +500,17 @@ function appendGroup(label, rows, startIndex, columns) {
 
     const group = document.createElement('div');
     group.className = 'group';
+    // The heading is already on screen; as a group label it also reaches
+    // anyone who cannot see it.
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', label);
     group.appendChild(columns ? columnHeader(label, columns) : plainHeading(label));
 
     const list = document.createElement('div');
     list.className = 'group-rows';
+    // A wrapper for layout, not a thing in its own right: without this it
+    // announces as an empty group between the real one and its options.
+    list.setAttribute('role', 'presentation');
 
     let index = startIndex;
     for (const row of rows) {
@@ -500,6 +533,14 @@ function plainHeading(label) {
 function buildRow(row, index, columns) {
     const el = document.createElement('div');
     el.className = 'row' + (index === active ? ' active' : '');
+
+    // The highlight was a CSS class and nothing else, so a screen reader had no
+    // way to know anything was selected -- arrow keys moved something it could
+    // not see, and the search box appeared to do nothing at all. The rows are
+    // options in a listbox now, and the box below points at the current one.
+    el.id = 'opt-' + index;
+    el.setAttribute('role', 'option');
+    el.setAttribute('aria-selected', index === active ? 'true' : 'false');
     el.addEventListener('mousemove', () => { if (active !== index) { active = index; render(); } });
 
     // Clicking the row opens it rather than running it. An app row is two

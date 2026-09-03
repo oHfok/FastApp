@@ -21,7 +21,12 @@ namespace FastApp.Services
 
             // FIXED: Using Environment.ProcessPath guarantees the .exe path is found, even when Published!
             _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath);
-            _notifyIcon.Text = "FastApp Manager"; // Updated name just in case!
+            // The tooltip is the one place the summon combination can be found by
+            // someone who was never told it, and it used to read "FastApp
+            // Manager" -- a name, at the exact moment a person is hovering the
+            // icon wondering how to open the thing. NotifyIcon.Text caps at 63
+            // characters, which this is comfortably inside.
+            _notifyIcon.Text = $"FastApp  ·  {MainWindow.PaletteHotkeyDisplay} to open";
             _notifyIcon.Visible = true;
 
             // The balloon fallback anchors to this same persistent icon instead

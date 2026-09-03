@@ -818,7 +818,8 @@ select.field option { background: var(--panel-solid); color: var(--text); }
    The commands used to be five full rows on the idle screen, taking more of it
    than the apps they sat under. They are one line now, and still turn back
    into proper rows the moment you type. */
-.command-bar { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 4px; }
+.command-bar { display: flex; flex-wrap: wrap; gap: 7px; flex-shrink: 0; }
+.command-bar:empty { display: none; }
 .command-chip {
     font-size: var(--fs-caption);
     color: var(--text-dim);

@@ -87,6 +87,14 @@ namespace FastApp
             using var showWindowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowWindowEventName);
             StartShowWindowListener(showWindowEvent);
 
+            // The manifest declares PerMonitorV2 for the process; WinForms needs
+            // telling separately or it stays on its own default and the tray
+            // menu scales differently from the WPF windows beside it. Must be
+            // before the first WinForms control is created, which the tray does
+            // inside MainWindow's constructor.
+            try { System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.PerMonitorV2); }
+            catch { /* already set, or a Windows old enough not to have it */ }
+
             App app = new App();
             app.InitializeComponent();
             app.Run();

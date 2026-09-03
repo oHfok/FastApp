@@ -31,7 +31,10 @@
             <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path>
         </svg>
         <input id="q" type="text" placeholder="Search apps, actions and commands"
-               autocomplete="off" spellcheck="false" autofocus>
+               autocomplete="off" spellcheck="false" autofocus
+               role="combobox" aria-expanded="false" aria-controls="results"
+               aria-autocomplete="list" aria-haspopup="listbox"
+               aria-label="Search apps, actions and commands">
         <span class="kbd" id="result-count"></span>
     </div>
 
@@ -41,7 +44,11 @@
 
     <div class="attention-stack" id="attention" role="status" aria-live="polite"></div>
 
-    <div class="results" id="results"></div>
+    <div class="results" id="results" role="listbox" aria-label="Apps and commands"></div>
+
+    <!-- Outside the list on purpose. These are buttons, and a listbox whose
+         children are buttons is not a listbox. -->
+    <div class="command-bar" id="command-bar"></div>
 
     <div class="footer">
         <span class="hint"><span class="hint-key">↑↓</span><span class="label">MOVE</span></span>
