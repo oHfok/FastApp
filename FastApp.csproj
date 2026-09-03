@@ -18,7 +18,7 @@
 	  <ApplicationManifest>app.manifest</ApplicationManifest>
 	  <!-- Bumped by scripts/release.ps1 on each release — Velopack reads this to
 	       know what version it's packaging and what to offer as an update. -->
-	  <Version>3.1.3</Version>
+	  <Version>3.1.4</Version>
   </PropertyGroup>
 
 	<ItemGroup>
