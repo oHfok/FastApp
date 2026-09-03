@@ -111,7 +111,16 @@ namespace FastApp
             DataContext = _viewModel;
 
             // 4. WIRE THE HOOK: Connect the live hook to the loaded ViewModel.
-            _keyboardHook.KeysChanged += _viewModel.CheckForHotkeys;
+            //
+            // Not subscribed directly: while a hotkey is being recorded, the keys
+            // being pressed are the recording and must not also mean whatever
+            // they meant before. Re-binding Valorant's V+A+L launched Valorant
+            // on the way to replacing it.
+            _keyboardHook.KeysChanged += keys =>
+            {
+                if (_capturingHotkey) return;
+                _viewModel.CheckForHotkeys(keys);
+            };
             _keyboardHook.ShouldSuppress = _viewModel.ShouldSuppressHotkey;
             _keyboardHook.KeysChanged += CheckPaletteHotkey;
 
@@ -288,40 +297,106 @@ namespace FastApp
         // keys the browser chooses to surface, and never the ones another app
         // has already swallowed. The low-level hook sees everything, so capture
         // borrows it and reports the result back.
-        private bool _capturingHotkey;
-        private readonly HashSet<System.Windows.Input.Key> _paletteCapture = new();
+        // volatile: written on the UI thread when capture starts and stops, read
+        // on the keyboard hook's thread on every keystroke.
+        private volatile bool _capturingHotkey;
+
+        // A list rather than a set, so the combination reads back in the order
+        // it was pressed: "LeftCtrl + LeftShift + K" rather than whatever order
+        // a hash set happens to enumerate.
+        //
+        // Guarded, because it is added to on the keyboard hook's thread and
+        // cleared on the UI thread when recording is cancelled. Clicking away
+        // mid-combination could otherwise land inside a List resize. The lock is
+        // uncontended in practice, which is what the hook needs.
+        private readonly object _captureGate = new();
+        private readonly List<System.Windows.Input.Key> _paletteCapture = new();
 
         /// <summary>Raised with (sequence, displayText) once the keys are released.</summary>
         public event Action<string, string> HotkeyCaptured;
 
+        /// <summary>
+        /// Raised as keys go down, with the combination so far. Recording used
+        /// to show nothing at all until every key came back up, which reads as
+        /// an unresponsive control rather than as one that is listening.
+        /// </summary>
+        public event Action<string> HotkeyCaptureProgress;
+
+        /// <summary>
+        /// A modifier cannot be a binding on its own: it would fire every time
+        /// the user held it for anything else.
+        /// </summary>
+        private static bool IsModifier(System.Windows.Input.Key key) => key
+            is System.Windows.Input.Key.LeftCtrl or System.Windows.Input.Key.RightCtrl
+            or System.Windows.Input.Key.LeftShift or System.Windows.Input.Key.RightShift
+            or System.Windows.Input.Key.LeftAlt or System.Windows.Input.Key.RightAlt
+            or System.Windows.Input.Key.LWin or System.Windows.Input.Key.RWin
+            or System.Windows.Input.Key.System;
+
         public void BeginHotkeyCapture()
         {
-            _paletteCapture.Clear();
+            lock (_captureGate) _paletteCapture.Clear();
             _capturingHotkey = true;
         }
 
-        public void CancelHotkeyCapture() => _capturingHotkey = false;
+        public void CancelHotkeyCapture()
+        {
+            _capturingHotkey = false;
+            lock (_captureGate) _paletteCapture.Clear();
+        }
+
+        private static string Describe(IEnumerable<System.Windows.Input.Key> keys) =>
+            string.Join(" + ", keys.Select(k => k.ToString()));
 
         private void CheckPaletteHotkey(HashSet<System.Windows.Input.Key> pressed)
         {
             if (_capturingHotkey)
             {
-                // Grow the set while keys go down; report it once the last one
+                // Grow the list while keys go down; commit once the last one
                 // comes up, so "Ctrl then Shift then S" records all three
                 // rather than just whichever arrived first.
                 if (pressed.Count > 0)
                 {
-                    foreach (var key in pressed) _paletteCapture.Add(key);
+                    string sofar = null;
+                    lock (_captureGate)
+                    {
+                        foreach (var key in pressed)
+                        {
+                            if (_paletteCapture.Contains(key)) continue;
+                            _paletteCapture.Add(key);
+                            sofar = Describe(_paletteCapture);
+                        }
+                    }
+
+                    // Shown immediately, so the field fills in as the keys go
+                    // down instead of waiting for the release.
+                    if (sofar != null)
+                        Dispatcher.BeginInvoke(new Action(() => HotkeyCaptureProgress?.Invoke(sofar)));
                     return;
                 }
 
-                if (_paletteCapture.Count == 0) return;
+                string sequence, display;
+                lock (_captureGate)
+                {
+                    if (_paletteCapture.Count == 0) return;
 
-                string sequence = string.Join(",", _paletteCapture.Select(k => k.ToString()));
-                string display = string.Join(" + ", _paletteCapture.Select(k => k.ToString()));
+                    // Modifiers alone are not a binding. Stay in recording
+                    // rather than saving something that would fire constantly,
+                    // and say why.
+                    if (!_paletteCapture.Any(k => !IsModifier(k)))
+                    {
+                        _paletteCapture.Clear();
+                        Dispatcher.BeginInvoke(new Action(() =>
+                            HotkeyCaptureProgress?.Invoke("Add a key to those modifiers")));
+                        return;
+                    }
+
+                    sequence = string.Join(",", _paletteCapture.Select(k => k.ToString()));
+                    display = Describe(_paletteCapture);
+                    _paletteCapture.Clear();
+                }
+
                 _capturingHotkey = false;
-                _paletteCapture.Clear();
-
                 Dispatcher.BeginInvoke(new Action(() => HotkeyCaptured?.Invoke(sequence, display)));
                 return;
             }

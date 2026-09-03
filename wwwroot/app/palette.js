@@ -1477,6 +1477,12 @@ function startCapture() {
     send('capture-hotkey');
 }
 
+// Recording ends when the keys come up, so the field is showing the
+// combination as it is built. Without this it sat on "Press a combination"
+// throughout and only changed once everything was released, which felt like
+// nothing was happening.
+
+
 function stopCapture() {
     capturing = false;
     d.hotkey.classList.remove('capturing');
@@ -1515,6 +1521,13 @@ if (bridge) {
         if (!message) return;
 
         if (message.type === 'app') { renderDetail(message.app); return; }
+
+        if (message.type === 'hotkey-progress') {
+            // Only while the field is listening: a stale progress message
+            // arriving after a cancel must not overwrite the saved binding.
+            if (capturing) d.hotkey.textContent = message.text;
+            return;
+        }
 
         if (message.type === 'hotkey-captured') {
             if (!capturing || !editing) return;

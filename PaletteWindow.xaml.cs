@@ -951,6 +951,12 @@ namespace FastApp
             if (command != null && command.CanExecute(null)) command.Execute(null);
         }
 
+        private void OnHotkeyCaptureProgress(string text)
+        {
+            var payload = new { type = "hotkey-progress", text };
+            Web.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+        }
+
         private void BeginCapture()
         {
             _mainWindow ??= System.Windows.Application.Current.MainWindow as MainWindow;
@@ -959,6 +965,7 @@ namespace FastApp
             if (!_captureHooked)
             {
                 _mainWindow.HotkeyCaptured += OnHotkeyCaptured;
+                _mainWindow.HotkeyCaptureProgress += OnHotkeyCaptureProgress;
                 _captureHooked = true;
             }
             _mainWindow.BeginHotkeyCapture();
