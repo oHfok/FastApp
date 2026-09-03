@@ -27,11 +27,11 @@ namespace FastApp
         private PaletteWindow _palette;
         public PaletteWindow Palette => _palette;
 
-        public void ShowPalette()
+        public void ShowPalette(PaletteView view = PaletteView.Search)
         {
             if (_palette != null && _palette.Unavailable == null)
             {
-                _palette.ShowPalette();
+                _palette.ShowPalette(view);
                 return;
             }
 
@@ -234,6 +234,12 @@ namespace FastApp
             catch { /* best-effort — never block exit on a flush failure */ }
             System.Windows.Application.Current.Shutdown();
         }
+
+        /// <summary>
+        /// How the summon combination is written wherever it is shown. Beside
+        /// the sets below so the two cannot drift.
+        /// </summary>
+        public const string PaletteHotkeyDisplay = "Ctrl+Shift+Space";
 
         // Ctrl+Shift+Space summons the palette. Reserved rather than bindable:
         // it is the way into the app, so it cannot be something the user can

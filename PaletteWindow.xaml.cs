@@ -13,6 +13,14 @@ using Microsoft.Web.WebView2.Core;
 
 namespace FastApp
 {
+    /// <summary>Which view a summon should land on.</summary>
+    public enum PaletteView
+    {
+        Search,
+        Manage,
+        Settings
+    }
+
     /// <summary>
     /// The 2.0 desktop surface: a frameless window hosting the palette, which is
     /// the same HTML/CSS design system the web dashboard is built from.
@@ -360,7 +368,7 @@ namespace FastApp
                     OpenExternally(DashboardServerService.DashboardUrl);
                     break;
                 case "manage":
-                    Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"show-manage\"}");
+                    ShowManage();
                     break;
 
                 case "settings":
@@ -384,7 +392,7 @@ namespace FastApp
             var app = FindApp(id);
             if (app == null || Web.CoreWebView2 == null) return;
 
-            var (today, _) = ReadToday();
+            var (today, _) = TodayUsage.Read();
             today.TryGetValue(app.Name, out var todaySpan);
 
             var payload = new
@@ -621,6 +629,9 @@ namespace FastApp
         // Settings
         // ------------------------------------------------------------------
 
+        private void ShowManage() =>
+            Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"show-manage\"}");
+
         private void ShowSettings()
         {
             // Both of these are fetched lazily by the view model, and both used
@@ -789,41 +800,6 @@ namespace FastApp
                 : null;
 
         /// <summary>
-        /// Today's focused time per app, and the day's total.
-        ///
-        /// Read from DailyLogs rather than from AppItemModel.TimeRunning: that
-        /// property is the running total since the app was added, so using it
-        /// here reported 233 hours "today". Its own short-lived context, so a
-        /// palette summon never queues behind the tracker's writes.
-        /// </summary>
-        private static (Dictionary<string, TimeSpan> PerApp, TimeSpan Total) ReadToday()
-        {
-            var perApp = new Dictionary<string, TimeSpan>(StringComparer.OrdinalIgnoreCase);
-            TimeSpan total = TimeSpan.Zero;
-
-            try
-            {
-                using var db = new AppDbContext();
-                foreach (var log in db.DailyLogs.AsNoTracking().Where(l => l.Date == DateTime.Today))
-                {
-                    if (string.Equals(log.AppName, "SYSTEM_PC", StringComparison.OrdinalIgnoreCase))
-                    {
-                        total = log.TimeFocused;
-                        continue;
-                    }
-                    perApp[log.AppName] = log.TimeFocused;
-                }
-            }
-            catch
-            {
-                // An unreadable log is not worth failing the palette over; it
-                // simply shows no figures.
-            }
-
-            return (perApp, total);
-        }
-
-        /// <summary>
         /// When each app was last in the foreground, newest session per app.
         ///
         /// Bounded to the last 60 days rather than grouping the whole table:
@@ -861,7 +837,7 @@ namespace FastApp
         {
             if (Web.CoreWebView2 == null) return;
 
-            var (today, focusTotal) = ReadToday();
+            var (today, focusTotal) = TodayUsage.Read();
             var lastUsed = ReadLastUsed();
 
             var apps = _viewModel.ManagedApps
@@ -951,12 +927,20 @@ namespace FastApp
         // activated, so the first deactivation it acts on is the user leaving.
         private bool _allowAutoHide;
 
-        /// <summary>Summon it. Hidden rather than closed, so this is instant.</summary>
-        public void ShowPalette()
+        /// <summary>
+        /// Summon it. Hidden rather than closed, so this is instant.
+        ///
+        /// The view is posted after the reset, and the bridge delivers messages
+        /// in order, so asking for Manage lands on Manage rather than flashing
+        /// the search list on the way there.
+        /// </summary>
+        public void ShowPalette(PaletteView view = PaletteView.Search)
         {
             _allowAutoHide = false;
             _pinned = false;
             Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"reset\"}");
+            if (view == PaletteView.Manage) ShowManage();
+            else if (view == PaletteView.Settings) ShowSettings();
             Show();
             Activate();
             Web.Focus();
