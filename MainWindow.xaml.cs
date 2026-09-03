@@ -345,8 +345,10 @@ namespace FastApp
             lock (_captureGate) _paletteCapture.Clear();
         }
 
+        // The same formatter the rest of the app uses, so what you see while
+        // recording is what the row shows afterwards.
         private static string Describe(IEnumerable<System.Windows.Input.Key> keys) =>
-            string.Join(" + ", keys.Select(k => k.ToString()));
+            Services.HotkeyText.Describe(keys);
 
         private void CheckPaletteHotkey(HashSet<System.Windows.Input.Key> pressed)
         {

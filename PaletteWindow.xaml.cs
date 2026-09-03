@@ -427,7 +427,10 @@ namespace FastApp
                     actionType = app.ActionType,
                     actionPayload = app.ActionPayload,
                     hotkeySequence = app.HotkeySequence,
-                    hotkeyDisplay = app.HotkeyDisplayText,
+                    // Described from the sequence rather than read from the
+                    // stored text, so a binding recorded before HotkeyText
+                    // existed also reads as "Ctrl + Shift + K".
+                    hotkeyDisplay = HotkeyText.Describe(app.HotkeySequence),
                     suppressHotkeyPassthrough = app.SuppressHotkeyPassthrough,
                     launchOnStartup = app.LaunchOnStartup,
                     launchArguments = app.LaunchArguments,
@@ -476,9 +479,11 @@ namespace FastApp
             if (edit.HotkeySequence != null)
             {
                 app.HotkeySequence = edit.HotkeySequence;
-                app.HotkeyDisplayText = string.IsNullOrWhiteSpace(edit.HotkeyDisplay)
-                    ? "None"
-                    : edit.HotkeyDisplay;
+
+                // Kept in step with the sequence rather than stored from
+                // whatever the client happened to send, so the two can never
+                // describe different combinations.
+                app.HotkeyDisplayText = HotkeyText.Describe(edit.HotkeySequence);
                 _viewModel.RecompileHotkeys();
             }
 
@@ -1069,7 +1074,9 @@ namespace FastApp
                         id = a.Id.ToString(),
                         name = a.DisplayNamePrimary,
                         category = CategoryMap.For(categories, a.Name),
-                        hotkey = string.IsNullOrWhiteSpace(a.HotkeySequence) ? null : a.HotkeyDisplayText,
+                        hotkey = string.IsNullOrWhiteSpace(a.HotkeySequence)
+                            ? null
+                            : HotkeyText.Describe(a.HotkeySequence),
                         // Never shown before, and only this app can know it: a
                         // binding used twice in two months is not earning its keys.
                         hotkeyUses = a.HotkeyTriggerCount,
