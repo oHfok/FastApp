@@ -53,6 +53,7 @@ namespace FastApp.Services.Analytics
             "What is my usual routine?",
             "What do I spend the most time in?",
             "What kind of time is it?",
+            "What do I keep coming back to?",
             "How much am I on my computer?"
         };
 
@@ -363,6 +364,42 @@ namespace FastApp.Services.Analytics
                         a.Evidence.Add($"{f.Change(f.RecentHoursPerDay, f.BaselineHoursPerDay):+0;-0;0}% difference");
                     }
                     if (f.BusiestDay != null) a.Evidence.Add($"busiest day: {f.BusiestDay}");
+                    return a;
+                }
+            },
+
+            new Intent
+            {
+                // Answerable only since the transition table was built. The
+                // question people actually ask about their own attention is not
+                // "how often do I switch" but "what do I keep going back to",
+                // and until now nothing measured that.
+                Name = "anchor",
+                Words = new[] { "come back", "keep going back", "return", "returning", "hold",
+                                "holds", "stick", "sticky", "anchor", "glance", "check on",
+                                "leads to", "after i", "follows" },
+                Answer = f =>
+                {
+                    var parts = new List<string>();
+                    if (f.Anchor != null)
+                    {
+                        var (app, rate, glance) = f.Anchor.Value;
+                        parts.Add($"{app}. When you move away from it you are back within one step "
+                                + $"{rate * 100:0}% of the time, typically after "
+                                + $"{Detectors.Describe(glance)}.");
+                    }
+                    if (f.Successor != null) parts.Add(f.Successor + ".");
+                    if (parts.Count == 0) return null;
+
+                    var a = new Answer
+                    {
+                        Text = string.Join(" ", parts),
+                        BasedOn = $"{f.DaysOfHistory} days of recorded activity",
+                        Understood = true
+                    };
+                    var insight = f.Insights.FirstOrDefault(i => i.Topic == "anchoring")
+                               ?? f.Insights.FirstOrDefault(i => i.Topic == "successor");
+                    if (insight != null) a.Evidence.AddRange(insight.Evidence);
                     return a;
                 }
             },

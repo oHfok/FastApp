@@ -29,6 +29,7 @@ namespace FastApp.Services.Analytics
             "how long your unbroken stretches run, and when they start",
             "what kind of thing each application is, where you have said so",
             "which applications appear together, and which follow which",
+            "what you keep returning to after looking away",
             "how any of the above compares with your own previous four weeks"
         };
 
@@ -38,6 +39,7 @@ namespace FastApp.Services.Analytics
             "whether any of it was work, study or leisure",
             "whether a long stretch was concentration or a film left running",
             "why you moved from one thing to another",
+            "whether the things you do in sequence are one task or several",
             "anything at all about the twenty-four hours before your first recorded day"
         };
     }
