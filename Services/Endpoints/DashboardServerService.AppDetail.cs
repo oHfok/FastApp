@@ -86,7 +86,12 @@ namespace FastApp.Services
                     // Safely catches the SQL error if these columns don't exist yet
                 }
 
-                double todayMinutes = allTimeLogs.FirstOrDefault(l => l.Date == targetDate)?.TimeSpent.TotalMinutes ?? 0;
+                // Only the limits tab reads this, and it is the figure the bar
+                // compares against the daily limit -- so it has to be the same
+                // column the tracker enforces on, and the same one the desktop
+                // app shows. The averages a few lines below already use
+                // TimeFocused; this was the odd one out.
+                double todayMinutes = allTimeLogs.FirstOrDefault(l => l.Date == targetDate)?.TimeFocused.TotalMinutes ?? 0;
 
                 // Averages & Personal Records (Unchanged)
                 DateTime startOfWeek = GetMondayStartOfWeek(targetDate);

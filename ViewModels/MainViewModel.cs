@@ -1641,7 +1641,7 @@ namespace FastApp.ViewModels
 
             // Daily-limit enforcement: HasNotifiedToday is in-memory only (never
             // persisted), so it has to be reset by hand once a day rolls over.
-            // Seeded to today, not null: baselineMinutesToday below is read from
+            // Seeded to today, not null: baselineFocusedMinutes below is read from
             // the DB for today at startup, so there is no rollover owing on the
             // first tick. Leaving it null made the first tick "roll over" and
             // clear that freshly-seeded baseline, which stopped limits being
@@ -1649,13 +1649,22 @@ namespace FastApp.ViewModels
             DateTime? lastLimitResetDate = DateTime.Today;
             const int WarningThresholdMinutes = 5;
 
-            // Live per-tick minutes-today, per app: baseline (what's actually
-            // committed to the DB as of the last flush) + timeCache (accumulated
-            // since that flush). Checking against this every tick, instead of only
-            // the value on disk, is what makes enforcement react within ~5s instead
-            // of ~60s. Seeded from the DB once at startup so a mid-day restart of
-            // FastApp itself doesn't reset anyone's count back to zero.
-            var baselineMinutesToday = new Dictionary<string, double>();
+            // Live per-tick focused minutes today, per app: baseline (what's
+            // actually committed to the DB as of the last flush) + focusCache
+            // (accumulated since that flush). Checking against this every tick,
+            // instead of only the value on disk, is what makes enforcement react
+            // within ~5s instead of ~60s. Seeded from the DB once at startup so a
+            // mid-day restart of FastApp itself doesn't reset anyone's count.
+            //
+            // TimeFocused, not TimeSpent. This counted TimeSpent -- how long the
+            // process had merely existed -- while every surface that shows a
+            // person their usage reads TimeFocused. Zen on 2026-09-04 had been
+            // looked at for 26 minutes and open for 122, so a 60 minute limit was
+            // 62 minutes overdrawn the moment it was set, and force close killed
+            // the browser on the next tick. An app that starts with Windows and
+            // sits in the background would exhaust any limit without being
+            // touched, which is not what a daily limit means.
+            var baselineFocusedMinutes = new Dictionary<string, double>();
             try
             {
                 // Runs on this background thread as soon as the tracker starts, which
@@ -1665,7 +1674,7 @@ namespace FastApp.ViewModels
                 {
                     foreach (var existingLog in _dbContext.DailyLogs.AsNoTracking().Where(l => l.Date == DateTime.Today))
                     {
-                        baselineMinutesToday[existingLog.AppName] = existingLog.TimeSpent.TotalMinutes;
+                        baselineFocusedMinutes[existingLog.AppName] = existingLog.TimeFocused.TotalMinutes;
                     }
                 }
             }
@@ -1711,7 +1720,10 @@ namespace FastApp.ViewModels
                     log.AfkTimeSpentTicks = log.AfkTimeSpent.Ticks;
                     log.TimeFocusedTicks = log.TimeFocused.Ticks;
 
-                    baselineMinutesToday[appName] = log.TimeSpent.TotalMinutes;
+                    // The committed half of the pair read by limit enforcement,
+                    // so it tracks the same column that enforcement compares
+                    // against. The caches are cleared straight after this.
+                    baselineFocusedMinutes[appName] = log.TimeFocused.TotalMinutes;
                 }
             }
 
@@ -1778,7 +1790,7 @@ namespace FastApp.ViewModels
 
                 // The day rolls over here, on the tick that first sees it, rather
                 // than waiting for the 60s flush below. Enforcement (D) runs every
-                // tick against baselineMinutesToday, so leaving the reset to the
+                // tick against baselineFocusedMinutes, so leaving the reset to the
                 // flush meant that for up to a minute past midnight yesterday's
                 // totals were still in force -- a strict-mode app relaunched at
                 // 00:00 got killed again on a fresh day's allowance.
@@ -1816,7 +1828,7 @@ namespace FastApp.ViewModels
                     timeCache.Clear();
                     afkCache.Clear();
                     focusCache.Clear();
-                    baselineMinutesToday.Clear();
+                    baselineFocusedMinutes.Clear();
                     lastLimitResetDate = DateTime.Today;
                 }
 
@@ -1914,12 +1926,16 @@ namespace FastApp.ViewModels
                     // minute of free runway each time.
                     foreach (var limitedApp in ManagedApps.Where(a => a.DailyLimitMinutes > 0 && !string.IsNullOrEmpty(a.ExecutablePath)))
                     {
-                        double liveMinutesToday = baselineMinutesToday.GetValueOrDefault(limitedApp.Name)
-                            + timeCache.GetValueOrDefault(limitedApp.Name).TotalMinutes;
+                        // focusCache, not timeCache: the same distinction as the
+                        // baseline above. timeCache counts every running process
+                        // each tick; focusCache counts only the one in front of
+                        // you, which is the time a daily limit is about.
+                        double focusedMinutesToday = baselineFocusedMinutes.GetValueOrDefault(limitedApp.Name)
+                            + focusCache.GetValueOrDefault(limitedApp.Name).TotalMinutes;
 
                         int bonusMinutes = limitedApp.BonusMinutesDate?.Date == DateTime.Today ? limitedApp.TodayBonusMinutes : 0;
                         int effectiveLimit = limitedApp.DailyLimitMinutes + bonusMinutes;
-                        double remaining = effectiveLimit - liveMinutesToday;
+                        double remaining = effectiveLimit - focusedMinutesToday;
 
                         if (remaining <= 0)
                         {
