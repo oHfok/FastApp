@@ -161,6 +161,113 @@ namespace FastApp.Services.Analytics
             };
         }
 
+        /// <summary>
+        /// The same run, kept as facts rather than as a page.
+        ///
+        /// Built by asking Build for its report and holding on to the working:
+        /// a question and the report must never be able to disagree, and the
+        /// only way to guarantee that is for both to come out of one pass.
+        /// </summary>
+        public static FactSheet Facts(DateTime today)
+        {
+            DateTime recentFrom = today.Date.AddDays(-(RecentDays - 1));
+            DateTime historyFrom = today.Date.AddDays(-(Baseline.WindowDays + RecentDays));
+            DateTime end = today.Date.AddDays(1);
+
+            var all = ActivityStream.Read(historyFrom, end);
+            var days = Baseline.Profile(all);
+            var recentDays = days.Where(d => d.Day >= recentFrom).ToList();
+            var recentVisits = all.Where(v => v.Day >= recentFrom).ToList();
+            var baseline = Baseline.Build(days, recentFrom);
+
+            var insights = Detectors.All(recentVisits, recentDays, baseline);
+            insights.AddRange(Detectors.Patterns(recentVisits, all, recentDays, baseline));
+            insights = insights.OrderByDescending(i => i.Score).ToList();
+
+            double activeHours = recentDays.Sum(d => d.Active.TotalHours);
+            var rates = recentDays.Where(d => d.SwitchesPerHour > 0)
+                                  .Select(d => d.SwitchesPerHour).ToList();
+
+            var perApp = new Dictionary<string, TimeSpan>(StringComparer.OrdinalIgnoreCase);
+            foreach (var day in recentDays)
+            {
+                foreach (var (app, span) in day.PerApp)
+                {
+                    perApp.TryGetValue(app, out var so_far);
+                    perApp[app] = so_far + span;
+                }
+            }
+
+            // Pulled off the insights the detectors already produced rather
+            // than recomputed, so an answer cannot contradict the card above it.
+            var interrupter = insights.FirstOrDefault(i => i.Title.Contains("pulls you away"));
+            var starts = insights.FirstOrDefault(i => i.Title.StartsWith("Your day usually starts"));
+            var window = insights.FirstOrDefault(i => i.Title.Contains("stretches start between"));
+            var parts = insights.FirstOrDefault(i => i.Title.StartsWith("Most of your computer time"));
+
+            var dayParts = new List<(string, double)>();
+            if (parts != null)
+            {
+                foreach (var line in parts.Evidence)
+                {
+                    int colon = line.IndexOf(':');
+                    if (colon > 0) dayParts.Add((line[..colon].Trim(), 0));
+                }
+            }
+
+            return new FactSheet
+            {
+                DaysOfHistory = days.Count,
+                BaselineDays = baseline.DayCount,
+                RecentDays = recentDays.Count,
+                HasBaseline = baseline.IsUsable,
+                BaselineConfidence = baseline.Confidence,
+
+                RecentHours = activeHours,
+                RecentHoursPerDay = recentDays.Count > 0 ? activeHours / recentDays.Count : 0,
+                SwitchesPerHour = rates.Count > 0 ? Baseline.Median(rates) : 0,
+                LongestStretchMinutes = recentDays.Count > 0
+                    ? Baseline.Median(recentDays.Select(d => d.LongestStretch.TotalMinutes))
+                    : 0,
+
+                BaselineHoursPerDay = baseline.MedianActive.TotalHours,
+                BaselineSwitchesPerHour = baseline.MedianSwitchesPerHour,
+                BaselineLongestStretchMinutes = baseline.MedianLongestStretch.TotalMinutes,
+                BaselineFirstUse = baseline.MedianFirstUse,
+
+                TopApps = perApp.OrderByDescending(kv => kv.Value).Take(6)
+                    .Select(kv => (Detectors.Pretty(kv.Key), kv.Value.TotalHours,
+                                   ChangeAgainstBaseline(kv.Key, kv.Value, recentDays.Count, baseline)))
+                    .ToList(),
+                DayParts = dayParts,
+                FocusWindow = window == null ? null
+                    : window.Title.Replace("Your longest stretches start between ", ""),
+                Interrupter = interrupter?.Apps.FirstOrDefault(),
+                InterrupterShare = InterrupterShare(interrupter),
+                StartsDayWith = starts?.Apps.FirstOrDefault(),
+                BusiestDay = recentDays.Count == 0 ? null
+                    : recentDays.OrderByDescending(d => d.Active).First().Day.ToString("dddd"),
+                Insights = insights
+            };
+        }
+
+        /// <summary>
+        /// Read back out of the detector's own sentence rather than worked out
+        /// again here. One place decides what the share is.
+        /// </summary>
+        private static double InterrupterShare(Insight interrupter)
+        {
+            if (interrupter == null) return 0;
+            var evidence = interrupter.Evidence.FirstOrDefault(e => e.Contains(" of ") && e.Contains("interruptions"));
+            if (evidence == null) return 0;
+
+            var bits = evidence.Split(' ');
+            if (bits.Length < 3) return 0;
+            if (!double.TryParse(bits[0], out double top)) return 0;
+            if (!double.TryParse(bits[2], out double total) || total <= 0) return 0;
+            return top / total;
+        }
+
         private static double ChangeAgainstBaseline(
             string app, TimeSpan recent, int recentDayCount, Baseline baseline)
         {

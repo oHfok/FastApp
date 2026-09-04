@@ -170,8 +170,91 @@
             root.appendChild(section);
         }
 
+        root.appendChild(askBox());
+
         root.appendChild(el('p', 'an-privacy',
-            'Everything on this page was worked out on this computer, from data that never left it.'));
+            'Everything on this page, questions included, was worked out on this computer '
+            + 'from data that never left it.'));
+    }
+
+    /* ---- asking about your own activity ----------------------------------
+       Answered by the same engine that built the page, on this machine. The
+       question box is deliberately not a search box with a cursor blinking in
+       it: nobody knows what to ask a program about themselves, so the examples
+       are the interface and typing is the shortcut. */
+    function askBox() {
+        const wrap = el('section', 'an-block an-ask');
+        wrap.appendChild(el('h2', 'an-block-title', 'Ask about your activity'));
+
+        const row = el('div', 'an-ask-row');
+        const input = el('input', 'an-ask-input');
+        input.type = 'text';
+        input.placeholder = 'When am I most focused?';
+        input.setAttribute('aria-label', 'Ask about your activity');
+        const button = el('button', 'an-ask-go', 'Ask');
+        button.type = 'button';
+        row.appendChild(input);
+        row.appendChild(button);
+        wrap.appendChild(row);
+
+        const chips = el('div', 'an-ask-chips');
+        wrap.appendChild(chips);
+        const out = el('div', 'an-ask-answer');
+        wrap.appendChild(out);
+
+        async function ask(question) {
+            if (!question) return;
+            input.value = question;
+            out.textContent = '';
+            out.appendChild(el('p', 'an-ask-text', 'Looking…'));
+            try {
+                const res = await fetch('/api/analytics/ask?q=' + encodeURIComponent(question));
+                const data = await res.json();
+                out.textContent = '';
+
+                out.appendChild(el('p', 'an-ask-text', data.text));
+
+                if (data.evidence && data.evidence.length) {
+                    const list = el('ul', 'an-evidence');
+                    data.evidence.forEach(line => line && list.appendChild(el('li', null, line)));
+                    out.appendChild(list);
+                }
+                if (data.basedOn) {
+                    out.appendChild(el('p', 'an-ask-basis', 'Based on ' + data.basedOn));
+                }
+                // Only when it did not follow: offering the same six every time
+                // would make an answer look like a failure.
+                showChips(data.understood ? [] : (data.suggestions || []));
+            } catch (err) {
+                out.textContent = '';
+                out.appendChild(el('p', 'an-ask-text', 'Could not answer that: ' + err.message));
+            }
+        }
+
+        function showChips(list) {
+            chips.textContent = '';
+            for (const example of list) {
+                const chip = el('button', 'an-chip', example);
+                chip.type = 'button';
+                chip.addEventListener('click', () => ask(example));
+                chips.appendChild(chip);
+            }
+        }
+
+        button.addEventListener('click', () => ask(input.value.trim()));
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); ask(input.value.trim()); }
+        });
+
+        showChips([
+            'When am I most focused?',
+            'What changed this week?',
+            'What interrupts me the most?',
+            'What is my usual routine?',
+            'What do I spend the most time in?',
+            'How much am I on my computer?'
+        ]);
+        return wrap;
     }
 
     async function load() {

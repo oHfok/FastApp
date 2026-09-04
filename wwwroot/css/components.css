@@ -2151,3 +2151,59 @@
 .an-app-change.down { color: var(--teal); }
 
 .an-privacy { font-size: var(--fs-caption); color: var(--text-faint); margin: 0; }
+
+/* ---- asking about your own activity ---- */
+.an-ask-row { display: flex; gap: 9px; }
+.an-ask-input {
+    flex-grow: 1;
+    background: var(--panel);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 12px 18px;
+    font-family: var(--font-body);
+    font-size: var(--fs-body);
+    color: var(--text);
+    outline: none;
+}
+.an-ask-input::placeholder { color: var(--text-faint); }
+.an-ask-go {
+    background: var(--brass-fill);
+    color: var(--ink-on-fill);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 12px 22px;
+    font-family: var(--font-body);
+    font-size: var(--fs-body);
+    font-weight: 700;
+    cursor: pointer;
+}
+/* Nobody knows what to ask a program about themselves, so the examples are the
+   interface and the text box is the shortcut. */
+.an-ask-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.an-chip {
+    background: var(--panel);
+    color: var(--text-dim);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 7px 14px;
+    font-family: var(--font-body);
+    font-size: var(--fs-caption);
+    cursor: pointer;
+}
+.an-chip:hover { background: var(--lift); color: var(--text); }
+.an-ask-answer:empty { display: none; }
+.an-ask-answer {
+    display: flex; flex-direction: column; gap: 9px;
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+}
+.an-ask-text { font-size: var(--fs-strong); color: var(--text); line-height: 1.6; margin: 0; }
+.an-ask-basis {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0;
+}

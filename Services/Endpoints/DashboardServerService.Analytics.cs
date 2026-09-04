@@ -36,6 +36,34 @@ namespace FastApp.Services
                     await context.Response.WriteAsJsonAsync(new { error = ex.Message });
                 }
             });
+
+            // Asking a question about your own activity. Answered here, from
+            // the same engine that built the page, and no further than here.
+            app.MapGet("/api/analytics/ask", async (HttpContext context) =>
+            {
+                try
+                {
+                    string question = context.Request.Query["q"].ToString();
+
+                    var answer = await Task.Run(() =>
+                        Analytics.Questions.Ask(question, Analytics.AnalyticsEngine.Facts(DateTime.Today)));
+
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        question,
+                        answer.Text,
+                        answer.Evidence,
+                        answer.BasedOn,
+                        answer.Understood,
+                        answer.Suggestions
+                    });
+                }
+                catch (Exception ex)
+                {
+                    context.Response.StatusCode = 500;
+                    await context.Response.WriteAsJsonAsync(new { error = ex.Message });
+                }
+            });
         }
     }
 }
