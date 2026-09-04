@@ -272,9 +272,15 @@
         }
     }
 
-    window.Dashboard = window.Dashboard || {};
-    window.Dashboard.tabs = window.Dashboard.tabs || {};
-    window.Dashboard.tabs.analytics = {
+    // Dashboard, not window.Dashboard. utils.js declares it as a top-level
+    // const, which in a classic script lives in the global lexical scope and
+    // never becomes a property of window -- so `window.Dashboard = window.Dashboard || {}`
+    // did not find it and quietly built a second object beside it. This file
+    // registered on that one; switchView reads the real one; the tab opened
+    // empty forever and nothing anywhere threw. Every other tab does it this
+    // way, and the defensive version is what broke it: it turned a missing
+    // global into a silent parallel universe instead of a loud error.
+    Dashboard.tabs.analytics = {
         // Built once a visit. It reads several weeks of sessions, and nothing in
         // it changes minute to minute.
         onEnter() { if (!loaded) load(); },
