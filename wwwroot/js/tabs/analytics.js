@@ -12,13 +12,22 @@
    ========================================================== */
 
 (function () {
+    /* "Focus" became "Continuity" because the program cannot see focus. It can
+       see that one window held the foreground for two hours without a break,
+       which is equally true of somebody deep in a manuscript and somebody
+       asleep in front of a film. The label was the last place this page still
+       named a measurement after a conclusion it had not earned.
+
+       "Anomaly" is gone. No detector has ever produced one -- it was the slot
+       the median-absolute-deviation detector would have filled, and that was
+       measured, found to detect days off, and deliberately not written. A
+       label with nothing behind it is a promise the page cannot keep. */
     const KIND = {
-        change:    { label: 'Something changed', mark: '↗' },
-        focus:     { label: 'Focus',             mark: '◎' },
-        routine:   { label: 'Your routine',      mark: '⟳' },
-        pattern:   { label: 'A pattern',         mark: '◈' },
-        discovery: { label: 'New',               mark: '✦' },
-        anomaly:   { label: 'Unusual',           mark: '!' }
+        change:     { label: 'Something changed', mark: '↗' },
+        continuity: { label: 'Continuity',        mark: '◎' },
+        routine:    { label: 'Your routine',      mark: '⟳' },
+        pattern:    { label: 'A pattern',         mark: '◈' },
+        discovery:  { label: 'New',               mark: '✦' }
     };
 
     let loaded = false;
@@ -93,13 +102,105 @@
         return wrap;
     }
 
+    /* Applications and categories are the same row: a name, a share, a
+       duration and a change. Written once because two copies of a four-column
+       grid diverge the first time either is touched. */
+    function barRows(items, modifier) {
+        const list = el('div', 'an-apps' + (modifier ? ' ' + modifier : ''));
+        for (const item of items) {
+            const row = el('div', 'an-app');
+            row.appendChild(el('span', 'an-app-name', item.name));
+
+            const track = el('span', 'an-app-track');
+            const fill = el('span', 'an-app-fill');
+            fill.style.width = Math.max(1, item.share) + '%';
+            track.appendChild(fill);
+            row.appendChild(track);
+
+            row.appendChild(el('span', 'an-app-time', item.time));
+            if (item.changePercent) {
+                row.appendChild(el('span',
+                    'an-app-change ' + (item.changePercent > 0 ? 'up' : 'down'),
+                    `${item.changePercent > 0 ? '+' : ''}${item.changePercent}%`));
+            } else {
+                row.appendChild(el('span', 'an-app-change', ''));
+            }
+            list.appendChild(row);
+        }
+        return list;
+    }
+
+    /* What the engine can and cannot see, listed by the engine itself.
+
+       A reader who does not know what is looked for will hear "nothing stood
+       out" as "your week was unremarkable", when all it can honestly mean is
+       "none of these specific measurements crossed a threshold". Saying what
+       is measured is what makes the absence of a finding readable -- and it
+       stops a long unbroken stretch being taken as evidence of concentration,
+       which is the one inference this page most invites and least supports. */
+    function coverage(report) {
+        const wrap = el('section', 'an-block an-coverage');
+        wrap.appendChild(el('h2', 'an-block-title', 'What this page can and cannot see'));
+
+        const cols = el('div', 'an-coverage-cols');
+
+        const yes = el('div', 'an-coverage-col');
+        yes.appendChild(el('h3', 'an-coverage-head', 'Measured'));
+        const yesList = el('ul', 'an-coverage-list an-coverage-yes');
+        (report.understands || []).forEach(line => yesList.appendChild(el('li', null, line)));
+        yes.appendChild(yesList);
+
+        const no = el('div', 'an-coverage-col');
+        no.appendChild(el('h3', 'an-coverage-head', 'Not known'));
+        const noList = el('ul', 'an-coverage-list an-coverage-no');
+        (report.doesNotUnderstand || []).forEach(line => noList.appendChild(el('li', null, line)));
+        no.appendChild(noList);
+
+        cols.appendChild(yes);
+        cols.appendChild(no);
+        wrap.appendChild(cols);
+        return wrap;
+    }
+
     function render(report) {
         const root = document.getElementById('an-body');
         root.textContent = '';
 
+        /* Not the same as an empty history, and it used to be rendered as one.
+           A database that is locked, missing or corrupt produced "Nothing has
+           been recorded yet. This page fills in as you use your computer." --
+           a confident falsehood, and the worst possible one here, since it
+           tells somebody whose history may be in trouble that there is nothing
+           to worry about. */
+        if (report.couldNotRead && !report.hasEnoughHistory) {
+            const band = el('section', 'an-broken');
+            band.appendChild(el('h2', 'an-broken-title', 'Analytics unavailable'));
+            band.appendChild(el('p', 'an-broken-body',
+                'Your activity history could not be read, so nothing on this page could be worked out. '
+                + 'This is not the same as there being nothing recorded — your history may well be intact.'));
+            if (report.problem) {
+                band.appendChild(el('p', 'an-broken-detail', report.problem));
+            }
+            root.appendChild(band);
+            root.appendChild(coverage(report));
+            return;
+        }
+
         if (!report.hasEnoughHistory) {
             root.appendChild(el('p', 'an-empty', report.notYet || 'Nothing recorded yet.'));
             return;
+        }
+
+        /* Read, but not all of it. Everything below is real and none of it is
+           necessarily complete, so the page says so before the reader draws a
+           conclusion from a fragment. */
+        if (report.couldNotRead) {
+            const band = el('p', 'an-partial');
+            band.appendChild(el('span', 'an-partial-label', 'Incomplete'));
+            band.appendChild(document.createTextNode(
+                'Part of your history could not be read, so everything below covers less than it should. '
+                + (report.problem || '')));
+            root.appendChild(band);
         }
 
         // --- the week in a number -------------------------------------
@@ -135,42 +236,54 @@
             const grid = el('div', 'an-insights');
             report.insights.forEach(i => grid.appendChild(insightCard(i)));
             section.appendChild(grid);
+
+            /* Findings that were made and then not printed, because something
+               stronger had already said the same thing. Counted rather than
+               dropped in silence: a reader who expected a card about an
+               application deserves to know it was collapsed, not missed. */
+            if (report.alsoFound > 0) {
+                section.appendChild(el('p', 'an-also',
+                    `${report.alsoFound} further observation${report.alsoFound === 1 ? '' : 's'} `
+                    + 'said much the same thing as the cards above, and were left out.'));
+            }
             root.appendChild(section);
         } else {
+            /* Was: "Nothing stood out this week — your use of the computer
+               looked much like it usually does." That is a claim about the
+               week. All the engine knows is that none of its own thresholds
+               were crossed, which is a claim about the engine. */
             root.appendChild(el('p', 'an-empty',
-                'Nothing stood out this week — your use of the computer looked much like it usually does.'));
+                'Nothing unusual was detected. None of the patterns this page tracks differed '
+                + 'enough from your usual activity to report — see what is measured below.'));
         }
 
         // --- what the time was made of --------------------------------
+        /* Kinds of time before applications. "Communication, 14 hours" is a
+           statement about a week; "Discord, 14 hours" is a statement about a
+           process, and the reader has to do the translating. The page leads
+           with the one that needs no translating. */
+        if (report.hasCategories && report.categories && report.categories.length) {
+            const section = el('section', 'an-block');
+            section.appendChild(el('h2', 'an-block-title', 'What kind of time it was'));
+            // Wider name column: category names run to "Media Production"
+            // where application names are mostly one short word, and the
+            // shared 12ch column clipped "Communication" to "Communicat...".
+            section.appendChild(barRows(report.categories, 'an-cats'));
+            section.appendChild(el('p', 'an-source',
+                `From the categories you have set in the dashboard, covering ${report.categoryCoverage}% `
+                + 'of your recorded time. Anything uncategorised is left out rather than guessed at.'));
+            root.appendChild(section);
+        }
+
         if (report.topApps && report.topApps.length) {
             const section = el('section', 'an-block');
-            section.appendChild(el('h2', 'an-block-title', 'What the time was made of'));
-            const list = el('div', 'an-apps');
-            for (const app of report.topApps) {
-                const row = el('div', 'an-app');
-                row.appendChild(el('span', 'an-app-name', app.name));
-
-                const track = el('span', 'an-app-track');
-                const fill = el('span', 'an-app-fill');
-                fill.style.width = Math.max(1, app.share) + '%';
-                track.appendChild(fill);
-                row.appendChild(track);
-
-                row.appendChild(el('span', 'an-app-time', app.time));
-                if (app.changePercent) {
-                    row.appendChild(el('span',
-                        'an-app-change ' + (app.changePercent > 0 ? 'up' : 'down'),
-                        `${app.changePercent > 0 ? '+' : ''}${app.changePercent}%`));
-                } else {
-                    row.appendChild(el('span', 'an-app-change', ''));
-                }
-                list.appendChild(row);
-            }
-            section.appendChild(list);
+            section.appendChild(el('h2', 'an-block-title', 'Which applications'));
+            section.appendChild(barRows(report.topApps));
             root.appendChild(section);
         }
 
         root.appendChild(askBox());
+        root.appendChild(coverage(report));
 
         root.appendChild(el('p', 'an-privacy',
             'Everything on this page, questions included, was worked out on this computer '
@@ -252,6 +365,7 @@
             'What interrupts me the most?',
             'What is my usual routine?',
             'What do I spend the most time in?',
+            'What kind of time is it?',
             'How much am I on my computer?'
         ]);
         return wrap;

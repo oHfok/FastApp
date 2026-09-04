@@ -19,6 +19,16 @@ namespace FastApp.Services.Analytics
     /// </summary>
     public sealed class FactSheet
     {
+        /// <summary>
+        /// The history behind these numbers is incomplete or unreadable. Every
+        /// answer has to lead with that: a fact sheet that quietly reports zero
+        /// hours because the database would not open is the same confident
+        /// falsehood the report used to print, only phrased as an answer to a
+        /// question somebody asked.
+        /// </summary>
+        public bool CouldNotRead { get; init; }
+        public string Problem { get; init; }
+
         public int DaysOfHistory { get; init; }
         public int BaselineDays { get; init; }
         public int RecentDays { get; init; }
@@ -40,7 +50,20 @@ namespace FastApp.Services.Analytics
         // --- the shape of things ---
         public List<(string App, double Hours, double ChangePercent)> TopApps { get; init; } = new();
         public List<(string Part, double Hours)> DayParts { get; init; } = new();
-        public string FocusWindow { get; init; }
+
+        /// <summary>Hours per category over the recent period, richest first.</summary>
+        public List<(string Category, double Hours)> CategorySplit { get; init; } = new();
+
+        /// <summary>Share of recorded time carrying a curated category, 0-1.</summary>
+        public double CategoryCoverage { get; init; }
+
+        /// <summary>
+        /// When the longest unbroken stretches start. Named for what it
+        /// measures rather than for what somebody might have been doing: the
+        /// database records that one window held the foreground, not that
+        /// anybody was concentrating on it.
+        /// </summary>
+        public string ContinuityWindow { get; init; }
         public string Interrupter { get; init; }
         public double InterrupterShare { get; init; }
         public string StartsDayWith { get; init; }

@@ -16,6 +16,14 @@ namespace FastApp.Services.Analytics
         public DateTime? LastUse { get; init; }
         public Dictionary<string, TimeSpan> PerApp { get; init; } = new();
 
+        /// <summary>
+        /// The same day split by what kind of thing was being done rather than
+        /// by which process was in front. Empty when nothing has been
+        /// categorised, which every reader of it treats as "no answer" rather
+        /// than as "no time".
+        /// </summary>
+        public Dictionary<string, TimeSpan> PerCategory { get; init; } = new();
+
         public double SwitchesPerHour => Active.TotalHours > 0.25 ? Switches / Active.TotalHours : 0;
     }
 
@@ -64,11 +72,21 @@ namespace FastApp.Services.Analytics
         public Dictionary<string, int> AppDays { get; } =
             new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>Median minutes a day, per category, across the window.</summary>
+        public Dictionary<string, double> MedianCategoryMinutes { get; } =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Days each category was touched at all.</summary>
+        public Dictionary<string, int> CategoryDays { get; } =
+            new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>
         /// Build the profile of every day in a stream, newest last.
         /// </summary>
-        public static List<DayProfile> Profile(IEnumerable<Visit> visits)
+        public static List<DayProfile> Profile(IEnumerable<Visit> visits, Categories categories = null)
         {
+            categories ??= Categories.None();
+
             var byDay = visits.GroupBy(v => v.Day).OrderBy(g => g.Key);
             var profiles = new List<DayProfile>();
 
@@ -78,10 +96,19 @@ namespace FastApp.Services.Analytics
                 var deliberate = ordered.Deliberate().ToList();
 
                 var perApp = new Dictionary<string, TimeSpan>(StringComparer.OrdinalIgnoreCase);
+                var perCategory = new Dictionary<string, TimeSpan>(StringComparer.OrdinalIgnoreCase);
                 foreach (var visit in ordered)
                 {
                     perApp.TryGetValue(visit.App, out var so_far);
                     perApp[visit.App] = so_far + visit.Length;
+
+                    // Only curated applications are counted. Everything else
+                    // would pile into "Other", which then reads as a real
+                    // category the person spends their evenings in.
+                    if (!categories.IsKnown(visit.App)) continue;
+                    string category = categories.For(visit.App);
+                    perCategory.TryGetValue(category, out var category_so_far);
+                    perCategory[category] = category_so_far + visit.Length;
                 }
 
                 profiles.Add(new DayProfile
@@ -96,7 +123,8 @@ namespace FastApp.Services.Analytics
                         : TimeSpan.FromTicks(deliberate.Max(v => v.Length.Ticks)),
                     FirstUse = ordered.FirstOrDefault()?.Start,
                     LastUse = ordered.LastOrDefault()?.End,
-                    PerApp = perApp
+                    PerApp = perApp,
+                    PerCategory = perCategory
                 });
             }
 
@@ -146,6 +174,23 @@ namespace FastApp.Services.Analytics
 
                 baseline.AppDays[app] = minutes.Count;
                 baseline.MedianAppMinutes[app] = Median(minutes);
+            }
+
+            // Categories, on exactly the same terms as applications above: the
+            // median is taken over the days the category was touched, so a
+            // category reached twice a week is not given a norm of zero and
+            // then reported as exploding every time it is used.
+            var groups = baseline.Days.SelectMany(d => d.PerCategory.Keys)
+                                      .Distinct(StringComparer.OrdinalIgnoreCase);
+            foreach (var category in groups)
+            {
+                var minutes = baseline.Days
+                    .Where(d => d.PerCategory.ContainsKey(category))
+                    .Select(d => d.PerCategory[category].TotalMinutes)
+                    .ToList();
+
+                baseline.CategoryDays[category] = minutes.Count;
+                baseline.MedianCategoryMinutes[category] = Median(minutes);
             }
 
             return baseline;

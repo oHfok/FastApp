@@ -92,6 +92,7 @@ namespace FastApp.Services.Analytics
 
             var insight = new Insight
             {
+                Topic = "interruption",
                 Kind = "pattern",
                 Title = $"{Pretty(top.Key)} is what usually pulls you away",
                 Explanation =
@@ -140,6 +141,7 @@ namespace FastApp.Services.Analytics
 
             var insight = new Insight
             {
+                Topic = "first-open",
                 Kind = "routine",
                 Title = $"Your day usually starts with {Pretty(top.Key)}",
                 Explanation =
@@ -223,6 +225,7 @@ namespace FastApp.Services.Analytics
 
             var insight = new Insight
             {
+                Topic = "app-pairing",
                 Kind = "routine",
                 Title = $"{Pretty(first)} and {Pretty(second)} go together",
                 Explanation =
@@ -284,6 +287,7 @@ namespace FastApp.Services.Analytics
 
             var insight = new Insight
             {
+                Topic = "daypart",
                 Kind = "pattern",
                 Title = $"Most of your computer time is in the {biggest.Key}",
                 Explanation =
@@ -335,6 +339,7 @@ namespace FastApp.Services.Analytics
             bool more = change > 0;
             return new Insight
             {
+                Topic = "week-shape",
                 Kind = "pattern",
                 Title = more ? "Your weekends are busier than your weekdays"
                              : "Your weekends are quieter than your weekdays",

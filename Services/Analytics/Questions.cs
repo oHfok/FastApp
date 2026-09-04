@@ -52,6 +52,7 @@ namespace FastApp.Services.Analytics
             "What interrupts me the most?",
             "What is my usual routine?",
             "What do I spend the most time in?",
+            "What kind of time is it?",
             "How much am I on my computer?"
         };
 
@@ -62,6 +63,22 @@ namespace FastApp.Services.Analytics
             if (string.IsNullOrWhiteSpace(q))
             {
                 return NotUnderstood("Ask me something about how you use your computer.");
+            }
+
+            // Before any matching. Every answer below is assembled from measured
+            // values, and when the measurements could not be taken there is
+            // nothing honest to assemble -- the fact sheet's zeroes are the
+            // absence of a reading, not a reading of zero.
+            if (facts != null && facts.CouldNotRead)
+            {
+                return new Answer
+                {
+                    Text = "I could not read your activity history, so I have nothing to answer from. "
+                         + "This is not the same as there being nothing recorded.",
+                    BasedOn = "no usable history",
+                    Understood = true,
+                    Evidence = { facts.Problem ?? "the reason was not reported" }
+                };
             }
 
             var words = Tokenise(q);
@@ -141,10 +158,10 @@ namespace FastApp.Services.Analytics
                 Words = new[] { "focus", "focused", "concentrat", "uninterrupted", "deep", "best time", "productive" },
                 Answer = f =>
                 {
-                    if (f.FocusWindow == null) return null;
+                    if (f.ContinuityWindow == null) return null;
                     var a = new Answer
                     {
-                        Text = $"Your longest unbroken stretches start between {f.FocusWindow}. "
+                        Text = $"Your longest unbroken stretches start between {f.ContinuityWindow}. "
                              + $"The longest run in a day lately has been about "
                              + $"{Detectors.Describe(TimeSpan.FromMinutes(f.LongestStretchMinutes))}.",
                         BasedOn = $"{f.DaysOfHistory} days of recorded activity",
@@ -178,7 +195,7 @@ namespace FastApp.Services.Analytics
                         };
                     }
 
-                    var changes = f.Insights.Where(i => i.Kind == "change" || i.Kind == "focus"
+                    var changes = f.Insights.Where(i => i.Kind == "change" || i.Kind == "continuity"
                                                      || i.Trend == "new" || i.Trend == "gone").ToList();
                     if (changes.Count == 0)
                     {
@@ -238,8 +255,8 @@ namespace FastApp.Services.Analytics
                     }
                     if (f.BaselineFirstUse > TimeSpan.Zero)
                         parts.Add($"You typically first touch it around {f.BaselineFirstUse:hh\\:mm}.");
-                    if (f.FocusWindow != null)
-                        parts.Add($"Your longest stretches start between {f.FocusWindow}.");
+                    if (f.ContinuityWindow != null)
+                        parts.Add($"Your longest stretches start between {f.ContinuityWindow}.");
 
                     if (parts.Count == 0) return null;
                     var a = new Answer
@@ -278,6 +295,44 @@ namespace FastApp.Services.Analytics
                             : $"{app}: {Detectors.Describe(TimeSpan.FromHours(hours))} "
                               + $"({(change > 0 ? "+" : "")}{change:0}% against your usual)");
                     }
+                    return a;
+                }
+            },
+
+            new Intent
+            {
+                // Only answerable since the analytics started reading the
+                // category mapping the dashboard has always curated. Before
+                // that, "how much of my time is gaming" could only be answered
+                // with a list of process names and left to the reader to add up.
+                Name = "kind",
+                Words = new[] { "kind", "category", "categories", "type", "gaming", "development",
+                                "communication", "browsing", "music", "productivity", "leisure", "work" },
+                Answer = f =>
+                {
+                    if (f.CategorySplit.Count == 0) return null;
+
+                    double total = f.CategorySplit.Sum(c => c.Hours);
+                    if (total <= 0) return null;
+
+                    var top = f.CategorySplit.Take(3).ToList();
+                    var a = new Answer
+                    {
+                        Text = "Over the last " + f.RecentDays + " days: "
+                             + string.Join(", ", top.Select(c =>
+                                 $"{c.Category} for {Detectors.Describe(TimeSpan.FromHours(c.Hours))} "
+                                 + $"({c.Hours / total * 100:0}%)"))
+                             + ".",
+                        BasedOn = $"the {f.CategoryCoverage * 100:0}% of your recorded time that carries a category",
+                        Understood = true
+                    };
+                    foreach (var (category, hours) in f.CategorySplit)
+                    {
+                        a.Evidence.Add($"{category}: {Detectors.Describe(TimeSpan.FromHours(hours))} "
+                                     + $"({hours / total * 100:0}%)");
+                    }
+                    a.Evidence.Add("categories are the ones you have set in the dashboard, "
+                                 + "and uncategorised applications are left out rather than guessed at");
                     return a;
                 }
             },

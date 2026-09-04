@@ -16,8 +16,29 @@ namespace FastApp.Services.Analytics
     /// </summary>
     public sealed class Insight
     {
-        /// <summary>Which family this belongs to: pattern, change, anomaly, routine, focus.</summary>
+        /// <summary>
+        /// Which family this belongs to: pattern, change, routine, discovery,
+        /// continuity.
+        ///
+        /// "continuity" was called "focus" until it was pointed out that the
+        /// program cannot see focus. It can see that an application was in front
+        /// for two hours without interruption, which is true of a person deep in
+        /// a manuscript and equally true of a film. Naming the measurement after
+        /// a conclusion it does not support was the one place this engine broke
+        /// its own rule about adjectives the data has not earned -- and it broke
+        /// it in the label, where every reader sees it.
+        /// </summary>
         public string Kind { get; init; }
+
+        /// <summary>
+        /// What this insight is *about*, underneath its wording. Two detectors
+        /// can measure one behaviour from different sides -- switching more
+        /// often and having shorter unbroken runs are the same week described
+        /// twice -- and a page that prints both has padded itself rather than
+        /// found two things. Insights sharing a topic are collapsed to their
+        /// strongest before ranking. See <see cref="Clustering"/>.
+        /// </summary>
+        public string Topic { get; init; }
 
         /// <summary>One line, in the reader's terms. Never a metric name.</summary>
         public string Title { get; init; }
