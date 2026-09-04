@@ -142,7 +142,12 @@
                 <span class="label-text">Overview</span>
             </button>
             <button type="button" class="rail-item" data-view="analytics" title="Analytics" aria-label="Analytics">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                <!-- A page, because that is what this tab is: a written report.
+                     It was a clock, copied from Overview by accident, and two
+                     neighbours in a seven-icon rail cannot share a silhouette.
+                     Distinct from the calendar next to it by the folded corner
+                     and the taller shape. -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"></path><path d="M14 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg>
                 <span class="label-text">Analytics</span>
             </button>
             <button type="button" class="rail-item" data-view="insights" title="Insights" aria-label="Insights">

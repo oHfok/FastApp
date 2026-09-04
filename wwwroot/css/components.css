@@ -1998,7 +1998,13 @@
    rather than a wall of cards. A page whose job is to tell you something about
    yourself should look like something written, not like a control panel.
    --------------------------------------------------------------------------- */
-.an-body { display: flex; flex-direction: column; gap: 34px; max-width: 74ch; }
+/* Centred, not left-pinned. The reading measure is what keeps the prose
+   legible, but pinning it to the left of a wide view left the whole right-hand
+   side empty and made the report look like it had failed to load the rest of
+   itself. The heading is centred with it: a title sitting left of its own
+   article reads as two things rather than one. */
+.an-body { display: flex; flex-direction: column; gap: 34px; max-width: 74ch; margin: 0 auto; }
+#view-analytics .view-head { max-width: 74ch; margin-left: auto; margin-right: auto; }
 
 .an-summary { display: flex; flex-direction: column; gap: 14px; }
 .an-figure { display: flex; flex-direction: column; gap: 2px; }
