@@ -45,7 +45,7 @@ namespace FastApp.Services.Analytics
         public const int RecentDays = 7;
 
         /// <summary>Insights shown. More are generated; the rest are not worth the room.</summary>
-        public const int MaxInsights = 6;
+        public const int MaxInsights = 7;
 
         public static AnalyticsReport Build(DateTime today)
         {
@@ -86,10 +86,17 @@ namespace FastApp.Services.Analytics
                                 / baseline.MedianActive.TotalHours * 100.0;
             }
 
-            var insights = Detectors.All(recentVisits, recentDays, baseline)
-                                    .OrderByDescending(i => i.Score)
-                                    .Take(MaxInsights)
-                                    .ToList();
+            // Two families, deliberately over different spans. What changed is
+            // asked of the recent days against the baseline; what someone is
+            // like is asked of everything there is, because a habit needs more
+            // than a week to be one.
+            var candidates = Detectors.All(recentVisits, recentDays, baseline);
+            candidates.AddRange(Detectors.Patterns(recentVisits, all, recentDays, baseline));
+
+            var insights = candidates
+                .OrderByDescending(i => i.Score)
+                .Take(MaxInsights)
+                .ToList();
 
             foreach (var insight in insights)
             {
