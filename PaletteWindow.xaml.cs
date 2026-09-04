@@ -1116,9 +1116,31 @@ namespace FastApp
             Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
         }
 
+        /// <summary>
+        /// Take the size the page asked for, but only while this window is on
+        /// screen.
+        ///
+        /// A WebView2 whose host window is resized while hidden does not lay
+        /// its page out again, and showing the window afterwards does not fix
+        /// it either. Measured, rather than guessed at:
+        ///
+        ///   window 820x560, shown        page = 820x560
+        ///   resized to 760 while hidden  page = 820x560
+        ///   shown again (window is 760)  page = 820x560
+        ///   resized to 640 while visible page = 820x640
+        ///
+        /// So a state push arriving while the palette was down left the window
+        /// tall and the page still drawn for the old height: a clipped list
+        /// with empty space under it. And it stuck, because fitWindow remembers
+        /// what it last asked for and will not ask twice.
+        ///
+        /// Dropped rather than queued. The page re-fits on every summon, so the
+        /// correct size arrives a moment after the window is up, and applying a
+        /// stale one on the way in would only put the same mismatch back.
+        /// </summary>
         private void ResizeTo(int width, int height)
         {
-            if (width <= 0 || height <= 0) return;
+            if (width <= 0 || height <= 0 || !IsVisible) return;
 
             // Kept centred on whichever screen it is on, so a taller view grows
             // in both directions rather than pushing off the bottom.
@@ -1385,16 +1407,23 @@ namespace FastApp
             _allowAutoHide = false;
             _pinned = false;
             _shownAtUtc = DateTime.UtcNow;
-            Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"reset\"}");
-            if (view == PaletteView.Manage) ShowManage();
-            else if (view == PaletteView.Settings) ShowSettings();
-            else if (view == PaletteView.Extend) ShowExtend();
 
             // Before Show, so it never appears at the prewarm's parking spot
             // and slides into place afterwards.
             CentreOnScreen();
 
             Show();
+
+            // After Show, deliberately. The page answers a reset by measuring
+            // itself and asking for a height, and ResizeTo ignores that while
+            // this window is hidden -- so the ask has to happen once the window
+            // is up. The bridge delivers in order, so requesting a view after
+            // the reset still lands on that view rather than flashing the list.
+            Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"reset\"}");
+            if (view == PaletteView.Manage) ShowManage();
+            else if (view == PaletteView.Settings) ShowSettings();
+            else if (view == PaletteView.Extend) ShowExtend();
+
             Activate();
 
             // Activate() alone loses to the foreground lock: whatever you were

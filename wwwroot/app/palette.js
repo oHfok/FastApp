@@ -1842,6 +1842,14 @@ if (bridge) {
             els.q.value = '';
             active = 0;
             facet = 'all';
+
+            // Forget what was last asked for. The host ignores a resize that
+            // arrives while the window is hidden, so anything measured while
+            // the palette was down was never applied -- and without this,
+            // fitWindow would see its own remembered value and decline to ask
+            // again, leaving the window at whatever height it went down at.
+            sentHeight = 0;
+
             show('palette');
             render();
             focusSearch();
