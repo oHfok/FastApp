@@ -10,6 +10,14 @@ namespace FastApp.Services.Analytics
         public bool HasEnoughHistory { get; init; }
         public string NotYet { get; init; }
 
+        /// <summary>
+        /// The history could not be read, or could not be read in full. Kept
+        /// separate from "there is nothing here" because they are different
+        /// facts and only one of them is the reader's doing.
+        /// </summary>
+        public bool CouldNotRead { get; init; }
+        public string Problem { get; init; }
+
         public int DaysOfHistory { get; init; }
         public int BaselineDays { get; init; }
         public string Period { get; init; }
@@ -23,6 +31,21 @@ namespace FastApp.Services.Analytics
         public List<object> Insights { get; init; } = new();
         public List<object> TopApps { get; init; } = new();
         public List<double> HourShape { get; init; } = new();
+
+        /// <summary>What kind of time it was, when enough of it carries a category.</summary>
+        public List<object> Categories { get; init; } = new();
+        public double CategoryCoverage { get; init; }
+        public bool HasCategories { get; init; }
+
+        /// <summary>
+        /// Findings that were made and then not printed, because something
+        /// stronger had already said the same thing. Counted rather than hidden.
+        /// </summary>
+        public int AlsoFound { get; init; }
+
+        /// <summary>What this engine can and cannot see. See <see cref="Coverage"/>.</summary>
+        public List<string> Understands { get; init; } = new();
+        public List<string> DoesNotUnderstand { get; init; } = new();
     }
 
     /// <summary>
@@ -53,12 +76,33 @@ namespace FastApp.Services.Analytics
             DateTime historyFrom = today.Date.AddDays(-(Baseline.WindowDays + RecentDays));
             DateTime end = today.Date.AddDays(1);
 
-            var all = ActivityStream.Read(historyFrom, end);
-            var days = Baseline.Profile(all);
+            var history = ActivityStream.Read(historyFrom, end);
+            var all = history.Visits;
+
+            // Said before anything is measured. A page that cannot read the
+            // history has nothing to say about it, and the previous version's
+            // answer -- "Nothing has been recorded yet" -- was a confident
+            // falsehood on the one page whose premise is that every sentence
+            // can be checked.
+            if (history.CouldNotRead && all.Count == 0)
+            {
+                return new AnalyticsReport
+                {
+                    HasEnoughHistory = false,
+                    CouldNotRead = true,
+                    Problem = history.Problem,
+                    Understands = Coverage.Understands,
+                    DoesNotUnderstand = Coverage.DoesNot
+                };
+            }
+
+            var categories = Categories.Load();
+            var days = Baseline.Profile(all, categories);
 
             var recentDays = days.Where(d => d.Day >= recentFrom).ToList();
             var recentVisits = all.Where(v => v.Day >= recentFrom).ToList();
             var baseline = Baseline.Build(days, recentFrom);
+            double coverage = categories.Coverage(all);
 
             if (days.Count == 0)
             {
@@ -66,7 +110,9 @@ namespace FastApp.Services.Analytics
                 {
                     HasEnoughHistory = false,
                     DaysOfHistory = 0,
-                    NotYet = "Nothing has been recorded yet. This page fills in as you use your computer."
+                    NotYet = "Nothing has been recorded yet. This page fills in as you use your computer.",
+                    Understands = Coverage.Understands,
+                    DoesNotUnderstand = Coverage.DoesNot
                 };
             }
 
@@ -92,11 +138,14 @@ namespace FastApp.Services.Analytics
             // than a week to be one.
             var candidates = Detectors.All(recentVisits, recentDays, baseline);
             candidates.AddRange(Detectors.Patterns(recentVisits, all, recentDays, baseline));
+            candidates.AddRange(Detectors.ByCategory(all, recentDays, baseline, categories, coverage));
 
-            var insights = candidates
-                .OrderByDescending(i => i.Score)
-                .Take(MaxInsights)
-                .ToList();
+            // Collapsed before it is cut. Taking the top seven of a list in
+            // which four entries describe the same behaviour spends four slots
+            // on one finding and reads, to somebody who does not know how the
+            // page was built, like overwhelming evidence rather than repetition.
+            var insights = Clustering.Reduce(candidates, MaxInsights);
+            int alsoFound = Clustering.Suppressed(candidates, insights).Count;
 
             foreach (var insight in insights)
             {
@@ -135,6 +184,35 @@ namespace FastApp.Services.Analytics
                 changePercent = ChangeAgainstBaseline(kv.Key, kv.Value, recentDays.Count, baseline)
             }).Cast<object>().ToList();
 
+            // What kind of time it was, on the same terms as the applications
+            // above. Withheld entirely below the coverage floor rather than
+            // shown with a caveat: a breakdown of two thirds of somebody's week
+            // invites them to read the missing third as free time.
+            var categoryRows = new List<object>();
+            bool hasCategories = coverage >= Analytics.Categories.MinimumCoverage;
+            if (hasCategories)
+            {
+                var perCategory = new Dictionary<string, TimeSpan>(StringComparer.OrdinalIgnoreCase);
+                foreach (var day in recentDays)
+                {
+                    foreach (var (category, span) in day.PerCategory)
+                    {
+                        perCategory.TryGetValue(category, out var so_far);
+                        perCategory[category] = so_far + span;
+                    }
+                }
+
+                double categorised = perCategory.Values.Sum(v => v.TotalHours);
+                categoryRows = perCategory.OrderByDescending(kv => kv.Value).Select(kv => (object)new
+                {
+                    name = kv.Key,
+                    time = Detectors.Describe(kv.Value),
+                    hours = Math.Round(kv.Value.TotalHours, 2),
+                    share = categorised > 0 ? Math.Round(kv.Value.TotalHours / categorised * 100, 0) : 0,
+                    changePercent = CategoryChange(kv.Key, kv.Value, recentDays.Count, baseline)
+                }).ToList();
+            }
+
             // Minutes per hour of the day across the recent period, for a shape
             // rather than a chart with axes: this says when the days happen.
             var hours = new double[24];
@@ -154,6 +232,14 @@ namespace FastApp.Services.Analytics
                 Insights = report,
                 TopApps = topApps,
                 HourShape = hours.Select(h => Math.Round(h, 1)).ToList(),
+                Categories = categoryRows,
+                CategoryCoverage = Math.Round(coverage * 100, 0),
+                HasCategories = hasCategories,
+                AlsoFound = alsoFound,
+                CouldNotRead = history.CouldNotRead,
+                Problem = history.Problem,
+                Understands = Coverage.Understands,
+                DoesNotUnderstand = Coverage.DoesNot,
                 NotYet = comparable
                     ? null
                     : $"Still learning what is normal for you. {baseline.DayCount} of "
@@ -174,14 +260,22 @@ namespace FastApp.Services.Analytics
             DateTime historyFrom = today.Date.AddDays(-(Baseline.WindowDays + RecentDays));
             DateTime end = today.Date.AddDays(1);
 
-            var all = ActivityStream.Read(historyFrom, end);
-            var days = Baseline.Profile(all);
+            var history = ActivityStream.Read(historyFrom, end);
+            var all = history.Visits;
+            var categories = Categories.Load();
+            var days = Baseline.Profile(all, categories);
             var recentDays = days.Where(d => d.Day >= recentFrom).ToList();
             var recentVisits = all.Where(v => v.Day >= recentFrom).ToList();
             var baseline = Baseline.Build(days, recentFrom);
+            double coverage = categories.Coverage(all);
 
+            // Every insight, ranked but not collapsed. A question about an
+            // application must still be able to reach a finding that lost its
+            // slot on the page -- the clustering decides what is printed, not
+            // what is known.
             var insights = Detectors.All(recentVisits, recentDays, baseline);
             insights.AddRange(Detectors.Patterns(recentVisits, all, recentDays, baseline));
+            insights.AddRange(Detectors.ByCategory(all, recentDays, baseline, categories, coverage));
             insights = insights.OrderByDescending(i => i.Score).ToList();
 
             double activeHours = recentDays.Sum(d => d.Active.TotalHours);
@@ -203,6 +297,21 @@ namespace FastApp.Services.Analytics
             var interrupter = insights.FirstOrDefault(i => i.Title.Contains("pulls you away"));
             var starts = insights.FirstOrDefault(i => i.Title.StartsWith("Your day usually starts"));
             var window = insights.FirstOrDefault(i => i.Title.Contains("stretches start between"));
+            var categorySplit = new List<(string, double)>();
+            if (coverage >= Analytics.Categories.MinimumCoverage)
+            {
+                var per = new Dictionary<string, TimeSpan>(StringComparer.OrdinalIgnoreCase);
+                foreach (var day in recentDays)
+                {
+                    foreach (var (category, span) in day.PerCategory)
+                    {
+                        per.TryGetValue(category, out var so_far);
+                        per[category] = so_far + span;
+                    }
+                }
+                categorySplit = per.OrderByDescending(kv => kv.Value)
+                                   .Select(kv => (kv.Key, kv.Value.TotalHours)).ToList();
+            }
             var parts = insights.FirstOrDefault(i => i.Title.StartsWith("Most of your computer time"));
 
             var dayParts = new List<(string, double)>();
@@ -240,7 +349,11 @@ namespace FastApp.Services.Analytics
                                    ChangeAgainstBaseline(kv.Key, kv.Value, recentDays.Count, baseline)))
                     .ToList(),
                 DayParts = dayParts,
-                FocusWindow = window == null ? null
+                CouldNotRead = history.CouldNotRead,
+                Problem = history.Problem,
+                CategoryCoverage = coverage,
+                CategorySplit = categorySplit,
+                ContinuityWindow = window == null ? null
                     : window.Title.Replace("Your longest stretches start between ", ""),
                 Interrupter = interrupter?.Apps.FirstOrDefault(),
                 InterrupterShare = InterrupterShare(interrupter),
@@ -266,6 +379,16 @@ namespace FastApp.Services.Analytics
             if (!double.TryParse(bits[0], out double top)) return 0;
             if (!double.TryParse(bits[2], out double total) || total <= 0) return 0;
             return top / total;
+        }
+
+        private static double CategoryChange(
+            string category, TimeSpan recent, int recentDayCount, Baseline baseline)
+        {
+            if (!baseline.IsUsable || recentDayCount == 0) return 0;
+            if (!baseline.MedianCategoryMinutes.TryGetValue(category, out double was) || was <= 1) return 0;
+
+            double now = recent.TotalMinutes / recentDayCount;
+            return Math.Round((now - was) / was * 100.0, 0);
         }
 
         private static double ChangeAgainstBaseline(
@@ -314,7 +437,7 @@ namespace FastApp.Services.Analytics
 
             if (!comparable) return opening;
 
-            var lead = insights.FirstOrDefault(i => i.Kind == "change" || i.Kind == "focus");
+            var lead = insights.FirstOrDefault(i => i.Kind == "change" || i.Kind == "continuity");
             return lead == null ? opening : opening + " " + lead.Explanation;
         }
     }

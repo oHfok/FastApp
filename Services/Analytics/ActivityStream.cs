@@ -22,6 +22,46 @@ namespace FastApp.Services.Analytics
     }
 
     /// <summary>
+    /// The result of trying to read the history: what was found, and whether
+    /// the finding can be trusted to be the whole of it.
+    ///
+    /// This exists because the previous signature could not tell the truth. It
+    /// returned a list, swallowed every exception, and handed back an empty one
+    /// either way -- so a locked, corrupt or missing database rendered as
+    /// "Nothing has been recorded yet. This page fills in as you use your
+    /// computer." A confident false statement, on the one page in this
+    /// application whose entire premise is that every sentence can be checked.
+    ///
+    /// Three outcomes, and they are not the same thing:
+    ///   read it, and there is nothing there    -> Visits empty, CouldNotRead false
+    ///   could not read it at all               -> Visits empty, CouldNotRead true
+    ///   read some of it and then failed        -> Visits partial, CouldNotRead true
+    ///
+    /// The third is the reason this is a flag beside the data rather than an
+    /// exception: a failure part-way through a fortnight's rows leaves a real
+    /// but incomplete stream, and drawing conclusions from it without saying so
+    /// would be the same lie in a quieter voice.
+    /// </summary>
+    public sealed class ActivityHistory
+    {
+        public List<Visit> Visits { get; init; } = new();
+
+        /// <summary>The stream is not known to be complete. Say so; conclude nothing.</summary>
+        public bool CouldNotRead { get; init; }
+
+        /// <summary>What went wrong, for the reader rather than for a log.</summary>
+        public string Problem { get; init; }
+
+        /// <summary>Read successfully, and there was genuinely nothing there.</summary>
+        public bool IsGenuinelyEmpty => !CouldNotRead && Visits.Count == 0;
+
+        public static ActivityHistory Of(List<Visit> visits) => new() { Visits = visits };
+
+        public static ActivityHistory Unreadable(List<Visit> partial, string problem) =>
+            new() { Visits = partial ?? new List<Visit>(), CouldNotRead = true, Problem = problem };
+    }
+
+    /// <summary>
     /// The cleaned stream of application visits that every other piece of the
     /// analytics reads. Nothing above this layer touches SessionLogs directly.
     ///
@@ -75,7 +115,7 @@ namespace FastApp.Services.Analytics
         /// the tracker's is written to every sixty seconds and a dashboard
         /// request has no business queueing behind it.
         /// </summary>
-        public static List<Visit> Read(DateTime fromInclusive, DateTime toExclusive)
+        public static ActivityHistory Read(DateTime fromInclusive, DateTime toExclusive)
         {
             var visits = new List<Visit>();
 
@@ -115,14 +155,32 @@ namespace FastApp.Services.Analytics
 
                 if (app != null) visits.Add(new Visit { App = app, Start = start, End = end });
             }
-            catch
+            catch (Exception ex)
             {
-                // An unreadable history is an empty one. Every caller copes with
-                // having nothing to say, and none of them should fail a page.
+                // Reported, never disguised. Whatever was stitched before the
+                // failure is handed back too -- it is real, and the flag beside
+                // it is what stops anything drawing a conclusion from a
+                // fragment.
+                return ActivityHistory.Unreadable(Clean(visits), Describe(ex));
             }
 
-            // A row whose end precedes its start is not worth reasoning about.
-            return visits.Where(v => v.End > v.Start).ToList();
+            return ActivityHistory.Of(Clean(visits));
+        }
+
+        /// <summary>A row whose end precedes its start is not worth reasoning about.</summary>
+        private static List<Visit> Clean(List<Visit> visits) =>
+            visits.Where(v => v.End > v.Start).ToList();
+
+        /// <summary>
+        /// The failure in the reader's terms. The exception's own message is
+        /// kept -- it is the only thing that distinguishes a locked file from a
+        /// corrupt one, and somebody trying to get their history back needs it.
+        /// </summary>
+        private static string Describe(Exception ex)
+        {
+            string message = ex.Message?.Trim();
+            if (string.IsNullOrEmpty(message)) message = ex.GetType().Name;
+            return message.Length > 200 ? message[..200] + "..." : message;
         }
 
         /// <summary>The visits a person chose to make: flicker removed.</summary>

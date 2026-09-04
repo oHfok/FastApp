@@ -2156,7 +2156,127 @@
 .an-app-change.up { color: var(--brass); }
 .an-app-change.down { color: var(--teal); }
 
+/* Categories are named in whole words -- "Media Production", "Communication" --
+   where applications are mostly one short one, so the shared 12ch name column
+   clipped them. Widened only here rather than for both: giving every
+   application row five more characters would leave the bars visibly short of
+   the space they had. */
+.an-apps.an-cats .an-app { grid-template-columns: 17ch 1fr 7ch 5ch; }
+
 .an-privacy { font-size: var(--fs-caption); color: var(--text-faint); margin: 0; }
+
+/* ---- when the history could not be read ----
+   Rose rather than the brass wash used for "still learning". The two states
+   read almost identically in a glance and are opposites: one is the page
+   working correctly on a short history, the other is the page unable to work
+   at all. Colour alone does not carry it -- both carry a word. */
+.an-broken {
+    background: var(--wash-rose);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.an-broken-title {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--rose);
+    font-weight: 700;
+    margin: 0;
+}
+.an-broken-body { font-size: var(--fs-body); color: var(--text); line-height: 1.6; margin: 0; }
+.an-broken-detail {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--text-faint);
+    margin: 0;
+    word-break: break-word;
+}
+
+/* Read, but not all of it. A band rather than a card: it qualifies everything
+   under it instead of sitting beside it as one more finding. */
+.an-partial {
+    font-size: var(--fs-small);
+    color: var(--text-dim);
+    background: var(--wash-rose);
+    border-radius: var(--radius-sm);
+    padding: 12px 15px;
+    margin: 0;
+    line-height: 1.55;
+}
+.an-partial-label {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--rose);
+    font-weight: 700;
+    margin-right: 8px;
+}
+
+/* ---- what was found and not printed ---- */
+.an-also {
+    font-size: var(--fs-caption);
+    color: var(--text-faint);
+    margin: 2px 0 0 0;
+}
+
+/* ---- where a section's numbers came from ---- */
+.an-source {
+    font-size: var(--fs-caption);
+    color: var(--text-faint);
+    margin: 4px 0 0 0;
+    line-height: 1.55;
+}
+
+/* ---- what the page can and cannot see ----
+   Two columns of equal weight on purpose. Setting the limitations smaller, or
+   behind a disclosure, would make them a disclaimer; they are half of what the
+   section says. */
+.an-coverage-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 18px 26px;
+}
+.an-coverage-col { display: flex; flex-direction: column; gap: 8px; }
+.an-coverage-head {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin: 0;
+}
+.an-coverage-col:first-child .an-coverage-head { color: var(--brass); }
+.an-coverage-col:last-child .an-coverage-head { color: var(--text-faint); }
+
+.an-coverage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.an-coverage-list li {
+    font-size: var(--fs-small);
+    color: var(--text-dim);
+    line-height: 1.5;
+    padding-left: 17px;
+    position: relative;
+}
+/* A tick and a dash, so the two lists are still distinguishable without
+   colour and still readable to a screen reader that ignores ::before. */
+.an-coverage-yes li::before {
+    content: '\2713';
+    position: absolute; left: 0; top: 0;
+    color: var(--brass);
+    font-size: var(--fs-caption);
+}
+.an-coverage-no li::before {
+    content: '\2014';
+    position: absolute; left: 0; top: 0;
+    color: var(--text-faint);
+    font-size: var(--fs-caption);
+}
+
 
 /* ---- asking about your own activity ---- */
 .an-ask-row { display: flex; gap: 9px; }
