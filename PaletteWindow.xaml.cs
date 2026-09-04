@@ -1323,15 +1323,35 @@ namespace FastApp
             // the window on the hardware path while still being unseen.
             _allowAutoHide = false;
             ShowActivated = false;
-            double parkedLeft = Left, parkedTop = Top;
             Left = -32000;
             Top = -32000;
             Show();
             await InitialiseAsync();
             Hide();
-            Left = parkedLeft;
-            Top = parkedTop;
             ShowActivated = true;
+        }
+
+        /// <summary>
+        /// Put the window in the middle of the primary screen's work area.
+        ///
+        /// This used to be WindowStartupLocation="CenterScreen", which meant
+        /// the palette was centred as a side effect of the prewarm being
+        /// visible: WPF placed it on that first Show, and every later summon
+        /// inherited whatever position was left behind. With the prewarm now
+        /// genuinely off the desktop there is nothing to inherit, so the
+        /// position is set on each summon instead. ResizeTo keeps it centred
+        /// from there as the view changes.
+        ///
+        /// The work area rather than the full screen, which is what
+        /// CenterScreen used: measured at (550, 236) for an 820x560 window on a
+        /// 1920x1080 display, and the full screen height would have put it 24px
+        /// low by ignoring the taskbar.
+        /// </summary>
+        private void CentreOnScreen()
+        {
+            var area = SystemParameters.WorkArea;
+            Left = area.Left + (area.Width - Width) / 2;
+            Top = area.Top + (area.Height - Height) / 2;
         }
 
         // Auto-hide-on-deactivate is what makes this a palette rather than a
@@ -1369,6 +1389,10 @@ namespace FastApp
             if (view == PaletteView.Manage) ShowManage();
             else if (view == PaletteView.Settings) ShowSettings();
             else if (view == PaletteView.Extend) ShowExtend();
+
+            // Before Show, so it never appears at the prewarm's parking spot
+            // and slides into place afterwards.
+            CentreOnScreen();
 
             Show();
             Activate();

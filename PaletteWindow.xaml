@@ -8,9 +8,16 @@
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         Topmost="True"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="Manual">
 
-    <!-- Deliberately no AllowsTransparency and no Effect on this subtree.
+    <!-- Manual, not CenterScreen. WPF applies a startup location once, at the
+         first Show, and overrides whatever Left/Top were set beforehand. The
+         first Show here is the prewarm, which is supposed to be invisible.
+         So the prewarm's attempt to park the window off the desktop was thrown
+         away and every launch put this on screen instead. ShowPalette places it
+         now, which is the only place that ever wanted a position.
+
+         Deliberately no AllowsTransparency and no Effect on this subtree.
          Either one puts the window on WPF's layered / software rendering path,
          and a WebView2 composited through DirectComposition then draws nothing
          at all: the window appears, correctly sized, completely black. That is
