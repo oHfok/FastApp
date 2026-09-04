@@ -80,6 +80,9 @@ namespace FastApp
         /// arrives before the warm-up has finished, and dropping that request
         /// would mean double-clicking the app and getting nothing at all.
         /// </summary>
+        /// <summary>Tell the tray to re-read the summon combination.</summary>
+        public void RefreshTrayHotkey() => _trayService?.RefreshHotkeyText();
+
         public void ShowPaletteWhenReady()
         {
             if (_palette != null) { ShowPalette(); return; }
@@ -109,6 +112,11 @@ namespace FastApp
             // 3. VIEWMODEL LAST: Safe to do DB work now.
             _viewModel = new MainViewModel();
             DataContext = _viewModel;
+
+            // Read before the hook is wired, so the very first key press is
+            // matched against the stored combination rather than the default.
+            // After the view model, because that is what migrates the database.
+            LoadPaletteHotkey();
 
             // 4. WIRE THE HOOK: Connect the live hook to the loaded ViewModel.
             //
@@ -244,49 +252,127 @@ namespace FastApp
             System.Windows.Application.Current.Shutdown();
         }
 
-        /// <summary>
-        /// How the summon combination is written wherever it is shown. Beside
-        /// the sets below so the two cannot drift.
-        /// </summary>
-        public const string PaletteHotkeyDisplay = "Ctrl+Shift+Space";
-
-        // Ctrl+Shift+Space summons the palette. Reserved rather than bindable:
-        // it is the way into the app, so it cannot be something the user can
-        // accidentally reassign to Notepad and then have no way back.
+        // ---- The combination that summons the palette ---------------------
         //
-        // Matched by which modifiers are down, not by which physical keys. This
-        // used to compare the pressed set against {LeftCtrl, LeftShift, Space}
-        // or {RightCtrl, RightShift, Space}, so the perfectly ordinary habit of
-        // holding left Ctrl and right Shift -- or right Ctrl and left Shift --
-        // matched neither and the hotkey simply did nothing. That is the
-        // "sometimes it does not work": it depended on which shift key your hand
-        // happened to reach.
+        // This was a pair of hardcoded checks with a comment explaining that it
+        // was "reserved rather than bindable" so nobody could reassign their way
+        // out of the app. That risk is smaller than it reads: the tray icon
+        // opens the palette too, and it cannot be rebound. So the combination is
+        // a setting now, and the tray is the way back if a choice turns out to
+        // be unreachable.
+        //
+        // Stored the same way an app's hotkey is, as WPF key names, so
+        // HotkeyText can describe both and there is one format to understand.
+        public const string DefaultPaletteHotkey = "LeftCtrl,LeftShift,Space";
+        public const string PaletteHotkeyKey = "PaletteHotkey";
+
+        private static string _paletteSequence = DefaultPaletteHotkey;
+
+        // The parsed form, rebuilt whenever the sequence changes: which modifier
+        // kinds must be held, and which ordinary keys. Matched by kind rather
+        // than by side, because this used to compare against {LeftCtrl,
+        // LeftShift, Space} or {RightCtrl, RightShift, Space}, so the perfectly
+        // ordinary habit of holding left Ctrl and right Shift matched neither
+        // and the hotkey simply did nothing.
+        private static bool _needCtrl, _needShift, _needAlt, _needWin;
+        private static HashSet<System.Windows.Input.Key> _needPlain = new();
+
+        /// <summary>The stored combination, as key names.</summary>
+        public static string PaletteHotkeySequence => _paletteSequence;
+
+        /// <summary>How it is written wherever it is shown.</summary>
+        public static string PaletteHotkeyDisplay => Services.HotkeyText.Describe(_paletteSequence);
+
+        /// <summary>Read the stored combination, falling back to the default.</summary>
+        public static void LoadPaletteHotkey()
+        {
+            string stored = Services.AppSettingsStore.Get(PaletteHotkeyKey, DefaultPaletteHotkey);
+            ApplyPaletteHotkey(string.IsNullOrWhiteSpace(stored) ? DefaultPaletteHotkey : stored);
+        }
+
+        /// <summary>Record a new combination and start answering to it.</summary>
+        public static void SetPaletteHotkey(string sequence)
+        {
+            string next = string.IsNullOrWhiteSpace(sequence) ? DefaultPaletteHotkey : sequence;
+            ApplyPaletteHotkey(next);
+            Services.AppSettingsStore.Set(PaletteHotkeyKey, next);
+        }
+
+        private static void ApplyPaletteHotkey(string sequence)
+        {
+            var keys = new HashSet<System.Windows.Input.Key>();
+            foreach (var name in (sequence ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (Enum.TryParse<System.Windows.Input.Key>(name.Trim(), out var key)) keys.Add(key);
+            }
+
+            // A combination with no ordinary key would fire on Ctrl alone, and
+            // an unparsable one would never fire at all. Either way the app
+            // would have no way in, so both fall back rather than being obeyed.
+            if (keys.Count == 0 || !keys.Any(k => !IsModifier(k)))
+            {
+                sequence = DefaultPaletteHotkey;
+                keys = new HashSet<System.Windows.Input.Key>
+                {
+                    System.Windows.Input.Key.LeftCtrl,
+                    System.Windows.Input.Key.LeftShift,
+                    System.Windows.Input.Key.Space
+                };
+            }
+
+            _paletteSequence = sequence;
+            _needCtrl = _needShift = _needAlt = _needWin = false;
+            var plain = new HashSet<System.Windows.Input.Key>();
+
+            foreach (var key in keys)
+            {
+                switch (key)
+                {
+                    case System.Windows.Input.Key.LeftCtrl:
+                    case System.Windows.Input.Key.RightCtrl: _needCtrl = true; break;
+                    case System.Windows.Input.Key.LeftShift:
+                    case System.Windows.Input.Key.RightShift: _needShift = true; break;
+                    case System.Windows.Input.Key.LeftAlt:
+                    case System.Windows.Input.Key.RightAlt:
+                    case System.Windows.Input.Key.System: _needAlt = true; break;
+                    case System.Windows.Input.Key.LWin:
+                    case System.Windows.Input.Key.RWin: _needWin = true; break;
+                    default: plain.Add(key); break;
+                }
+            }
+            _needPlain = plain;
+        }
+
         private static bool IsPaletteCombo(HashSet<System.Windows.Input.Key> pressed)
         {
-            if (pressed == null || !pressed.Contains(System.Windows.Input.Key.Space)) return false;
+            if (pressed == null || pressed.Count == 0) return false;
+
+            foreach (var key in _needPlain)
+            {
+                if (!pressed.Contains(key)) return false;
+            }
 
             bool ctrl = pressed.Contains(System.Windows.Input.Key.LeftCtrl)
                         || pressed.Contains(System.Windows.Input.Key.RightCtrl);
             bool shift = pressed.Contains(System.Windows.Input.Key.LeftShift)
                          || pressed.Contains(System.Windows.Input.Key.RightShift);
-            if (!ctrl || !shift) return false;
+            bool alt = pressed.Contains(System.Windows.Input.Key.LeftAlt)
+                       || pressed.Contains(System.Windows.Input.Key.RightAlt)
+                       || pressed.Contains(System.Windows.Input.Key.System);
+            bool win = pressed.Contains(System.Windows.Input.Key.LWin)
+                       || pressed.Contains(System.Windows.Input.Key.RWin);
 
-            // Nothing else held. Ctrl+Shift+Space is ours; Ctrl+Alt+Shift+Space
-            // belongs to whatever the user has bound it to, and swallowing it
-            // would make FastApp the thing that broke their shortcut.
+            // Exactly the modifiers asked for, no more. Ctrl+Shift+Space is
+            // ours; Ctrl+Alt+Shift+Space belongs to whatever the user has bound
+            // it to, and swallowing it would make FastApp the thing that broke
+            // their shortcut.
+            if (ctrl != _needCtrl || shift != _needShift || alt != _needAlt || win != _needWin) return false;
+
+            // And nothing else held at all.
             foreach (var key in pressed)
             {
-                switch (key)
-                {
-                    case System.Windows.Input.Key.Space:
-                    case System.Windows.Input.Key.LeftCtrl:
-                    case System.Windows.Input.Key.RightCtrl:
-                    case System.Windows.Input.Key.LeftShift:
-                    case System.Windows.Input.Key.RightShift:
-                        continue;
-                    default:
-                        return false;
-                }
+                if (_needPlain.Contains(key) || IsModifier(key)) continue;
+                return false;
             }
 
             return true;

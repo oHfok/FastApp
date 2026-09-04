@@ -1307,7 +1307,11 @@ const st = {
     rollbackRow: document.getElementById('s-rollback-row'),
     rollbackEmpty: document.getElementById('s-rollback-empty'),
     theme: document.getElementById('s-theme'),
-    themeHint: document.getElementById('s-theme-hint')
+    themeHint: document.getElementById('s-theme-hint'),
+    hotkey: document.getElementById('s-hotkey'),
+    hotkeyHint: document.getElementById('s-hotkey-hint'),
+    hotkeyReset: document.getElementById('s-hotkey-reset'),
+    hotkeyMessage: document.getElementById('s-hotkey-message')
 };
 
 function renderSettings(v) {
@@ -1374,6 +1378,13 @@ function renderSettings(v) {
     st.rollback.disabled = !!v.rollbackBusy;
 
     renderTheme(v.themePreference, v.systemIsLight);
+
+    // Not while recording: the field is showing the keys as they go down, and
+    // a settings push arriving mid-capture would wipe it back to the stored one.
+    if (captureTarget !== 'palette') {
+        st.hotkey.textContent = v.paletteHotkey || 'Ctrl + Shift + Space';
+        st.hotkeyReset.hidden = v.paletteHotkeyIsDefault !== false;
+    }
 }
 
 /* The release body, rendered with the shape it was written in.
@@ -1904,12 +1915,47 @@ for (const el of [d.suppress, d.autostart]) {
     });
 }
 
+/// Which field the keys are being recorded into: an app's hotkey, or the one
+/// that opens FastApp. The host reports a captured combination without saying
+/// what it was for, because it does not know -- it only borrowed the keyboard
+/// hook. So the page remembers what it asked for.
+let captureTarget = null;
+
 function startCapture() {
     capturing = true;
+    captureTarget = 'app';
     d.hotkey.classList.add('capturing');
     d.hotkey.textContent = 'Press a combination\u2026';
     send('capture-hotkey');
 }
+
+function startPaletteCapture() {
+    capturing = true;
+    captureTarget = 'palette';
+    st.hotkey.classList.add('capturing');
+    st.hotkey.textContent = 'Press a combination\u2026';
+    st.hotkeyMessage.textContent = '';
+    st.hotkeyMessage.classList.remove('good', 'bad');
+    send('capture-hotkey');
+}
+
+function stopPaletteCapture() {
+    capturing = false;
+    captureTarget = null;
+    st.hotkey.classList.remove('capturing');
+    send('cancel-capture');
+    // Whatever is stored is what it should read again; the next settings push
+    // carries it, and asking for one is cheaper than remembering it here.
+    send('settings-command', { id: 'refresh' });
+}
+
+st.hotkey.addEventListener('click', () =>
+    (captureTarget === 'palette' ? stopPaletteCapture() : startPaletteCapture()));
+
+st.hotkeyReset.addEventListener('click', () => {
+    st.hotkeyMessage.textContent = '';
+    send('save-palette-hotkey', { text: '' });
+});
 
 // Recording ends when the keys come up, so the field is showing the
 // combination as it is built. Without this it sat on "Press a combination"
@@ -1919,6 +1965,7 @@ function startCapture() {
 
 function stopCapture() {
     capturing = false;
+    captureTarget = null;
     d.hotkey.classList.remove('capturing');
     d.hotkey.textContent = editing && editing.hotkeySequence ? editing.hotkeyDisplay : 'None';
     send('cancel-capture');
@@ -1964,15 +2011,38 @@ if (bridge) {
         if (message.type === 'app') { renderDetail(message.app); return; }
 
         if (message.type === 'hotkey-progress') {
-            // Only while the field is listening: a stale progress message
+            // Only while a field is listening: a stale progress message
             // arriving after a cancel must not overwrite the saved binding.
-            if (capturing) d.hotkey.textContent = message.text;
+            if (!capturing) return;
+            (captureTarget === 'palette' ? st.hotkey : d.hotkey).textContent = message.text;
+            return;
+        }
+
+        if (message.type === 'palette-hotkey-result') {
+            st.hotkeyMessage.textContent = message.text || '';
+            st.hotkeyMessage.classList.toggle('good', !!message.value);
+            st.hotkeyMessage.classList.toggle('bad', !message.value);
             return;
         }
 
         if (message.type === 'hotkey-captured') {
-            if (!capturing || !editing) return;
+            if (!capturing) return;
+
+            // The host reports a combination without saying which field asked
+            // for it, because it does not know: it only borrowed the keyboard
+            // hook. Whoever started the capture decides where it lands.
+            if (captureTarget === 'palette') {
+                capturing = false;
+                captureTarget = null;
+                st.hotkey.classList.remove('capturing');
+                st.hotkey.textContent = message.display;
+                send('save-palette-hotkey', { text: message.sequence });
+                return;
+            }
+
+            if (!editing) return;
             capturing = false;
+            captureTarget = null;
             d.hotkey.classList.remove('capturing');
             editing.hotkeySequence = message.sequence;
             editing.hotkeyDisplay = message.display;

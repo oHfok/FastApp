@@ -428,6 +428,10 @@ namespace FastApp
                     AddTracked(message.Text);
                     break;
 
+                case "save-palette-hotkey":
+                    SavePaletteHotkey(message.Text);
+                    break;
+
                 case "save-limit":
                     SaveLimit(message.Id, message.Minutes, message.Value, message.Pin);
                     break;
@@ -1019,6 +1023,66 @@ namespace FastApp
             }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
+        /// <summary>
+        /// Record a new combination for summoning the palette.
+        ///
+        /// Refused if an app already answers to it. Both this and the per-app
+        /// hotkeys are matched against the same key press, so a collision would
+        /// fire the app and open the palette at once, and the person who set it
+        /// would have no way of knowing which they had asked for.
+        /// </summary>
+        private void SavePaletteHotkey(string sequence)
+        {
+            if (string.IsNullOrWhiteSpace(sequence))
+            {
+                MainWindow.SetPaletteHotkey(MainWindow.DefaultPaletteHotkey);
+                HotkeyResult(true, $"Back to {MainWindow.PaletteHotkeyDisplay}.");
+                PushSettings();
+                return;
+            }
+
+            var taken = _viewModel.ManagedApps.FirstOrDefault(a =>
+                !string.IsNullOrWhiteSpace(a.HotkeySequence)
+                && SameCombination(a.HotkeySequence, sequence));
+
+            if (taken != null)
+            {
+                HotkeyResult(false, $"{taken.DisplayNamePrimary} already uses that combination.");
+                return;
+            }
+
+            MainWindow.SetPaletteHotkey(sequence);
+            HotkeyResult(true, $"Press {MainWindow.PaletteHotkeyDisplay} to open FastApp.");
+            PushSettings();
+
+            // The tray tooltip and its first menu line both quote the
+            // combination, and both were built at login.
+            _mainWindow ??= System.Windows.Application.Current.MainWindow as MainWindow;
+            _mainWindow?.RefreshTrayHotkey();
+        }
+
+        /// <summary>
+        /// Whether two stored sequences mean the same key press. Compared as
+        /// sets of names, because "LeftCtrl,Space" and "Space,LeftCtrl" are one
+        /// combination recorded in two orders.
+        /// </summary>
+        private static bool SameCombination(string left, string right)
+        {
+            static HashSet<string> Split(string sequence) =>
+                new((sequence ?? string.Empty)
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(part => part.Trim()),
+                    StringComparer.OrdinalIgnoreCase);
+
+            return Split(left).SetEquals(Split(right));
+        }
+
+        private void HotkeyResult(bool ok, string text)
+        {
+            var payload = new { type = "palette-hotkey-result", value = ok, text };
+            Web.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+        }
+
         private void LimitResult(bool ok, string text)
         {
             var payload = new { type = "limit-result", value = ok, text };
@@ -1076,6 +1140,10 @@ namespace FastApp
                     // show Follow Windows as selected while the app is dark.
                     themePreference = Services.SystemTheme.Preference,
                     systemIsLight = Services.SystemTheme.IsLight,
+
+                    paletteHotkey = MainWindow.PaletteHotkeyDisplay,
+                    paletteHotkeyIsDefault =
+                        MainWindow.PaletteHotkeySequence == MainWindow.DefaultPaletteHotkey,
 
                     notificationsEnabled = _viewModel.NotificationsEnabled,
                     quietHoursEnabled = _viewModel.QuietHoursEnabled,
@@ -1161,6 +1229,12 @@ namespace FastApp
                 case "open-release-notes":
                     OpenDashboard("?settings=whatsnew");
                     break;
+
+                // Asked for by the page when it needs the stored values back,
+                // such as after abandoning a hotkey recording.
+                case "refresh":
+                    PushSettings();
+                    return;
 
                 case "open-dashboard":
                     HidePalette();

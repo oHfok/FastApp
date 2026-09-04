@@ -11,6 +11,7 @@ namespace FastApp.Services
         private MainWindow _mainWindow;
         private ToolStripMenuItem _status;
         private ToolStripMenuItem _pause;
+        private ToolStripMenuItem _open;
 
         public TrayService(MainWindow mainWindow)
         {
@@ -27,6 +28,7 @@ namespace FastApp.Services
             // icon wondering how to open the thing. NotifyIcon.Text caps at 63
             // characters, which this is comfortably inside.
             _notifyIcon.Text = $"FastApp  ·  {MainWindow.PaletteHotkeyDisplay} to open";
+
             _notifyIcon.Visible = true;
 
             // The balloon fallback anchors to this same persistent icon instead
@@ -54,6 +56,21 @@ namespace FastApp.Services
         /// only by summoning the palette and then navigating, which is two
         /// steps too many for the surface whose entire job is shortcuts.
         /// </summary>
+        /// <summary>
+        /// Re-read the summon combination into the places that quote it. Both
+        /// the tooltip and the first menu line are built once at login, so
+        /// changing the shortcut left them advising the old one until restart.
+        /// </summary>
+        public void RefreshHotkeyText()
+        {
+            try
+            {
+                _notifyIcon.Text = $"FastApp  ·  {MainWindow.PaletteHotkeyDisplay} to open";
+                if (_open != null) _open.ShortcutKeyDisplayString = MainWindow.PaletteHotkeyDisplay;
+            }
+            catch { /* a tooltip is not worth an exception */ }
+        }
+
         private ContextMenuStrip BuildMenu()
         {
             var menu = new ContextMenuStrip();
@@ -93,7 +110,7 @@ namespace FastApp.Services
             {
                 _status,
                 new ToolStripSeparator(),
-                TrayMenuTheme.Item("Open FastApp", (s, e) => ShowPalette(),
+                _open = TrayMenuTheme.Item("Open FastApp", (s, e) => ShowPalette(),
                     MainWindow.PaletteHotkeyDisplay),
                 TrayMenuTheme.Item("Manage applications", (s, e) => ShowPalette(PaletteView.Manage)),
                 TrayMenuTheme.Item("Settings", (s, e) => ShowPalette(PaletteView.Settings)),
