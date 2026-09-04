@@ -366,6 +366,7 @@
             'What is my usual routine?',
             'What do I spend the most time in?',
             'What kind of time is it?',
+            'What do I keep coming back to?',
             'How much am I on my computer?'
         ]);
         return wrap;

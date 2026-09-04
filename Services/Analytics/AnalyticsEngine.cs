@@ -140,6 +140,12 @@ namespace FastApp.Services.Analytics
             candidates.AddRange(Detectors.Patterns(recentVisits, all, recentDays, baseline));
             candidates.AddRange(Detectors.ByCategory(all, recentDays, baseline, categories, coverage));
 
+            // Relationships between applications, over everything read rather
+            // than the recent week: what leads to what needs more than seven
+            // days of moves to be worth asserting.
+            var moves = Transitions.Build(all);
+            candidates.AddRange(Detectors.Sequences(moves, Span(all)));
+
             // Collapsed before it is cut. Taking the top seven of a list in
             // which four entries describe the same behaviour spends four slots
             // on one finding and reads, to somebody who does not know how the
@@ -276,6 +282,9 @@ namespace FastApp.Services.Analytics
             var insights = Detectors.All(recentVisits, recentDays, baseline);
             insights.AddRange(Detectors.Patterns(recentVisits, all, recentDays, baseline));
             insights.AddRange(Detectors.ByCategory(all, recentDays, baseline, categories, coverage));
+
+            var moves = Transitions.Build(all);
+            insights.AddRange(Detectors.Sequences(moves, Span(all)));
             insights = insights.OrderByDescending(i => i.Score).ToList();
 
             double activeHours = recentDays.Sum(d => d.Active.TotalHours);
@@ -351,6 +360,8 @@ namespace FastApp.Services.Analytics
                 DayParts = dayParts,
                 CouldNotRead = history.CouldNotRead,
                 Problem = history.Problem,
+                Anchor = Anchored(moves),
+                Successor = insights.FirstOrDefault(i => i.Title.Contains("nearly always leads to"))?.Title,
                 CategoryCoverage = coverage,
                 CategorySplit = categorySplit,
                 ContinuityWindow = window == null ? null
@@ -362,6 +373,27 @@ namespace FastApp.Services.Analytics
                     : recentDays.OrderByDescending(d => d.Active).First().Day.ToString("dddd"),
                 Insights = insights
             };
+        }
+
+        /// <summary>
+        /// The application with the strongest hold, and how strong, for the
+        /// question layer. Read from the same table the detector used.
+        /// </summary>
+        private static (string App, double Rate, TimeSpan Glance)? Anchored(Transitions moves)
+        {
+            // Chosen the same way the detector chooses, so a question and the
+            // card above it cannot name different applications.
+            string best = null;
+            int mostDepartures = 0;
+            foreach (var app in moves.Apps)
+            {
+                int left = moves.Departures(app);
+                if (left < Transitions.MinimumDepartures) continue;
+                if (moves.ReturnRate(app) < 0.70) continue;
+                if (left > mostDepartures) { mostDepartures = left; best = app; }
+            }
+            double bestRate = best == null ? 0 : moves.ReturnRate(best);
+            return best == null ? null : (Detectors.Pretty(best), bestRate, moves.MedianGlance(best));
         }
 
         /// <summary>
@@ -380,6 +412,15 @@ namespace FastApp.Services.Analytics
             if (!double.TryParse(bits[2], out double total) || total <= 0) return 0;
             return top / total;
         }
+
+        /// <summary>
+        /// How many days the stream actually covers. Said from the data rather
+        /// than from the window constant: the engine reads 35 days back, and a
+        /// page built on checkable evidence cannot carry "the last 35 days" as
+        /// its one unchecked claim when the history is three weeks old.
+        /// </summary>
+        private static string Span(IReadOnlyList<Visit> visits) =>
+            $"the last {(visits.Count == 0 ? 0 : visits.Select(v => v.Day).Distinct().Count())} days";
 
         private static double CategoryChange(
             string category, TimeSpan recent, int recentDayCount, Baseline baseline)

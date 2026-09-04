@@ -67,6 +67,15 @@ namespace FastApp.Services.Analytics
         public string Interrupter { get; init; }
         public double InterrupterShare { get; init; }
         public string StartsDayWith { get; init; }
+
+        /// <summary>
+        /// The application you keep returning to, how reliably, and how long
+        /// you were away. Null when nothing was left often enough to say.
+        /// </summary>
+        public (string App, double Rate, TimeSpan Glance)? Anchor { get; init; }
+
+        /// <summary>The strongest one-leads-to-another relationship, as its sentence.</summary>
+        public string Successor { get; init; }
         public string BusiestDay { get; init; }
 
         /// <summary>Everything the detectors found, ranked. The evidence lives here.</summary>
