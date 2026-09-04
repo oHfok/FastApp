@@ -141,6 +141,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
                 <span class="label-text">Overview</span>
             </button>
+            <button type="button" class="rail-item" data-view="analytics" title="Analytics" aria-label="Analytics">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                <span class="label-text">Analytics</span>
+            </button>
             <button type="button" class="rail-item" data-view="insights" title="Insights" aria-label="Insights">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18.5 8.5 13 14l-3-3-4.5 4.5"></path></svg>
                 <span class="label-text">Insights</span>
@@ -306,6 +310,19 @@
             </section>
 
             <!-- ===== VIEW: INSIGHTS ===== -->
+            <!-- A report rather than a dashboard: the desktop side works out
+                 what is worth saying and this only lays it out. See
+                 Services/Analytics. -->
+            <section id="view-analytics" class="view">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">Analytics</div>
+                        <div class="view-sub">What your computer use looks like, compared with your own normal</div>
+                    </div>
+                </div>
+                <div id="an-body" class="an-body"></div>
+            </section>
+
             <section id="view-insights" class="view">
                 <div class="view-head">
                     <div>
@@ -891,6 +908,7 @@
 <script src="js/wrapped.js"></script>
 <script src="js/category.js"></script>
 <script src="js/tabs/overview.js"></script>
+<script src="js/tabs/analytics.js"></script>
 <script src="js/tabs/insights.js"></script>
 <script src="js/tabs/periods.js"></script>
 <script src="js/tabs/activity.js"></script>

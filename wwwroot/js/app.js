@@ -3,7 +3,7 @@
    Persistent top bar + rail nav + tab activation.
    ========================================================== */
 
-const VIEWS = ['overview', 'insights', 'periods', 'activity', 'leaderboard', 'allapps'];
+const VIEWS = ['overview', 'analytics', 'insights', 'periods', 'activity', 'leaderboard', 'allapps'];
 
 let currentViewId = null;
 

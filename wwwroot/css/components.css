@@ -1990,3 +1990,164 @@
 
 /* A section holding a chart needs no inner frame: the chart is the content. */
 .dd-trend-chart-wrap, .dd-compare-chart-wrap { background: none; }
+
+/* ---------------------------------------------------------------------------
+   Analytics
+
+   Set as a report: one column, a readable measure, and space between sections
+   rather than a wall of cards. A page whose job is to tell you something about
+   yourself should look like something written, not like a control panel.
+   --------------------------------------------------------------------------- */
+.an-body { display: flex; flex-direction: column; gap: 34px; max-width: 74ch; }
+
+.an-summary { display: flex; flex-direction: column; gap: 14px; }
+.an-figure { display: flex; flex-direction: column; gap: 2px; }
+.an-figure-value {
+    font-family: var(--font-mono);
+    font-size: var(--fs-hero);
+    font-weight: 700;
+    color: var(--brass);
+    line-height: 1;
+}
+.an-figure-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+.an-delta { font-size: var(--fs-small); color: var(--text-dim); margin-top: 4px; }
+.an-delta.up { color: var(--brass); }
+.an-delta.down { color: var(--teal); }
+
+.an-headline {
+    font-size: var(--fs-strong);
+    line-height: 1.6;
+    color: var(--text);
+    margin: 0;
+}
+.an-learning {
+    font-size: var(--fs-small);
+    color: var(--text-faint);
+    background: var(--wash-brass);
+    border-radius: var(--radius-sm);
+    padding: 12px 15px;
+    margin: 0;
+}
+.an-empty { font-size: var(--fs-body); color: var(--text-faint); margin: 0; }
+
+.an-block { display: flex; flex-direction: column; gap: 14px; }
+.an-block-title {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 700;
+    margin: 0;
+}
+
+/* ---- an insight ---- */
+.an-insights { display: flex; flex-direction: column; gap: 12px; }
+.an-insight {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+.an-insight-head { display: flex; align-items: center; gap: 9px; }
+.an-kind-mark { color: var(--brass); font-size: var(--fs-body); }
+.an-kind {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 700;
+}
+.an-trend {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-radius: var(--radius-pill);
+    padding: 3px 9px;
+}
+.an-trend-up { background: var(--wash-brass-strong); color: var(--brass); }
+.an-trend-down { background: var(--wash-teal); color: var(--teal); }
+.an-trend-new, .an-trend-gone { background: var(--lift); color: var(--text-dim); }
+
+.an-insight-title { font-size: var(--fs-title); font-weight: 500; color: var(--text); margin: 0; line-height: 1.35; }
+.an-insight-body { font-size: var(--fs-body); color: var(--text-dim); line-height: 1.6; margin: 0; }
+
+/* The measurements the sentence above was built from. Listed, because an
+   observation the reader cannot check is just an assertion. */
+.an-evidence { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.an-evidence li {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--text-faint);
+    padding-left: 15px;
+    position: relative;
+}
+.an-evidence li::before {
+    content: ''; position: absolute; left: 0; top: 7px;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--brass);
+}
+
+.an-rec {
+    font-size: var(--fs-body);
+    color: var(--text);
+    background: var(--wash-brass);
+    border-radius: var(--radius-sm);
+    padding: 12px 15px;
+    margin: 2px 0 0 0;
+    line-height: 1.55;
+}
+.an-rec-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 5px;
+    font-weight: 700;
+}
+
+.an-insight-foot {
+    display: flex; justify-content: space-between; gap: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    border-top: 1px solid var(--panel-border-soft);
+    padding-top: 9px;
+    margin-top: 2px;
+}
+
+/* ---- the shape of a day ---- */
+.an-hours { display: flex; align-items: flex-end; gap: 3px; height: 110px; }
+.an-hour { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
+.an-hour-bar { width: 100%; background: var(--brass); border-radius: 3px 3px 0 0; min-height: 0; }
+.an-hour-label {
+    position: absolute; bottom: -18px; left: 0; right: 0; text-align: center;
+    font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-faint);
+}
+.an-hours + * { margin-top: 20px; }
+
+/* ---- what the time was made of ---- */
+.an-apps { display: flex; flex-direction: column; gap: 9px; }
+.an-app { display: grid; grid-template-columns: 12ch 1fr 7ch 5ch; align-items: center; gap: 12px; }
+.an-app-name { font-size: var(--fs-body); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-app-track { height: 7px; background: var(--panel); border-radius: var(--radius-pill); overflow: hidden; }
+.an-app-fill { display: block; height: 100%; background: var(--brass); border-radius: var(--radius-pill); }
+.an-app-time { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-dim); text-align: right; }
+.an-app-change { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); text-align: right; }
+.an-app-change.up { color: var(--brass); }
+.an-app-change.down { color: var(--teal); }
+
+.an-privacy { font-size: var(--fs-caption); color: var(--text-faint); margin: 0; }
