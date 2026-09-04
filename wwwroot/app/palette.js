@@ -1308,6 +1308,8 @@ const st = {
     rollbackEmpty: document.getElementById('s-rollback-empty'),
     theme: document.getElementById('s-theme'),
     themeHint: document.getElementById('s-theme-hint'),
+    titles: document.getElementById('s-titles'),
+    titlesNote: document.getElementById('s-titles-note'),
     pinState: document.getElementById('s-pin-state'),
     pinCurrentRow: document.getElementById('s-pin-current-row'),
     pinCurrent: document.getElementById('s-pin-current'),
@@ -1385,6 +1387,9 @@ function renderSettings(v) {
     st.rollback.disabled = !!v.rollbackBusy;
 
     renderTheme(v.themePreference, v.systemIsLight);
+
+    setToggle(st.titles, v.captureWindowTitles);
+    st.titlesNote.textContent = titlesNote(v.captureWindowTitles);
 
     // The PIN card. Only the fields are left alone here, because a settings
     // push can arrive while somebody is halfway through typing one.
@@ -1586,6 +1591,25 @@ for (const field of [st.pinCurrent, st.pinNew]) {
 
 function setting(key, value) { send('set-setting', { key, value }); }
 function settingText(key, text) { send('set-setting', { key, text }); }
+
+/// What is and is not kept, said in the two states rather than once in the
+/// abstract. Turning it off does not go back and strip titles already recorded,
+/// and a privacy switch that let somebody assume otherwise would be worse than
+/// no switch.
+function titlesNote(on) {
+    return on
+        ? 'Recorded from now on. Sessions already saved without a title stay that way.'
+        : 'Not recorded. Only the name of the application is kept.';
+}
+
+// Its own handler rather than the generic loop below, because the note under it
+// has to move with it.
+st.titles.addEventListener('click', () => {
+    const next = !toggleOn(st.titles);
+    setToggle(st.titles, next);
+    st.titlesNote.textContent = titlesNote(next);
+    setting('captureWindowTitles', next);
+});
 
 for (const [el, key] of [
     [st.startup, 'launchOnStartup'],

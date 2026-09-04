@@ -358,11 +358,6 @@ namespace FastApp.ViewModels
         // ==========================================
         public MainViewModel()
         {
-            LoadOsdSetting();
-            LoadAutoLaunchProgressSetting();
-            LoadNotificationSettings();
-
-            // After
             _dbContext = new AppDbContext();
             _dbContext.Database.Migrate();
 
@@ -377,6 +372,20 @@ namespace FastApp.ViewModels
             // Creating them here too, before that read, closes the race.
             _dbContext.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS HiddenApps (AppName TEXT PRIMARY KEY);");
             _dbContext.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS AppSettings (Key TEXT PRIMARY KEY, Value TEXT);");
+
+            // Read here, not at the top of this constructor, because every one
+            // of them reads AppSettings and that table is only guaranteed to
+            // exist by the two lines above -- which is the race the comment
+            // above them describes. LoadNotificationSettings has been making
+            // that read early all along and getting away with it because
+            // AppSettingsStore swallows the failure and returns the default, so
+            // on a genuinely fresh install quiet hours and the pause state came
+            // up as defaults rather than as themselves. Moving all three past
+            // the table creation fixes that and is what lets the two settings
+            // below store the values they migrate.
+            LoadOsdSetting();
+            LoadAutoLaunchProgressSetting();
+            LoadNotificationSettings();
 
             // --- ONE-TIME MIGRATION: backfill the fast INTEGER Ticks columns for rows
             // that predate them. Gated behind a completed-flag in AppSettings — without
@@ -727,8 +736,12 @@ namespace FastApp.ViewModels
 
         partial void OnEnableOsdChanged(bool value)
         {
+            Services.AppSettingsStore.SetBool(EnableOsdKey, value);
             try
             {
+                // The file is kept in step as well, so that going back to an
+                // older build finds the choice it expects rather than the
+                // default. It is no longer what is read.
                 File.WriteAllText(GetSettingsPath(), value.ToString());
             }
             catch (Exception ex)
@@ -923,8 +936,10 @@ namespace FastApp.ViewModels
 
         partial void OnShowAutoLaunchProgressChanged(bool value)
         {
+            Services.AppSettingsStore.SetBool(AutoLaunchProgressKey, value);
             try
             {
+                // Kept in step for the same reason as the OSD flag above.
                 File.WriteAllText(GetAutoLaunchProgressSettingsPath(), value.ToString());
             }
             catch (Exception ex)
@@ -2114,6 +2129,19 @@ namespace FastApp.ViewModels
         // root, and an install wiping it is exactly what destroyed the database on
         // 2026-08-19. osd_setting.txt used to sit there and was one reinstall away
         // from silently resetting itself.
+        // These two were the last settings kept in loose text files beside the
+        // database, which AppSettingsStore's own note called out as the reason
+        // there were two places to look. The real cost was not tidiness: the
+        // dashboard reads AppSettings and cannot see a text file, so these were
+        // the only two settings it had no way to show or change.
+        //
+        // The files are still read once, so nobody's existing choice is lost,
+        // and then left alone. Deleting them would be the tidier ending and a
+        // worse one: a downgrade to an older build would find them missing and
+        // silently turn both back on.
+        public const string EnableOsdKey = "EnableOsd";
+        public const string AutoLaunchProgressKey = "ShowAutoLaunchProgress";
+
         private string GetSettingsPath()
         {
             return Path.Combine(AppDbContext.GetDbFolder(), "osd_setting.txt");
@@ -2121,38 +2149,12 @@ namespace FastApp.ViewModels
 
         private void LoadOsdSetting()
         {
-            string path = GetSettingsPath();
-
-            // One-time move of the value from the old, Velopack-owned location so
-            // the toggle doesn't silently flip back to its default for anyone who
-            // had already set it. Read-and-rewrite rather than File.Move: the old
-            // copy may be gone, locked, or already migrated, and none of those are
-            // worth failing startup over.
-            if (!File.Exists(path))
-            {
-                try
-                {
-                    string legacyPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                        "FastApp", "osd_setting.txt");
-                    if (File.Exists(legacyPath))
-                    {
-                        File.WriteAllText(path, File.ReadAllText(legacyPath));
-                        try { File.Delete(legacyPath); } catch { /* leaving a stale copy behind is harmless */ }
-                    }
-                }
-                catch { /* fall through to the default below */ }
-            }
-
-            if (File.Exists(path))
-            {
-                EnableOsd = File.ReadAllText(path) == "True";
-            }
-            else
-            {
-                EnableOsd = true;
-            }
+            EnableOsd = LoadMigratedFlag(EnableOsdKey, GetSettingsPath(), LegacyOsdPath());
         }
+
+        private static string LegacyOsdPath() => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FastApp", "osd_setting.txt");
 
         private string GetAutoLaunchProgressSettingsPath()
         {
@@ -2161,15 +2163,51 @@ namespace FastApp.ViewModels
 
         private void LoadAutoLaunchProgressSetting()
         {
-            string path = GetAutoLaunchProgressSettingsPath();
-            if (File.Exists(path))
+            ShowAutoLaunchProgress =
+                LoadMigratedFlag(AutoLaunchProgressKey, GetAutoLaunchProgressSettingsPath(), null);
+        }
+
+        /// <summary>
+        /// Read a flag that used to live in a file, preferring the database.
+        ///
+        /// Order matters. The stored setting wins outright once there is one, so
+        /// a change made after the move is never overwritten by the stale file
+        /// sitting next to it. Only when nothing is stored does the file get a
+        /// say, and then its value is written across so the question is settled
+        /// for good.
+        ///
+        /// Both default to on, which is what they defaulted to before.
+        /// </summary>
+        private static bool LoadMigratedFlag(string key, string path, string legacyPath)
+        {
+            string stored = Services.AppSettingsStore.Get(key);
+            if (!string.IsNullOrEmpty(stored)) return stored == "true";
+
+            // The older, Velopack-owned location, one reinstall away from being
+            // wiped. Read across rather than moved: the old copy may be gone,
+            // locked or already migrated, none of which is worth a failed start.
+            if (!File.Exists(path) && legacyPath != null)
             {
-                ShowAutoLaunchProgress = File.ReadAllText(path) == "True";
+                try
+                {
+                    if (File.Exists(legacyPath))
+                    {
+                        File.WriteAllText(path, File.ReadAllText(legacyPath));
+                        try { File.Delete(legacyPath); } catch { /* a stale copy is harmless */ }
+                    }
+                }
+                catch { /* fall through to the default */ }
             }
-            else
+
+            bool value = true;
+            try
             {
-                ShowAutoLaunchProgress = true;
+                if (File.Exists(path)) value = File.ReadAllText(path).Trim() == "True";
             }
+            catch { /* unreadable file, take the default */ }
+
+            Services.AppSettingsStore.SetBool(key, value);
+            return value;
         }
 
         public void SaveDatabase()

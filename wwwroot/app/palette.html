@@ -329,6 +329,21 @@
             </section>
 
             <section class="card">
+                <span class="label">PRIVACY</span>
+                <!-- The most sensitive setting in the app, and it could only be
+                     reached through a browser. It belongs on the surface that is
+                     always one keystroke away. -->
+                <div class="opt">
+                    <span class="opt-text">
+                        <span>Record window titles</span>
+                        <span class="hint-sub">Off by default. Titles include page and document names.</span>
+                    </span>
+                    <button class="toggle" id="s-titles" type="button" role="switch"><span></span></button>
+                </div>
+                <span class="hint-sub" id="s-titles-note"></span>
+            </section>
+
+            <section class="card">
                 <span class="label">PARENTAL PIN</span>
                 <!-- Only the dashboard could set this, which was the wrong way
                      round: Extend time lives in this window precisely because
@@ -381,6 +396,10 @@
                     <button class="pill" type="button" data-theme-pref="light" aria-pressed="false">Light</button>
                 </div>
                 <span class="hint-sub" id="s-theme-hint"></span>
+                <!-- Asked often enough to be worth a line: the two are separate
+                     on purpose, since the dashboard may be open on another
+                     machine entirely. -->
+                <span class="hint-sub">The statistics dashboard keeps its own theme, chosen in the browser.</span>
             </section>
 
             <section class="card">

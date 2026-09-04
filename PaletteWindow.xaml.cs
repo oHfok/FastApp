@@ -1257,6 +1257,11 @@ namespace FastApp
 
                     hasPin = PinIsSet(),
 
+                    // Read straight from the store rather than a view-model
+                    // property: the tracker re-reads this from the database on
+                    // every flush, so there is nothing in memory to keep in step.
+                    captureWindowTitles = AppSettingsStore.GetBool("CaptureWindowTitles", false),
+
                     paletteHotkey = MainWindow.PaletteHotkeyDisplay,
                     paletteHotkeyIsDefault =
                         MainWindow.PaletteHotkeySequence == MainWindow.DefaultPaletteHotkey,
@@ -1307,6 +1312,14 @@ namespace FastApp
                 case "quietHoursFrom": _viewModel.QuietHoursFrom = text ?? string.Empty; break;
                 case "quietHoursTo": _viewModel.QuietHoursTo = text ?? string.Empty; break;
                 case "selectedRollback": _viewModel.SelectedRollbackVersion = text; break;
+
+                // Not a view-model property for the reason given in PushSettings.
+                // Written through AppSettingsStore, which inserts or replaces --
+                // the dashboard's own endpoint only updates, so it does nothing
+                // at all on an installation whose row was never created.
+                case "captureWindowTitles":
+                    AppSettingsStore.SetBool("CaptureWindowTitles", value);
+                    break;
 
                 // Not a view-model property: this one is drawn by four surfaces
                 // that have no view model between them -- the window, the tray
