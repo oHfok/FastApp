@@ -428,6 +428,17 @@ namespace FastApp
                     AddTracked(message.Text);
                     break;
 
+                // Pin carries the current PIN and Text the new one. Named that
+                // way round because every other message that carries a PIN is
+                // proving one, and this is the same proof.
+                case "save-pin":
+                    SavePin(message.Pin, message.Text);
+                    break;
+
+                case "remove-pin":
+                    RemovePin(message.Pin);
+                    break;
+
                 case "save-palette-hotkey":
                     SavePaletteHotkey(message.Text);
                     break;
@@ -1024,6 +1035,109 @@ namespace FastApp
         }
 
         /// <summary>
+        /// Set or change the parental PIN from the desktop app.
+        ///
+        /// This could only be done in the dashboard, and the dashboard's own
+        /// rule is that changing a PIN does not require the old one, because
+        /// "dashboard access is already the trust boundary here". That reasoning
+        /// does not survive the move: this window opens to whoever presses the
+        /// hotkey. Copying the rule would have meant anyone at the keyboard
+        /// could set a fresh PIN and lift every limit with it, which is not a
+        /// weaker control than the one that exists, it is no control at all.
+        ///
+        /// So here the current PIN is required. That is deliberately stricter
+        /// than the other surface rather than merely different, and it is the
+        /// reason this exists at all: extending time already lives in this
+        /// window precisely because the browser may be the thing being limited,
+        /// and the PIN it asks for could only be set somewhere unreachable.
+        /// </summary>
+        private void SavePin(string currentPin, string newPin)
+        {
+            if (string.IsNullOrEmpty(newPin) || newPin.Length < 4)
+            {
+                PinResult(false, "A PIN needs at least four characters.");
+                return;
+            }
+
+            try
+            {
+                using var db = new AppDbContext();
+                var (hasPin, salt, hash) = PinService.GetPinInfo(db);
+
+                if (hasPin && !PinService.VerifyPin(currentPin, salt, hash))
+                {
+                    PinResult(false, "That is not the current PIN.");
+                    return;
+                }
+
+                var (newSalt, newHash) = PinService.HashPin(newPin);
+                AppSettingsStore.Set("ParentPinSalt", newSalt);
+                AppSettingsStore.Set("ParentPinHash", newHash);
+
+                PinResult(true, hasPin ? "PIN changed." : "PIN set. Limits now ask for it.");
+            }
+            catch (Exception ex)
+            {
+                PinResult(false, $"The PIN could not be saved: {ex.Message}");
+                return;
+            }
+
+            AfterPinChange();
+        }
+
+        /// <summary>
+        /// Take the PIN off, which the dashboard cannot do at all: it can set
+        /// one and change one, and there is no way back short of editing the
+        /// database. Requires the current PIN for the same reason as above.
+        /// </summary>
+        private void RemovePin(string currentPin)
+        {
+            try
+            {
+                using var db = new AppDbContext();
+                var (hasPin, salt, hash) = PinService.GetPinInfo(db);
+
+                if (!hasPin) { PinResult(false, "There is no PIN to remove."); return; }
+                if (!PinService.VerifyPin(currentPin, salt, hash))
+                {
+                    PinResult(false, "That is not the current PIN.");
+                    return;
+                }
+
+                // Emptied rather than deleted: GetPinInfo reads an empty value as
+                // no PIN, and AppSettingsStore has no delete to add for this.
+                AppSettingsStore.Set("ParentPinSalt", string.Empty);
+                AppSettingsStore.Set("ParentPinHash", string.Empty);
+
+                PinResult(true, "PIN removed. Limits can be changed without one.");
+            }
+            catch (Exception ex)
+            {
+                PinResult(false, $"The PIN could not be removed: {ex.Message}");
+                return;
+            }
+
+            AfterPinChange();
+        }
+
+        /// <summary>
+        /// Whether limits are locked has just changed, and two surfaces are
+        /// showing the old answer: the settings page and any app panel behind
+        /// it. Both are told.
+        /// </summary>
+        private void AfterPinChange()
+        {
+            PushSettings();
+            PushState();
+        }
+
+        private void PinResult(bool ok, string text)
+        {
+            var payload = new { type = "pin-result", value = ok, text };
+            Web.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
+        }
+
+        /// <summary>
         /// Record a new combination for summoning the palette.
         ///
         /// Refused if an app already answers to it. Both this and the per-app
@@ -1140,6 +1254,8 @@ namespace FastApp
                     // show Follow Windows as selected while the app is dark.
                     themePreference = Services.SystemTheme.Preference,
                     systemIsLight = Services.SystemTheme.IsLight,
+
+                    hasPin = PinIsSet(),
 
                     paletteHotkey = MainWindow.PaletteHotkeyDisplay,
                     paletteHotkeyIsDefault =

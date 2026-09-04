@@ -1308,6 +1308,13 @@ const st = {
     rollbackEmpty: document.getElementById('s-rollback-empty'),
     theme: document.getElementById('s-theme'),
     themeHint: document.getElementById('s-theme-hint'),
+    pinState: document.getElementById('s-pin-state'),
+    pinCurrentRow: document.getElementById('s-pin-current-row'),
+    pinCurrent: document.getElementById('s-pin-current'),
+    pinNew: document.getElementById('s-pin-new'),
+    pinSave: document.getElementById('s-pin-save'),
+    pinRemove: document.getElementById('s-pin-remove'),
+    pinMessage: document.getElementById('s-pin-message'),
     hotkey: document.getElementById('s-hotkey'),
     hotkeyHint: document.getElementById('s-hotkey-hint'),
     hotkeyReset: document.getElementById('s-hotkey-reset'),
@@ -1378,6 +1385,16 @@ function renderSettings(v) {
     st.rollback.disabled = !!v.rollbackBusy;
 
     renderTheme(v.themePreference, v.systemIsLight);
+
+    // The PIN card. Only the fields are left alone here, because a settings
+    // push can arrive while somebody is halfway through typing one.
+    hasPin = !!v.hasPin;
+    st.pinState.textContent = hasPin
+        ? 'A PIN is set. Changing a daily limit or granting extra time asks for it.'
+        : 'No PIN. Daily limits can be changed by anyone using this computer.';
+    st.pinCurrentRow.hidden = !hasPin;
+    st.pinRemove.hidden = !hasPin;
+    st.pinSave.textContent = hasPin ? 'Change PIN' : 'Save PIN';
 
     // Not while recording: the field is showing the keys as they go down, and
     // a settings push arriving mid-capture would wipe it back to the stored one.
@@ -1503,6 +1520,69 @@ st.theme.addEventListener('click', event => {
     renderTheme(pill.dataset.themePref);
     settingText('theme', pill.dataset.themePref);
 });
+
+/* ---------------------------------------------------------------------------
+   The parental PIN
+
+   Set here as well as in the dashboard, and here it asks for the current one
+   before it will change or remove it. The dashboard does not, on the reasoning
+   that reaching the dashboard is itself the check; this window opens to whoever
+   presses the hotkey, so the same rule would have let anyone at the keyboard
+   replace the PIN and lift every limit with it. The host enforces that; none of
+   the code below is what makes it true.
+   --------------------------------------------------------------------------- */
+let hasPin = false;
+
+function pinResult(ok, text) {
+    st.pinSave.disabled = false;
+    st.pinRemove.disabled = false;
+    st.pinMessage.textContent = text || '';
+    st.pinMessage.classList.toggle('good', !!ok);
+    st.pinMessage.classList.toggle('bad', !ok);
+    if (!ok) return;
+
+    st.pinCurrent.value = '';
+    st.pinNew.value = '';
+}
+
+function pinBusy(text) {
+    st.pinSave.disabled = true;
+    st.pinRemove.disabled = true;
+    st.pinMessage.classList.remove('good', 'bad');
+    st.pinMessage.textContent = text;
+}
+
+st.pinSave.addEventListener('click', () => {
+    const next = st.pinNew.value;
+    if (!next || next.length < 4) {
+        pinResult(false, 'A PIN needs at least four characters.');
+        st.pinNew.focus();
+        return;
+    }
+    if (hasPin && !st.pinCurrent.value) {
+        pinResult(false, 'Enter the current PIN to change it.');
+        st.pinCurrent.focus();
+        return;
+    }
+    pinBusy('Saving…');
+    send('save-pin', { pin: st.pinCurrent.value, text: next });
+});
+
+st.pinRemove.addEventListener('click', () => {
+    if (!st.pinCurrent.value) {
+        pinResult(false, 'Enter the current PIN to remove it.');
+        st.pinCurrent.focus();
+        return;
+    }
+    pinBusy('Removing…');
+    send('remove-pin', { pin: st.pinCurrent.value });
+});
+
+for (const field of [st.pinCurrent, st.pinNew]) {
+    field.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); st.pinSave.click(); }
+    });
+}
 
 function setting(key, value) { send('set-setting', { key, value }); }
 function settingText(key, text) { send('set-setting', { key, text }); }
@@ -2015,6 +2095,11 @@ if (bridge) {
             // arriving after a cancel must not overwrite the saved binding.
             if (!capturing) return;
             (captureTarget === 'palette' ? st.hotkey : d.hotkey).textContent = message.text;
+            return;
+        }
+
+        if (message.type === 'pin-result') {
+            pinResult(message.value, message.text);
             return;
         }
 
