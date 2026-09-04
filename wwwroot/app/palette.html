@@ -304,7 +304,7 @@
              the window and with whether the startup banner was showing. -->
         <div class="s-cards">
             <section class="card">
-                <span class="label">SYSTEM</span>
+                <span class="label">THIS COMPUTER</span>
                 <div class="opt">
                     <span class="opt-text">
                         <span>Start with Windows</span>
@@ -326,49 +326,9 @@
                     </span>
                     <button class="toggle" id="s-progress" type="button" role="switch"><span></span></button>
                 </div>
-            </section>
+            
 
-            <section class="card">
-                <span class="label">PRIVACY</span>
-                <!-- The most sensitive setting in the app, and it could only be
-                     reached through a browser. It belongs on the surface that is
-                     always one keystroke away. -->
-                <div class="opt">
-                    <span class="opt-text">
-                        <span>Record window titles</span>
-                        <span class="hint-sub">Off by default. Titles include page and document names.</span>
-                    </span>
-                    <button class="toggle" id="s-titles" type="button" role="switch"><span></span></button>
-                </div>
-                <span class="hint-sub" id="s-titles-note"></span>
-            </section>
-
-            <section class="card">
-                <span class="label">PARENTAL PIN</span>
-                <!-- Only the dashboard could set this, which was the wrong way
-                     round: Extend time lives in this window precisely because
-                     the browser may be the app being limited, and the PIN it
-                     asks for could only be set somewhere unreachable. -->
-                <span class="hint-sub" id="s-pin-state"></span>
-                <div class="stack" id="s-pin-current-row" hidden>
-                    <label class="field-label" for="s-pin-current">Current PIN</label>
-                    <input class="field" id="s-pin-current" type="password" inputmode="numeric"
-                           autocomplete="off" placeholder="Required to change it">
-                </div>
-                <div class="stack">
-                    <label class="field-label" for="s-pin-new">New PIN</label>
-                    <input class="field" id="s-pin-new" type="password" inputmode="numeric"
-                           autocomplete="off" placeholder="At least four characters">
-                </div>
-                <div class="field-row">
-                    <button class="btn btn-primary" id="s-pin-save" type="button">Save PIN</button>
-                    <button class="btn btn-danger" id="s-pin-remove" type="button" hidden>Remove</button>
-                </div>
-                <span class="field-label x-message" id="s-pin-message"></span>
-            </section>
-
-            <section class="card">
-                <span class="label">SHORTCUT</span>
+                <span class="card-sub">SHORTCUT</span>
                 <!-- This used to be fixed, on the reasoning that the way into
                      the app should not be something you can lose. The tray icon
                      opens it too and cannot be rebound, so there is always a
@@ -382,6 +342,7 @@
                 </div>
                 <button class="field field-button" id="s-hotkey" type="button">Ctrl + Shift + Space</button>
                 <span class="field-label x-message" id="s-hotkey-message"></span>
+            
             </section>
 
             <section class="card">
@@ -400,6 +361,7 @@
                      on purpose, since the dashboard may be open on another
                      machine entirely. -->
                 <span class="hint-sub">The statistics dashboard keeps its own theme, chosen in the browser.</span>
+            
             </section>
 
             <section class="card">
@@ -424,10 +386,57 @@
                     <span class="label">UNTIL</span>
                     <input class="field field-time" id="s-quiet-to" type="text" placeholder="07:00">
                 </div>
+            
             </section>
 
             <section class="card">
-                <span class="label">DASHBOARD</span>
+                <span class="label">PRIVACY</span>
+                <!-- The most sensitive setting in the app, and it could only be
+                     reached through a browser. It belongs on the surface that is
+                     always one keystroke away. -->
+                <div class="opt">
+                    <span class="opt-text">
+                        <span>Record window titles</span>
+                        <span class="hint-sub">Off by default. Titles include page and document names.</span>
+                    </span>
+                    <button class="toggle" id="s-titles" type="button" role="switch"><span></span></button>
+                </div>
+                <span class="hint-sub" id="s-titles-note"></span>
+            
+
+                <span class="card-sub">PARENTAL PIN</span>
+                <!-- Only the dashboard could set this, which was the wrong way
+                     round: Extend time lives in this window precisely because
+                     the browser may be the app being limited, and the PIN it
+                     asks for could only be set somewhere unreachable. -->
+                <span class="hint-sub" id="s-pin-state"></span>
+                <div class="stack" id="s-pin-current-row" hidden>
+                    <label class="field-label" for="s-pin-current">Current PIN</label>
+                    <input class="field" id="s-pin-current" type="password" inputmode="numeric"
+                           autocomplete="off" placeholder="Required to change it">
+                </div>
+                <div class="stack">
+                    <label class="field-label" for="s-pin-new">New PIN</label>
+                    <input class="field" id="s-pin-new" type="password" inputmode="numeric"
+                           autocomplete="off" placeholder="At least four characters">
+                </div>
+                <div class="field-row">
+                    <button class="btn btn-primary" id="s-pin-save" type="button">Save PIN</button>
+                    <button class="btn btn-danger" id="s-pin-remove" type="button" hidden>Remove</button>
+                </div>
+                <span class="field-label x-message" id="s-pin-message"></span>
+            
+            </section>
+        </div>
+
+        <!-- Not settings. Where the dashboard is, which version this is,
+             and how to go back to an earlier one are all facts about the
+             installation, and mixing them into the columns above is most of
+             what made the page unreadable: nine cards of identical weight,
+             packed by height rather than by meaning, so Version sat beside
+             Notifications for no reason anybody could see. -->
+        <section class="card" id="s-about">
+            <span class="label">ABOUT FASTAPP</span>
                 <div class="opt">
                     <span class="opt-text">
                         <span>Statistics server</span>
@@ -435,10 +444,9 @@
                     </span>
                     <button class="btn" id="s-open-dashboard" type="button">Open ↗</button>
                 </div>
-            </section>
+            
 
-            <section class="card">
-                <span class="label">VERSION</span>
+                <span class="card-sub">VERSION</span>
                 <div class="opt">
                     <span class="opt-text">
                         <span id="s-version-line">FastApp</span>
@@ -447,10 +455,9 @@
                     <button class="btn" id="s-check" type="button">Check now</button>
                 </div>
                 <button class="btn btn-primary" id="s-apply" type="button" hidden>Restart and update</button>
-            </section>
+            
 
-            <section class="card" id="s-rollback-card">
-                <span class="label">REINSTALL AN EARLIER VERSION</span>
+                <span class="card-sub">REINSTALL AN EARLIER VERSION</span>
                 <span class="hint-sub">Go back if a release causes trouble. Your data is backed up first.</span>
                 <span class="hint-sub" id="s-rollback-empty" hidden></span>
                 <div class="field-row" id="s-rollback-row">
@@ -459,8 +466,8 @@
                 </div>
                 <span class="warn" id="s-rollback-warning" hidden></span>
                 <span class="hint-sub" id="s-rollback-status" hidden></span>
-            </section>
-        </div>
+            
+        </section>
 
 
         <!-- Last, and across both columns. The notes are a document, not a

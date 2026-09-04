@@ -1298,7 +1298,6 @@ const st = {
     whatsNewCard: document.getElementById('s-whatsnew-card'),
     whatsNewLabel: document.getElementById('s-whatsnew-label'),
     whatsNew: document.getElementById('s-whatsnew'),
-    rollbackCard: document.getElementById('s-rollback-card'),
     rollbackVersion: document.getElementById('s-rollback-version'),
     rollback: document.getElementById('s-rollback'),
     rollbackWarning: document.getElementById('s-rollback-warning'),

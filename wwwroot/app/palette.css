@@ -667,6 +667,27 @@ body {
 
 /* Across both columns, and last. Its own width is the page's; the text inside
    it is not, because a line 850px long is not a line anyone reads. */
+/* A divider inside a card: two related groups under one heading, rather than
+   two cards the column balancer can park anywhere it likes. The page had nine
+   cards of identical weight packed by height, so what sat next to what carried
+   no meaning at all -- Version beside Notifications, the PIN form beside the
+   startup toggles. Fewer, larger, self-explaining cards is the whole fix. */
+.card-sub {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.17em;
+    color: var(--text-faint);
+    font-weight: 700;
+    padding-top: 13px;
+    border-top: 1px solid var(--panel-border-soft);
+}
+
+/* The things that are not settings: where the dashboard is, which version this
+   is, and how to go back to an earlier one. Full width and last, so the page
+   reads as the settings and then the facts about the installation, rather than
+   as nine equal boxes in no particular order. */
+#s-about { column-span: all; margin: 0; }
+
 #s-whatsnew-card { margin: 0; }
 .s-notes {
     display: flex;
