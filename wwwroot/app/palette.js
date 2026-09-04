@@ -1861,7 +1861,12 @@ function saveDetail() {
             launchOnStartup: toggleOn(d.autostart),
             launchArguments: d.args.value,
             launchDelaySeconds: parseInt(d.delay.value, 10) || 0,
-            dailyLimitMinutes: parseInt(d.limit.value, 10) || 0,
+            // limitMinutesNow, not the raw field: the switch is what says
+            // whether there is a limit, and turning it off deliberately leaves
+            // the number where it was so turning it back on remembers it. Read
+            // straight from the box, this saved that leftover number and the
+            // limit you had just switched off stayed exactly where it was.
+            dailyLimitMinutes: limitMinutesNow(),
             strictFocusMode: toggleOn(d.force),
             category: editing.category,
             actionType: editing.actionType,
@@ -1884,12 +1889,13 @@ for (const pill of d.actionCard.querySelectorAll('.pill')) {
 }
 d.payload.addEventListener('change', saveDetail);
 
-for (const el of [d.customName, d.args, d.delay, d.limit]) {
+// Not d.limit or d.force: the limit card owns both, because they have to
+// decide between saving straight away and arming the PIN. A second listener on
+// the switch flipped it twice and left it exactly where it started; a second
+// one on the field just saved the same thing twice.
+for (const el of [d.customName, d.args, d.delay]) {
     el.addEventListener('change', saveDetail);
 }
-// Not d.force: the limit card owns that one, because it has to decide between
-// saving straight away and arming the PIN. Adding a second listener there
-// flipped the switch twice and left it exactly where it started.
 for (const el of [d.suppress, d.autostart]) {
     el.addEventListener('click', () => {
         if (el.disabled) return;

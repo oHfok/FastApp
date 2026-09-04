@@ -501,6 +501,35 @@ namespace FastApp
         private bool _captureHooked;
 
         /// <summary>Send one app's full editable state to the palette.</summary>
+        /// <summary>
+        /// Whether a parental PIN exists, asked now rather than remembered.
+        ///
+        /// _viewModel.IsPinConfigured is refreshed by the tracker once a minute
+        /// and starts false, so for the first minute of every launch the app
+        /// believes there is no PIN. Two places read it, at two different
+        /// moments, and that gap is a bug with a very confusing face: the panel
+        /// opened unlocked and offered the limit with no PIN, then SaveApp --
+        /// asked later, once the flag had caught up -- refused to write it. The
+        /// switch moved, nothing was asked for, and nothing happened.
+        ///
+        /// Both now ask at the point of the decision. Extend and SaveLimit
+        /// already did; this brings the other two in line.
+        /// </summary>
+        private static bool PinIsSet()
+        {
+            try
+            {
+                using var db = new AppDbContext();
+                return PinService.GetPinInfo(db).HasPin;
+            }
+            catch
+            {
+                // Locked, on a read we could not make. Unlocking a parental
+                // control because a query failed is the wrong way to be wrong.
+                return true;
+            }
+        }
+
         private void PushApp(string id)
         {
             var app = FindApp(id);
@@ -535,7 +564,7 @@ namespace FastApp
                     launchDelaySeconds = app.LaunchDelaySeconds,
                     dailyLimitMinutes = app.DailyLimitMinutes,
                     strictFocusMode = app.StrictFocusMode,
-                    limitsLocked = _viewModel.IsPinConfigured,
+                    limitsLocked = PinIsSet(),
                     canReorder = true,
                     triggerCount = app.HotkeyTriggerCount,
                     today = FormatSpan(todaySpan),
@@ -561,8 +590,11 @@ namespace FastApp
             if (!string.IsNullOrWhiteSpace(edit.Category)) app.Category = edit.Category;
 
             // Limits stay behind the PIN wherever they are edited from. A new
-            // surface must not become a way around parental control.
-            if (!_viewModel.IsPinConfigured)
+            // surface must not become a way around parental control. Read now,
+            // for the same reason PushApp does: this and the panel that sent the
+            // edit have to agree about whether a PIN exists, and a flag that
+            // updates once a minute cannot promise that.
+            if (!PinIsSet())
             {
                 app.DailyLimitMinutes = Math.Max(0, edit.DailyLimitMinutes);
                 app.StrictFocusMode = edit.StrictFocusMode;

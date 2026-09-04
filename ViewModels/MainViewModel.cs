@@ -2053,7 +2053,12 @@ namespace FastApp.ViewModels
                     }
                     catch
                     {
-                        IsPinConfigured = false;
+                        // Left as it was. This used to set false, which turned a
+                        // momentary database hiccup into an unlocked parental
+                        // control until the next flush. Nothing that gates an
+                        // edit reads this any more -- the palette asks the
+                        // database at the point of the decision -- but a flag
+                        // that fails open is worth not leaving lying around.
                     }
 
                     timeCache.Clear();
