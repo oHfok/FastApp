@@ -1604,6 +1604,13 @@ const d = {
     limit: document.getElementById('d-limit'),
     force: document.getElementById('d-force'),
     limitCard: document.getElementById('d-limit-card'),
+    limitOn: document.getElementById('d-limit-on'),
+    limitBody: document.getElementById('d-limit-body'),
+    limitSummary: document.getElementById('d-limit-summary'),
+    limitSaveRow: document.getElementById('d-limit-save-row'),
+    limitPin: document.getElementById('d-limit-pin'),
+    limitSave: document.getElementById('d-limit-save'),
+    limitMessage: document.getElementById('d-limit-message'),
     locked: document.getElementById('d-locked'),
     limitNote: document.getElementById('d-limit-note'),
     limitLink: document.getElementById('d-limit-link'),
@@ -1654,6 +1661,11 @@ function toggleOn(el) { return el.getAttribute('aria-checked') === 'true'; }
 
 function renderDetail(app) {
     editing = app;
+    limitDirty = false;
+    d.limitMessage.textContent = '';
+    d.limitMessage.classList.remove('good', 'bad');
+    d.limitPin.value = '';
+    d.limitSave.disabled = false;
 
     d.avatar.textContent = (app.displayName[0] || '?').toUpperCase();
     d.avatar.style.background = catTint(app.category);
@@ -1701,19 +1713,140 @@ function renderDetail(app) {
     setToggle(d.autostart, app.launchOnStartup);
     d.args.value = app.launchArguments || '';
     d.delay.value = app.launchDelaySeconds ? String(app.launchDelaySeconds) : '';
+    const limited = app.dailyLimitMinutes > 0;
+    setToggle(d.limitOn, limited);
     d.limit.value = app.dailyLimitMinutes ? String(app.dailyLimitMinutes) : '';
     setToggle(d.force, app.strictFocusMode);
+    renderLimit();
 
     // The PIN gates limits wherever they are edited from; this surface must not
     // become a way around it.
     d.locked.hidden = !app.limitsLocked;
     d.limitNote.hidden = !app.limitsLocked;
     d.limitLink.hidden = !app.limitsLocked;
-    d.limitCard.classList.toggle('disabled', app.limitsLocked);
-    d.limit.disabled = app.limitsLocked;
-    d.force.disabled = app.limitsLocked;
 
     show('detail');
+}
+
+/* ---------------------------------------------------------------------------
+   The daily limit
+
+   This used to be two controls the PIN turned to stone, plus a link to the
+   dashboard, where the same change could be made against the same database in
+   the same process -- reached by opening a browser. Which is a poor answer when
+   the app being limited is the browser.
+
+   So the change is made here now. The fields are never disabled; the PIN is
+   asked for at the point of saving, which is also where the dashboard asks. The
+   host verifies it and refuses on its own account, so nothing here is load
+   bearing for the lock.
+   --------------------------------------------------------------------------- */
+
+/// Nothing is written until Save when a PIN is set, so the panel has to
+/// remember whether what is on screen still matches what is stored.
+let limitDirty = false;
+
+function limitOnNow() { return toggleOn(d.limitOn); }
+function limitMinutesNow() { return limitOnNow() ? (parseInt(d.limit.value, 10) || 0) : 0; }
+
+function renderLimit() {
+    const on = limitOnNow();
+    d.limitBody.hidden = !on;
+
+    d.limitSummary.textContent = !on
+        ? 'No limit. This app can run all day.'
+        : limitMinutesNow() > 0
+            ? `${limitMinutesNow()} minutes a day, then ${toggleOn(d.force) ? 'it closes' : 'you are warned'}.`
+            : 'Set how many minutes a day.';
+
+    // The save row is the PIN path only. Without a PIN every edit here saves
+    // itself, the same as every other field in this panel.
+    const locked = !!(editing && editing.limitsLocked);
+    const wasHidden = d.limitSaveRow.hidden;
+    d.limitSaveRow.hidden = !(locked && limitDirty);
+    if (d.limitSaveRow.hidden) d.limitPin.value = '';
+
+    // The panel scrolls, and turning the switch on adds two rows above this
+    // one. Only on the way in, or every keystroke in the minutes field would
+    // drag the card around.
+    else if (wasHidden) d.limitSaveRow.scrollIntoView({ block: 'nearest' });
+}
+
+/// Called by every control in the card. With no PIN this is the ordinary
+/// save-as-you-go the rest of the panel does; with one it only arms the button.
+function limitChanged() {
+    d.limitMessage.textContent = '';
+    d.limitMessage.classList.remove('good', 'bad');
+
+    if (editing && editing.limitsLocked) limitDirty = true;
+    renderLimit();
+
+    if (!(editing && editing.limitsLocked)) saveDetail();
+}
+
+d.limitOn.addEventListener('click', () => {
+    const next = !limitOnNow();
+    setToggle(d.limitOn, next);
+
+    // Turning it on with nothing set would save a limit of zero, which reads as
+    // "no limit" everywhere else and would switch itself straight back off.
+    if (next && !(parseInt(d.limit.value, 10) > 0)) d.limit.value = '60';
+
+    limitChanged();
+    if (next) d.limit.focus();
+});
+
+d.force.addEventListener('click', () => {
+    setToggle(d.force, !toggleOn(d.force));
+    limitChanged();
+});
+
+d.limit.addEventListener('input', () => {
+    if (editing && editing.limitsLocked) { limitDirty = true; renderLimit(); return; }
+    renderLimit();
+});
+d.limit.addEventListener('change', limitChanged);
+
+d.limitSave.addEventListener('click', () => {
+    if (!editing) return;
+
+    if (limitOnNow() && limitMinutesNow() <= 0) {
+        limitResult(false, 'Enter how many minutes a day.');
+        d.limit.focus();
+        return;
+    }
+    if (!d.limitPin.value) {
+        limitResult(false, 'The PIN is needed to save this.');
+        d.limitPin.focus();
+        return;
+    }
+
+    d.limitSave.disabled = true;
+    d.limitMessage.classList.remove('good', 'bad');
+    d.limitMessage.textContent = 'Saving…';
+    send('save-limit', {
+        id: editing.id,
+        minutes: limitMinutesNow(),
+        value: toggleOn(d.force),
+        pin: d.limitPin.value
+    });
+});
+
+d.limitPin.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); d.limitSave.click(); }
+});
+
+function limitResult(ok, text) {
+    d.limitSave.disabled = false;
+    d.limitMessage.textContent = text || '';
+    // The same two classes the Extend view uses for the same two outcomes.
+    d.limitMessage.classList.toggle('good', !!ok);
+    d.limitMessage.classList.toggle('bad', !ok);
+    if (!ok) return;
+
+    limitDirty = false;
+    d.limitPin.value = '';
+    renderLimit();
 }
 
 function saveDetail() {
@@ -1754,7 +1887,10 @@ d.payload.addEventListener('change', saveDetail);
 for (const el of [d.customName, d.args, d.delay, d.limit]) {
     el.addEventListener('change', saveDetail);
 }
-for (const el of [d.suppress, d.autostart, d.force]) {
+// Not d.force: the limit card owns that one, because it has to decide between
+// saving straight away and arming the PIN. Adding a second listener there
+// flipped the switch twice and left it exactly where it started.
+for (const el of [d.suppress, d.autostart]) {
     el.addEventListener('click', () => {
         if (el.disabled) return;
         setToggle(el, !toggleOn(el));
@@ -1811,6 +1947,11 @@ if (bridge) {
             return;
         }
         if (!message) return;
+
+        if (message.type === 'limit-result') {
+            limitResult(message.value, message.text);
+            return;
+        }
 
         if (message.type === 'theme') { applyTheme(message.theme); return; }
 

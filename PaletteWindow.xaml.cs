@@ -428,6 +428,10 @@ namespace FastApp
                     AddTracked(message.Text);
                     break;
 
+                case "save-limit":
+                    SaveLimit(message.Id, message.Minutes, message.Value, message.Pin);
+                    break;
+
                 case "extend-grant":
                     GrantExtension(message.Id, message.Minutes, message.Pin);
                     break;
@@ -921,6 +925,72 @@ namespace FastApp
 
             // Re-read so the usage line reflects the grant that just happened.
             Dispatcher.BeginInvoke(new Action(PushExtend));
+        }
+
+        /// <summary>
+        /// Change an app's daily limit from the app panel, against the PIN.
+        ///
+        /// The limit was editable only from the dashboard, which reaches the
+        /// same database, in this same process, through an HTTP call to
+        /// localhost that lands back here. That detour is a poor answer when
+        /// the app being limited is the browser you would have to open to make
+        /// it.
+        ///
+        /// Verified here rather than trusted from the page, for the same reason
+        /// SaveApp refuses to write limits at all while a PIN exists: a new
+        /// surface must not become a way around parental control. Minutes of
+        /// zero is how "no limit" is spelled everywhere else, so the switch
+        /// being off arrives as zero rather than as a flag of its own.
+        /// </summary>
+        private void SaveLimit(string id, int minutes, bool force, string pin)
+        {
+            var app = FindApp(id);
+            if (app == null) { LimitResult(false, "That app is no longer in the list."); return; }
+
+            minutes = Math.Max(0, minutes);
+
+            try
+            {
+                using var db = new AppDbContext();
+                var (hasPin, salt, hash) = PinService.GetPinInfo(db);
+
+                // No PIN means nothing to check: the page saves these as you
+                // type in that case and never asks, so arriving here at all is
+                // unusual, but refusing would be the wrong answer.
+                if (hasPin && !PinService.VerifyPin(pin, salt, hash))
+                {
+                    LimitResult(false, "That PIN is not right.");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                LimitResult(false, $"The PIN could not be checked: {ex.Message}");
+                return;
+            }
+
+            // The same message the dashboard's /api/update-limit sends, so both
+            // routes land in one handler and cannot drift apart.
+            WeakReferenceMessenger.Default.Send(
+                new ViewModels.UpdateLimitCommand(app.Name, minutes, force));
+
+            LimitResult(true, minutes > 0
+                ? $"Limited to {minutes} minutes a day."
+                : "Limit removed.");
+
+            // The handler applies the change on the dispatcher, so the panel is
+            // re-read after it rather than alongside it.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                PushState();
+                PushApp(id);
+            }), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void LimitResult(bool ok, string text)
+        {
+            var payload = new { type = "limit-result", value = ok, text };
+            Web.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(payload, JsonOptions));
         }
 
         private void ExtendResult(bool ok, string text)

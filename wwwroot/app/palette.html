@@ -170,23 +170,51 @@
                     <span class="label label-brass">PIN LOCKED</span>
                 </span>
             </div>
-            <div class="field-split">
-                <span class="field-narrow">
-                    <label class="field-label">Minutes</label>
-                    <input class="field" id="d-limit" type="text" placeholder="0" inputmode="numeric">
+            <!-- The switch comes first because most apps have no limit, and
+                 neither a number of minutes nor what to do at the end of them
+                 means anything until there is one. Two controls that only make
+                 sense together are worse than one that reveals them. -->
+            <div class="opt">
+                <span class="opt-text">
+                    <span>Limit time on this app</span>
+                    <span class="hint-sub" id="d-limit-summary"></span>
                 </span>
-                <span class="opt opt-end">
-                    <span class="opt-text"><span>Force close at limit</span></span>
-                    <button class="toggle" id="d-force" type="button" role="switch"><span></span></button>
-                </span>
+                <button class="toggle" id="d-limit-on" type="button" role="switch"><span></span></button>
             </div>
+
+            <div class="stack" id="d-limit-body" hidden>
+                <div class="field-split">
+                    <span class="field-narrow">
+                        <label class="field-label">Minutes a day</label>
+                        <input class="field" id="d-limit" type="text" placeholder="60" inputmode="numeric">
+                    </span>
+                    <span class="opt opt-end">
+                        <span class="opt-text">
+                            <span>Force close at limit</span>
+                            <span class="hint-sub">Otherwise it only warns</span>
+                        </span>
+                        <button class="toggle" id="d-force" type="button" role="switch"><span></span></button>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Only once a PIN is set and something has actually changed. The
+                 fields above stay editable either way: being told no after you
+                 have made up your mind is kinder than a form you cannot fill
+                 in. -->
+            <div class="field-row" id="d-limit-save-row" hidden>
+                <input class="field field-narrow" id="d-limit-pin" type="password"
+                       inputmode="numeric" placeholder="PIN" autocomplete="off">
+                <button class="btn btn-primary" id="d-limit-save" type="button">Save limit</button>
+            </div>
+            <span class="field-label x-message" id="d-limit-message"></span>
             <!-- The old note named the dashboard and stopped there, which left
                  you to go and find the app, open it and find the tab. This is
                  the same sentence with the door attached. -->
             <span class="hint-sub" id="d-limit-note" hidden>
-                A parental PIN is set. Changing this limit asks for it; Extend time adds minutes for today only.
+                A parental PIN is set, so saving a change asks for it. Extend time adds minutes for today only.
             </span>
-            <button class="out-link" id="d-limit-link" type="button" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Change this limit in the dashboard</span></button>
+            <button class="out-link" id="d-limit-link" type="button" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>See this app's limits in the dashboard</span></button>
         </section>
 
     </div>
