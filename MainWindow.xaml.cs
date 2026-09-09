@@ -97,11 +97,49 @@ namespace FastApp
         private TrayService _trayService;
         private bool _isForceExiting = false;
 
+        // Started at the very top of the constructor, below, and awaited
+        // later where the old code used to START it -- see that comment for
+        // why. Always assigned (Task.CompletedTask on the construction-
+        // failure path) so the later await never has a null to fault on.
+        private Task _paletteWarmup = Task.CompletedTask;
+
         // NEW: Variables to track keys while recording a hotkey on the UI
 
         public MainWindow()
         {
             InitializeComponent();
+
+            // 0. PALETTE WARM-UP FIRST, ahead of everything below.
+            //
+            // This used to be the LAST thing this constructor queued, at
+            // ApplicationIdle, well after `new MainViewModel()` had already
+            // finished its database work. But the expensive step here --
+            // EnsureCoreWebView2Async attaching a browser process, measured
+            // at roughly 250-300ms with an isolated harness outside this
+            // app -- never touches the view model, so nothing actually
+            // required it to wait. Starting it first lets that ~250-300ms
+            // attach run concurrently with the database work below instead
+            // of strictly after it: the attach is the longer pole either
+            // way, so the DB work's own duration (roughly 20-25ms on a
+            // migrated install, up to ~70ms on the one-time ticks migration)
+            // is absorbed for free rather than paid on top.
+            //
+            // Wrapped in its own try/catch because it now runs ahead of
+            // everything else here: a failure constructing the window itself
+            // (a XAML load problem, say) must not take the rest of startup
+            // down with it the way it would if it threw straight out of this
+            // constructor uncaught.
+            try
+            {
+                _palette = new PaletteWindow();
+                _paletteWarmup = _palette.PrewarmAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Palette construction failed: {ex.Message}");
+                _palette = null;
+                _paletteWarmup = Task.CompletedTask;
+            }
 
             // 1. TRAY FIRST: Instant visibility in the taskbar.
             _trayService = new TrayService(this);
@@ -112,6 +150,10 @@ namespace FastApp
             // 3. VIEWMODEL LAST: Safe to do DB work now.
             _viewModel = new MainViewModel();
             DataContext = _viewModel;
+
+            // The palette needs a real view model to talk to eventually, just
+            // not before its WebView2 attach could start -- see step 0 above.
+            _palette?.AttachViewModel(_viewModel);
 
             // Read before the hook is wired, so the very first key press is
             // matched against the stored combination rather than the default.
@@ -142,15 +184,20 @@ namespace FastApp
             // time, but this far more frequent path was not.
             System.Windows.Application.Current.SessionEnding += OnSessionEnding;
 
-            // Warmed after the window is up so it never competes with first
-            // paint of the manager, and never on the startup path's critical
-            // section.
+            // Warm-up was already STARTED in step 0, above; this only waits
+            // for it, off the startup path's critical section and at
+            // ApplicationIdle so it never competes with first paint of
+            // anything else. PrewarmAsync itself never throws (its own
+            // InitialiseCoreAsync catches everything internally and records
+            // the reason on Unavailable instead) -- this catch exists for the
+            // one thing that still can: construction of the window itself,
+            // back in step 0, on the path where that already failed and left
+            // _paletteWarmup as Task.CompletedTask.
             Dispatcher.BeginInvoke(new Action(async () =>
             {
                 try
                 {
-                    _palette = new PaletteWindow(_viewModel);
-                    await _palette.PrewarmAsync();
+                    await _paletteWarmup;
                     if (_showPaletteWhenWarm)
                     {
                         _showPaletteWhenWarm = false;
