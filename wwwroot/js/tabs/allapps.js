@@ -65,6 +65,18 @@ function renderAllApps() {
         const cat = app.category || 'Other';
         const focus = app.totalFocus ?? 0;
         const runtime = app.totalRuntime ?? 0;
+
+        // Resource line: shown only for apps with samples recorded. "avg" is
+        // the mean across every 5s tick the app was tracked over the last 30
+        // days; "peak" is the highest single tick in that window. CPU is
+        // scaled so 100% is one core, the way Task Manager shows it.
+        const hasRes = app.avgCpuPercent != null || app.avgRamMB != null;
+        const resHtml = hasRes ? `
+                <div class="allapps-metrics" style="margin-top:6px;border-top:1px solid var(--border-soft);padding-top:6px;">
+                    <div><span>CPU</span><span class="v mono">${app.avgCpuPercent ?? 0}% <span style="color:var(--text-faint)">· peak ${app.peakCpuPercent ?? 0}%</span></span></div>
+                    <div style="text-align:right;"><span>Memory</span><span class="v mono">${fmtMB(app.avgRamMB)} <span style="color:var(--text-faint)">· peak ${fmtMB(app.peakRamMB)}</span></span></div>
+                </div>` : '';
+
         return `
             <div class="card allapps-card" data-open-app="${escapeHtml(name)}" role="button" tabindex="0">
                 <div class="allapps-card-head">
@@ -77,9 +89,15 @@ function renderAllApps() {
                 <div class="allapps-metrics">
                     <div><span>Focus</span><span class="v mono" style="color:var(--brass)">${formatTime(focus)}</span></div>
                     <div style="text-align:right;"><span>Running</span><span class="v mono">${formatTime(runtime)}</span></div>
-                </div>
+                </div>${resHtml}
             </div>`;
     }).join('');
+}
+
+// Bytes-as-MB from the endpoint into "512 MB" / "1.4 GB".
+function fmtMB(mb) {
+    if (mb == null) return '—';
+    return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`;
 }
 
 Dashboard.tabs.allapps = { onEnter: loadAllApps, refresh: loadAllApps };

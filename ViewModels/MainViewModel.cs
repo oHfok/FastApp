@@ -373,6 +373,7 @@ namespace FastApp.ViewModels
             _dbContext.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS HiddenApps (AppName TEXT PRIMARY KEY);");
             _dbContext.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS AppSettings (Key TEXT PRIMARY KEY, Value TEXT);");
             _dbContext.Database.ExecuteSqlRaw(Services.ExecutablePathStore.CreateTableSql);
+            _dbContext.Database.ExecuteSqlRaw(Services.ResourceStatsStore.CreateTableSql);
 
             // Read here, not at the top of this constructor, because every one
             // of them reads AppSettings and that table is only guaranteed to
@@ -1655,6 +1656,17 @@ namespace FastApp.ViewModels
             var afkCache = new Dictionary<string, TimeSpan>();
             var focusCache = new Dictionary<string, TimeSpan>(); // NEW: Focus Cache
 
+            // Per-app CPU and memory, accumulated one sample per tracked app per
+            // tick and folded into AppResourceDaily on the same 60s cycle the
+            // summaries use. lastCpuTotal holds each process's TotalProcessorTime
+            // from the previous tick so a delta can be turned into a percentage;
+            // it is pruned to live PIDs every tick so it cannot grow without
+            // bound. logicalCores is the divisor that makes "100%" mean one
+            // whole core rather than the whole machine.
+            var resourceCache = new Dictionary<string, Services.ResourceStatsStore.Accum>(StringComparer.OrdinalIgnoreCase);
+            var lastCpuTotal = new Dictionary<int, TimeSpan>();
+            double logicalCores = Math.Max(1, Environment.ProcessorCount);
+
             // Process names whose real executable path is already in
             // KnownExecutables, so this loop does not re-read MainModule for
             // them every tick. Seeded from the store, added to as new
@@ -1759,6 +1771,19 @@ namespace FastApp.ViewModels
             {
                 while (_pendingSessions.TryDequeue(out var session)) _dbContext.SessionLogs.Add(session);
                 while (_pendingMacros.TryDequeue(out var macro)) _dbContext.MacroEventLogs.Add(macro);
+            }
+
+            // Its own short-lived context inside FlushBatch, so this is off the
+            // _dbContext lock and safe to call inline from any of the three
+            // flush points. Done inline rather than fire-and-forget so the
+            // day-rollover and shutdown paths do not lose the window.
+            void FlushResourceStats(DateTime date)
+            {
+                if (resourceCache.Count == 0) return;
+                var batch = new Dictionary<string, Services.ResourceStatsStore.Accum>(
+                    resourceCache, StringComparer.OrdinalIgnoreCase);
+                resourceCache.Clear();
+                Services.ResourceStatsStore.FlushBatch(date, batch);
             }
 
             try
@@ -1889,6 +1914,9 @@ namespace FastApp.ViewModels
                         }
                     }
 
+                    // Under the day that just ended, same as the summaries above.
+                    FlushResourceStats(previousDay);
+
                     timeCache.Clear();
                     afkCache.Clear();
                     focusCache.Clear();
@@ -1958,6 +1986,92 @@ namespace FastApp.ViewModels
 
                     timeCache[logName] = timeCache.GetValueOrDefault(logName) + tickDuration;
                     if (isAfk) afkCache[logName] = afkCache.GetValueOrDefault(logName) + tickDuration;
+                }
+
+                // B2. Per-app CPU and memory for this tick.
+                //
+                // One read of TotalProcessorTime and WorkingSet64 per process --
+                // two property reads, no MainModule -- so a few milliseconds
+                // across a couple of hundred processes, once every five seconds.
+                // CPU is a delta since this PID's reading last tick, divided by
+                // (tick length * logical cores): the same normalisation Task
+                // Manager's per-process column uses, so 100% means every core
+                // pinned and one maxed thread on an 8-thread machine reads as
+                // ~12%, not 100%. Both figures are summed across every process
+                // that resolves to one app, so Discord's handful of processes
+                // land as one number. Accumulated only for names also being
+                // time-tracked this tick (a visible window, or a running
+                // managed app) -- the same set sections B and C cover -- so
+                // AppResourceDaily never fills up with background system
+                // processes.
+                var tickCpu = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                var tickRam = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                var livePids = new HashSet<int>();
+                foreach (var proc in allProcesses)
+                {
+                    int pid;
+                    string pn;
+                    try { pid = proc.Id; pn = proc.ProcessName.ToLower(); }
+                    catch { continue; }
+                    if (string.IsNullOrEmpty(pn)) continue;
+                    livePids.Add(pid);
+
+                    TimeSpan cpuNow;
+                    long ram;
+                    try { cpuNow = proc.TotalProcessorTime; ram = proc.WorkingSet64; }
+                    catch { continue; /* protected or exiting */ }
+
+                    double cpuPct = 0;
+                    if (lastCpuTotal.TryGetValue(pid, out var prev))
+                    {
+                        double usedMs = (cpuNow - prev).TotalMilliseconds;
+                        double windowMs = tickDuration.TotalMilliseconds * logicalCores;
+                        if (windowMs > 0) cpuPct = Math.Clamp(usedMs / windowMs * 100.0, 0, 100);
+                    }
+                    lastCpuTotal[pid] = cpuNow;
+
+                    string name = managedAppLookup.TryGetValue(pn, out var mappedName)
+                        ? mappedName
+                        : char.ToUpper(pn[0]) + pn.Substring(1);
+                    tickCpu[name] = tickCpu.GetValueOrDefault(name) + cpuPct;
+                    tickRam[name] = tickRam.GetValueOrDefault(name) + ram;
+                }
+
+                // Drop PIDs that are gone, so lastCpuTotal stays the size of the
+                // process table rather than growing for the life of the app.
+                if (lastCpuTotal.Count > livePids.Count)
+                {
+                    foreach (var dead in lastCpuTotal.Keys.Where(k => !livePids.Contains(k)).ToList())
+                        lastCpuTotal.Remove(dead);
+                }
+
+                // The tracked-name set for this tick: exactly what sections B
+                // and C count time for -- visible apps, plus managed apps whose
+                // executable is running even without a window.
+                var trackedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var pName in visibleProcessNames)
+                {
+                    trackedNames.Add(managedAppLookup.TryGetValue(pName, out var m)
+                        ? m : char.ToUpper(pName[0]) + pName.Substring(1));
+                }
+                foreach (var app in ManagedApps)
+                {
+                    if (string.IsNullOrEmpty(app.ExecutablePath)) continue;
+                    string exe = Path.GetFileNameWithoutExtension(app.ExecutablePath).ToLower();
+                    if (allProcessNames.Contains(exe)) trackedNames.Add(app.Name);
+                }
+
+                foreach (var name in trackedNames)
+                {
+                    double cpu = tickCpu.GetValueOrDefault(name);
+                    long mem = tickRam.GetValueOrDefault(name);
+                    var acc = resourceCache.GetValueOrDefault(name);
+                    resourceCache[name] = new Services.ResourceStatsStore.Accum(
+                        CpuPercentSum: acc.CpuPercentSum + cpu,
+                        CpuPercentPeak: Math.Max(acc.CpuPercentPeak, cpu),
+                        RamBytesSum: acc.RamBytesSum + mem,
+                        RamBytesPeak: Math.Max(acc.RamBytesPeak, mem),
+                        Samples: acc.Samples + 1);
                 }
 
 
@@ -2128,6 +2242,10 @@ namespace FastApp.ViewModels
                         }
                     }
 
+                    // Outside the _dbContext lock: its own context, and it must
+                    // not be able to hold the main one up.
+                    FlushResourceStats(today);
+
                     // Re-read the window-title opt-in each flush. A short-lived,
                     // separate context (not the shared _dbContext) so this never
                     // fights the main context's connection/transaction state.
@@ -2200,6 +2318,8 @@ namespace FastApp.ViewModels
                         FlushPendingQueues();
                         _dbContext.SaveChanges();
                     }
+
+                    FlushResourceStats(DateTime.Today);
                 }
                 catch { /* best-effort — the app is exiting either way */ }
 
