@@ -105,15 +105,18 @@ function initHistoryNav() {
 }
 
 // --- Live polling -------------------------------------------------------
-// This is a single local user hitting localhost, and the tracker itself only
-// flushes to disk every ~60s, so a push/SSE channel would just be extra
-// plumbing for freshness polling already delivers. Each tab exposes an
+// This is a single local user hitting localhost, and the tracker flushes to
+// disk every ~30s, so a push/SSE channel would just be extra plumbing for
+// freshness polling already delivers. Polled a little faster than the flush
+// so the newest data reaches the screen within a few seconds of landing on
+// disk rather than lagging most of a flush behind it. Each tab exposes an
 // optional `refresh` (distinct from `onEnter`) for tabs where blindly
 // re-running onEnter would discard state a poll shouldn't touch — Periods'
-// open detail view/search/sort, Activity's "Load More" depth. Tabs without
-// a `refresh` just don't auto-update; that's a deliberate omission, not
-// an oversight.
-const POLL_INTERVAL_MS = 12000;
+// open detail view/search/sort, Activity's "Load More" depth — and, for the
+// tabs with charts, `refresh` updates them in place instead of rebuilding.
+// Tabs without a `refresh` just don't auto-update; that's a deliberate
+// omission, not an oversight.
+const POLL_INTERVAL_MS = 8000;
 
 function pollCurrentView() {
     if (document.hidden) return; // no point fetching for a backgrounded tab

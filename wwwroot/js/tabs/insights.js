@@ -9,7 +9,12 @@
 let rhythmChartInstance = null;
 let fatigueChartInstance = null;
 
-async function loadInsights() {
+// `live` is set by the 8-second poll: the two bar charts are updated in place
+// rather than torn down and rebuilt, so they don't re-animate from zero on
+// every refresh. A tab entry or a theme change calls this with live falsy and
+// gets a full rebuild (which is what actually recolours the canvases).
+async function loadInsights(opts) {
+    const live = !!(opts && opts.live);
     try {
         const data = await apiFetch(`/api/insights?date=${getLocalTodayStr()}`,
                                     { signal: abortableSignal('insights') });
@@ -29,23 +34,35 @@ async function loadInsights() {
         setInsightDial('in-longest-arc', totalSpan > 0 ? longest / totalSpan : 0);
         setInsightDial('in-avg-arc', longest > 0 ? avgSpan / longest : 0);
 
-        renderRhythmChart(data.rhythm ?? []);
-        renderFatigueChart(data.fatigue ?? []);
+        renderRhythmChart(data.rhythm ?? [], live);
+        renderFatigueChart(data.fatigue ?? [], live);
         renderInsightsHeatmap(data.heatmap ?? []);
     } catch (err) {
         if (!isAbort(err)) console.error('Insights load failed', err);
     }
 }
 
-function renderRhythmChart(rhythm) {
+function renderRhythmChart(rhythm, live) {
     const ctx = document.getElementById('in-rhythm-chart');
     if (!ctx || !window.Chart) return;
-    if (rhythmChartInstance) rhythmChartInstance.destroy();
 
     const theme = getChartTheme(); // read fresh each render — themes recolor charts by re-rendering, not by CSS alone
     const labels = rhythm.map(r => `${pad(r.hour ?? 0)}:00`);
     const work = rhythm.map(r => Math.round(r.work ?? 0));
     const play = rhythm.map(r => Math.round(r.play ?? 0));
+
+    // Poll refresh: morph the existing chart, no animation, no teardown.
+    if (live && rhythmChartInstance) {
+        const c = rhythmChartInstance;
+        c.data.labels = labels;
+        c.data.datasets[0].data = work;
+        c.data.datasets[0].backgroundColor = theme.teal;
+        c.data.datasets[1].data = play;
+        c.data.datasets[1].backgroundColor = theme.violet;
+        c.update('none');
+        return;
+    }
+    if (rhythmChartInstance) rhythmChartInstance.destroy();
 
     rhythmChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -99,14 +116,24 @@ function setInsightDial(id, fraction) {
     el.style.opacity = clamped > 0.005 ? '1' : '0';
 }
 
-function renderFatigueChart(fatigue) {
+function renderFatigueChart(fatigue, live) {
     const ctx = document.getElementById('in-fatigue-chart');
     if (!ctx || !window.Chart) return;
-    if (fatigueChartInstance) fatigueChartInstance.destroy();
 
     const theme = getChartTheme();
     const labels = fatigue.map(f => f.day ?? '');
     const values = fatigue.map(f => Math.round(f.avgMinutes ?? 0));
+    const barColors = values.map(v => v === Math.max(...values, 0) && v > 0 ? theme.brass : theme.teal);
+
+    if (live && fatigueChartInstance) {
+        const c = fatigueChartInstance;
+        c.data.labels = labels;
+        c.data.datasets[0].data = values;
+        c.data.datasets[0].backgroundColor = barColors;
+        c.update('none');
+        return;
+    }
+    if (fatigueChartInstance) fatigueChartInstance.destroy();
 
     fatigueChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -115,7 +142,7 @@ function renderFatigueChart(fatigue) {
             // The heaviest day is brass; the rest teal. The design marks the peak
             // rather than leaving the reader to compare seven similar bars.
             datasets: [{ label: 'Avg session length', data: values,
-                         backgroundColor: values.map(v => v === Math.max(...values, 0) && v > 0 ? theme.brass : theme.teal),
+                         backgroundColor: barColors,
                          borderRadius: 100, borderSkipped: false, maxBarThickness: 52 }]
         },
         options: {
@@ -254,5 +281,7 @@ Dashboard.tabs.insights = {
         loadInsights();
         loadCategoryClassification();
     },
-    refresh: loadInsights // classification mapping rarely changes; skip re-fetching it every poll
+    // live: charts morph in place instead of rebuilding. Classification mapping
+    // rarely changes, so a poll doesn't re-fetch it.
+    refresh: () => loadInsights({ live: true })
 };
