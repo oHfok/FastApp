@@ -389,6 +389,31 @@
             </section>
 
             <section class="s-sec">
+                <h3 class="s-sec-title">Away detection</h3>
+                <!-- How the tracker decides you have stepped away, so that time
+                     shows separately and is kept off daily limits. The 5-second
+                     sampling interval is deliberately not exposed: how fast
+                     limits react is measured against it. -->
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Away after</span>
+                        <span class="s-row-hint">Minutes with no mouse or keyboard before you count as away</span>
+                    </span>
+                    <input class="field field-mins" id="s-afk-threshold" type="number"
+                           inputmode="numeric" min="1" max="120" step="1" aria-label="Minutes before away">
+                </div>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Video &amp; game grace</span>
+                        <span class="s-row-hint">Fullscreen or playing media holds &ldquo;away&rdquo; off this long, then it applies regardless</span>
+                    </span>
+                    <input class="field field-mins" id="s-afk-grace" type="number"
+                           inputmode="numeric" min="1" max="240" step="5" aria-label="Grace period minutes">
+                </div>
+                <span class="s-row-hint" id="s-afk-note">Checked every 5 seconds.</span>
+            </section>
+
+            <section class="s-sec">
                 <h3 class="s-sec-title">Privacy</h3>
                 <div class="s-row">
                     <span class="s-row-text">

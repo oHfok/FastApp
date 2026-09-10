@@ -86,28 +86,48 @@ namespace FastApp.Services
             return false;
         }
 
-        // The fullscreen/media exemptions below are meant to stop a video or a
-        // game from getting wrongly marked AFK during the normal few-minutes-of-
-        // no-input window — not to grant indefinite immunity. Without a ceiling,
-        // something like a Discord call left running (which can register as an
-        // active "Playing" media session for as long as it's open) would keep
-        // reporting "not AFK" forever even after you've actually left. Nobody
-        // genuinely engaged produces zero physical input for this long — even
-        // watching a video, people click, scroll, or type in chat sometimes — so
-        // past this point it's AFK regardless of what fullscreen/media state says.
-        private static readonly TimeSpan HardIdleCeiling = TimeSpan.FromMinutes(30);
+        // --- CONFIGURABLE THRESHOLDS ---
+        // Both default to the values that were hard-coded here before Settings
+        // could reach them. MainViewModel loads the stored values from
+        // AppSettings at startup and writes them back on every change, so the
+        // tracker loop picks up a new value on its next 5-second tick with no
+        // restart. Written from the UI thread, read from the tracker thread —
+        // the same single-writer/single-reader sharing NotificationService
+        // already does with its quiet-hours minutes.
+
+        /// <summary>
+        /// How long with no physical mouse or keyboard input before the user is
+        /// considered away, subject to the fullscreen/media exemptions below.
+        /// Default 5 minutes.
+        /// </summary>
+        public static TimeSpan AfkThreshold { get; set; } = TimeSpan.FromMinutes(5);
+
+        /// <summary>
+        /// The fullscreen/media exemptions are meant to stop a video or a game
+        /// from being wrongly marked AFK during the normal few-minutes-of-no-
+        /// input window — not to grant indefinite immunity. Without a ceiling,
+        /// something like a Discord call left running (which can register as an
+        /// active "Playing" media session for as long as it's open) would keep
+        /// reporting "not AFK" forever even after you've actually left. Nobody
+        /// genuinely engaged produces zero physical input for this long — even
+        /// watching a video, people click, scroll, or type in chat sometimes —
+        /// so past this point it's AFK regardless of fullscreen/media state.
+        /// Default 30 minutes; never usefully below <see cref="AfkThreshold"/>,
+        /// which MainViewModel enforces before setting it.
+        /// </summary>
+        public static TimeSpan PassiveMediaGracePeriod { get; set; } = TimeSpan.FromMinutes(30);
 
         // --- THE MASTER AFK CHECK ---
-        public static async Task<bool> IsTrulyAfkAsync(TimeSpan afkThreshold)
+        public static async Task<bool> IsTrulyAfkAsync()
         {
             TimeSpan idleTime = GetIdleTime();
 
             // 1. Fast Check: Physical mouse/keyboard inputs
-            if (idleTime < afkThreshold)
+            if (idleTime < AfkThreshold)
                 return false;
 
             // 1.5. Hard ceiling: no exemption survives this long with zero input
-            if (idleTime >= HardIdleCeiling)
+            if (idleTime >= PassiveMediaGracePeriod)
                 return true;
 
             // 2. Fast Check: Fullscreen video or DirectX Game
