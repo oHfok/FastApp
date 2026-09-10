@@ -1290,6 +1290,8 @@ const st = {
     quietTimes: document.getElementById('s-quiet-times'),
     quietFrom: document.getElementById('s-quiet-from'),
     quietTo: document.getElementById('s-quiet-to'),
+    afkThreshold: document.getElementById('s-afk-threshold'),
+    afkGrace: document.getElementById('s-afk-grace'),
     dashboardStatus: document.getElementById('s-dashboard-status'),
     openDashboard: document.getElementById('s-open-dashboard'),
     updateStatus: document.getElementById('s-update-status'),
@@ -1338,6 +1340,11 @@ function renderSettings(v) {
     st.quietTimes.hidden = !v.quietHoursEnabled;
     if (document.activeElement !== st.quietFrom) st.quietFrom.value = v.quietHoursFrom || '';
     if (document.activeElement !== st.quietTo) st.quietTo.value = v.quietHoursTo || '';
+
+    // Left alone while focused so a half-typed number is not yanked back; the
+    // host echoes the clamped value once the field blurs.
+    if (document.activeElement !== st.afkThreshold) st.afkThreshold.value = v.afkThresholdMinutes ?? 5;
+    if (document.activeElement !== st.afkGrace) st.afkGrace.value = v.passiveMediaGraceMinutes ?? 30;
 
     st.dashboardStatus.textContent = v.dashboardStatus || '';
     st.openDashboard.disabled = !v.dashboardRunning;
@@ -1626,6 +1633,8 @@ for (const [el, key] of [
 
 st.quietFrom.addEventListener('change', () => settingText('quietHoursFrom', st.quietFrom.value));
 st.quietTo.addEventListener('change', () => settingText('quietHoursTo', st.quietTo.value));
+st.afkThreshold.addEventListener('change', () => settingText('afkThresholdMinutes', st.afkThreshold.value));
+st.afkGrace.addEventListener('change', () => settingText('passiveMediaGraceMinutes', st.afkGrace.value));
 st.rollbackVersion.addEventListener('change', () => settingText('selectedRollback', st.rollbackVersion.value));
 
 st.fix.addEventListener('click', () => send('settings-command', { id: 'fix-startup' }));

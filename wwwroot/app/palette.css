@@ -722,6 +722,10 @@ body {
 
 .field-time { width: 96px; flex-grow: 0; text-align: center; font-family: var(--font-mono); }
 
+/* Small numeric fields that sit at the end of an .s-row where a toggle would
+   otherwise be. Keeps the spin buttons — they make the step discoverable. */
+.field-mins { width: 84px; flex-grow: 0; flex-shrink: 0; text-align: center; font-family: var(--font-mono); padding-right: 10px; }
+
 .s-notes {
     display: flex;
     flex-direction: column;

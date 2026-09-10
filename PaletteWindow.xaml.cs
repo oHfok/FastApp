@@ -1298,6 +1298,9 @@ namespace FastApp
                     quietHoursFrom = _viewModel.QuietHoursFrom,
                     quietHoursTo = _viewModel.QuietHoursTo,
 
+                    afkThresholdMinutes = _viewModel.AfkThresholdMinutes,
+                    passiveMediaGraceMinutes = _viewModel.PassiveMediaGraceMinutes,
+
                     dashboardStatus = _viewModel.DashboardStatusText,
                     dashboardRunning = DashboardServerService.IsRunning,
 
@@ -1338,6 +1341,20 @@ namespace FastApp
                 case "quietHoursEnabled": _viewModel.QuietHoursEnabled = value; break;
                 case "quietHoursFrom": _viewModel.QuietHoursFrom = text ?? string.Empty; break;
                 case "quietHoursTo": _viewModel.QuietHoursTo = text ?? string.Empty; break;
+
+                // Sent as text like the quiet-hours times. The view model clamps
+                // to its allowed range and keeps the grace period >= threshold;
+                // an unparseable value is left as it was.
+                case "afkThresholdMinutes":
+                    if (int.TryParse(text, System.Globalization.NumberStyles.Integer,
+                                     System.Globalization.CultureInfo.InvariantCulture, out int afkMin))
+                        _viewModel.AfkThresholdMinutes = afkMin;
+                    break;
+                case "passiveMediaGraceMinutes":
+                    if (int.TryParse(text, System.Globalization.NumberStyles.Integer,
+                                     System.Globalization.CultureInfo.InvariantCulture, out int graceMin))
+                        _viewModel.PassiveMediaGraceMinutes = graceMin;
+                    break;
                 case "selectedRollback": _viewModel.SelectedRollbackVersion = text; break;
 
                 // Not a view-model property for the reason given in PushSettings.

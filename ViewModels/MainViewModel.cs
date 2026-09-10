@@ -160,6 +160,13 @@ namespace FastApp.ViewModels
         [ObservableProperty] private string _quietHoursFrom = "22:00";
         [ObservableProperty] private string _quietHoursTo = "07:00";
 
+        // AFK detection thresholds, surfaced in Settings. Held here for binding
+        // and mirrored into the static SystemIdleTracker, which the tracker loop
+        // reads on every tick. Defaults match the values SystemIdleTracker used
+        // when they were hard-coded.
+        [ObservableProperty] private int _afkThresholdMinutes = 5;
+        [ObservableProperty] private int _passiveMediaGraceMinutes = 30;
+
         // Mirrors DashboardServerService's real state into the Settings card, which
         // previously hardcoded "The web interface is currently running on ..." and
         // said so even when the server had failed to bind its port.
@@ -388,6 +395,7 @@ namespace FastApp.ViewModels
             LoadOsdSetting();
             LoadAutoLaunchProgressSetting();
             LoadNotificationSettings();
+            LoadAfkSettings();
 
             // --- ONE-TIME MIGRATION: backfill the fast INTEGER Ticks columns for rows
             // that predate them. Gated behind a completed-flag in AppSettings — without
@@ -934,6 +942,94 @@ namespace FastApp.ViewModels
             if (!TryParseTimeOfDay(value, out _)) return;
             Services.AppSettingsStore.Set(QuietHoursToKey, value);
             ApplyNotificationSettings();
+        }
+
+        private const string AfkThresholdMinutesKey = "AfkThresholdMinutes";
+        private const string PassiveMediaGraceMinutesKey = "PassiveMediaGraceMinutes";
+
+        // Guard rails. A zero or negative threshold would mark every idle moment
+        // AFK; a grace period below the threshold would make the fullscreen/media
+        // exemptions unreachable (the ceiling would trip first). The upper bounds
+        // are sanity only — nothing needs a "session" longer than these.
+        private const int MinAfkThresholdMinutes = 1;
+        private const int MaxAfkThresholdMinutes = 120;
+        private const int MinPassiveMediaGraceMinutes = 1;
+        private const int MaxPassiveMediaGraceMinutes = 240;
+
+        private bool _suppressAfkSettingSave;
+
+        private void LoadAfkSettings()
+        {
+            // Suppressed for the same reason as LoadNotificationSettings: seeding
+            // the properties from stored values must not write them straight back.
+            _suppressAfkSettingSave = true;
+            try
+            {
+                int threshold = Services.AppSettingsStore.GetInt(AfkThresholdMinutesKey) ?? 5;
+                int grace = Services.AppSettingsStore.GetInt(PassiveMediaGraceMinutesKey) ?? 30;
+
+                threshold = Math.Clamp(threshold, MinAfkThresholdMinutes, MaxAfkThresholdMinutes);
+                grace = Math.Clamp(grace,
+                    Math.Max(MinPassiveMediaGraceMinutes, threshold), MaxPassiveMediaGraceMinutes);
+
+                AfkThresholdMinutes = threshold;
+                PassiveMediaGraceMinutes = grace;
+            }
+            finally
+            {
+                _suppressAfkSettingSave = false;
+            }
+
+            ApplyAfkSettings();
+        }
+
+        /// <summary>
+        /// Pushes the current thresholds into the static SystemIdleTracker, which
+        /// the tracker loop reads each tick. The grace period is the hard ceiling
+        /// and is never handed over below the threshold, whatever is stored.
+        /// </summary>
+        private void ApplyAfkSettings()
+        {
+            int threshold = Math.Clamp(AfkThresholdMinutes, MinAfkThresholdMinutes, MaxAfkThresholdMinutes);
+            int grace = Math.Clamp(PassiveMediaGraceMinutes,
+                Math.Max(MinPassiveMediaGraceMinutes, threshold), MaxPassiveMediaGraceMinutes);
+
+            Services.SystemIdleTracker.AfkThreshold = TimeSpan.FromMinutes(threshold);
+            Services.SystemIdleTracker.PassiveMediaGracePeriod = TimeSpan.FromMinutes(grace);
+        }
+
+        private void SetAfkMinutesSuppressed(Action set)
+        {
+            _suppressAfkSettingSave = true;
+            try { set(); } finally { _suppressAfkSettingSave = false; }
+        }
+
+        partial void OnAfkThresholdMinutesChanged(int value)
+        {
+            if (_suppressAfkSettingSave) return;
+
+            int clamped = Math.Clamp(value, MinAfkThresholdMinutes, MaxAfkThresholdMinutes);
+            if (clamped != value) SetAfkMinutesSuppressed(() => AfkThresholdMinutes = clamped);
+
+            Services.AppSettingsStore.Set(AfkThresholdMinutesKey, clamped.ToString());
+
+            // The grace period is the hard ceiling; nudge it up if this change
+            // would leave it below the threshold. Its own handler persists it.
+            if (PassiveMediaGraceMinutes < clamped) PassiveMediaGraceMinutes = clamped;
+
+            ApplyAfkSettings();
+        }
+
+        partial void OnPassiveMediaGraceMinutesChanged(int value)
+        {
+            if (_suppressAfkSettingSave) return;
+
+            int floor = Math.Max(MinPassiveMediaGraceMinutes, AfkThresholdMinutes);
+            int clamped = Math.Clamp(value, floor, MaxPassiveMediaGraceMinutes);
+            if (clamped != value) SetAfkMinutesSuppressed(() => PassiveMediaGraceMinutes = clamped);
+
+            Services.AppSettingsStore.Set(PassiveMediaGraceMinutesKey, clamped.ToString());
+            ApplyAfkSettings();
         }
 
         partial void OnShowAutoLaunchProgressChanged(bool value)
@@ -1873,7 +1969,7 @@ namespace FastApp.ViewModels
                     .GroupBy(a => Path.GetFileNameWithoutExtension(a.ExecutablePath).ToLower())
                     .ToDictionary(g => g.Key, g => g.First().Name);
 
-                bool isAfk = await Services.SystemIdleTracker.IsTrulyAfkAsync(TimeSpan.FromMinutes(5));
+                bool isAfk = await Services.SystemIdleTracker.IsTrulyAfkAsync();
                 TimeSpan tickDuration = TimeSpan.FromSeconds(5);
                 DateTime now = DateTime.Now;
 
