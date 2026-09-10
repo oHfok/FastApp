@@ -145,5 +145,42 @@ namespace FastApp.Services
         /// <summary>Total music seconds across every app for a single day.</summary>
         public static long GetTotalForDay(DateTime date) =>
             GetTotalSeconds(date.Date, date.Date.AddDays(1));
+
+        /// <summary>
+        /// Music seconds per calendar day (summed across every app) over
+        /// [fromInclusive, toExclusive). One query; the caller slices it into
+        /// whatever period ranges it needs, the same way the Periods endpoints
+        /// slice the SYSTEM_PC daily logs they already hold in memory.
+        /// </summary>
+        public static Dictionary<DateTime, long> GetDailyTotals(DateTime fromInclusive, DateTime toExclusive)
+        {
+            var result = new Dictionary<DateTime, long>();
+            try
+            {
+                using var db = new AppDbContext();
+                using var cmd = db.Database.GetDbConnection().CreateCommand();
+                cmd.CommandText =
+                    "SELECT Date, SUM(Seconds) FROM MusicListeningDaily " +
+                    "WHERE Date >= $from AND Date < $to GROUP BY Date";
+                var pf = cmd.CreateParameter(); pf.ParameterName = "$from"; pf.Value = Key(fromInclusive); cmd.Parameters.Add(pf);
+                var pt = cmd.CreateParameter(); pt.ParameterName = "$to"; pt.Value = Key(toExclusive); cmd.Parameters.Add(pt);
+
+                db.Database.OpenConnection();
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    if (reader.IsDBNull(0)) continue;
+                    if (DateTime.TryParseExact(reader.GetString(0), "yyyy-MM-dd",
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.None, out var d))
+                        result[d.Date] = reader.IsDBNull(1) ? 0 : reader.GetInt64(1);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MusicStatsStore.GetDailyTotals failed: {ex.Message}");
+            }
+            return result;
+        }
     }
 }

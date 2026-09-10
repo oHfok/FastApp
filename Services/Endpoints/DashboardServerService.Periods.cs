@@ -45,6 +45,13 @@ namespace FastApp.Services
                     .Where(l => l.AppName != "SYSTEM_PC" && l.Date >= historyFloor && !hiddenApps.Contains(l.AppName))
                     .ToListAsync();
 
+                // Music playing time lives in its own table, one query for the
+                // whole window and summed per bucket in memory the same way the
+                // focus/AFK figures are.
+                var musicByDate = MusicStatsStore.GetDailyTotals(historyFloor, DateTime.Today.AddDays(1));
+                double MusicMinutes(DateTime s, DateTime e) =>
+                    musicByDate.Where(kv => kv.Key >= s.Date && kv.Key <= e.Date).Sum(kv => kv.Value) / 60.0;
+
                 // Bucket key -> (start, end) of that day/week/month/year
                 var buckets = new Dictionary<string, (DateTime start, DateTime end, string label)>();
                 foreach (var log in systemLogs)
@@ -87,6 +94,7 @@ namespace FastApp.Services
                     var inRange = systemLogs.Where(l => l.Date >= start && l.Date <= end).ToList();
                     double totalMins = inRange.Sum(l => l.TimeFocused.TotalMinutes);
                     double afkMins = inRange.Sum(l => l.AfkTimeSpent.TotalMinutes);
+                    double musicMins = MusicMinutes(start, end);
                     var mostUsed = appLogs.Where(l => l.Date >= start && l.Date <= end)
                         .GroupBy(l => l.AppName)
                         .Select(g => new { Name = g.Key, Mins = g.Sum(x => x.TimeFocused.TotalMinutes) })
@@ -101,6 +109,7 @@ namespace FastApp.Services
                         EndDate = end.ToString("yyyy-MM-dd"),
                         TotalFocusMinutes = Math.Round(totalMins, 1),
                         TotalAfkMinutes = Math.Round(afkMins, 1),
+                        TotalMusicMinutes = Math.Round(musicMins, 1),
                         MostUsedApp = mostUsed?.Name ?? "—"
                     };
                 })
@@ -115,6 +124,7 @@ namespace FastApp.Services
                     p.EndDate,
                     p.TotalFocusMinutes,
                     p.TotalAfkMinutes,
+                    p.TotalMusicMinutes,
                     p.MostUsedApp,
                     Rank = i + 1,
                     TotalPeriods = results.Count
@@ -185,6 +195,12 @@ namespace FastApp.Services
                     .Where(l => l.AppName != "SYSTEM_PC" && l.Date >= historyFloor && !hiddenApps.Contains(l.AppName))
                     .ToListAsync();
 
+                // Music playing time per day, summed per range in memory like the
+                // focus/AFK/uptime figures below.
+                var musicByDate = MusicStatsStore.GetDailyTotals(historyFloor, DateTime.Today.AddDays(1));
+                double MusicMinutes(DateTime s, DateTime e) =>
+                    musicByDate.Where(kv => kv.Key >= s.Date && kv.Key <= e.Date).Sum(kv => kv.Value) / 60.0;
+
                 object BuildSummary(DateTime periodStart, string label)
                 {
                     var (s, e) = Range(periodStart);
@@ -200,7 +216,8 @@ namespace FastApp.Services
                         EndDate = e.ToString("yyyy-MM-dd"),
                         TotalFocusMinutes = Math.Round(mins, 1),
                         TotalAfkMinutes = Math.Round(afkMins, 1),
-                        TotalUptimeMinutes = Math.Round(uptimeMins, 1)
+                        TotalUptimeMinutes = Math.Round(uptimeMins, 1),
+                        TotalMusicMinutes = Math.Round(MusicMinutes(s, e), 1)
                     };
                 }
 
@@ -217,6 +234,7 @@ namespace FastApp.Services
                 double chosenMins = chosenRange.Sum(l => l.TimeFocused.TotalMinutes);
                 double chosenAfkMins = chosenRange.Sum(l => l.AfkTimeSpent.TotalMinutes);
                 double chosenUptimeMins = chosenRange.Sum(l => l.TimeSpent.TotalMinutes);
+                double chosenMusicMins = MusicMinutes(chosenS, chosenE);
 
                 // Rank against every period of this type that has data
                 var allBuckets = new HashSet<string>();
@@ -290,6 +308,7 @@ namespace FastApp.Services
                     TotalFocusMinutes = Math.Round(chosenMins, 1),
                     TotalAfkMinutes = Math.Round(chosenAfkMins, 1),
                     TotalUptimeMinutes = Math.Round(chosenUptimeMins, 1),
+                    TotalMusicMinutes = Math.Round(chosenMusicMins, 1),
                     Rank = rank,
                     TotalPeriods = allTotals.Count,
                     Previous = BuildSummary(PrevStart(chosenStart), LabelFor(PrevStart(chosenStart))),
