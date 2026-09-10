@@ -297,194 +297,187 @@
 
     <div class="s-grid">
 
-        <!-- The settings cards pack into two columns; the notes card below is
-             deliberately outside them. When the multi-column block was also the
-             scroller, its columns took their height from the visible area rather
-             than from their contents, so the space before the notes changed with
-             the window and with whether the startup banner was showing. -->
-        <div class="s-cards">
-            <section class="card">
-                <span class="label">THIS COMPUTER</span>
-                <div class="opt">
-                    <span class="opt-text">
-                        <span>Start with Windows</span>
-                        <span class="hint-sub">Runs silently in the tray at login</span>
+        <!-- One column, top to bottom. The two-column masonry it replaced
+             flowed reading-order down then across, so Appearance ended up
+             below Notifications-on-the-right and the eye could not follow it;
+             the columns also ended at wildly different heights because the
+             balancer packs by height, which is the exact fault the version
+             before it was meant to fix. A single readable column, sections
+             that announce themselves, and the two forms nobody touches daily
+             folded away. -->
+        <div class="s-list">
+
+            <section class="s-sec">
+                <h3 class="s-sec-title">Startup</h3>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Start with Windows</span>
+                        <span class="s-row-hint">Runs silently in the tray at login</span>
                     </span>
                     <button class="toggle" id="s-startup" type="button" role="switch"><span></span></button>
                 </div>
-                <div class="opt">
-                    <span class="opt-text">
-                        <span>On-screen display</span>
-                        <span class="hint-sub">A small popup when a hotkey fires</span>
-                    </span>
-                    <button class="toggle" id="s-osd" type="button" role="switch"><span></span></button>
-                </div>
-                <div class="opt">
-                    <span class="opt-text">
-                        <span>Auto-launch progress</span>
-                        <span class="hint-sub">Show progress while startup apps open</span>
-                    </span>
-                    <button class="toggle" id="s-progress" type="button" role="switch"><span></span></button>
-                </div>
-            
+            </section>
 
-                <span class="card-sub">SHORTCUT</span>
-                <!-- This used to be fixed, on the reasoning that the way into
-                     the app should not be something you can lose. The tray icon
-                     opens it too and cannot be rebound, so there is always a
-                     way back. -->
-                <div class="opt">
-                    <span class="opt-text">
-                        <span>Open FastApp</span>
-                        <span class="hint-sub" id="s-hotkey-hint">Press it anywhere to summon the window</span>
+            <section class="s-sec">
+                <h3 class="s-sec-title">Shortcut</h3>
+                <!-- Rebindable since 3.3.0: the tray icon opens the window too
+                     and cannot be rebound, so the way in can never be lost. -->
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Open FastApp</span>
+                        <span class="s-row-hint" id="s-hotkey-hint">Press it anywhere to summon the window</span>
                     </span>
                     <button class="btn" id="s-hotkey-reset" type="button" hidden>Reset</button>
                 </div>
-                <button class="field field-button" id="s-hotkey" type="button">Ctrl + Shift + Space</button>
-                <span class="field-label x-message" id="s-hotkey-message"></span>
-            
-            </section>
-
-            <section class="card">
-                <span class="label">APPEARANCE</span>
-                <!-- 3.0.0 followed Windows and offered nothing else, which is the
-                     right default and not the same thing as a choice: a window
-                     that sits on top of whatever you are doing is exactly the one
-                     people want to make an exception for. -->
-                <div class="pillgroup" id="s-theme" role="group" aria-label="Theme">
-                    <button class="pill" type="button" data-theme-pref="system" aria-pressed="true">System</button>
-                    <button class="pill" type="button" data-theme-pref="dark" aria-pressed="false">Dark</button>
-                    <button class="pill" type="button" data-theme-pref="light" aria-pressed="false">Light</button>
+                <div class="s-sub">
+                    <button class="field field-button" id="s-hotkey" type="button">Ctrl + Shift + Space</button>
+                    <span class="field-label x-message" id="s-hotkey-message"></span>
                 </div>
-                <span class="hint-sub" id="s-theme-hint"></span>
-                <!-- Asked often enough to be worth a line: the two are separate
-                     on purpose, since the dashboard may be open on another
-                     machine entirely. -->
-                <span class="hint-sub">The statistics dashboard keeps its own theme, chosen in the browser.</span>
-            
             </section>
 
-            <section class="card">
-                <span class="label">NOTIFICATIONS</span>
-                <div class="opt">
-                    <span class="opt-text">
-                        <span>Show notifications</span>
-                        <span class="hint-sub">Limits are still enforced when off</span>
+            <section class="s-sec">
+                <h3 class="s-sec-title">Notifications &amp; popups</h3>
+                <!-- On-screen display and Auto-launch progress live here, not
+                     under a "this computer" bucket: both are popups, and that
+                     is where someone hunting for "the thing that pops up" will
+                     look. -->
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Show notifications</span>
+                        <span class="s-row-hint">Limits are still enforced when off</span>
                     </span>
                     <button class="toggle" id="s-notify" type="button" role="switch"><span></span></button>
                 </div>
-                <div class="opt">
-                    <span class="opt-text">
-                        <span>Quiet hours</span>
-                        <span class="hint-sub">Silent overnight; may cross midnight</span>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Quiet hours</span>
+                        <span class="s-row-hint">Silent overnight; may cross midnight</span>
                     </span>
                     <button class="toggle" id="s-quiet" type="button" role="switch"><span></span></button>
                 </div>
-                <div class="field-row" id="s-quiet-times">
+                <div class="s-sub field-row" id="s-quiet-times">
                     <span class="label">FROM</span>
                     <input class="field field-time" id="s-quiet-from" type="text" placeholder="22:00">
                     <span class="label">UNTIL</span>
                     <input class="field field-time" id="s-quiet-to" type="text" placeholder="07:00">
                 </div>
-            
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">On-screen display</span>
+                        <span class="s-row-hint">A small popup when a hotkey fires</span>
+                    </span>
+                    <button class="toggle" id="s-osd" type="button" role="switch"><span></span></button>
+                </div>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Auto-launch progress</span>
+                        <span class="s-row-hint">Show progress while startup apps open</span>
+                    </span>
+                    <button class="toggle" id="s-progress" type="button" role="switch"><span></span></button>
+                </div>
             </section>
 
-            <section class="card">
-                <span class="label">PRIVACY</span>
-                <!-- The most sensitive setting in the app, and it could only be
-                     reached through a browser. It belongs on the surface that is
-                     always one keystroke away. -->
-                <div class="opt">
-                    <span class="opt-text">
-                        <span>Record window titles</span>
-                        <span class="hint-sub">Off by default. Titles include page and document names.</span>
+            <section class="s-sec">
+                <h3 class="s-sec-title">Appearance</h3>
+                <div class="pillgroup" id="s-theme" role="group" aria-label="Theme">
+                    <button class="pill" type="button" data-theme-pref="system" aria-pressed="true">System</button>
+                    <button class="pill" type="button" data-theme-pref="dark" aria-pressed="false">Dark</button>
+                    <button class="pill" type="button" data-theme-pref="light" aria-pressed="false">Light</button>
+                </div>
+                <span class="s-row-hint" id="s-theme-hint"></span>
+                <span class="s-row-hint">The statistics dashboard keeps its own theme, chosen in the browser.</span>
+            </section>
+
+            <section class="s-sec">
+                <h3 class="s-sec-title">Privacy</h3>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Record window titles</span>
+                        <span class="s-row-hint">Off by default. Titles include page and document names.</span>
                     </span>
                     <button class="toggle" id="s-titles" type="button" role="switch"><span></span></button>
                 </div>
-                <span class="hint-sub" id="s-titles-note"></span>
-            
-
-                <span class="card-sub">PARENTAL PIN</span>
-                <!-- Only the dashboard could set this, which was the wrong way
-                     round: Extend time lives in this window precisely because
-                     the browser may be the app being limited, and the PIN it
-                     asks for could only be set somewhere unreachable. -->
-                <span class="hint-sub" id="s-pin-state"></span>
-                <div class="stack" id="s-pin-current-row" hidden>
-                    <label class="field-label" for="s-pin-current">Current PIN</label>
-                    <input class="field" id="s-pin-current" type="password" inputmode="numeric"
-                           autocomplete="off" placeholder="Required to change it">
-                </div>
-                <div class="stack">
-                    <label class="field-label" for="s-pin-new">New PIN</label>
-                    <input class="field" id="s-pin-new" type="password" inputmode="numeric"
-                           autocomplete="off" placeholder="At least four characters">
-                </div>
-                <div class="field-row">
-                    <button class="btn btn-primary" id="s-pin-save" type="button">Save PIN</button>
-                    <button class="btn btn-danger" id="s-pin-remove" type="button" hidden>Remove</button>
-                </div>
-                <span class="field-label x-message" id="s-pin-message"></span>
-            
+                <span class="s-row-hint" id="s-titles-note"></span>
             </section>
-        </div>
 
-        <!-- Not settings. Where the dashboard is, which version this is,
-             and how to go back to an earlier one are all facts about the
-             installation, and mixing them into the columns above is most of
-             what made the page unreadable: nine cards of identical weight,
-             packed by height rather than by meaning, so Version sat beside
-             Notifications for no reason anybody could see. -->
-        <section class="card" id="s-about">
-            <span class="label">ABOUT FASTAPP</span>
-                <div class="opt">
-                    <span class="opt-text">
-                        <span>Statistics server</span>
-                        <span class="hint-sub" id="s-dashboard-status">—</span>
-                    </span>
-                    <button class="btn" id="s-open-dashboard" type="button">Open ↗</button>
+            <!-- Folded shut. The PIN is set once or never; open it always
+                 expanded put a three-control form at the loudest point of the
+                 page for a setting almost nobody revisits. -->
+            <details class="s-sec s-fold">
+                <summary class="s-sec-title">
+                    <span>Parental controls</span>
+                    <svg class="s-fold-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg>
+                </summary>
+                <div class="s-fold-body">
+                    <span class="s-row-hint" id="s-pin-state"></span>
+                    <div class="stack" id="s-pin-current-row" hidden>
+                        <label class="field-label" for="s-pin-current">Current PIN</label>
+                        <input class="field" id="s-pin-current" type="password" inputmode="numeric"
+                               autocomplete="off" placeholder="Required to change it">
+                    </div>
+                    <div class="stack">
+                        <label class="field-label" for="s-pin-new">New PIN</label>
+                        <input class="field" id="s-pin-new" type="password" inputmode="numeric"
+                               autocomplete="off" placeholder="At least four characters">
+                    </div>
+                    <div class="field-row">
+                        <button class="btn btn-primary" id="s-pin-save" type="button">Save PIN</button>
+                        <button class="btn btn-danger" id="s-pin-remove" type="button" hidden>Remove</button>
+                    </div>
+                    <span class="field-label x-message" id="s-pin-message"></span>
                 </div>
-            
+            </details>
 
-                <span class="card-sub">VERSION</span>
-                <div class="opt">
-                    <span class="opt-text">
-                        <span id="s-version-line">FastApp</span>
-                        <span class="hint-sub" id="s-update-status">—</span>
+            <!-- Not settings. Where the dashboard is, which version this is,
+                 and going back to an earlier one are facts about the
+                 installation; kept last and lighter so the page reads as the
+                 settings, then the facts. -->
+            <section class="s-sec s-about">
+                <h3 class="s-sec-title">About FastApp</h3>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Statistics server</span>
+                        <span class="s-row-hint" id="s-dashboard-status">&mdash;</span>
+                    </span>
+                    <button class="btn" id="s-open-dashboard" type="button">Open &#8599;</button>
+                </div>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name" id="s-version-line">FastApp</span>
+                        <span class="s-row-hint" id="s-update-status">&mdash;</span>
                     </span>
                     <button class="btn" id="s-check" type="button">Check now</button>
                 </div>
                 <button class="btn btn-primary" id="s-apply" type="button" hidden>Restart and update</button>
-            
 
-                <span class="card-sub">REINSTALL AN EARLIER VERSION</span>
-                <span class="hint-sub">Go back if a release causes trouble. Your data is backed up first.</span>
-                <span class="hint-sub" id="s-rollback-empty" hidden></span>
-                <div class="field-row" id="s-rollback-row">
-                    <select class="field" id="s-rollback-version"></select>
-                    <button class="btn" id="s-rollback" type="button">Reinstall</button>
-                </div>
-                <span class="warn" id="s-rollback-warning" hidden></span>
-                <span class="hint-sub" id="s-rollback-status" hidden></span>
-            
-        </section>
+                <details class="s-fold s-fold-inline">
+                    <summary class="s-fold-inline-title">
+                        <span>Reinstall an earlier version</span>
+                        <svg class="s-fold-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg>
+                    </summary>
+                    <div class="s-fold-body">
+                        <span class="s-row-hint">Go back if a release causes trouble. Your data is backed up first.</span>
+                        <span class="s-row-hint" id="s-rollback-empty" hidden></span>
+                        <div class="field-row" id="s-rollback-row">
+                            <select class="field" id="s-rollback-version"></select>
+                            <button class="btn" id="s-rollback" type="button">Reinstall</button>
+                        </div>
+                        <span class="warn" id="s-rollback-warning" hidden></span>
+                        <span class="s-row-hint" id="s-rollback-status" hidden></span>
+                    </div>
+                </details>
+            </section>
 
+            <section class="s-sec" id="s-whatsnew-card">
+                <h3 class="s-sec-title s-sec-title-row">
+                    <span id="s-whatsnew-label">What's new</span>
+                    <button class="out-link" id="s-all-notes" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Every version</span></button>
+                </h3>
+                <div class="s-notes" id="s-whatsnew"></div>
+                <span class="s-row-hint" id="s-whatsnew-empty" hidden></span>
+            </section>
 
-        <!-- Last, and across both columns. The notes are a document, not a
-             setting: sat in a half-width column they made a card three times
-             the height of anything beside it and left the other column empty
-             down the whole page. Full width with the text held to a readable
-             measure costs the grid nothing and reads properly. -->
-        <section class="card" id="s-whatsnew-card">
-            <span class="card-head">
-                <span class="label" id="s-whatsnew-label">WHAT'S NEW</span>
-                <span class="chrome-spacer"></span>
-                <button class="out-link" id="s-all-notes" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Every version</span></button>
-            </span>
-            <div class="s-notes" id="s-whatsnew"></div>
-            <span class="hint-sub" id="s-whatsnew-empty" hidden></span>
-        </section>
-
+        </div>
     </div>
 
     <div class="detail-foot">
