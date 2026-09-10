@@ -1977,10 +1977,48 @@ namespace FastApp.ViewModels
 
                             if (limitedApp.StrictFocusMode)
                             {
-                                string exeName = Path.GetFileNameWithoutExtension(limitedApp.ExecutablePath)?.ToLower();
-                                if (!string.IsNullOrEmpty(exeName))
+                                // Kill by the identity the limit was actually
+                                // measured against, not by the basename of
+                                // ExecutablePath.
+                                //
+                                // Those two are not the same thing for any app
+                                // launched through a Squirrel/Velopack-style
+                                // stub. Discord's stored ExecutablePath is
+                                // ...\Discord\Update.exe -- the bootstrapper,
+                                // which runs for about a second at launch and
+                                // then exits. The process that actually stays up
+                                // is Discord.exe (several of them; it is
+                                // Electron). The old code looked for a running
+                                // process named "update", found none, and killed
+                                // nothing. The limit still *fired* -- its toast
+                                // uses limitedApp.Name, and the time was tracked
+                                // under the capitalised process name "Discord"
+                                // which happens to equal that Name -- so the
+                                // whole thing looked like it worked right up to
+                                // the point where the app was supposed to close.
+                                //
+                                // So: resolve every running process the same way
+                                // the tracker resolves the foreground one --
+                                // through managedAppLookup if its executable is
+                                // known, otherwise by capitalising its process
+                                // name -- and kill the ones that resolve to this
+                                // app's Name. That is exactly the set whose
+                                // foreground time was counted against the limit,
+                                // and it covers every child process rather than
+                                // one. Slack, Signal, VS Code, Teams and GitHub
+                                // Desktop all have the same Update.exe shape.
+                                foreach (var proc in allProcesses)
                                 {
-                                    foreach (var proc in allProcesses.Where(p => p.ProcessName.ToLower() == exeName))
+                                    string pn;
+                                    try { pn = proc.ProcessName.ToLower(); }
+                                    catch { continue; /* exited between enumerate and read */ }
+                                    if (string.IsNullOrEmpty(pn)) continue;
+
+                                    string resolved = managedAppLookup.TryGetValue(pn, out var mapped)
+                                        ? mapped
+                                        : char.ToUpper(pn[0]) + pn.Substring(1);
+
+                                    if (resolved == limitedApp.Name)
                                     {
                                         try { proc.Kill(); } catch { /* already exited, access denied, etc. */ }
                                     }
