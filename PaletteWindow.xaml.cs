@@ -37,7 +37,13 @@ namespace FastApp
     /// </summary>
     public partial class PaletteWindow : Window
     {
-        private readonly MainViewModel _viewModel;
+        // Set after construction now, by AttachViewModel -- see the
+        // constructor for why. Nothing reads it before that call happens, in
+        // practice: the earliest anything could is a real summon, and that
+        // cannot occur before MainWindow's constructor -- which calls
+        // AttachViewModel immediately after `new MainViewModel()` -- has
+        // returned.
+        private MainViewModel _viewModel = null!;
         private bool _ready;
 
         /// <summary>Null when the palette works; otherwise why it does not.</summary>
@@ -61,12 +67,33 @@ namespace FastApp
         // would have had nowhere to appear.
         private bool _modalOpen;
 
-        public PaletteWindow(MainViewModel viewModel)
+        // Parameterless on purpose. This constructor -- and therefore the
+        // WebView2 attach PrewarmAsync kicks off from Loaded -- used to
+        // require a MainViewModel, which meant it could not start until
+        // `new MainViewModel()` had already finished its own database work.
+        // But InitialiseCoreAsync (the actual expensive step, ~250-300ms to
+        // attach a browser process, measured with an isolated harness
+        // outside this app) never touches the view model at all -- only
+        // OnViewModelChanged does, and that cannot fire before something is
+        // summoned. So the dependency was never real, only a side effect of
+        // both living in one constructor signature. See MainWindow's
+        // constructor for the two-phase construction this makes possible.
+        public PaletteWindow()
         {
             InitializeComponent();
+            Loaded += async (_, _) => await InitialiseAsync();
+        }
+
+        /// <summary>
+        /// Wire up the view model once it exists. Split out of the
+        /// constructor so palette warm-up can start before the view model's
+        /// own (database-bound) construction has finished -- see MainWindow's
+        /// constructor.
+        /// </summary>
+        public void AttachViewModel(MainViewModel viewModel)
+        {
             _viewModel = viewModel;
             _viewModel.PropertyChanged += OnViewModelChanged;
-            Loaded += async (_, _) => await InitialiseAsync();
         }
 
         /// <summary>
