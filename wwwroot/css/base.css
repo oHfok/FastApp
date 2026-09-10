@@ -81,12 +81,10 @@ h1, h2, h3, .num-display {
     justify-content: center;
     flex-shrink: 0;
 }
-.tb-mark::before {
-    content: "";
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--brass);
+.tb-mark-logo {
+    display: block;
+    width: 20px;
+    height: 20px;
 }
 
 .tb-wordmark {

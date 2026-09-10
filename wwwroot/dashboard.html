@@ -47,10 +47,23 @@
 
     <!-- ============ TOP BAR (persistent across all tabs) ============ -->
     <header class="topbar">
-        <!-- The mark keeps the rail's 72px column so the dot lines up with the
+        <!-- The mark keeps the rail's 72px column so the logo lines up with the
              icons below it; the name sits beside it. The live dot stays with the
-             status it reports rather than doubling as the logo. -->
-        <div class="tb-mark" aria-hidden="true"></div>
+             status it reports rather than doubling as the logo. The badge is the
+             same brass-F monogram as Assets/app-icon.svg and the favicon, inlined
+             so it needs no request and no themed variant. -->
+        <div class="tb-mark" aria-hidden="true">
+            <svg class="tb-mark-logo" viewBox="0 0 100 100" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="tb-mark-bg" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse">
+                        <stop offset="0" stop-color="#181B26"/>
+                        <stop offset="1" stop-color="#0A0B10"/>
+                    </linearGradient>
+                </defs>
+                <rect x="2" y="2" width="96" height="96" rx="21" fill="url(#tb-mark-bg)" stroke="rgba(232,163,61,0.22)" stroke-width="1"/>
+                <path d="M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z" fill="#E8A33D"/>
+            </svg>
+        </div>
         <div class="tb-wordmark">FastApp Dashboard</div>
 
         <div class="tb-status">

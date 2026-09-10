@@ -54,7 +54,26 @@ namespace FastApp.Services
                 var mgr = CreateManager();
                 if (!mgr.IsInstalled) return;
 
-                var newVersion = await mgr.CheckForUpdatesAsync();
+                // Time-boxed the same way the user-initiated check is: Velopack's
+                // CheckForUpdatesAsync takes no CancellationToken, so the call is
+                // raced against a delay and the loser left to finish on its own
+                // (a read-only HTTP GET, harmless), its exception observed so it
+                // cannot surface later as an unobserved task. Without this, a
+                // network that accepts the connection but never answers -- a
+                // captive portal, a black-hole firewall -- leaves this background
+                // task parked on HttpClient's ~100s default with nothing waiting
+                // on it. The download below is deliberately NOT capped: a large
+                // package legitimately takes minutes on a slow line.
+                var check = mgr.CheckForUpdatesAsync();
+                if (await Task.WhenAny(check, Task.Delay(CheckTimeout)) != check)
+                {
+                    _ = check.ContinueWith(
+                        t => { _ = t.Exception; },
+                        TaskContinuationOptions.OnlyOnFaulted);
+                    return;
+                }
+
+                var newVersion = await check;
                 if (newVersion == null) return;
 
                 await mgr.DownloadUpdatesAsync(newVersion);
