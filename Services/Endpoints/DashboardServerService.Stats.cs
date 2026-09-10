@@ -613,13 +613,31 @@ namespace FastApp.Services
                 var maxSessions = sessionData.GroupBy(s => s.AppName)
                     .ToDictionary(g => g.Key, g => g.Max(s => (s.EndTime - s.StartTime).TotalMinutes));
 
-                var result = logs.Select(l => new {
-                    AppName = l.AppName,
-                    Category = categoryMap.GetValueOrDefault(l.AppName, "Other"),
-                    TotalFocus = TimeSpan.FromTicks(l.TotalFocusTicks).TotalMinutes,
-                    TotalRuntime = TimeSpan.FromTicks(l.TotalRuntimeTicks).TotalMinutes,
-                    TotalAfk = TimeSpan.FromTicks(l.TotalAfkTicks).TotalMinutes,
-                    LongestSession = maxSessions.GetValueOrDefault(l.AppName, 0)
+                // What each app has been costing the machine, averaged over the
+                // last 30 days -- recent state rather than a lifetime figure,
+                // matching how the drawer treats behaviour. Null on an app with
+                // no samples yet (nothing recorded before this build, or an app
+                // that has not run since).
+                var resources = ResourceStatsStore.GetRange(
+                    DateTime.Today.AddDays(-29), DateTime.Today.AddDays(1));
+
+                var result = logs.Select(l =>
+                {
+                    resources.TryGetValue(l.AppName, out var r);
+                    bool hasRes = r.Samples > 0;
+                    return new
+                    {
+                        AppName = l.AppName,
+                        Category = categoryMap.GetValueOrDefault(l.AppName, "Other"),
+                        TotalFocus = TimeSpan.FromTicks(l.TotalFocusTicks).TotalMinutes,
+                        TotalRuntime = TimeSpan.FromTicks(l.TotalRuntimeTicks).TotalMinutes,
+                        TotalAfk = TimeSpan.FromTicks(l.TotalAfkTicks).TotalMinutes,
+                        LongestSession = maxSessions.GetValueOrDefault(l.AppName, 0),
+                        AvgCpuPercent = hasRes ? Math.Round(r.AverageCpuPercent, 1) : (double?)null,
+                        PeakCpuPercent = hasRes ? Math.Round(r.PeakCpuPercent, 1) : (double?)null,
+                        AvgRamMB = hasRes ? Math.Round(r.AverageRamBytes / 1048576.0, 0) : (double?)null,
+                        PeakRamMB = hasRes ? Math.Round(r.PeakRamBytes / 1048576.0, 0) : (double?)null
+                    };
                 }).OrderBy(x => x.AppName).ToList();
 
                 await context.Response.WriteAsJsonAsync(result);

@@ -816,6 +816,23 @@
             </div>
         </div>
 
+        <div class="dd-section" data-card="dd-resources" data-card-name="Resource Use">
+            <div class="dd-section-label">Resource Use</div>
+            <div style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:14px;">Average and peak across every sample over the last 30 days. CPU is scaled so 100% means every core busy, the way Task Manager shows it.</div>
+            <div class="dd-stat-grid">
+                <div class="card dd-stat">
+                    <div class="card-label">CPU</div>
+                    <div class="dd-stat-value" id="dd-cpu-avg">—</div>
+                    <div class="dd-stat-sub" id="dd-cpu-peak"></div>
+                </div>
+                <div class="card dd-stat">
+                    <div class="card-label">Memory</div>
+                    <div class="dd-stat-value" id="dd-ram-avg">—</div>
+                    <div class="dd-stat-sub" id="dd-ram-peak"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="dd-section" data-card="dd-milestone" data-card-name="Milestone">
             <div class="dd-section-label">Milestone</div>
             <div style="font-size:var(--fs-small);color:var(--text-faint);margin-bottom:14px;">Tiers based on cumulative focused time in this app.</div>
