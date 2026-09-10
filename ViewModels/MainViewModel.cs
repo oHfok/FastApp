@@ -80,8 +80,8 @@ namespace FastApp.ViewModels
         private readonly ConcurrentQueue<ViewModels.SessionLog> _pendingSessions = new();
         private readonly ConcurrentQueue<ViewModels.MacroEventLog> _pendingMacros = new();
 
-        // The tracker only flushes to disk every ~60s (see StartProcessTrackerAsync)
-        // — without this, a normal "Exit" could silently drop up to a minute of the
+        // The tracker only flushes to disk every ~30s (see StartProcessTrackerAsync)
+        // — without this, a normal "Exit" could silently drop up to that much of the
         // day's tracking plus whatever session was still open. RequestShutdownFlushAsync
         // cancels the tracker's wait; the tracker does one last flush in its finally
         // block and signals _trackerStoppedTcs when it's actually safe to exit.
@@ -1225,7 +1225,7 @@ namespace FastApp.ViewModels
             // binding's source update. An exception thrown here escapes into WPF's
             // binding machinery, where it is of no use to anyone: the edit is lost
             // and nothing says so. SQLite can genuinely fail here transiently -- the
-            // tracker thread writes to this same connection every 60 seconds.
+            // tracker thread writes to this same connection on every periodic flush.
             //
             // Swallowing is safe because it is not the only chance to persist: the
             // entity stays tracked and Modified, so the tracker's next flush calls
@@ -1593,7 +1593,7 @@ namespace FastApp.ViewModels
         // auto-update restarts the process, so both go through the exact same
         // shutdown sequence. Cancels the tracker's tick wait, which makes it
         // fall into its own finally block and do one last flush (close the
-        // open session, write whatever's accumulated since the last 60s
+        // open session, write whatever's accumulated since the last periodic
         // flush). Bounded by a short timeout so a stuck flush can never hang
         // app exit or delay an update.
         //
@@ -1754,7 +1754,7 @@ namespace FastApp.ViewModels
             var focusCache = new Dictionary<string, TimeSpan>(); // NEW: Focus Cache
 
             // Per-app CPU and memory, accumulated one sample per tracked app per
-            // tick and folded into AppResourceDaily on the same 60s cycle the
+            // tick and folded into AppResourceDaily on the same flush cycle the
             // summaries use. lastCpuTotal holds each process's TotalProcessorTime
             // from the previous tick so a delta can be turned into a percentage;
             // it is pruned to live PIDs every tick so it cannot grow without
@@ -1765,12 +1765,12 @@ namespace FastApp.ViewModels
             double logicalCores = Math.Max(1, Environment.ProcessorCount);
 
             // Whole seconds of active music playback per app this flush window,
-            // folded into MusicListeningDaily on the same 60s cycle. A tick
+            // folded into MusicListeningDaily on the same flush cycle. A tick
             // counts for an app when it carries the "Music" category AND a media
             // session it owns is reporting Playing -- see MusicStatsStore.
             // categoryByApp is app name -> category, rebuilt on each flush like
             // captureWindowTitles so a category edit on the dashboard starts or
-            // stops the count within ~60s.
+            // stops the count within one flush interval.
             var musicCache = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
             var categoryByApp = Services.CategoryMap.Build();
 
@@ -1800,8 +1800,9 @@ namespace FastApp.ViewModels
             // actually committed to the DB as of the last flush) + focusCache
             // (accumulated since that flush). Checking against this every tick,
             // instead of only the value on disk, is what makes enforcement react
-            // within ~5s instead of ~60s. Seeded from the DB once at startup so a
-            // mid-day restart of FastApp itself doesn't reset anyone's count.
+            // within ~5s instead of one flush interval. Seeded from the DB once at
+            // startup so a mid-day restart of FastApp itself doesn't reset anyone's
+            // count.
             //
             // TimeFocused, not TimeSpent. This counted TimeSpent -- how long the
             // process had merely existed -- while every surface that shows a
@@ -1831,18 +1832,27 @@ namespace FastApp.ViewModels
             // browser tab's page name, a document name, etc., far more sensitive
             // than a bare process name). Re-checked once per flush, not every
             // tick, so flipping the setting in the dashboard takes effect within
-            // ~60 seconds without needing an app restart.
+            // one flush interval without needing an app restart.
             bool captureWindowTitles = false;
 
             int tickCount = 0;
-            const int FlushIntervalTicks = 12; // 60 seconds
+            // 30 seconds. Was 60. This is the floor on how stale the web
+            // dashboard's newest numbers can be -- it reads the database, and
+            // nothing is in the database until a flush. Halving it makes the
+            // dashboard visibly fresher without a push channel; a shorter
+            // interval also means less unflushed work in memory if the process
+            // is hard-killed (the 2026-08-19 corruption shape), so this is if
+            // anything safer for durability, not riskier. The per-flush cost is
+            // one small SaveChanges plus the settings/PIN re-reads and, only
+            // when the desktop Statistics window is open, one RefreshStats.
+            const int FlushIntervalTicks = 6; // 30 seconds
 
             // NEW: Session State Trackers
             string currentFocusedApp = null;
             DateTime? currentSessionStart = null;
             string currentSessionTitle = null;
 
-            // Shared by the periodic 60s flush and the final flush-on-exit below,
+            // Shared by the periodic flush and the final flush-on-exit below,
             // so a normal quit persists exactly the same way a scheduled flush does.
             void FlushDailySummaries(DateTime today)
             {
@@ -2438,8 +2448,8 @@ namespace FastApp.ViewModels
                     FlushMusicStats(today);
 
                     // Rebuild the category map each flush so a category change on
-                    // the dashboard starts (or stops) the music count within
-                    // ~60s. Only replace it if the read actually returned
+                    // the dashboard starts (or stops) the music count within one
+                    // flush interval. Only replace it if the read actually returned
                     // something -- a transient empty map would pause counting.
                     try
                     {
@@ -2466,8 +2476,9 @@ namespace FastApp.ViewModels
                     }
 
                     // Re-read PIN-configured state each flush too, so the Daily
-                    // Limit controls lock (or unlock) within ~60s of setting or
-                    // removing a PIN from the dashboard, no app restart needed.
+                    // Limit controls lock (or unlock) within one flush interval of
+                    // setting or removing a PIN from the dashboard, no app restart
+                    // needed.
                     try
                     {
                         using var pinDb = new AppDbContext();

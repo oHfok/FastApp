@@ -306,11 +306,32 @@ function renderCategoryBar(leaderboard) {
     const legendEl = document.getElementById('ov-cat-legend');
 
     if (totalMins === 0) {
+        barEl.dataset.catKey = '';
         barEl.innerHTML = `<div class="cat-bar-seg" style="width:100%;background:var(--panel-border)"></div>`;
         legendEl.innerHTML = `<span style="color:var(--text-faint);font-size:var(--fs-small);">No category data for this period.</span>`;
         return;
     }
 
+    // When the same categories are present in the same order — the normal case
+    // on a poll — only the widths and legend figures have moved, so update those
+    // on the existing nodes and let `.cat-bar-seg { transition: width }` carry
+    // the change. Rebuilding innerHTML would drop that transition (a brand-new
+    // node has no previous width to animate from) and snap the bar instead.
+    const key = entries.map(([cat]) => cat).join('|');
+    if (barEl.dataset.catKey === key && barEl.children.length === entries.length) {
+        entries.forEach(([cat, mins], i) => {
+            const pct = (mins / totalMins) * 100;
+            barEl.children[i].style.width = `${pct}%`;
+            const segLabel = `${cat}, ${formatTime(mins)}`;
+            barEl.children[i].title = segLabel;
+            barEl.children[i].setAttribute('aria-label', segLabel);
+            const fig = legendEl.children[i]?.querySelector('.mono');
+            if (fig) fig.textContent = `${Math.round(pct)}% · ${formatTime(mins)}`;
+        });
+        return;
+    }
+
+    barEl.dataset.catKey = key;
     barEl.innerHTML = entries.map(([cat, mins]) => {
         const pct = (mins / totalMins) * 100;
         // Purely a coloured slice — no text inside, so it needs an explicit
