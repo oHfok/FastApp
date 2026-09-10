@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace FastApp.Services
 {
     /// <summary>
-    /// How long each application spent actively playing music, per app, per day.
+    /// How long music spent playing, per day -- both per app and as one
+    /// wall-clock total.
     ///
     /// A five-second tick counts toward an app here when two things are true at
     /// once: the app carries the "Music" category (as resolved by CategoryMap --
@@ -14,6 +15,14 @@ namespace FastApp.Services
     /// is reporting Playing. Spotify left paused in the background adds nothing;
     /// a video player that happens to be playing but is not categorised as Music
     /// adds nothing.
+    ///
+    /// Two shapes share the table:
+    ///   * one row per (day, app) -- what each music app played, which sum to
+    ///     more than real time when two are playing at once;
+    ///   * one row per day under <see cref="WallClockKey"/> -- the tick counted
+    ///     once if ANY music app was playing, so this is "time the day had music
+    ///     on", capped at real time. The dashboard's headline figure reads this;
+    ///     the per-app breakdown reads the rest.
     ///
     /// Stored as a running total of whole seconds, folded in on the same 60s
     /// cycle as the daily summaries and the resource stats. A sibling loose
@@ -31,12 +40,20 @@ namespace FastApp.Services
             "Seconds INTEGER NOT NULL DEFAULT 0, " +
             "PRIMARY KEY (Date, AppName));";
 
+        /// <summary>
+        /// Reserved AppName for the wall-clock aggregate row: one tick, counted
+        /// once, whenever any music app was playing. Mirrors the "SYSTEM_PC"
+        /// convention DailyLogs already uses for its machine-wide row.
+        /// </summary>
+        public const string WallClockKey = "SYSTEM_MUSIC";
+
         private static string Key(DateTime date) => date.ToString("yyyy-MM-dd");
 
         /// <summary>
         /// Add a flush window's seconds to the day's rows. Called repeatedly
         /// through a day; the totals come out the same as a single call with the
-        /// whole day's seconds would.
+        /// whole day's seconds would. The caller passes both the per-app keys and
+        /// the <see cref="WallClockKey"/> row.
         /// </summary>
         public static void FlushBatch(DateTime date, IReadOnlyDictionary<string, long> perApp)
         {
@@ -83,7 +100,8 @@ namespace FastApp.Services
 
         /// <summary>
         /// Seconds of music per app over [fromInclusive, toExclusive) by date,
-        /// summed across every day in the range.
+        /// summed across every day in the range. The wall-clock aggregate row is
+        /// excluded -- this is the per-app breakdown.
         /// </summary>
         public static Dictionary<string, long> GetRange(DateTime fromInclusive, DateTime toExclusive)
         {
@@ -94,9 +112,10 @@ namespace FastApp.Services
                 using var cmd = db.Database.GetDbConnection().CreateCommand();
                 cmd.CommandText =
                     "SELECT AppName, SUM(Seconds) FROM MusicListeningDaily " +
-                    "WHERE Date >= $from AND Date < $to GROUP BY AppName";
+                    "WHERE Date >= $from AND Date < $to AND AppName <> $wc GROUP BY AppName";
                 var pf = cmd.CreateParameter(); pf.ParameterName = "$from"; pf.Value = Key(fromInclusive); cmd.Parameters.Add(pf);
                 var pt = cmd.CreateParameter(); pt.ParameterName = "$to"; pt.Value = Key(toExclusive); cmd.Parameters.Add(pt);
+                var pw = cmd.CreateParameter(); pw.ParameterName = "$wc"; pw.Value = WallClockKey; cmd.Parameters.Add(pw);
 
                 db.Database.OpenConnection();
                 using var reader = cmd.ExecuteReader();
@@ -116,8 +135,8 @@ namespace FastApp.Services
         }
 
         /// <summary>
-        /// Total music seconds across every app over [fromInclusive, toExclusive).
-        /// One SUM() on disk rather than materialising the per-app rows.
+        /// Wall-clock music seconds over [fromInclusive, toExclusive): time any
+        /// music app was playing, counted once per tick. One SUM() on disk.
         /// </summary>
         public static long GetTotalSeconds(DateTime fromInclusive, DateTime toExclusive)
         {
@@ -127,9 +146,10 @@ namespace FastApp.Services
                 using var cmd = db.Database.GetDbConnection().CreateCommand();
                 cmd.CommandText =
                     "SELECT COALESCE(SUM(Seconds), 0) FROM MusicListeningDaily " +
-                    "WHERE Date >= $from AND Date < $to";
+                    "WHERE Date >= $from AND Date < $to AND AppName = $wc";
                 var pf = cmd.CreateParameter(); pf.ParameterName = "$from"; pf.Value = Key(fromInclusive); cmd.Parameters.Add(pf);
                 var pt = cmd.CreateParameter(); pt.ParameterName = "$to"; pt.Value = Key(toExclusive); cmd.Parameters.Add(pt);
+                var pw = cmd.CreateParameter(); pw.ParameterName = "$wc"; pw.Value = WallClockKey; cmd.Parameters.Add(pw);
 
                 db.Database.OpenConnection();
                 var result = cmd.ExecuteScalar();
@@ -142,15 +162,15 @@ namespace FastApp.Services
             }
         }
 
-        /// <summary>Total music seconds across every app for a single day.</summary>
+        /// <summary>Wall-clock music seconds for a single day.</summary>
         public static long GetTotalForDay(DateTime date) =>
             GetTotalSeconds(date.Date, date.Date.AddDays(1));
 
         /// <summary>
-        /// Music seconds per calendar day (summed across every app) over
-        /// [fromInclusive, toExclusive). One query; the caller slices it into
-        /// whatever period ranges it needs, the same way the Periods endpoints
-        /// slice the SYSTEM_PC daily logs they already hold in memory.
+        /// Wall-clock music seconds per calendar day over [fromInclusive,
+        /// toExclusive). One query; the caller slices it into whatever period
+        /// ranges it needs, the same way the Periods endpoints slice the
+        /// SYSTEM_PC daily logs they already hold in memory.
         /// </summary>
         public static Dictionary<DateTime, long> GetDailyTotals(DateTime fromInclusive, DateTime toExclusive)
         {
@@ -160,10 +180,11 @@ namespace FastApp.Services
                 using var db = new AppDbContext();
                 using var cmd = db.Database.GetDbConnection().CreateCommand();
                 cmd.CommandText =
-                    "SELECT Date, SUM(Seconds) FROM MusicListeningDaily " +
-                    "WHERE Date >= $from AND Date < $to GROUP BY Date";
+                    "SELECT Date, Seconds FROM MusicListeningDaily " +
+                    "WHERE Date >= $from AND Date < $to AND AppName = $wc";
                 var pf = cmd.CreateParameter(); pf.ParameterName = "$from"; pf.Value = Key(fromInclusive); cmd.Parameters.Add(pf);
                 var pt = cmd.CreateParameter(); pt.ParameterName = "$to"; pt.Value = Key(toExclusive); cmd.Parameters.Add(pt);
+                var pw = cmd.CreateParameter(); pw.ParameterName = "$wc"; pw.Value = WallClockKey; cmd.Parameters.Add(pw);
 
                 db.Database.OpenConnection();
                 using var reader = cmd.ExecuteReader();
