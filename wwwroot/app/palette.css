@@ -607,48 +607,105 @@ body {
     overflow: hidden;
 }
 
-/* The scroller. Nothing else: it holds the two-column block of settings cards
-   and, beneath it, the release notes. */
+/* The scroller. One column now, not a two-column masonry: the two-column
+   version flowed reading-order down then across, so Appearance ended up
+   visually below Notifications-on-the-right, and the columns ended at
+   wildly different heights because a masonry packs by height -- the exact
+   fault the version before it set out to fix. */
 .s-grid {
     display: flex;
     flex-direction: column;
-    /* The trailing card margin inside the column block does not extend it, so
-       the space before the notes has to come from here. Measured at 14px in
-       every state the page has -- banner up or down, quiet hours open, no
-       rollback versions. */
-    gap: 14px;
     flex-grow: 1;
     min-height: 0;
     overflow-y: auto;
 }
-
-/* Columns, not a grid.
-
-   A grid keeps uniform rows, so the shorter card in each pair either stretched
-   to its neighbour's height -- which turned the two-line VERSION card into a
-   large empty panel -- or, once that was stopped, left a ragged gap under
-   itself waiting for the next row to begin. Both are the same fact: these
-   cards have nothing to do with one another and no reason to share a baseline.
-   Columns drop the rows and pack each card directly under the one above it.
-
-   Separate from the scroller on purpose. When one element was both, the columns
-   took their height from the visible area rather than from their contents, so
-   the space between the last card and the notes moved with the window size and
-   with whether the startup banner happened to be showing -- 14px in one state
-   and 81px in another. */
-.s-cards {
-    columns: 2;
-    column-gap: 14px;
-}
-/* A column-gap only separates the columns; down the page the spacing is the
-   card's own, and break-inside keeps a card from being split across the two.
-   The last card's margin is also what sets the notes card off from the block,
-   so the scroller adds no gap of its own. */
-.s-cards > .card {
-    break-inside: avoid;
-    margin-bottom: 14px;
-}
 .s-grid::-webkit-scrollbar { width: 0; }
+
+.s-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 540px;
+    width: 100%;
+    margin: 0 auto;
+    padding-bottom: 4px;
+}
+
+/* One section, one concern. The panel fill does the grouping; the heading
+   says what it groups; nothing else needs a distinct text style to carry
+   the structure. */
+.s-sec {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+}
+
+/* The heading is the loudest thing on the section again. It was 10px grey
+   mono caps -- quieter than the toggle labels sitting inside it -- so the
+   thing you navigate by was the thing you could least see. */
+.s-sec-title {
+    font-size: var(--fs-strong);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+.s-sec-title-row { display: flex; align-items: center; gap: 10px; }
+.s-sec-title-row > span:first-child { flex-grow: 1; }
+
+/* One row everywhere: name and hint on the left, one control on the right,
+   same padding and baseline. */
+.s-row { display: flex; align-items: center; gap: 14px; min-height: 24px; }
+.s-row-text { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0; }
+.s-row-name { font-size: var(--fs-body); color: var(--text); }
+.s-row-hint { font-size: var(--fs-caption); color: var(--text-faint); }
+
+/* Detail that belongs to the row above it -- the quiet-hours times, the
+   shortcut capture -- indented a hair so it reads as under the row. */
+.s-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-left: 2px;
+    margin-top: -2px;
+}
+.s-sub.field-row { flex-direction: row; align-items: center; }
+
+/* Folded shut: the PIN form and the rollback picker, the two things nobody
+   opens on an ordinary visit. <details>/<summary>, so it is keyboard-
+   operable, needs no script, and stays where the user left it. */
+.s-fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+.s-fold > summary::-webkit-details-marker { display: none; }
+.s-fold > summary > span:first-child { flex-grow: 1; }
+.s-fold-chev { color: var(--text-faint); transition: transform 0.15s ease; flex-shrink: 0; }
+.s-fold[open] > summary .s-fold-chev { transform: rotate(180deg); }
+.s-fold-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 12px;
+    margin-top: 11px;
+    border-top: 1px solid var(--panel-border-soft);
+}
+
+/* Reinstall lives inside About as a fold within a section -- one weight
+   below a section heading, since it is a sub-concern of "which version". */
+.s-fold-inline { margin-top: 2px; }
+.s-fold-inline-title {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 700;
+}
+
+/* Facts about the installation, not settings: last, and its rows a shade
+   quieter than a real setting's. */
+.s-about .s-row-name { color: var(--text-dim); }
 
 .banner {
     display: flex;
@@ -665,36 +722,12 @@ body {
 
 .field-time { width: 96px; flex-grow: 0; text-align: center; font-family: var(--font-mono); }
 
-/* Across both columns, and last. Its own width is the page's; the text inside
-   it is not, because a line 850px long is not a line anyone reads. */
-/* A divider inside a card: two related groups under one heading, rather than
-   two cards the column balancer can park anywhere it likes. The page had nine
-   cards of identical weight packed by height, so what sat next to what carried
-   no meaning at all -- Version beside Notifications, the PIN form beside the
-   startup toggles. Fewer, larger, self-explaining cards is the whole fix. */
-.card-sub {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    color: var(--text-faint);
-    font-weight: 700;
-    padding-top: 13px;
-    border-top: 1px solid var(--panel-border-soft);
-}
-
-/* The things that are not settings: where the dashboard is, which version this
-   is, and how to go back to an earlier one. Full width and last, so the page
-   reads as the settings and then the facts about the installation, rather than
-   as nine equal boxes in no particular order. */
-#s-about { column-span: all; margin: 0; }
-
-#s-whatsnew-card { margin: 0; }
 .s-notes {
     display: flex;
     flex-direction: column;
     gap: 7px;
-    /* Prose wants 45-75 characters a line. The card is 892px wide; left to
-       fill it these would set at about 140. */
+    /* Prose wants 45-75 characters a line; the section is ~500px wide, so
+       this only bites when a note runs unusually long. */
     max-width: 70ch;
 }
 

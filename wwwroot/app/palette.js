@@ -884,7 +884,7 @@ const VIEWS = {
     palette: { el: document.getElementById('view-palette'), w: 820, h: 560 },
     detail: { el: document.getElementById('view-detail'), w: 820, h: 560 },
     manage: { el: document.getElementById('view-manage'), w: 940, h: 620 },
-    settings: { el: document.getElementById('view-settings'), w: 940, h: 700 },
+    settings: { el: document.getElementById('view-settings'), w: 620, h: 700 },
     scanner: { el: document.getElementById('view-scanner'), w: 880, h: 640 },
     extend: { el: document.getElementById('view-extend'), w: 620, h: 470 }
 };
