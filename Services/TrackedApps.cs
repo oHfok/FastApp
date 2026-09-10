@@ -66,14 +66,26 @@ namespace FastApp.Services
         ///
         /// The logs record only the process name -- the tracker capitalises the
         /// lowercased process name, so "Javaw" is the process "javaw" -- and
-        /// adding an app needs a path. Two ways to get one, in order of how much
-        /// they can be trusted: ask the process itself if it happens to be
-        /// running, then look through what is installed. Neither is guaranteed,
-        /// which is why the caller has to handle null.
+        /// adding an app needs a path. Three ways to get one, in order of how
+        /// much they can be trusted: the path the tracker recorded while that
+        /// process was last running (KnownExecutables, checked against disk in
+        /// case it has since moved), then the process itself if it is running
+        /// now, then a scan of what is installed. Still not guaranteed, which is
+        /// why the caller handles null -- but a closed app now resolves where it
+        /// used to force the file picker.
         /// </summary>
         public static string ResolvePath(string trackedName, IEnumerable<string> installedPaths = null)
         {
             if (string.IsNullOrWhiteSpace(trackedName)) return null;
+
+            // What the tracker last saw for this name. Preferred over the live
+            // process because it is there whether or not the app is open, and
+            // because it is captured from the real executable rather than a
+            // Squirrel stub. Confirmed against disk so an uninstall or a move
+            // does not hand back a dead path.
+            string remembered = ExecutablePathStore.Get(trackedName);
+            if (!string.IsNullOrEmpty(remembered) && File.Exists(remembered))
+                return remembered;
 
             Process[] running;
             try { running = Process.GetProcesses(); }

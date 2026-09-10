@@ -372,6 +372,7 @@ namespace FastApp.ViewModels
             // Creating them here too, before that read, closes the race.
             _dbContext.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS HiddenApps (AppName TEXT PRIMARY KEY);");
             _dbContext.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS AppSettings (Key TEXT PRIMARY KEY, Value TEXT);");
+            _dbContext.Database.ExecuteSqlRaw(Services.ExecutablePathStore.CreateTableSql);
 
             // Read here, not at the top of this constructor, because every one
             // of them reads AppSettings and that table is only guaranteed to
@@ -1654,6 +1655,18 @@ namespace FastApp.ViewModels
             var afkCache = new Dictionary<string, TimeSpan>();
             var focusCache = new Dictionary<string, TimeSpan>(); // NEW: Focus Cache
 
+            // Process names whose real executable path is already in
+            // KnownExecutables, so this loop does not re-read MainModule for
+            // them every tick. Seeded from the store, added to as new
+            // applications are seen, and cleared roughly hourly (see
+            // ExePathRefreshTicks) so a path stays current when an app updates
+            // itself into a new versioned folder -- Discord's app-<version>
+            // being the obvious one.
+            var exePathsKnown = new HashSet<string>(
+                Services.ExecutablePathStore.All().Keys, StringComparer.OrdinalIgnoreCase);
+            const int ExePathRefreshTicks = 720; // 720 * 5s = 1 hour
+            int exePathTickCounter = 0;
+
             // Daily-limit enforcement: HasNotifiedToday is in-memory only (never
             // persisted), so it has to be reset by hand once a day rolls over.
             // Seeded to today, not null: baselineFocusedMinutes below is read from
@@ -1793,6 +1806,42 @@ namespace FastApp.ViewModels
                     .Where(p => p.MainWindowHandle != IntPtr.Zero && !string.IsNullOrEmpty(p.MainWindowTitle))
                     .Select(p => p.ProcessName.ToLower())
                     .ToHashSet();
+
+                // Learn where the running processes actually live on disk, so a
+                // search for an app FastApp has tracked resolves to a real path
+                // whether the app is open at that moment or not -- and so daily-
+                // limit enforcement has the true executable name to match rather
+                // than a Squirrel stub. Only names not already known are
+                // touched, and MainModule is refreshed roughly hourly so a
+                // self-updating app's new path is picked up.
+                if (++exePathTickCounter >= ExePathRefreshTicks)
+                {
+                    exePathTickCounter = 0;
+                    exePathsKnown.Clear();
+                }
+                var exePathsFound = new List<KeyValuePair<string, string>>();
+                foreach (var proc in allProcesses)
+                {
+                    string pn;
+                    try { pn = proc.ProcessName; }
+                    catch { continue; }
+                    if (string.IsNullOrEmpty(pn) || exePathsKnown.Contains(pn)) continue;
+
+                    string modulePath = null;
+                    try { modulePath = proc.MainModule?.FileName; }
+                    catch { /* protected, exiting, or a bitness the API refuses */ }
+
+                    // Marked known either way, so a process whose path can never
+                    // be read is not retried on every one of the next 720 ticks.
+                    exePathsKnown.Add(pn);
+                    if (!string.IsNullOrEmpty(modulePath))
+                        exePathsFound.Add(new KeyValuePair<string, string>(pn, modulePath));
+                }
+                if (exePathsFound.Count > 0)
+                {
+                    var toWrite = exePathsFound;
+                    _ = Task.Run(() => Services.ExecutablePathStore.RecordMany(toWrite));
+                }
 
                 var managedAppLookup = ManagedApps
                     .Where(a => !string.IsNullOrEmpty(a.ExecutablePath))
@@ -1977,10 +2026,48 @@ namespace FastApp.ViewModels
 
                             if (limitedApp.StrictFocusMode)
                             {
-                                string exeName = Path.GetFileNameWithoutExtension(limitedApp.ExecutablePath)?.ToLower();
-                                if (!string.IsNullOrEmpty(exeName))
+                                // Kill by the identity the limit was actually
+                                // measured against, not by the basename of
+                                // ExecutablePath.
+                                //
+                                // Those two are not the same thing for any app
+                                // launched through a Squirrel/Velopack-style
+                                // stub. Discord's stored ExecutablePath is
+                                // ...\Discord\Update.exe -- the bootstrapper,
+                                // which runs for about a second at launch and
+                                // then exits. The process that actually stays up
+                                // is Discord.exe (several of them; it is
+                                // Electron). The old code looked for a running
+                                // process named "update", found none, and killed
+                                // nothing. The limit still *fired* -- its toast
+                                // uses limitedApp.Name, and the time was tracked
+                                // under the capitalised process name "Discord"
+                                // which happens to equal that Name -- so the
+                                // whole thing looked like it worked right up to
+                                // the point where the app was supposed to close.
+                                //
+                                // So: resolve every running process the same way
+                                // the tracker resolves the foreground one --
+                                // through managedAppLookup if its executable is
+                                // known, otherwise by capitalising its process
+                                // name -- and kill the ones that resolve to this
+                                // app's Name. That is exactly the set whose
+                                // foreground time was counted against the limit,
+                                // and it covers every child process rather than
+                                // one. Slack, Signal, VS Code, Teams and GitHub
+                                // Desktop all have the same Update.exe shape.
+                                foreach (var proc in allProcesses)
                                 {
-                                    foreach (var proc in allProcesses.Where(p => p.ProcessName.ToLower() == exeName))
+                                    string pn;
+                                    try { pn = proc.ProcessName.ToLower(); }
+                                    catch { continue; /* exited between enumerate and read */ }
+                                    if (string.IsNullOrEmpty(pn)) continue;
+
+                                    string resolved = managedAppLookup.TryGetValue(pn, out var mapped)
+                                        ? mapped
+                                        : char.ToUpper(pn[0]) + pn.Substring(1);
+
+                                    if (resolved == limitedApp.Name)
                                     {
                                         try { proc.Kill(); } catch { /* already exited, access denied, etc. */ }
                                     }
