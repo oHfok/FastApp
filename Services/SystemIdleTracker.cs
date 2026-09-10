@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Windows.Media.Control;
@@ -84,6 +85,44 @@ namespace FastApp.Services
                 // Failsafes if the OS doesn't support it or COM object gets disconnected
             }
             return false;
+        }
+
+        /// <summary>
+        /// The SourceAppUserModelId of every media session currently reporting
+        /// Playing, as a case-insensitive set. Empty on any failure.
+        ///
+        /// Unlike <see cref="IsMediaPlayingAsync"/>, which only asks about the
+        /// single "current" session for the AFK check, this walks every session
+        /// so the tracker can tell <em>which</em> app is producing sound and
+        /// attribute music-listening time to it rather than to whatever is in
+        /// the foreground. The id is "Spotify.exe" for the Spotify desktop app,
+        /// a package family name for Store apps, "chrome"/"msedge" for a browser
+        /// tab, and so on.
+        /// </summary>
+        public static async Task<HashSet<string>> GetPlayingMediaSourcesAsync()
+        {
+            var playing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+                foreach (var session in manager.GetSessions())
+                {
+                    try
+                    {
+                        var info = session.GetPlaybackInfo();
+                        if (info != null
+                            && info.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                        {
+                            string source = session.SourceAppUserModelId;
+                            if (!string.IsNullOrWhiteSpace(source))
+                                playing.Add(source);
+                        }
+                    }
+                    catch { /* a session disconnected mid-enumeration */ }
+                }
+            }
+            catch { /* OS without the API, or the manager itself is unavailable */ }
+            return playing;
         }
 
         // --- CONFIGURABLE THRESHOLDS ---

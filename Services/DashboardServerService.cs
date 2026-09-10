@@ -643,6 +643,7 @@ namespace FastApp.Services
                 await initDb.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS AppSettings (Key TEXT PRIMARY KEY, Value TEXT);");
                 await initDb.Database.ExecuteSqlRawAsync(ExecutablePathStore.CreateTableSql);
                 await initDb.Database.ExecuteSqlRawAsync(ResourceStatsStore.CreateTableSql);
+                await initDb.Database.ExecuteSqlRawAsync(MusicStatsStore.CreateTableSql);
                 // Keep Forever (99999) is the default, matching what the Settings UI
                 // has always presented as the default. This used to seed '90', which
                 // meant a user who never opened Settings had their SessionLogs and

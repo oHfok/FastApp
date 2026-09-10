@@ -381,6 +381,7 @@ namespace FastApp.ViewModels
             _dbContext.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS AppSettings (Key TEXT PRIMARY KEY, Value TEXT);");
             _dbContext.Database.ExecuteSqlRaw(Services.ExecutablePathStore.CreateTableSql);
             _dbContext.Database.ExecuteSqlRaw(Services.ResourceStatsStore.CreateTableSql);
+            _dbContext.Database.ExecuteSqlRaw(Services.MusicStatsStore.CreateTableSql);
 
             // Read here, not at the top of this constructor, because every one
             // of them reads AppSettings and that table is only guaranteed to
@@ -1763,6 +1764,16 @@ namespace FastApp.ViewModels
             var lastCpuTotal = new Dictionary<int, TimeSpan>();
             double logicalCores = Math.Max(1, Environment.ProcessorCount);
 
+            // Whole seconds of active music playback per app this flush window,
+            // folded into MusicListeningDaily on the same 60s cycle. A tick
+            // counts for an app when it carries the "Music" category AND a media
+            // session it owns is reporting Playing -- see MusicStatsStore.
+            // categoryByApp is app name -> category, rebuilt on each flush like
+            // captureWindowTitles so a category edit on the dashboard starts or
+            // stops the count within ~60s.
+            var musicCache = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var categoryByApp = Services.CategoryMap.Build();
+
             // Process names whose real executable path is already in
             // KnownExecutables, so this loop does not re-read MainModule for
             // them every tick. Seeded from the store, added to as new
@@ -1882,6 +1893,18 @@ namespace FastApp.ViewModels
                 Services.ResourceStatsStore.FlushBatch(date, batch);
             }
 
+            // Same shape and the same three call sites as FlushResourceStats:
+            // its own short-lived context inside FlushBatch, so it is off the
+            // _dbContext lock, and done inline so day-rollover and shutdown do
+            // not lose the window.
+            void FlushMusicStats(DateTime date)
+            {
+                if (musicCache.Count == 0) return;
+                var batch = new Dictionary<string, long>(musicCache, StringComparer.OrdinalIgnoreCase);
+                musicCache.Clear();
+                Services.MusicStatsStore.FlushBatch(date, batch);
+            }
+
             try
             {
             while (await timer.WaitForNextTickAsync(_trackerCts.Token))
@@ -1973,6 +1996,11 @@ namespace FastApp.ViewModels
                 TimeSpan tickDuration = TimeSpan.FromSeconds(5);
                 DateTime now = DateTime.Now;
 
+                // Which apps have a media session reporting Playing right now.
+                // Used by B3 below to count music-listening time; cheap WinRT
+                // call, a few ms, once per tick.
+                var playingMediaSources = await Services.SystemIdleTracker.GetPlayingMediaSourcesAsync();
+
                 // The day rolls over here, on the tick that first sees it, rather
                 // than waiting for the 60s flush below. Enforcement (D) runs every
                 // tick against baselineFocusedMinutes, so leaving the reset to the
@@ -2012,6 +2040,7 @@ namespace FastApp.ViewModels
 
                     // Under the day that just ended, same as the summaries above.
                     FlushResourceStats(previousDay);
+                    FlushMusicStats(previousDay);
 
                     timeCache.Clear();
                     afkCache.Clear();
@@ -2103,6 +2132,14 @@ namespace FastApp.ViewModels
                 var tickCpu = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
                 var tickRam = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
                 var livePids = new HashSet<int>();
+
+                // Resolved app name -> the process names actually running under
+                // it this tick. B3 (music) matches these against media-session
+                // ids; using the live process name rather than the basename of
+                // ExecutablePath sidesteps Squirrel/Velopack stubs, where the
+                // stored path is Update.exe but the process is the real one.
+                var procTokensByName = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
                 foreach (var proc in allProcesses)
                 {
                     int pid;
@@ -2131,6 +2168,10 @@ namespace FastApp.ViewModels
                         : char.ToUpper(pn[0]) + pn.Substring(1);
                     tickCpu[name] = tickCpu.GetValueOrDefault(name) + cpuPct;
                     tickRam[name] = tickRam.GetValueOrDefault(name) + ram;
+
+                    if (!procTokensByName.TryGetValue(name, out var toks))
+                        procTokensByName[name] = toks = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    toks.Add(pn);
                 }
 
                 // Drop PIDs that are gone, so lastCpuTotal stays the size of the
@@ -2168,6 +2209,47 @@ namespace FastApp.ViewModels
                         RamBytesSum: acc.RamBytesSum + mem,
                         RamBytesPeak: Math.Max(acc.RamBytesPeak, mem),
                         Samples: acc.Samples + 1);
+                }
+
+                // B3. Music listening. A tick counts for an app when it carries
+                // the Music category and one of its own media sessions is
+                // reporting Playing. Same tracked-name set as the resource stats
+                // (visible apps + running managed apps). Matching is by one of
+                // the app's live process names appearing in the session's
+                // SourceAppUserModelId -- "spotify.exe" for the desktop app, a
+                // package id containing "spotify" for the Store build. The
+                // Music-category filter makes the substring test safe enough:
+                // two music apps playing at once is the only way to double-count
+                // and that is two real streams.
+                if (playingMediaSources.Count > 0)
+                {
+                    var sourcesLower = playingMediaSources.Select(s => s.ToLowerInvariant()).ToList();
+
+                    foreach (var name in trackedNames)
+                    {
+                        if (!string.Equals(Services.CategoryMap.For(categoryByApp, name), "Music",
+                                StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        // Prefer the live process names; fall back to the
+                        // ExecutablePath basename, then the resolved name, for a
+                        // managed app whose process is not in the table this tick.
+                        IEnumerable<string> tokens = procTokensByName.TryGetValue(name, out var live) && live.Count > 0
+                            ? live
+                            : new[]
+                              {
+                                  (ManagedApps.FirstOrDefault(a => a.Name == name && !string.IsNullOrEmpty(a.ExecutablePath))
+                                       ?.ExecutablePath is string p
+                                   ? Path.GetFileNameWithoutExtension(p)
+                                   : name).ToLowerInvariant()
+                              };
+
+                        bool playing = tokens.Any(tok =>
+                            !string.IsNullOrEmpty(tok) && sourcesLower.Any(s => s.Contains(tok)));
+                        if (playing)
+                            musicCache[name] = musicCache.GetValueOrDefault(name)
+                                + (long)tickDuration.TotalSeconds;
+                    }
                 }
 
 
@@ -2341,6 +2423,18 @@ namespace FastApp.ViewModels
                     // Outside the _dbContext lock: its own context, and it must
                     // not be able to hold the main one up.
                     FlushResourceStats(today);
+                    FlushMusicStats(today);
+
+                    // Rebuild the category map each flush so a category change on
+                    // the dashboard starts (or stops) the music count within
+                    // ~60s. Only replace it if the read actually returned
+                    // something -- a transient empty map would pause counting.
+                    try
+                    {
+                        var freshCategories = Services.CategoryMap.Build();
+                        if (freshCategories.Count > 0) categoryByApp = freshCategories;
+                    }
+                    catch { /* keep the map we have */ }
 
                     // Re-read the window-title opt-in each flush. A short-lived,
                     // separate context (not the shared _dbContext) so this never
@@ -2416,6 +2510,7 @@ namespace FastApp.ViewModels
                     }
 
                     FlushResourceStats(DateTime.Today);
+                    FlushMusicStats(DateTime.Today);
                 }
                 catch { /* best-effort — the app is exiting either way */ }
 
