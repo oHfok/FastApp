@@ -2218,12 +2218,16 @@ namespace FastApp.ViewModels
                 // the app's live process names appearing in the session's
                 // SourceAppUserModelId -- "spotify.exe" for the desktop app, a
                 // package id containing "spotify" for the Store build. The
-                // Music-category filter makes the substring test safe enough:
-                // two music apps playing at once is the only way to double-count
-                // and that is two real streams.
+                // Music-category filter makes the substring test safe enough.
+                //
+                // The per-app rows sum to more than real time when two music
+                // apps play at once, so a separate SYSTEM_MUSIC row counts the
+                // tick ONCE if any of them was playing -- that is the wall-clock
+                // figure the dashboard headline reads.
                 if (playingMediaSources.Count > 0)
                 {
                     var sourcesLower = playingMediaSources.Select(s => s.ToLowerInvariant()).ToList();
+                    bool anyMusicThisTick = false;
 
                     foreach (var name in trackedNames)
                     {
@@ -2247,9 +2251,17 @@ namespace FastApp.ViewModels
                         bool playing = tokens.Any(tok =>
                             !string.IsNullOrEmpty(tok) && sourcesLower.Any(s => s.Contains(tok)));
                         if (playing)
+                        {
                             musicCache[name] = musicCache.GetValueOrDefault(name)
                                 + (long)tickDuration.TotalSeconds;
+                            anyMusicThisTick = true;
+                        }
                     }
+
+                    if (anyMusicThisTick)
+                        musicCache[Services.MusicStatsStore.WallClockKey] =
+                            musicCache.GetValueOrDefault(Services.MusicStatsStore.WallClockKey)
+                            + (long)tickDuration.TotalSeconds;
                 }
 
 
