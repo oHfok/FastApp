@@ -644,6 +644,28 @@ namespace FastApp.Services
                 await initDb.Database.ExecuteSqlRawAsync(ExecutablePathStore.CreateTableSql);
                 await initDb.Database.ExecuteSqlRawAsync(ResourceStatsStore.CreateTableSql);
                 await initDb.Database.ExecuteSqlRawAsync(MusicStatsStore.CreateTableSql);
+
+                // One-time backfill of the wall-clock music row. Between 5.0.0 and
+                // 5.0.1 the headline "Music Playing Time" switched from summing the
+                // per-app rows to reading a single SYSTEM_MUSIC row that only
+                // exists for days recorded on 5.0.1+, so every earlier day's
+                // figure dropped to zero on update. This seeds SYSTEM_MUSIC for
+                // those days as MAX(per-app seconds): exact when only one music
+                // app ran (the usual case) and a safe under-estimate otherwise --
+                // never the old inflated sum. The upsert also tops up a partial
+                // SYSTEM_MUSIC row for the current day and never lowers one.
+                bool musicBackfilled = PinService.GetSettingValue(initDb, "MusicWallClockBackfilled") == "true";
+                if (!musicBackfilled)
+                {
+                    await initDb.Database.ExecuteSqlRawAsync(
+                        "INSERT INTO MusicListeningDaily (Date, AppName, Seconds) " +
+                        "SELECT Date, 'SYSTEM_MUSIC', MAX(Seconds) FROM MusicListeningDaily " +
+                        "WHERE AppName <> 'SYSTEM_MUSIC' GROUP BY Date " +
+                        "ON CONFLICT(Date, AppName) DO UPDATE SET Seconds = MAX(Seconds, excluded.Seconds);");
+                    await initDb.Database.ExecuteSqlRawAsync(
+                        "INSERT OR REPLACE INTO AppSettings (Key, Value) VALUES ('MusicWallClockBackfilled', 'true');");
+                }
+
                 // Keep Forever (99999) is the default, matching what the Settings UI
                 // has always presented as the default. This used to seed '90', which
                 // meant a user who never opened Settings had their SessionLogs and
