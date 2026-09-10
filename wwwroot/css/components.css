@@ -1695,7 +1695,7 @@
    12-o'clock origin and same 653.5 track, its length driven separately from
    setHeroDial(). The compound selector beats `.hero-dial-svg circle` on the
    16px stroke-width. */
-.hero-dial-svg .hero-dial-music { stroke: var(--teal); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+.hero-dial-svg .hero-dial-music { stroke: var(--violet); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
 
 .hero-dial-face {
     position: absolute;

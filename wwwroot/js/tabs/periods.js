@@ -390,7 +390,7 @@ function renderPeriodDetail(d, isNewDay) {
         // shown when there is any — periods before the feature read as a clean
         // "AFK · online" line, not "0m music".
         const musicCaption = (musicMins != null && musicMins > 0)
-            ? ` · <span style="color:var(--teal)">${formatTime(musicMins)} music</span>`
+            ? ` · <span style="color:var(--violet)">${formatTime(musicMins)} music</span>`
             : '';
 
         let barHtml = '';
