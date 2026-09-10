@@ -116,6 +116,15 @@ async function openDrilldown(appName, tab) {
         document.getElementById('dd-focus-all').textContent = formatHours(allTimeFocusedHours);
         document.getElementById('dd-running-all').textContent = formatHours(data.allTimeRunning || 0);
 
+        // Resource use — averages over the last 30 days, only for apps that have
+        // been sampled. Dashes until then, never a confident zero.
+        const res = data.resources;
+        const ddMB = (mb) => mb == null ? '—' : (mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`);
+        document.getElementById('dd-cpu-avg').textContent = res ? `${res.avgCpuPercent ?? 0}%` : '—';
+        document.getElementById('dd-cpu-peak').textContent = res ? `peak ${res.peakCpuPercent ?? 0}%` : 'No samples yet';
+        document.getElementById('dd-ram-avg').textContent = res ? ddMB(res.avgRamMB) : '—';
+        document.getElementById('dd-ram-peak').textContent = res ? `peak ${ddMB(res.peakRamMB)}` : '';
+
         // Milestone — a ladder showing every tier (name + hour requirement, so
         // it's actually clear what each one takes to earn) plus a progress bar
         // toward whichever tier is next. No unlock notification for this first

@@ -202,6 +202,22 @@ namespace FastApp.Services
                 // the drawer renders whatever the backend actually scored rather
                 // than a hardcoded copy that could disagree with it. Null entries
                 // mean that tier hasn't been reached yet.
+                // Per-app CPU and memory over the last 30 days -- recent state,
+                // the same window the All Applications tab uses. Null on an app
+                // with nothing recorded yet, so the drawer's Resource Use tiles
+                // stay dashes rather than showing a confident zero.
+                var res30 = ResourceStatsStore.GetRange(targetDate.AddDays(-29), targetDate.AddDays(1));
+                object resources = res30.TryGetValue(appName, out var r30) && r30.Samples > 0
+                    ? new
+                    {
+                        AvgCpuPercent = Math.Round(r30.AverageCpuPercent, 1),
+                        PeakCpuPercent = Math.Round(r30.PeakCpuPercent, 1),
+                        AvgRamMB = Math.Round(r30.AverageRamBytes / 1048576.0, 0),
+                        PeakRamMB = Math.Round(r30.PeakRamBytes / 1048576.0, 0),
+                        Samples = r30.Samples
+                    }
+                    : null;
+
                 var milestoneTiers = MilestoneTiers.All;
                 string?[] milestoneDates = new string?[milestoneTiers.Length];
                 {
@@ -260,7 +276,8 @@ namespace FastApp.Services
                     TodayMinutes = Math.Round(todayMinutes, 1),
                     DailyLimitMinutes = dailyLimitMinutes,
                     StrictFocusMode = strictFocusMode,
-                    TodayBonusMinutes = todayBonusMinutes
+                    TodayBonusMinutes = todayBonusMinutes,
+                    Resources = resources
                 });
             }
             catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
