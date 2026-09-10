@@ -186,6 +186,34 @@ function renderComparisonBlock(scope, ov) {
         afkCard.onmousemove = (e) => showTooltip(e, 'No AFK figure came back for this range.');
         afkCard.onmouseleave = hideTooltip;
     }
+
+    // Music-listening time per scope, same shape as AFK: the backend returns
+    // all four (MusicToday/Week/Month/Year). A tick counts here only while a
+    // Music-category app is actually playing, so on most machines this reads
+    // as a real fraction of AFK, not a duplicate of it. Missing value dims to
+    // a dash rather than inventing a zero.
+    const musicMap = {
+        day: ov.musicToday,
+        week: ov.musicWeek,
+        month: ov.musicMonth,
+        year: ov.musicYear
+    };
+    const musicVal = musicMap[scope];
+    const musicEl = document.getElementById('ov-music-value');
+    const musicCard = document.getElementById('ov-music-card');
+    if (musicEl && musicCard) {
+        if (musicVal !== undefined && musicVal !== null) {
+            musicCard.style.opacity = '1';
+            musicEl.textContent = formatHours(musicVal || 0);
+            musicCard.onmousemove = null;
+            musicCard.onmouseleave = null;
+        } else {
+            musicCard.style.opacity = '0.5';
+            musicEl.textContent = '—';
+            musicCard.onmousemove = (e) => showTooltip(e, 'No music figure came back for this range.');
+            musicCard.onmouseleave = hideTooltip;
+        }
+    }
 }
 
 // Focus and AFK as shares of total time at the machine. Uses only figures the

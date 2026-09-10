@@ -115,12 +115,35 @@ namespace FastApp.Services
             return result;
         }
 
-        /// <summary>Total music seconds across every app for a single day.</summary>
-        public static long GetTotalForDay(DateTime date)
+        /// <summary>
+        /// Total music seconds across every app over [fromInclusive, toExclusive).
+        /// One SUM() on disk rather than materialising the per-app rows.
+        /// </summary>
+        public static long GetTotalSeconds(DateTime fromInclusive, DateTime toExclusive)
         {
-            long total = 0;
-            foreach (var v in GetRange(date.Date, date.Date.AddDays(1)).Values) total += v;
-            return total;
+            try
+            {
+                using var db = new AppDbContext();
+                using var cmd = db.Database.GetDbConnection().CreateCommand();
+                cmd.CommandText =
+                    "SELECT COALESCE(SUM(Seconds), 0) FROM MusicListeningDaily " +
+                    "WHERE Date >= $from AND Date < $to";
+                var pf = cmd.CreateParameter(); pf.ParameterName = "$from"; pf.Value = Key(fromInclusive); cmd.Parameters.Add(pf);
+                var pt = cmd.CreateParameter(); pt.ParameterName = "$to"; pt.Value = Key(toExclusive); cmd.Parameters.Add(pt);
+
+                db.Database.OpenConnection();
+                var result = cmd.ExecuteScalar();
+                return result == null || result is DBNull ? 0 : Convert.ToInt64(result);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MusicStatsStore.GetTotalSeconds failed: {ex.Message}");
+                return 0;
+            }
         }
+
+        /// <summary>Total music seconds across every app for a single day.</summary>
+        public static long GetTotalForDay(DateTime date) =>
+            GetTotalSeconds(date.Date, date.Date.AddDays(1));
     }
 }
