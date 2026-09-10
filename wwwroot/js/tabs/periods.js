@@ -364,10 +364,11 @@ function renderPeriodDetail(d, isNewDay) {
 
     const chosenAfkMins = d.totalAfkMinutes;
     const chosenUptimeMins = d.totalUptimeMinutes;
+    const chosenMusicMins = d.totalMusicMinutes;
     const periodNoun = PERIOD_NOUNS[periodType] || 'Period';
     const blocks = [
         prev ? { tag: 'Previous', obj: prev } : null,
-        { tag: 'This ' + periodNoun, obj: { totalFocusMinutes: totalMins, totalAfkMinutes: chosenAfkMins, totalUptimeMinutes: chosenUptimeMins, label }, current: true },
+        { tag: 'This ' + periodNoun, obj: { totalFocusMinutes: totalMins, totalAfkMinutes: chosenAfkMins, totalUptimeMinutes: chosenUptimeMins, totalMusicMinutes: chosenMusicMins, label }, current: true },
         next ? { tag: 'Next', obj: next } : null,
         current ? { tag: 'Current ' + periodNoun, obj: current } : null
     ].filter(Boolean);
@@ -381,7 +382,16 @@ function renderPeriodDetail(d, isNewDay) {
         const mins = b.obj.totalFocusMinutes ?? 0;
         const afkMins = b.obj.totalAfkMinutes;
         const uptimeMins = b.obj.totalUptimeMinutes;
+        const musicMins = b.obj.totalMusicMinutes;
         const lbl = b.obj.label ?? b.tag;
+
+        // Music playing time is a separate fact from the focus/AFK split (it can
+        // overlap either), so it rides in the caption rather than the bar. Only
+        // shown when there is any — periods before the feature read as a clean
+        // "AFK · online" line, not "0m music".
+        const musicCaption = (musicMins != null && musicMins > 0)
+            ? ` · <span style="color:var(--violet)">${formatTime(musicMins)} music</span>`
+            : '';
 
         let barHtml = '';
         if (uptimeMins > 0) {
@@ -392,7 +402,7 @@ function renderPeriodDetail(d, isNewDay) {
                     <div class="compare-bar-seg" style="width:${focusPct}%;background:var(--brass)"></div>
                     <div class="compare-bar-seg" style="width:${afkPct}%;background:var(--rose)"></div>
                 </div>
-                <div class="compare-bar-caption"><span style="color:var(--rose)">${formatTime(afkMins || 0)} AFK</span> · ${formatTime(uptimeMins)} online</div>`;
+                <div class="compare-bar-caption"><span style="color:var(--rose)">${formatTime(afkMins || 0)} AFK</span>${musicCaption} · ${formatTime(uptimeMins)} online</div>`;
         }
 
         // Color the headline number brass to match the bar's "focus" segment,

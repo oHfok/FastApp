@@ -123,6 +123,14 @@ namespace FastApp.Services
                 double afkYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-365) && l.Date <= targetDate).Sum(l => l.AfkTimeSpent.TotalHours);
                 double afkPrevYear = allSystemLogs.Where(l => l.Date > targetDate.AddDays(-730) && l.Date <= targetDate.AddDays(-365)).Sum(l => l.AfkTimeSpent.TotalHours);
 
+                // Music-listening hours per scope, from its own table
+                // (MusicListeningDaily). Same window boundaries as the AFK
+                // figures above. Nothing recorded yet reads as a clean 0.
+                double musicToday = MusicStatsStore.GetTotalSeconds(targetDate, targetDate.AddDays(1)) / 3600.0;
+                double musicWeek = MusicStatsStore.GetTotalSeconds(startOfWeek, targetDate.AddDays(1)) / 3600.0;
+                double musicMonth = MusicStatsStore.GetTotalSeconds(targetDate.AddDays(-29), targetDate.AddDays(1)) / 3600.0;
+                double musicYear = MusicStatsStore.GetTotalSeconds(targetDate.AddDays(-364), targetDate.AddDays(1)) / 3600.0;
+
                 // --- Total PC uptime (TimeSpent, not just focused) per scope, so Focus
                 // and AFK have something to be read as a share of. ---
                 double totalToday = allSystemLogs.Where(l => l.Date == targetDate).Sum(l => l.TimeSpent.TotalHours);
@@ -173,6 +181,11 @@ namespace FastApp.Services
                     PrevAfkMonth = afkPrevMonth,
                     AfkYear = afkYear,
                     PrevAfkYear = afkPrevYear,
+
+                    MusicToday = musicToday,
+                    MusicWeek = musicWeek,
+                    MusicMonth = musicMonth,
+                    MusicYear = musicYear,
 
                     ContextSwitches = await db.SessionLogs.CountAsync(s => s.StartTime >= targetDate && s.StartTime < targetDate.AddDays(1) && !hiddenApps.Contains(s.AppName)),
                     TopAppsToday = todaysLogs.OrderByDescending(l => l.TimeFocused).Take(5).Select(l => new { AppName = l.AppName, FocusedMinutes = l.TimeFocused.TotalMinutes }).ToList(),

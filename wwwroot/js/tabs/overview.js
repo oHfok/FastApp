@@ -186,6 +186,34 @@ function renderComparisonBlock(scope, ov) {
         afkCard.onmousemove = (e) => showTooltip(e, 'No AFK figure came back for this range.');
         afkCard.onmouseleave = hideTooltip;
     }
+
+    // Music-listening time per scope, same shape as AFK: the backend returns
+    // all four (MusicToday/Week/Month/Year). A tick counts here only while a
+    // Music-category app is actually playing, so on most machines this reads
+    // as a real fraction of AFK, not a duplicate of it. Missing value dims to
+    // a dash rather than inventing a zero.
+    const musicMap = {
+        day: ov.musicToday,
+        week: ov.musicWeek,
+        month: ov.musicMonth,
+        year: ov.musicYear
+    };
+    const musicVal = musicMap[scope];
+    const musicEl = document.getElementById('ov-music-value');
+    const musicCard = document.getElementById('ov-music-card');
+    if (musicEl && musicCard) {
+        if (musicVal !== undefined && musicVal !== null) {
+            musicCard.style.opacity = '1';
+            musicEl.textContent = formatHours(musicVal || 0);
+            musicCard.onmousemove = null;
+            musicCard.onmouseleave = null;
+        } else {
+            musicCard.style.opacity = '0.5';
+            musicEl.textContent = '—';
+            musicCard.onmousemove = (e) => showTooltip(e, 'No music figure came back for this range.');
+            musicCard.onmouseleave = hideTooltip;
+        }
+    }
 }
 
 // Focus and AFK as shares of total time at the machine. Uses only figures the
@@ -196,16 +224,21 @@ function renderHeroShare(scope, ov, focusHours, uptimeHours) {
     if (!host) return;
 
     const afkHours = { day: ov.afkToday, week: ov.afkWeek, month: ov.afkMonth, year: ov.afkYear }[scope];
+    const musicHours = { day: ov.musicToday, week: ov.musicWeek, month: ov.musicMonth, year: ov.musicYear }[scope];
 
     // Needs a real uptime figure to be a share OF anything.
     if (!uptimeHours || uptimeHours <= 0) {
         host.style.display = 'none';
-        setHeroDial(0, 0);
+        setHeroDial(0, 0, 0);
         return;
     }
 
     const focusPct = Math.min(100, (focusHours / uptimeHours) * 100);
     const afkPct = Math.min(100 - focusPct, ((afkHours || 0) / uptimeHours) * 100);
+    // Music is measured against the same total, but it OVERLAYS the ring rather
+    // than joining the focus/AFK split -- it can run in parallel with either, so
+    // it is not capped by what they leave free.
+    const musicPct = Math.min(100, ((musicHours || 0) / uptimeHours) * 100);
 
     document.getElementById('ov-share-focus').style.width = `${focusPct}%`;
     document.getElementById('ov-share-focus').style.background = 'var(--brass)';
@@ -218,7 +251,7 @@ function renderHeroShare(scope, ov, focusHours, uptimeHours) {
         `${Math.round(focusPct)}% of ${formatHours(uptimeHours)} at the machine${afkText}`;
     host.style.display = 'block';
 
-    setHeroDial(focusPct, afkPct);
+    setHeroDial(focusPct, afkPct, musicPct);
 }
 
 // The ring around the hero figure. Same two percentages the bar above uses, so
@@ -228,11 +261,17 @@ function renderHeroShare(scope, ov, focusHours, uptimeHours) {
 // (focus + afk), with focus painted over the top of it. Drawing it as a separate
 // segment offset to start where focus ends looked right until a day with no AFK
 // time, where a zero-length round-capped arc still renders as a visible dot.
+//
+// The music arc is different in kind: a thin line laid OVER the ring, from the
+// same 12-o'clock origin, its length the music share of the same total. It does
+// not stack with focus/afk -- music can play through either -- so it is passed
+// in and drawn independently rather than offset off the end of them.
 const HERO_DIAL_CIRCUMFERENCE = 653.5;   // 2 * pi * r, r = 104
 
-function setHeroDial(focusPct, afkPct) {
+function setHeroDial(focusPct, afkPct, musicPct) {
     const focusEl = document.getElementById('ov-dial-focus');
     const afkEl = document.getElementById('ov-dial-afk');
+    const musicEl = document.getElementById('ov-dial-music');
     if (!focusEl || !afkEl) return;
 
     const offsetFor = (pct) =>
@@ -244,6 +283,12 @@ function setHeroDial(focusPct, afkPct) {
     // stray mark on a day with no focus or no AFK time at all.
     afkEl.style.opacity = afkPct > 0.5 ? '1' : '0';
     focusEl.style.opacity = focusPct > 0.5 ? '1' : '0';
+
+    if (musicEl) {
+        const m = musicPct || 0;
+        musicEl.style.strokeDashoffset = offsetFor(m);
+        musicEl.style.opacity = m > 0.5 ? '1' : '0';
+    }
 }
 
 function renderCategoryBar(leaderboard) {

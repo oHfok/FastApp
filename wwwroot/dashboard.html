@@ -239,6 +239,11 @@
                          curve rather than above a bar, which is what stops the
                          page reading as a stack of boxes.
 
+                         The thin teal line laid over the ring is music playing
+                         time as a share of the same total -- an overlay, not a
+                         segment: it does not eat into the focus/AFK split, it
+                         just shows how far round the day music was playing.
+
                          Every id the render code writes to is unchanged -- this is
                          a different arrangement of the same fields, not new data. -->
                     <div class="hero-dial">
@@ -246,6 +251,7 @@
                             <circle class="hero-dial-track" cx="125" cy="125" r="104"></circle>
                             <circle class="hero-dial-afk" id="ov-dial-afk" cx="125" cy="125" r="104"></circle>
                             <circle class="hero-dial-focus" id="ov-dial-focus" cx="125" cy="125" r="104"></circle>
+                            <circle class="hero-dial-music" id="ov-dial-music" cx="125" cy="125" r="104"></circle>
                         </svg>
                         <div class="hero-dial-face">
                             <div class="card-label" id="ov-hero-label">Focus Today</div>
@@ -280,6 +286,10 @@
                         <div class="stat-block" id="ov-afk-card">
                             <div class="card-label">AFK Time</div>
                             <div class="stat-value" id="ov-afk-value" style="color:var(--rose)">0h 0m</div>
+                        </div>
+                        <div class="stat-block" id="ov-music-card">
+                            <div class="card-label">Music Playing Time</div>
+                            <div class="stat-value" id="ov-music-value" style="color:var(--violet)">0h 0m</div>
                         </div>
                     </div>
                     <div class="hero-share" id="ov-hero-share" style="display:none;">
