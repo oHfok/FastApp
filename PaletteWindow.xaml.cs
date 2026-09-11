@@ -608,6 +608,14 @@ namespace FastApp
                     launchArguments = app.LaunchArguments,
                     launchDelaySeconds = app.LaunchDelaySeconds,
                     dailyLimitMinutes = app.DailyLimitMinutes,
+                    // Extra minutes granted for today only (the "Extend a
+                    // limit" command), same field enforcement itself adds to
+                    // DailyLimitMinutes -- see the effectiveLimit calculation
+                    // in StartProcessTrackerAsync. Without this the card's
+                    // progress bar and summary judged the field against the
+                    // base limit alone, so anyone who had extended today saw
+                    // themselves "over" a cap that was not actually in force.
+                    bonusMinutesToday = app.BonusMinutesDate?.Date == DateTime.Today ? app.TodayBonusMinutes : 0,
                     strictFocusMode = app.StrictFocusMode,
                     limitsLocked = PinIsSet(),
                     canReorder = true,
