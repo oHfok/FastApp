@@ -18,17 +18,9 @@ namespace FastApp
     /// </summary>
     public partial class AfkBarWindow : Window
     {
-        // The tag's own size, independent of screen width -- it's sized to
-        // the label it holds, not to the monitor it's drawn on. Depth is how
-        // far the tag hangs below the hairline; width is the flat span the
-        // arc curves across.
-        private const double DomeWidth = 200;
-        private const double DomeDepth = 32;
-
         public AfkBarWindow()
         {
             InitializeComponent();
-            DomeText.Width = DomeWidth;
             PositionAtTop();
 
             // The strip has to hold its place across a resolution change or a
@@ -53,33 +45,46 @@ namespace FastApp
             Left = 0;
             Top = 0;
             Width = SystemParameters.PrimaryScreenWidth;
-
             Hairline.Width = Width;
 
-            // A single elliptical arc from the tag's top-left corner to its
-            // top-right one, bulging downward by DomeDepth -- the mini-language
-            // is the same as SVG's path syntax, confirmed against a rendered
-            // prototype before this was written into WPF. The figure closes
-            // itself back along the top (the "Z"), which sits flush against
-            // the hairline above it, so the two never show a seam.
-            Dome.Data = Geometry.Parse(FormattableString.Invariant(
-                $"M 0,0 A {DomeWidth / 2},{DomeDepth} 0 0 0 {DomeWidth},0 Z"));
-
-            double domeLeft = Math.Round((Width - DomeWidth) / 2);
-            Canvas.SetLeft(Dome, domeLeft);
-            Canvas.SetLeft(DomeText, domeLeft);
+            // Tag sizes itself to its own padding + content; its width is not
+            // known until a layout pass has actually measured it.
+            UpdateLayout();
+            Canvas.SetLeft(Tag, Math.Round((Width - Tag.ActualWidth) / 2));
         }
+
+        // A slow, steady pulse on the marker dot -- the same 2.6s breathing
+        // rhythm the tray icon's own status dot already uses (base.css'
+        // pulse-dot), so "something is actively being watched" reads the same
+        // way in both places rather than this one sitting perfectly still.
+        private static readonly DoubleAnimation Pulse = new(1, 0.35, TimeSpan.FromSeconds(1.3))
+        {
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
 
         public void ShowBar()
         {
             PositionAtTop();
             Opacity = 0;
+            TagSlide.Y = -6;
             Show();
-            BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
+
+            BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)));
+            TagSlide.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(-6, 0, TimeSpan.FromMilliseconds(220))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                });
+            MarkerDot.BeginAnimation(OpacityProperty, Pulse);
         }
 
         public void HideBar()
         {
+            MarkerDot.BeginAnimation(OpacityProperty, null);
+            MarkerDot.Opacity = 1;
+
             var fadeOut = new DoubleAnimation(Opacity, 0, TimeSpan.FromMilliseconds(200));
             fadeOut.Completed += (s, e) => Hide();
             BeginAnimation(OpacityProperty, fadeOut);

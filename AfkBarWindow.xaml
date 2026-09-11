@@ -4,22 +4,24 @@
         Title="FastApp — Away" ShowInTaskbar="False" ShowActivated="False"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" WindowStartupLocation="Manual"
-        Topmost="True" Height="36">
+        Topmost="True" Height="40">
 
     <!--
-        A hairline flush with the physical top edge of the screen, the full
-        width of it, with one shallow tag hanging from the middle of it where
-        the label lives, rather than a flat bar the label sits inside, which
-        read as a generic notification banner rather than something FastApp
-        itself was saying. Sizes (DomeWidth/DomeDepth in code-behind) are
-        fixed pixel values, not a fraction of screen width: the tag is sized
-        to its own label, the same way a real hanging tag is sized to what it
-        says, not to the wall it's mounted on.
+        The first version filled a wide dome with flat, opaque red and set
+        white mono caps in it, which read as a stock web "danger" banner,
+        not as something FastApp itself drew. This is the same glass-panel
+        material the OSD and the auto-launch progress window already use
+        (BrandOverlayBackground/BrandOverlayBorder, 1px border, soft corners):
+        a dark, translucent tag rather than a solid colour block, with rose
+        doing its job as an ACCENT (the hairline's glow, the border, the
+        marker dot) rather than as the entire fill. Same family, same
+        rules, just applied to a status bar instead of a toast.
 
-        Deliberately not theme-aware (unlike the OSD, which reworks its
-        colours per theme): this is a screen-wide alert competing with
-        whatever is behind it, not a piece of the app's own surface, so it
-        stays one fixed alert red regardless of dark or light mode.
+        The tag sizes itself to its own content (Border padding around the
+        StackPanel), the same "sized to what it says, not to the wall it
+        hangs on" idea as before, but for real now rather than a guessed
+        constant: PositionAtTop reads Tag.ActualWidth after layout to
+        centre it.
 
         Click-through and never-activating, set in code-behind the same way
         OsdWindow does it: a status strip is not a control, and it must
@@ -27,20 +29,50 @@
         right before FastApp decided you had stopped.
     -->
     <Canvas>
-        <Rectangle x:Name="Hairline" Height="3" Fill="#D9363E"
-                   Canvas.Top="0" Canvas.Left="0"/>
+        <!-- A soft glow across the middle of the screen edge rather than a
+             hard-edged stripe corner to corner: the flat full-bleed line
+             was most of what made the original read as a banner ad. -->
+        <Rectangle x:Name="Hairline" Height="2" Canvas.Top="0" Canvas.Left="0">
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#00FF6B6B" Offset="0"/>
+                    <GradientStop Color="#CCFF6B6B" Offset="0.35"/>
+                    <GradientStop Color="#CCFF6B6B" Offset="0.65"/>
+                    <GradientStop Color="#00FF6B6B" Offset="1"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
 
-        <!-- Data is rewritten in code-behind from DomeWidth/DomeDepth, so the
-             two constants stay the only place the shape's size is decided. -->
-        <Path x:Name="Dome" Fill="#D9363E" Canvas.Top="0"/>
+        <Border x:Name="Tag" Canvas.Top="0" CornerRadius="15" BorderThickness="1"
+                Padding="17,7" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="TagSlide" Y="-6"/>
+            </Border.RenderTransform>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#F02C1418" Offset="0"/>
+                    <GradientStop Color="#F00B0C12" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.BorderBrush>
+                <SolidColorBrush Color="#59FF6B6B"/>
+            </Border.BorderBrush>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="20" ShadowDepth="5" Direction="270"
+                                   Opacity="0.45" Color="Black"/>
+            </Border.Effect>
 
-        <TextBlock x:Name="DomeText" Text="AFK DETECTED"
-                   TextAlignment="Center"
-                   FontFamily="Consolas" FontWeight="Bold" FontSize="13"
-                   Foreground="White" Canvas.Top="11">
-            <TextBlock.Effect>
-                <DropShadowEffect BlurRadius="4" ShadowDepth="0" Opacity="0.4" Color="Black"/>
-            </TextBlock.Effect>
-        </TextBlock>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Ellipse x:Name="MarkerDot" Width="7" Height="7" Margin="0,0,10,0"
+                         VerticalAlignment="Center" Fill="#FF6B6B">
+                    <Ellipse.Effect>
+                        <DropShadowEffect BlurRadius="7" ShadowDepth="0" Opacity="0.9" Color="#FF6B6B"/>
+                    </Ellipse.Effect>
+                </Ellipse>
+                <TextBlock Text="AFK DETECTED" VerticalAlignment="Center"
+                           FontFamily="Consolas" FontWeight="Bold" FontSize="11.5"
+                           Foreground="#F3F1EA"/>
+            </StackPanel>
+        </Border>
     </Canvas>
 </Window>
