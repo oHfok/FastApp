@@ -1,12 +1,14 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace FastApp
 {
     /// <summary>
-    /// The full-width red strip across the top of the screen while FastApp
+    /// The hairline-plus-tag across the top of the screen while FastApp
     /// thinks nobody is at the keyboard. Opt-in (see MainViewModel.ShowAfkBar) —
     /// a screen-spanning bar is a bold, unmissable thing, not something to turn
     /// on for someone who never asked for it.
@@ -16,9 +18,17 @@ namespace FastApp
     /// </summary>
     public partial class AfkBarWindow : Window
     {
+        // The tag's own size, independent of screen width -- it's sized to
+        // the label it holds, not to the monitor it's drawn on. Depth is how
+        // far the tag hangs below the hairline; width is the flat span the
+        // arc curves across.
+        private const double DomeWidth = 200;
+        private const double DomeDepth = 32;
+
         public AfkBarWindow()
         {
             InitializeComponent();
+            DomeText.Width = DomeWidth;
             PositionAtTop();
 
             // The strip has to hold its place across a resolution change or a
@@ -43,6 +53,21 @@ namespace FastApp
             Left = 0;
             Top = 0;
             Width = SystemParameters.PrimaryScreenWidth;
+
+            Hairline.Width = Width;
+
+            // A single elliptical arc from the tag's top-left corner to its
+            // top-right one, bulging downward by DomeDepth -- the mini-language
+            // is the same as SVG's path syntax, confirmed against a rendered
+            // prototype before this was written into WPF. The figure closes
+            // itself back along the top (the "Z"), which sits flush against
+            // the hairline above it, so the two never show a seam.
+            Dome.Data = Geometry.Parse(FormattableString.Invariant(
+                $"M 0,0 A {DomeWidth / 2},{DomeDepth} 0 0 0 {DomeWidth},0 Z"));
+
+            double domeLeft = Math.Round((Width - DomeWidth) / 2);
+            Canvas.SetLeft(Dome, domeLeft);
+            Canvas.SetLeft(DomeText, domeLeft);
         }
 
         public void ShowBar()

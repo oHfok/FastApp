@@ -2,32 +2,45 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="FastApp — Away" ShowInTaskbar="False" ShowActivated="False"
-        WindowStyle="None" ResizeMode="NoResize" WindowStartupLocation="Manual"
-        Topmost="True" Background="#D9363E" Height="30">
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" WindowStartupLocation="Manual"
+        Topmost="True" Height="36">
 
     <!--
-        A flat strip flush with the physical top edge of the screen, not a
-        floating card like the OSD: square corners are correct here, the
-        same way a browser's "you are being recorded" banner or a title bar
-        does not round itself off. Deliberately not theme-aware (unlike the
-        OSD, which reworks its colours per theme): this is a screen-wide
-        alert competing with whatever is behind it, not a piece of the app's
-        own surface, so it stays one fixed alert red regardless of dark or
-        light mode.
+        A hairline flush with the physical top edge of the screen, the full
+        width of it, with one shallow tag hanging from the middle of it where
+        the label lives, rather than a flat bar the label sits inside, which
+        read as a generic notification banner rather than something FastApp
+        itself was saying. Sizes (DomeWidth/DomeDepth in code-behind) are
+        fixed pixel values, not a fraction of screen width: the tag is sized
+        to its own label, the same way a real hanging tag is sized to what it
+        says, not to the wall it's mounted on.
+
+        Deliberately not theme-aware (unlike the OSD, which reworks its
+        colours per theme): this is a screen-wide alert competing with
+        whatever is behind it, not a piece of the app's own surface, so it
+        stays one fixed alert red regardless of dark or light mode.
 
         Click-through and never-activating, set in code-behind the same way
         OsdWindow does it: a status strip is not a control, and it must
         never be the thing that steals focus from whatever you were doing
         right before FastApp decided you had stopped.
     -->
-    <Grid>
-        <TextBlock Text="AFK DETECTED"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"
+    <Canvas>
+        <Rectangle x:Name="Hairline" Height="3" Fill="#D9363E"
+                   Canvas.Top="0" Canvas.Left="0"/>
+
+        <!-- Data is rewritten in code-behind from DomeWidth/DomeDepth, so the
+             two constants stay the only place the shape's size is decided. -->
+        <Path x:Name="Dome" Fill="#D9363E" Canvas.Top="0"/>
+
+        <TextBlock x:Name="DomeText" Text="AFK DETECTED"
+                   TextAlignment="Center"
                    FontFamily="Consolas" FontWeight="Bold" FontSize="13"
-                   Foreground="White">
+                   Foreground="White" Canvas.Top="11">
             <TextBlock.Effect>
                 <DropShadowEffect BlurRadius="4" ShadowDepth="0" Opacity="0.4" Color="Black"/>
             </TextBlock.Effect>
         </TextBlock>
-    </Grid>
+    </Canvas>
 </Window>
