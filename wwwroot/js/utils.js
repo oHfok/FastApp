@@ -526,12 +526,14 @@ function getTimelineRangeMode() {
 // Returns the window the ribbon spans, in minutes past midnight, plus the tick
 // labels to print under it. Callers render the ticks so both the Overview and
 // the Periods ribbon stay in step with whatever range is in force.
-function timelineWindow(sessions) {
+function timelineWindow(sessions, afkIntervals) {
     const FULL = { startMin: 0, endMin: 1440 };
-    if (getTimelineRangeMode() !== 'activity' || !sessions || !sessions.length) return FULL;
+    const hasSessions = sessions && sessions.length;
+    const hasAfk = afkIntervals && afkIntervals.length;
+    if (getTimelineRangeMode() !== 'activity' || (!hasSessions && !hasAfk)) return FULL;
 
     let lo = Infinity, hi = -Infinity;
-    sessions.forEach(s => {
+    (sessions || []).concat(afkIntervals || []).forEach(s => {
         const st = s.startMinutes ?? 0;
         lo = Math.min(lo, st);
         hi = Math.max(hi, st + (s.durationMinutes ?? 0));
@@ -558,13 +560,19 @@ function timelineTicksHtml(win) {
     return out;
 }
 
-function timelineSegmentsHtml(sessions) {
-    if (!sessions || sessions.length === 0) {
+// afkIntervals are machine-wide, not per-app, so they can overlap a session
+// that stayed focused on an app across an away stretch -- they're drawn as
+// their own thin strip along the bottom edge of the track rather than mixed
+// into the main row, so an away period never visually competes with, or gets
+// hidden behind, whatever app segment happens to span the same minutes.
+function timelineSegmentsHtml(sessions, afkIntervals) {
+    if ((!sessions || sessions.length === 0) && (!afkIntervals || afkIntervals.length === 0)) {
         return `<div class="empty-state" style="border:none;background:none;">No sessions recorded for this day.</div>`;
     }
-    const win = timelineWindow(sessions);
+    const win = timelineWindow(sessions, afkIntervals);
     const span = Math.max(1, win.endMin - win.startMin);
-    return sessions.map(s => {
+
+    const sessionsHtml = (sessions || []).map(s => {
         const name = s.appName;
         const cat = s.category;
         const startStr = s.start;
@@ -587,6 +595,25 @@ function timelineSegmentsHtml(sessions) {
                     aria-label="${escapeHtml(`${name}, ${startStr} to ${endStr}, ${formatTime(dur)}`)}"
                     onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"></div>`;
     }).join('');
+
+    // Same rose used everywhere else AFK shows up (the Overview AFK card, the
+    // hero dial's AFK share, the AFK screen bar) so this reads as the same
+    // concept rather than a new color the viewer has to learn.
+    const afkHtml = (afkIntervals || []).map(a => {
+        const startStr = a.start;
+        const endStr = a.end;
+        const dur = a.durationMinutes ?? 0;
+        const startMins = a.startMinutes ?? 0;
+        const left = ((startMins - win.startMin) / span) * 100;
+        const width = Math.max((dur / span) * 100, 0.25);
+        return `<div class="timeline-seg timeline-seg-afk" style="left:${left}%;width:${width}%"
+                    data-name="Away" data-range="${escapeHtml(startStr + ' – ' + endStr)}"
+                    data-dur="${escapeHtml(formatTime(dur))}"
+                    aria-label="${escapeHtml(`Away, ${startStr} to ${endStr}, ${formatTime(dur)}`)}"
+                    onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"></div>`;
+    }).join('');
+
+    return sessionsHtml + afkHtml;
 }
 
 // The ribbon identified its blocks on hover alone, so a day that was glanced at
@@ -596,7 +623,9 @@ function timelineSegmentsHtml(sessions) {
 // means nothing until the container has been laid out.
 function labelWideTimelineSegments(trackEl) {
     if (!trackEl) return;
-    trackEl.querySelectorAll('.timeline-seg').forEach(seg => {
+    // The AFK strip is only 5px tall -- there's no room for a centered label,
+    // and "Away" is already legible at a glance from its color and position.
+    trackEl.querySelectorAll('.timeline-seg:not(.timeline-seg-afk)').forEach(seg => {
         const old = seg.querySelector('.timeline-seg-label');
         if (old) old.remove();
 

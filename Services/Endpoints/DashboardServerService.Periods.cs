@@ -281,6 +281,7 @@ namespace FastApp.Services
                 // /api/timeline already returns, computed here instead of making the
                 // frontend fire a second request for it.
                 List<object> daySessions = new List<object>();
+                List<object> dayAfkIntervals = new List<object>();
                 if (periodKind == "day")
                 {
                     var sessionsForDay = await db.SessionLogs
@@ -298,6 +299,17 @@ namespace FastApp.Services
                         StartMinutes = s.StartTime.TimeOfDay.TotalMinutes,
                         WindowTitle = s.WindowTitle // null unless CaptureWindowTitles was on when this session was recorded
                     }).ToList();
+
+                    // Same AFK-stretch shape /api/timeline returns, so the
+                    // frontend's one shared renderer draws both here and there.
+                    dayAfkIntervals = AfkIntervalStore.GetForDay(chosenS)
+                        .Select(a => (object)new
+                        {
+                            Start = a.Start.ToString("HH:mm"),
+                            End = a.End.ToString("HH:mm"),
+                            DurationMinutes = (a.End - a.Start).TotalMinutes,
+                            StartMinutes = a.Start.TimeOfDay.TotalMinutes
+                        }).ToList();
                 }
 
                 var payload = new
@@ -317,7 +329,8 @@ namespace FastApp.Services
                     TopApps = topApps,
                     TopCategories = topCategories,
                     Days = days,
-                    DaySessions = daySessions
+                    DaySessions = daySessions,
+                    DayAfkIntervals = dayAfkIntervals
                 };
 
                 await context.Response.WriteAsJsonAsync(payload);

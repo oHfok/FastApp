@@ -410,13 +410,15 @@ async function renderActivityBody(scope, dateStr, ov, signal) {
 
 async function renderDayTimeline(dateStr, signal) {
     try {
-        const sessions = await apiFetch(`/api/timeline?date=${dateStr}`, { signal });
+        const data = await apiFetch(`/api/timeline?date=${dateStr}`, { signal });
+        const sessions = data?.sessions ?? [];
+        const afk = data?.afk ?? [];
         const track = document.getElementById('ov-timeline-track');
         if (!track) return;
-        track.innerHTML = timelineSegmentsHtml(sessions);
+        track.innerHTML = timelineSegmentsHtml(sessions, afk);
         labelWideTimelineSegments(track);
         const ticks = document.getElementById('ov-timeline-ticks');
-        if (ticks && sessions && sessions.length) ticks.innerHTML = timelineTicksHtml(timelineWindow(sessions));
+        if (ticks && (sessions.length || afk.length)) ticks.innerHTML = timelineTicksHtml(timelineWindow(sessions, afk));
     } catch (err) { if (!isAbort(err)) console.error(err); }
 }
 

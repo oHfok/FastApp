@@ -126,12 +126,12 @@ async function loadPeriodList(silent) {
 // Year: same square-cell heatmap style as Month, but column-major over the
 // whole year rather than weekday-aligned — matches Overview's existing year
 // heatmap so the two don't look inconsistent with each other.
-function periodHeatmapHtml(days, periodType, daySessions) {
+function periodHeatmapHtml(days, periodType, daySessions, dayAfkIntervals) {
     if (periodType === 'day') {
         return `
             <div class="timeline-wrap">
-                <div class="timeline-ticks">${timelineTicksHtml(timelineWindow(daySessions))}</div>
-                <div class="timeline-track">${timelineSegmentsHtml(daySessions)}</div>
+                <div class="timeline-ticks">${timelineTicksHtml(timelineWindow(daySessions, dayAfkIntervals))}</div>
+                <div class="timeline-track">${timelineSegmentsHtml(daySessions, dayAfkIntervals)}</div>
             </div>`;
     }
     if (!days || days.length === 0) return `<div class="empty-state" style="padding:28px 16px;">No activity recorded yet.</div>`;
@@ -358,6 +358,7 @@ function renderPeriodDetail(d, isNewDay) {
     const topCategories = d.topCategories ?? [];
     const days = d.days ?? [];
     const daySessions = d.daySessions ?? [];
+    const dayAfkIntervals = d.dayAfkIntervals ?? [];
 
     document.getElementById('period-detail-title').textContent = label;
     document.getElementById('period-detail-sub').textContent = `#${rank ?? '–'} of ${totalPeriods ?? '–'} ${periodType}s · ${formatHours((totalMins || 0) / 60)}`;
@@ -437,7 +438,7 @@ function renderPeriodDetail(d, isNewDay) {
         </div>`;
     }).join('');
 
-    const heatmapHtml = periodHeatmapHtml(days, periodType, daySessions);
+    const heatmapHtml = periodHeatmapHtml(days, periodType, daySessions, dayAfkIntervals);
     const heatmapCardLabel = periodType === 'day' ? 'Timeline' : 'Daily Activity';
     const heatmapCardHtml = heatmapHtml ? `
         <div class="card" style="margin-bottom:24px;">

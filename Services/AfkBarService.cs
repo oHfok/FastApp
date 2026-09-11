@@ -46,6 +46,10 @@ namespace FastApp.Services
             if (want)
             {
                 _window.ShowBar();
+                // Set once immediately rather than waiting for the timer's
+                // first tick, so the bar never shows a stale duration (or the
+                // XAML's placeholder text) for the first quarter-second.
+                _window.SetDuration(SystemIdleTracker.GetIdleTime());
                 (_fastHideTimer ??= MakeFastHideTimer()).Start();
             }
             else
@@ -60,18 +64,27 @@ namespace FastApp.Services
         // a key the instant after the bar appeared still left it up for up to
         // five more seconds. GetIdleTime() is a synchronous, direct Win32 read
         // (no WinRT media-session query behind it), so polling it far more
-        // often than the tracker tick costs nothing. This only ever fires the
-        // HIDE direction: becoming AFK still waits for the tracker's own tick,
-        // which also weighs the fullscreen/media exemptions a raw idle reading
-        // knows nothing about -- and premature-AFK, not late-AFK, is the
+        // often than the tracker tick costs nothing. The same reading now also
+        // drives the bar's "how long" duration text, since the two questions
+        // ("are you back yet" and "how long has this been going on") turn out
+        // to want the same number.
+        //
+        // Hiding early is still the only direction this timer is allowed to
+        // decide on its own: becoming AFK still waits for the tracker's own
+        // tick, which also weighs the fullscreen/media exemptions a raw idle
+        // reading knows nothing about, and premature-AFK, not late-AFK, is the
         // direction that would actually be wrong to shortcut.
         private static DispatcherTimer MakeFastHideTimer()
         {
             var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             timer.Tick += (_, __) =>
             {
-                if (_visible && SystemIdleTracker.GetIdleTime() < SystemIdleTracker.AfkThreshold)
-                    Apply(false);
+                if (!_visible) return;
+
+                var idle = SystemIdleTracker.GetIdleTime();
+                if (idle < SystemIdleTracker.AfkThreshold) { Apply(false); return; }
+
+                _window.SetDuration(idle);
             };
             return timer;
         }
