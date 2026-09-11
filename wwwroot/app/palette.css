@@ -478,6 +478,32 @@ body {
 }
 .limit-progress-caption.over { color: var(--rose); }
 
+/* The PIN prompt that gates saving a changed limit. Framed as its own
+   bounded unit -- brass-tinted like the card's "PIN LOCKED" badge, so the
+   two read as the same idea (this is locked; here is the lock) -- rather
+   than a bare password field and a button sitting loose on the card floor,
+   which is what made it read as out of place, or like an error state, when
+   it was neither. */
+.limit-confirm {
+    background: var(--wash-brass);
+    border: 1px solid var(--brass-dim);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.limit-confirm-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--brass);
+    font-size: var(--fs-small);
+    font-weight: 600;
+}
+.limit-confirm .x-message { min-height: 0; }
+.limit-confirm .x-message:empty { display: none; }
+
 .toggle {
     width: 36px; height: 20px;
     border-radius: var(--radius-pill);

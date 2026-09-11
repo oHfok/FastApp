@@ -1940,13 +1940,32 @@ function renderLimit() {
     else if (wasHidden) d.limitSaveRow.scrollIntoView({ block: 'nearest' });
 }
 
+/// Whether the fields on screen actually differ from what's stored on
+/// `editing`. Used instead of a one-way "has this been touched" flag, so
+/// typing a new limit and then typing the original number right back makes
+/// the PIN box disappear again -- setting it once and never reconsidering
+/// meant it stayed up for a change that no longer existed the moment you
+/// reverted it.
+function computeLimitDirty() {
+    if (!editing) return false;
+
+    const wasOn = editing.dailyLimitMinutes > 0;
+    const isOn = limitOnNow();
+    if (wasOn !== isOn) return true;
+    if (!isOn) return false; // off before, off now: nothing to save either way
+
+    if (limitMinutesNow() !== editing.dailyLimitMinutes) return true;
+    if (toggleOn(d.force) !== !!editing.strictFocusMode) return true;
+    return false;
+}
+
 /// Called by every control in the card. With no PIN this is the ordinary
 /// save-as-you-go the rest of the panel does; with one it only arms the button.
 function limitChanged() {
     d.limitMessage.textContent = '';
     d.limitMessage.classList.remove('good', 'bad');
 
-    if (editing && editing.limitsLocked) limitDirty = true;
+    if (editing && editing.limitsLocked) limitDirty = computeLimitDirty();
     renderLimit();
 
     if (!(editing && editing.limitsLocked)) saveDetail();
@@ -1970,7 +1989,7 @@ d.force.addEventListener('click', () => {
 });
 
 d.limit.addEventListener('input', () => {
-    if (editing && editing.limitsLocked) { limitDirty = true; renderLimit(); return; }
+    if (editing && editing.limitsLocked) { limitDirty = computeLimitDirty(); renderLimit(); return; }
     renderLimit();
 });
 d.limit.addEventListener('change', limitChanged);

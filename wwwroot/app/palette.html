@@ -210,16 +210,34 @@
                 </div>
             </div>
 
-            <!-- Only once a PIN is set and something has actually changed. The
-                 fields above stay editable either way: being told no after you
-                 have made up your mind is kinder than a form you cannot fill
-                 in. -->
-            <div class="field-row" id="d-limit-save-row" hidden>
-                <input class="field field-narrow" id="d-limit-pin" type="password"
-                       inputmode="numeric" placeholder="PIN" autocomplete="off">
-                <button class="btn btn-primary" id="d-limit-save" type="button">Save limit</button>
+            <!-- Only once a PIN is set and something actually differs from
+                 what's stored -- computed by comparing the fields against
+                 editing.* each time one changes, not just "has this been
+                 touched," so reverting a value back to what it already was
+                 makes the box disappear again instead of leaving a save
+                 prompt for a change that no longer exists.
+
+                 Framed as its own bounded unit, not a bare input+button on
+                 the card floor: the lock icon and the sentence are what a
+                 lone password field next to a button did not say on their
+                 own -- that this specific edit is the thing being gated,
+                 not a broken or half-finished part of the form. -->
+            <div class="limit-confirm" id="d-limit-save-row" hidden>
+                <div class="limit-confirm-head">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round">
+                        <rect x="4" y="11" width="16" height="10" rx="2.5"></rect>
+                        <path d="M8 11V7a4 4 0 018 0v4"></path>
+                    </svg>
+                    <span>Enter the PIN to save this change</span>
+                </div>
+                <div class="field-row">
+                    <input class="field field-narrow" id="d-limit-pin" type="password"
+                           inputmode="numeric" placeholder="PIN" autocomplete="off">
+                    <button class="btn btn-primary" id="d-limit-save" type="button">Save limit</button>
+                </div>
+                <span class="field-label x-message" id="d-limit-message"></span>
             </div>
-            <span class="field-label x-message" id="d-limit-message"></span>
             <!-- The old note named the dashboard and stopped there, which left
                  you to go and find the app, open it and find the tab. This is
                  the same sentence with the door attached. -->
