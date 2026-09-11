@@ -388,6 +388,7 @@ namespace FastApp.ViewModels
             _dbContext.Database.ExecuteSqlRaw(Services.ExecutablePathStore.CreateTableSql);
             _dbContext.Database.ExecuteSqlRaw(Services.ResourceStatsStore.CreateTableSql);
             _dbContext.Database.ExecuteSqlRaw(Services.MusicStatsStore.CreateTableSql);
+            _dbContext.Database.ExecuteSqlRaw(Services.AfkIntervalStore.CreateTableSql);
 
             // Read here, not at the top of this constructor, because every one
             // of them reads AppSettings and that table is only guaranteed to
@@ -1880,6 +1881,13 @@ namespace FastApp.ViewModels
             DateTime? currentSessionStart = null;
             string currentSessionTitle = null;
 
+            // When the current AFK stretch (if any) began -- same shape as
+            // currentSessionStart, just machine-wide rather than per-app, so the
+            // Timeline ribbon can show WHEN someone was away rather than just
+            // the running AfkTimeSpent total. Closed out at the same three
+            // points a focus session is: pause, day rollover, and shutdown.
+            DateTime? afkIntervalStart = null;
+
             // Shared by the periodic flush and the final flush-on-exit below,
             // so a normal quit persists exactly the same way a scheduled flush does.
             void FlushDailySummaries(DateTime today)
@@ -2015,6 +2023,15 @@ namespace FastApp.ViewModels
                         currentSessionTitle = null;
                     }
 
+                    // Same reasoning as the session close above: a pause stops
+                    // the clock rather than quietly folding the paused stretch
+                    // into whatever AFK interval was already open.
+                    if (afkIntervalStart.HasValue)
+                    {
+                        Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, DateTime.Now);
+                        afkIntervalStart = null;
+                    }
+
                     continue;
                 }
 
@@ -2083,6 +2100,20 @@ namespace FastApp.ViewModels
                 TimeSpan tickDuration = TimeSpan.FromSeconds(5);
                 DateTime now = DateTime.Now;
 
+                // AFK interval boundary: the false->true edge opens one, the
+                // true->false edge closes and records it. Mirrors the focus
+                // session's own appChanged close-out further down, just keyed
+                // off isAfk instead of the active app.
+                if (isAfk && !afkIntervalStart.HasValue)
+                {
+                    afkIntervalStart = now;
+                }
+                else if (!isAfk && afkIntervalStart.HasValue)
+                {
+                    Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, now);
+                    afkIntervalStart = null;
+                }
+
                 // The day rolls over here, on the tick that first sees it, rather
                 // than waiting for the 60s flush below. Enforcement (D) runs every
                 // tick against baselineFocusedMinutes, so leaving the reset to the
@@ -2123,6 +2154,17 @@ namespace FastApp.ViewModels
                     // Under the day that just ended, same as the summaries above.
                     FlushResourceStats(previousDay);
                     FlushMusicStats(previousDay);
+
+                    // An AFK stretch spanning midnight is split at the boundary
+                    // and re-opened for the new day, same reasoning as filing
+                    // the flushed caches under previousDay above: the part that
+                    // already happened belongs to the day that just ended, not
+                    // the one that's starting.
+                    if (afkIntervalStart.HasValue)
+                    {
+                        Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, DateTime.Today);
+                        afkIntervalStart = isAfk ? DateTime.Today : (DateTime?)null;
+                    }
 
                     timeCache.Clear();
                     afkCache.Clear();
@@ -2595,6 +2637,13 @@ namespace FastApp.ViewModels
                             EndTime = DateTime.Now,
                             WindowTitle = currentSessionTitle
                         });
+                    }
+
+                    // Same shutdown close-out, for whatever AFK stretch was
+                    // still open.
+                    if (afkIntervalStart.HasValue)
+                    {
+                        Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, DateTime.Now);
                     }
 
                     lock (_dbContext)

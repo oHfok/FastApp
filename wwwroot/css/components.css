@@ -467,6 +467,22 @@
 
 .timeline-seg:hover { filter: brightness(1.3); z-index: 2; }
 
+/* AFK stretches ride a thin strip along the bottom edge of the track rather
+   than the full-height row app segments use -- machine-wide, not per-app, so
+   it can overlap a session that stayed focused across an away period without
+   visually fighting it for the same space. */
+.timeline-seg-afk {
+    top: auto;
+    bottom: 0;
+    height: 5px;
+    border-radius: 0;
+    border-right: none;
+    cursor: default;
+    background: var(--rose);
+    opacity: 0.85;
+}
+.timeline-seg-afk:hover { filter: brightness(1.15); opacity: 1; z-index: 3; }
+
 /* Only applied to blocks measured wide enough to hold the whole name (see
    labelWideTimelineSegments), so there is deliberately no ellipsis here -- a
    clipped name is worse than no name. pointer-events stays off so the label

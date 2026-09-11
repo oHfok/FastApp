@@ -459,7 +459,7 @@ namespace FastApp.Services
                     .Where(s => s.StartTime >= targetDate && s.StartTime < targetDate.AddDays(1) && s.AppName != "SYSTEM_PC" && !hiddenApps.Contains(s.AppName))
                     .ToListAsync();
 
-                var payload = sessions.Select(s => new {
+                var sessionPayload = sessions.Select(s => new {
                     AppName = s.AppName,
                     Category = categoryMap.GetValueOrDefault(s.AppName, "Other"),
                     // Force 24-Hour Format (HH instead of hh)
@@ -469,7 +469,20 @@ namespace FastApp.Services
                     StartMinutes = s.StartTime.TimeOfDay.TotalMinutes
                 }).OrderBy(s => s.StartMinutes).ToList();
 
-                await context.Response.WriteAsJsonAsync(payload);
+                // AFK stretches for the same day, in the same shape as the
+                // sessions above, so the Timeline ribbon can lay both out with
+                // one shared renderer. A separate list rather than folding into
+                // Sessions: an AFK stretch is machine-wide, not per-app, and can
+                // overlap a session that stayed focused on an app across it.
+                var afkPayload = AfkIntervalStore.GetForDay(targetDate)
+                    .Select(a => new {
+                        Start = a.Start.ToString("HH:mm"),
+                        End = a.End.ToString("HH:mm"),
+                        DurationMinutes = (a.End - a.Start).TotalMinutes,
+                        StartMinutes = a.Start.TimeOfDay.TotalMinutes
+                    }).ToList();
+
+                await context.Response.WriteAsJsonAsync(new { Sessions = sessionPayload, Afk = afkPayload });
             }
             catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
         });
