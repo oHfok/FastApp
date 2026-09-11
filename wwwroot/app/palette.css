@@ -185,10 +185,26 @@ body {
 .row.active .row-figure { color: var(--brass); }
 
 /* Running, so the button focuses rather than starts. Same teal the button
-   uses, said once more where the eye lands first. */
+   uses, said once more where the eye lands first. The ring alone read as the
+   quietest thing on a row competing with a hotkey chip, a limit chip and a
+   time figure -- the corner dot is the same "online" convention chat apps
+   use, and lands before the eye has to parse the row's density. */
 .avatar.live { box-shadow: 0 0 0 1.5px var(--teal); }
+.avatar.live::after {
+    content: "";
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--teal);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 4px rgba(52, 211, 196, 0.55);
+}
 
 .avatar {
+    position: relative;
     width: 32px; height: 32px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -436,6 +452,32 @@ body {
 .opt-text { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0; }
 .hint-sub { font-size: var(--fs-caption); color: var(--text-faint); }
 
+/* Today's minutes against whatever is in the field above -- live as it's
+   typed, not just at the moment the panel opened. Same fill/track pairing
+   the dashboard's own compare-bar uses, so the two surfaces agree on what
+   "how much of this is used" looks like. */
+.limit-progress-track {
+    height: 6px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-raised);
+    overflow: hidden;
+}
+.limit-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: var(--brass);
+    width: 0%;
+    transition: width 0.25s ease, background 0.25s ease;
+}
+.limit-progress-fill.over { background: var(--rose); }
+.limit-progress-caption {
+    display: block;
+    margin-top: 6px;
+    font-size: var(--fs-caption);
+    color: var(--text-faint);
+}
+.limit-progress-caption.over { color: var(--rose); }
+
 .toggle {
     width: 36px; height: 20px;
     border-radius: var(--radius-pill);
@@ -470,6 +512,10 @@ body {
 .btn:hover { color: var(--text); background: var(--bg-raised); }
 .btn-danger { color: var(--rose); background: none; }
 .btn-danger:hover { color: var(--rose); background: var(--wash-rose); }
+/* Armed by a first click, waiting on the second one that actually removes
+   the app -- the wash stays on (not just on :hover) so the button reads as
+   "hot" even after the pointer moves off it toward the confirming click. */
+.btn-danger.confirming { background: var(--wash-rose); font-weight: 700; }
 
 .locked { display: flex; align-items: center; gap: 7px; color: var(--brass); }
 .label-brass { color: var(--brass); }

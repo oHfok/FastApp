@@ -44,7 +44,6 @@ namespace FastApp
         // AttachViewModel immediately after `new MainViewModel()` -- has
         // returned.
         private MainViewModel _viewModel = null!;
-        private bool _ready;
 
         /// <summary>Null when the palette works; otherwise why it does not.</summary>
         public string Unavailable { get; private set; }
@@ -205,7 +204,6 @@ namespace FastApp
                     $"[{DateTime.Now:HH:mm:ss}] mapping fastapp.ui -> {UiFolder()} (exists={Directory.Exists(UiFolder())}){Environment.NewLine}");
 
                 core.Navigate("https://fastapp.ui/app/palette.html");
-                _ready = true;
             }
             catch (Exception ex)
             {
@@ -615,6 +613,11 @@ namespace FastApp
                     canReorder = true,
                     triggerCount = app.HotkeyTriggerCount,
                     today = FormatSpan(todaySpan),
+                    // Raw minutes, alongside the formatted string above -- the
+                    // Daily Limit card uses this to show how much of whatever
+                    // number is in the field has already been used today,
+                    // live as it's typed, without parsing "2h 18m" back apart.
+                    todayMinutes = (int)todaySpan.TotalMinutes,
                     running = !app.IsAction
                               && RunningApps.IsRunning(RunningApps.WindowOwners(), app.ExecutablePath)
                 }
