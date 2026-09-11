@@ -193,8 +193,21 @@
 [data-theme="glass"] .settings-list-item {
     backdrop-filter: blur(30px) saturate(180%);
     -webkit-backdrop-filter: blur(30px) saturate(180%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 8px 32px rgba(0, 0, 0, 0.30);
     border-radius: 20px !important;
+}
+
+/* The shadow is split from the block above and kept off .drawer's closed
+   state (same reasoning as components.css's own .drawer.open rule): a
+   box-shadow paints wherever the (possibly off-screen, transformed) box
+   lands, closed or not, so on the base selector this bled ~32px back into
+   the visible page from the right edge on every tab. */
+[data-theme="glass"] .card,
+[data-theme="glass"] .full-lb-row,
+[data-theme="glass"] .activity-row,
+[data-theme="glass"] .period-card,
+[data-theme="glass"] .settings-list-item,
+[data-theme="glass"] .drawer.open {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 8px 32px rgba(0, 0, 0, 0.30);
 }
 
 [data-theme="glass"] .field,

@@ -914,7 +914,6 @@
     max-width: 92vw;
     background: var(--panel-solid);
     border-left: none;
-    box-shadow: -24px 0 60px var(--scrim);
     transform: translateX(100%);
     transition: transform 0.25s ease;
     z-index: 70;
@@ -924,7 +923,13 @@
     padding: 26px;
 }
 
-.drawer.open { transform: translateX(0); }
+/* The shadow moves on .open, not the base rule: a box-shadow is painted
+   relative to the (possibly transformed) box regardless of whether that box
+   itself is on screen, so with it on the base rule the closed drawer -- sitting
+   just past the right edge -- still blurred a permanent dark band 60px back
+   into the visible page on every tab, all the time. Scoping it to .open means
+   a closed drawer casts nothing. */
+.drawer.open { transform: translateX(0); box-shadow: -24px 0 60px var(--scrim); }
 
 /* App Detail drawer specifically — enough room for the internal Overview/
    Limits tabs (Streaks, Period Comparison, etc.) without cramming, while
