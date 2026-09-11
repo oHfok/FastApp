@@ -1915,6 +1915,43 @@ namespace FastApp.ViewModels
                 Services.MusicStatsStore.FlushBatch(date, batch);
             }
 
+            // Whether any currently-playing media session belongs to an app
+            // that is NOT in the Music category -- what the AFK check's media
+            // exemption should key off, per the request that music alone
+            // shouldn't hold "away" off. Static and parameterised, not a
+            // closure: runningProcessNames/managedLookup/categories are all
+            // re-built fresh each tick, so this takes them as arguments rather
+            // than capturing tick-scoped locals.
+            //
+            // Matching is the same substring test B3 (further down) uses for
+            // per-app music-time attribution: a running process's name turning
+            // up in the session's SourceAppUserModelId. A source that matches
+            // no running process, or matches one that isn't a Music app, counts
+            // as non-Music -- the exemption stays granted for anything FastApp
+            // can't positively identify as music, same as it always was.
+            static bool NonMusicMediaIsPlaying(
+                HashSet<string> playingSources,
+                HashSet<string> runningProcessNames,
+                Dictionary<string, string> managedLookup,
+                Dictionary<string, string> categories)
+            {
+                foreach (var source in playingSources)
+                {
+                    string sourceLower = source.ToLowerInvariant();
+                    string owner = runningProcessNames.FirstOrDefault(pn => sourceLower.Contains(pn));
+                    string appName = owner == null
+                        ? null
+                        : (managedLookup.TryGetValue(owner, out var mapped)
+                            ? mapped : char.ToUpper(owner[0]) + owner.Substring(1));
+
+                    bool isMusic = appName != null && string.Equals(
+                        Services.CategoryMap.For(categories, appName), "Music",
+                        StringComparison.OrdinalIgnoreCase);
+                    if (!isMusic) return true;
+                }
+                return false;
+            }
+
             try
             {
             while (await timer.WaitForNextTickAsync(_trackerCts.Token))
@@ -2002,14 +2039,20 @@ namespace FastApp.ViewModels
                     .GroupBy(a => Path.GetFileNameWithoutExtension(a.ExecutablePath).ToLower())
                     .ToDictionary(g => g.Key, g => g.First().Name);
 
-                bool isAfk = await Services.SystemIdleTracker.IsTrulyAfkAsync();
+                // Which apps have a media session reporting Playing right now.
+                // Used below both for the AFK check (music shouldn't hold "away"
+                // off; anything else playing still should) and by B3 further
+                // down to count music-listening time. Cheap WinRT call, a few
+                // ms, once per tick -- fetched unconditionally either way, so
+                // moving it ahead of the AFK check costs nothing and saves that
+                // check its own separate media query.
+                var playingMediaSources = await Services.SystemIdleTracker.GetPlayingMediaSourcesAsync();
+                bool nonMusicMediaPlaying = NonMusicMediaIsPlaying(
+                    playingMediaSources, allProcessNames, managedAppLookup, categoryByApp);
+
+                bool isAfk = await Services.SystemIdleTracker.IsTrulyAfkAsync(nonMusicMediaPlaying);
                 TimeSpan tickDuration = TimeSpan.FromSeconds(5);
                 DateTime now = DateTime.Now;
-
-                // Which apps have a media session reporting Playing right now.
-                // Used by B3 below to count music-listening time; cheap WinRT
-                // call, a few ms, once per tick.
-                var playingMediaSources = await Services.SystemIdleTracker.GetPlayingMediaSourcesAsync();
 
                 // The day rolls over here, on the tick that first sees it, rather
                 // than waiting for the 60s flush below. Enforcement (D) runs every
