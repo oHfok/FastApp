@@ -50,7 +50,7 @@ namespace FastApp
             // Tag sizes itself to its own padding + content; its width is not
             // known until a layout pass has actually measured it.
             UpdateLayout();
-            Canvas.SetLeft(Tag, Math.Round((Width - Tag.ActualWidth) / 2));
+            Canvas.SetLeft(TagBorder, Math.Round((Width - TagBorder.ActualWidth) / 2));
         }
 
         // A slow, steady pulse on the marker dot -- the same 2.6s breathing
@@ -78,6 +78,29 @@ namespace FastApp
                     EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
                 });
             MarkerDot.BeginAnimation(OpacityProperty, Pulse);
+        }
+
+        /// <summary>
+        /// How long the away streak this bar is reporting has actually run
+        /// for. "AFK DETECTED" alone never said whether that was ten seconds
+        /// ago or twenty minutes ago -- the bar only appears once you're
+        /// already past the threshold, so the raw fact carries no sense of
+        /// duration on its own. Called from AfkBarService's own fast-hide
+        /// timer with the same GetIdleTime() reading it already has in hand,
+        /// so this adds no new polling of its own.
+        /// </summary>
+        public void SetDuration(TimeSpan idle)
+        {
+            DurationText.Text = idle.TotalHours >= 1
+                ? $"{(int)idle.TotalHours}h {idle.Minutes:00}m"
+                : $"{idle.Minutes}m {idle.Seconds:00}s";
+
+            // The tag's width changes as the label grows or shrinks a digit
+            // ("9m 59s" -> "10m 00s"), so it has to be re-centred each time
+            // rather than drifting off-centre as it widens around a fixed
+            // left edge.
+            UpdateLayout();
+            Canvas.SetLeft(TagBorder, Math.Round((Width - TagBorder.ActualWidth) / 2));
         }
 
         public void HideBar()

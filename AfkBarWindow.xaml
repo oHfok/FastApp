@@ -43,7 +43,7 @@
             </Rectangle.Fill>
         </Rectangle>
 
-        <Border x:Name="Tag" Canvas.Top="0" CornerRadius="15" BorderThickness="1"
+        <Border x:Name="TagBorder" Canvas.Top="0" CornerRadius="15" BorderThickness="1"
                 Padding="17,7" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform>
                 <TranslateTransform x:Name="TagSlide" Y="-6"/>
@@ -72,6 +72,19 @@
                 <TextBlock Text="AFK DETECTED" VerticalAlignment="Center"
                            FontFamily="Consolas" FontWeight="Bold" FontSize="11.5"
                            Foreground="#F3F1EA"/>
+
+                <!-- How long, not just that: the bar only ever appears once
+                     you're already past the threshold, so "AFK DETECTED" alone
+                     never told you whether that was ten seconds ago or twenty
+                     minutes ago. Fed from the same GetIdleTime() the fast-hide
+                     timer already polls every 250ms, so this is a second use
+                     of a call already being made, not a new one. -->
+                <TextBlock Text=" · " VerticalAlignment="Center"
+                           FontFamily="Consolas" FontSize="11.5"
+                           Foreground="#6B6F80"/>
+                <TextBlock x:Name="DurationText" Text="0m 00s" VerticalAlignment="Center"
+                           FontFamily="Consolas" FontSize="11.5"
+                           Foreground="#9C9FAE"/>
             </StackPanel>
         </Border>
     </Canvas>
