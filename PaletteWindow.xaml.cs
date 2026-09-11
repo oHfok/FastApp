@@ -44,7 +44,6 @@ namespace FastApp
         // AttachViewModel immediately after `new MainViewModel()` -- has
         // returned.
         private MainViewModel _viewModel = null!;
-        private bool _ready;
 
         /// <summary>Null when the palette works; otherwise why it does not.</summary>
         public string Unavailable { get; private set; }
@@ -205,7 +204,6 @@ namespace FastApp
                     $"[{DateTime.Now:HH:mm:ss}] mapping fastapp.ui -> {UiFolder()} (exists={Directory.Exists(UiFolder())}){Environment.NewLine}");
 
                 core.Navigate("https://fastapp.ui/app/palette.html");
-                _ready = true;
             }
             catch (Exception ex)
             {

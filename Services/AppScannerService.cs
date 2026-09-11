@@ -1,4 +1,4 @@
-﻿using FastApp.ViewModels;
+﻿using FastApp.ViewModels; // To access AppItemModel
 using IWshRuntimeLibrary; // This is the COM reference you just added
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using FastApp.ViewModels; // To access AppItemModel
 
 namespace FastApp.Services
 {
