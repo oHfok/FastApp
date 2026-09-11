@@ -62,42 +62,18 @@ namespace FastApp.Services
             return false;
         }
 
-        // --- 3. NEW: MODERN MEDIA TRACKER ---
-        // Checks if Spotify, YouTube, Netflix, etc., is currently playing media
-        private static async Task<bool> IsMediaPlayingAsync()
-        {
-            try
-            {
-                var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-                var session = manager.GetCurrentSession();
-
-                if (session != null)
-                {
-                    var playbackInfo = session.GetPlaybackInfo();
-                    if (playbackInfo != null && playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch
-            {
-                // Failsafes if the OS doesn't support it or COM object gets disconnected
-            }
-            return false;
-        }
-
         /// <summary>
         /// The SourceAppUserModelId of every media session currently reporting
         /// Playing, as a case-insensitive set. Empty on any failure.
         ///
-        /// Unlike <see cref="IsMediaPlayingAsync"/>, which only asks about the
-        /// single "current" session for the AFK check, this walks every session
-        /// so the tracker can tell <em>which</em> app is producing sound and
-        /// attribute music-listening time to it rather than to whatever is in
-        /// the foreground. The id is "Spotify.exe" for the Spotify desktop app,
-        /// a package family name for Store apps, "chrome"/"msedge" for a browser
-        /// tab, and so on.
+        /// Walks every session, not just the OS's notion of the "current" one,
+        /// so the tracker can tell <em>which</em> app is producing sound —
+        /// used both to attribute music-listening time to that app rather than
+        /// to whatever is in the foreground, and by the AFK check below to tell
+        /// a video or a call (which should hold "away" off) apart from music
+        /// (which shouldn't). The id is "Spotify.exe" for the Spotify desktop
+        /// app, a package family name for Store apps, "chrome"/"msedge" for a
+        /// browser tab, and so on.
         /// </summary>
         public static async Task<HashSet<string>> GetPlayingMediaSourcesAsync()
         {
@@ -157,7 +133,18 @@ namespace FastApp.Services
         public static TimeSpan PassiveMediaGracePeriod { get; set; } = TimeSpan.FromMinutes(30);
 
         // --- THE MASTER AFK CHECK ---
-        public static async Task<bool> IsTrulyAfkAsync()
+        //
+        // nonMusicMediaPlaying is computed by the caller from
+        // GetPlayingMediaSourcesAsync() plus which of those sources resolve to
+        // a Music-category app (MainViewModel has the category map and the
+        // running-process names this needs; this class doesn't). Music is
+        // deliberately excluded from the media exemption below: you can have
+        // Spotify going without being at the machine in any sense that matters
+        // for a daily limit, unlike a video playing in front of you or a call
+        // you're on. An app FastApp can't positively attribute counts as
+        // non-Music here, so an unrecognised player still gets the exemption
+        // it always has.
+        public static async Task<bool> IsTrulyAfkAsync(bool nonMusicMediaPlaying)
         {
             TimeSpan idleTime = GetIdleTime();
 
@@ -173,11 +160,12 @@ namespace FastApp.Services
             if (IsUserPassivelyEngaged())
                 return false;
 
-            // 3. Deep Check: Active Windowed Media (YouTube, Spotify, etc.)
-            if (await IsMediaPlayingAsync())
+            // 3. Active windowed media (YouTube, a call, etc.) -- but not music.
+            if (nonMusicMediaPlaying)
                 return false;
 
-            // If we made it here, they are completely idle and consuming no media.
+            // If we made it here, they are completely idle and consuming no
+            // non-music media.
             return true;
         }
     }
