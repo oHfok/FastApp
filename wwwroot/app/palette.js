@@ -1730,6 +1730,8 @@ const d = {
     limitOn: document.getElementById('d-limit-on'),
     limitBody: document.getElementById('d-limit-body'),
     limitSummary: document.getElementById('d-limit-summary'),
+    limitProgressFill: document.getElementById('d-limit-progress-fill'),
+    limitProgressCaption: document.getElementById('d-limit-progress-caption'),
     limitSaveRow: document.getElementById('d-limit-save-row'),
     limitPin: document.getElementById('d-limit-pin'),
     limitSave: document.getElementById('d-limit-save'),
@@ -1789,6 +1791,8 @@ function renderDetail(app) {
     d.limitMessage.classList.remove('good', 'bad');
     d.limitPin.value = '';
     d.limitSave.disabled = false;
+    resetRemoveConfirm(); // opening any app's detail starts unarmed, never mid-confirm for a different one
+    usedMinutesToday = Math.max(0, app.todayMinutes || 0);
 
     d.avatar.textContent = (app.displayName[0] || '?').toUpperCase();
     d.avatar.style.background = catTint(app.category);
@@ -1869,6 +1873,12 @@ function renderDetail(app) {
 /// remember whether what is on screen still matches what is stored.
 let limitDirty = false;
 
+/// Minutes actually focused on this app today, as of when the panel opened --
+/// not re-read from the server while typing, so raising or lowering the
+/// number in the field moves the bar against a fixed "used" rather than
+/// against a figure that could itself be changing underneath it.
+let usedMinutesToday = 0;
+
 function limitOnNow() { return toggleOn(d.limitOn); }
 function limitMinutesNow() { return limitOnNow() ? (parseInt(d.limit.value, 10) || 0) : 0; }
 
@@ -1881,6 +1891,27 @@ function renderLimit() {
         : limitMinutesNow() > 0
             ? `${limitMinutesNow()} minutes a day, then ${toggleOn(d.force) ? 'it closes' : 'you are warned'}.`
             : 'Set how many minutes a day.';
+
+    // How much of the number above is already spent today -- the one thing
+    // the list row shows ("42m left") that the editing surface itself did
+    // not. Lives inside limitBody, so it only shows once there is a number
+    // to be a share of.
+    const minutes = limitMinutesNow();
+    if (on && minutes > 0) {
+        const over = usedMinutesToday >= minutes;
+        const pct = Math.min(100, (usedMinutesToday / minutes) * 100);
+        d.limitProgressFill.style.width = `${pct}%`;
+        d.limitProgressFill.classList.toggle('over', over);
+        d.limitProgressCaption.classList.toggle('over', over);
+        d.limitProgressCaption.textContent = over
+            ? `${formatMinutes(usedMinutesToday)} used today — ${formatMinutes(usedMinutesToday - minutes)} over`
+            : `${formatMinutes(usedMinutesToday)} used of ${formatMinutes(minutes)} today`;
+    } else {
+        d.limitProgressFill.style.width = '0%';
+        d.limitProgressFill.classList.remove('over');
+        d.limitProgressCaption.classList.remove('over');
+        d.limitProgressCaption.textContent = '';
+    }
 
     // The save row is the PIN path only. Without a PIN every edit here saves
     // itself, the same as every other field in this panel.
@@ -2093,8 +2124,34 @@ d.hotkeyClear.addEventListener('click', () => {
     saveDetail();
 });
 
+// Removing an app is the same tier of consequence as the dashboard's own
+// "shorten retention" and "restore from backup" -- both of which stop and
+// name what is about to go before doing it. This used to fire on one click
+// with nothing else in the way. No native confirm() here: it would pop a
+// bare OS dialog over a borderless, custom-chrome window, which is a bigger
+// tonal break than the risk it guards against justifies. A two-click arm,
+// self-disarming after a few seconds, gets the same "did you mean that"
+// pause without leaving the palette's own look.
+let removeConfirmTimer = null;
+
+function resetRemoveConfirm() {
+    clearTimeout(removeConfirmTimer);
+    removeConfirmTimer = null;
+    d.remove.textContent = 'Remove from FastApp';
+    d.remove.classList.remove('confirming');
+}
+
 d.remove.addEventListener('click', () => {
     if (!editing) return;
+
+    if (!d.remove.classList.contains('confirming')) {
+        d.remove.classList.add('confirming');
+        d.remove.textContent = `Click again to remove ${editing.displayName}`;
+        removeConfirmTimer = setTimeout(resetRemoveConfirm, 4000);
+        return;
+    }
+
+    resetRemoveConfirm();
     send('delete-app', { id: editing.id });
     show('palette');
 });

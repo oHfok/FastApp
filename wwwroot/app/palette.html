@@ -196,6 +196,18 @@
                         <button class="toggle" id="d-force" type="button" role="switch"><span></span></button>
                     </span>
                 </div>
+
+                <!-- How much of the number above is already spent today. The
+                     list row one screen back does this math and shows "42m
+                     left" as a chip; the editing surface itself had no
+                     equivalent, so raising or lowering the minutes field only
+                     ever changed a number with nothing to weigh it against. -->
+                <div class="limit-progress" id="d-limit-progress">
+                    <div class="limit-progress-track">
+                        <div class="limit-progress-fill" id="d-limit-progress-fill"></div>
+                    </div>
+                    <span class="limit-progress-caption" id="d-limit-progress-caption"></span>
+                </div>
             </div>
 
             <!-- Only once a PIN is set and something has actually changed. The
