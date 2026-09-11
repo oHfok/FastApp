@@ -169,7 +169,12 @@ namespace FastApp
 
                 core.Settings.AreDefaultContextMenusEnabled = false;
                 core.Settings.IsStatusBarEnabled = false;
-                core.Settings.AreDevToolsEnabled = true;   // still useful while 2.0 is being built
+                // On (F12 / right-click Inspect) only when actually running under a
+                // debugger. This used to be unconditionally true "while 2.0 is being
+                // built" -- long since shipped, and a released build has no business
+                // handing every user a live inspector onto the palette's DOM and
+                // whatever WebMessage traffic crosses it.
+                core.Settings.AreDevToolsEnabled = System.Diagnostics.Debugger.IsAttached;
                 core.Settings.IsZoomControlEnabled = false;
                 core.Settings.IsSwipeNavigationEnabled = false;
 

@@ -55,15 +55,44 @@ namespace FastApp
             ApplySystemTheme();
             Services.SystemTheme.Changed += ApplySystemTheme;
 
-            // 1. Global Error Traps: Catch silent crashes before the app closes!
+            // 1. Global Error Traps: catch silent crashes before the app closes,
+            // and say something a person can actually use. This used to be
+            // ex.ToString() straight into a MessageBox -- a wall of a .NET stack
+            // trace with no way to copy it anywhere useful, and nothing kept
+            // once the dialog closed. The full exception is still captured, in
+            // CrashLog.LogPath, right where DatabaseHealth's own error log lives;
+            // the dialog just isn't the first (and only) place it appears.
             AppDomain.CurrentDomain.UnhandledException += (s, ex) =>
             {
-                System.Windows.MessageBox.Show(ex.ExceptionObject.ToString(), "Fatal App Crash");
+                var exception = ex.ExceptionObject as Exception
+                    ?? new Exception(ex.ExceptionObject?.ToString() ?? "Unknown error");
+                Services.CrashLog.Log("Fatal app crash", exception);
+
+                System.Windows.MessageBox.Show(
+                    "FastApp hit an unexpected error and has to close.\n\n" +
+                    "At most the last 30 seconds of tracking wasn't saved — everything " +
+                    "before that is on disk. Restarting FastApp will pick back up where " +
+                    "it left off.\n\n" +
+                    $"Details were saved to {Services.CrashLog.LogPath}.",
+                    "FastApp needs to close",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
             };
 
+            // This one IS recovered (ex.Handled = true below) — "Fatal UI Crash"
+            // was overstating it. FastApp keeps running in the tray; only the one
+            // binding/handler that threw is skipped.
             DispatcherUnhandledException += (s, ex) =>
             {
-                System.Windows.MessageBox.Show(ex.Exception.ToString(), "Fatal UI Crash");
+                Services.CrashLog.Log("Handled UI exception", ex.Exception);
+
+                System.Windows.MessageBox.Show(
+                    "Something went wrong, but FastApp is still running in the " +
+                    "background — tracking hasn't stopped.\n\n" +
+                    $"Details were saved to {Services.CrashLog.LogPath}.",
+                    "FastApp hit a problem",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
                 ex.Handled = true;
             };
 

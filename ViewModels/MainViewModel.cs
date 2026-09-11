@@ -726,10 +726,7 @@ namespace FastApp.ViewModels
         {
             if (value == 1)
             {
-                var sw = System.Diagnostics.Stopwatch.StartNew();
                 StatisticsVM?.RefreshStats(forceLoad: true);
-                sw.Stop();
-                System.Diagnostics.Debug.WriteLine($"[PERF] RefreshStats took {sw.ElapsedMilliseconds}ms");
             }
 
             // The notes and the rollback list used to be fetched here, when the
