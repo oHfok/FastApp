@@ -1793,6 +1793,7 @@ function renderDetail(app) {
     d.limitSave.disabled = false;
     resetRemoveConfirm(); // opening any app's detail starts unarmed, never mid-confirm for a different one
     usedMinutesToday = Math.max(0, app.todayMinutes || 0);
+    bonusMinutesToday = Math.max(0, app.bonusMinutesToday || 0);
 
     d.avatar.textContent = (app.displayName[0] || '?').toUpperCase();
     d.avatar.style.background = catTint(app.category);
@@ -1879,6 +1880,14 @@ let limitDirty = false;
 /// against a figure that could itself be changing underneath it.
 let usedMinutesToday = 0;
 
+/// Extra minutes granted for today only, via "Extend a limit" -- separate
+/// from the field above, which edits the permanent daily minutes. Enforcement
+/// adds this to whatever the daily minutes are (MainViewModel's
+/// effectiveLimit); the summary and progress bar below have to add it too,
+/// or someone who extended today reads themselves as over a cap that is not
+/// actually the one in force.
+let bonusMinutesToday = 0;
+
 function limitOnNow() { return toggleOn(d.limitOn); }
 function limitMinutesNow() { return limitOnNow() ? (parseInt(d.limit.value, 10) || 0) : 0; }
 
@@ -1886,17 +1895,22 @@ function renderLimit() {
     const on = limitOnNow();
     d.limitBody.hidden = !on;
 
+    const baseMinutes = limitMinutesNow();
+    const effectiveMinutes = baseMinutes + bonusMinutesToday;
+
     d.limitSummary.textContent = !on
         ? 'No limit. This app can run all day.'
-        : limitMinutesNow() > 0
-            ? `${limitMinutesNow()} minutes a day, then ${toggleOn(d.force) ? 'it closes' : 'you are warned'}.`
+        : baseMinutes > 0
+            ? (bonusMinutesToday > 0
+                ? `${baseMinutes} minutes a day, +${bonusMinutesToday} extended today = ${effectiveMinutes}, then ${toggleOn(d.force) ? 'it closes' : 'you are warned'}.`
+                : `${baseMinutes} minutes a day, then ${toggleOn(d.force) ? 'it closes' : 'you are warned'}.`)
             : 'Set how many minutes a day.';
 
-    // How much of the number above is already spent today -- the one thing
-    // the list row shows ("42m left") that the editing surface itself did
-    // not. Lives inside limitBody, so it only shows once there is a number
-    // to be a share of.
-    const minutes = limitMinutesNow();
+    // How much of the number above (plus any extension already granted
+    // today) is already spent -- the one thing the list row shows ("42m
+    // left") that the editing surface itself did not. Lives inside
+    // limitBody, so it only shows once there is a number to be a share of.
+    const minutes = effectiveMinutes;
     if (on && minutes > 0) {
         const over = usedMinutesToday >= minutes;
         const pct = Math.min(100, (usedMinutesToday / minutes) * 100);
@@ -1926,13 +1940,32 @@ function renderLimit() {
     else if (wasHidden) d.limitSaveRow.scrollIntoView({ block: 'nearest' });
 }
 
+/// Whether the fields on screen actually differ from what's stored on
+/// `editing`. Used instead of a one-way "has this been touched" flag, so
+/// typing a new limit and then typing the original number right back makes
+/// the PIN box disappear again -- setting it once and never reconsidering
+/// meant it stayed up for a change that no longer existed the moment you
+/// reverted it.
+function computeLimitDirty() {
+    if (!editing) return false;
+
+    const wasOn = editing.dailyLimitMinutes > 0;
+    const isOn = limitOnNow();
+    if (wasOn !== isOn) return true;
+    if (!isOn) return false; // off before, off now: nothing to save either way
+
+    if (limitMinutesNow() !== editing.dailyLimitMinutes) return true;
+    if (toggleOn(d.force) !== !!editing.strictFocusMode) return true;
+    return false;
+}
+
 /// Called by every control in the card. With no PIN this is the ordinary
 /// save-as-you-go the rest of the panel does; with one it only arms the button.
 function limitChanged() {
     d.limitMessage.textContent = '';
     d.limitMessage.classList.remove('good', 'bad');
 
-    if (editing && editing.limitsLocked) limitDirty = true;
+    if (editing && editing.limitsLocked) limitDirty = computeLimitDirty();
     renderLimit();
 
     if (!(editing && editing.limitsLocked)) saveDetail();
@@ -1956,7 +1989,7 @@ d.force.addEventListener('click', () => {
 });
 
 d.limit.addEventListener('input', () => {
-    if (editing && editing.limitsLocked) { limitDirty = true; renderLimit(); return; }
+    if (editing && editing.limitsLocked) { limitDirty = computeLimitDirty(); renderLimit(); return; }
     renderLimit();
 });
 d.limit.addEventListener('change', limitChanged);
