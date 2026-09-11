@@ -1,12 +1,14 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace FastApp
 {
     /// <summary>
-    /// The full-width red strip across the top of the screen while FastApp
+    /// The hairline-plus-tag across the top of the screen while FastApp
     /// thinks nobody is at the keyboard. Opt-in (see MainViewModel.ShowAfkBar) —
     /// a screen-spanning bar is a bold, unmissable thing, not something to turn
     /// on for someone who never asked for it.
@@ -43,18 +45,46 @@ namespace FastApp
             Left = 0;
             Top = 0;
             Width = SystemParameters.PrimaryScreenWidth;
+            Hairline.Width = Width;
+
+            // Tag sizes itself to its own padding + content; its width is not
+            // known until a layout pass has actually measured it.
+            UpdateLayout();
+            Canvas.SetLeft(Tag, Math.Round((Width - Tag.ActualWidth) / 2));
         }
+
+        // A slow, steady pulse on the marker dot -- the same 2.6s breathing
+        // rhythm the tray icon's own status dot already uses (base.css'
+        // pulse-dot), so "something is actively being watched" reads the same
+        // way in both places rather than this one sitting perfectly still.
+        private static readonly DoubleAnimation Pulse = new(1, 0.35, TimeSpan.FromSeconds(1.3))
+        {
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
 
         public void ShowBar()
         {
             PositionAtTop();
             Opacity = 0;
+            TagSlide.Y = -6;
             Show();
-            BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
+
+            BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)));
+            TagSlide.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(-6, 0, TimeSpan.FromMilliseconds(220))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                });
+            MarkerDot.BeginAnimation(OpacityProperty, Pulse);
         }
 
         public void HideBar()
         {
+            MarkerDot.BeginAnimation(OpacityProperty, null);
+            MarkerDot.Opacity = 1;
+
             var fadeOut = new DoubleAnimation(Opacity, 0, TimeSpan.FromMilliseconds(200));
             fadeOut.Completed += (s, e) => Hide();
             BeginAnimation(OpacityProperty, fadeOut);
