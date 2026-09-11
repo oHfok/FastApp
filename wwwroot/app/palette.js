@@ -1285,6 +1285,7 @@ const st = {
     startup: document.getElementById('s-startup'),
     osd: document.getElementById('s-osd'),
     progress: document.getElementById('s-progress'),
+    afkBar: document.getElementById('s-afk-bar'),
     notify: document.getElementById('s-notify'),
     quiet: document.getElementById('s-quiet'),
     quietTimes: document.getElementById('s-quiet-times'),
@@ -1334,6 +1335,7 @@ function renderSettings(v) {
     setToggle(st.startup, v.launchOnStartup);
     setToggle(st.osd, v.enableOsd);
     setToggle(st.progress, v.showAutoLaunchProgress);
+    setToggle(st.afkBar, v.showAfkBar);
     setToggle(st.notify, v.notificationsEnabled);
     setToggle(st.quiet, v.quietHoursEnabled);
 
@@ -1621,6 +1623,7 @@ for (const [el, key] of [
     [st.startup, 'launchOnStartup'],
     [st.osd, 'enableOsd'],
     [st.progress, 'showAutoLaunchProgress'],
+    [st.afkBar, 'showAfkBar'],
     [st.notify, 'notificationsEnabled'],
     [st.quiet, 'quietHoursEnabled']
 ]) {

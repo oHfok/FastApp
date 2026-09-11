@@ -1292,6 +1292,7 @@ namespace FastApp
 
                     enableOsd = _viewModel.EnableOsd,
                     showAutoLaunchProgress = _viewModel.ShowAutoLaunchProgress,
+                    showAfkBar = _viewModel.ShowAfkBar,
 
                     // The choice, not the outcome: the picker has to be able to
                     // show Follow Windows as selected while the app is dark.
@@ -1353,6 +1354,7 @@ namespace FastApp
                 case "launchOnStartup": _viewModel.LaunchOnSystemStartup = value; break;
                 case "enableOsd": _viewModel.EnableOsd = value; break;
                 case "showAutoLaunchProgress": _viewModel.ShowAutoLaunchProgress = value; break;
+                case "showAfkBar": _viewModel.ShowAfkBar = value; break;
                 case "notificationsEnabled": _viewModel.NotificationsEnabled = value; break;
                 case "quietHoursEnabled": _viewModel.QuietHoursEnabled = value; break;
                 case "quietHoursFrom": _viewModel.QuietHoursFrom = text ?? string.Empty; break;
