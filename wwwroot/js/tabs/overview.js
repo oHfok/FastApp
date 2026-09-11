@@ -156,7 +156,14 @@ function renderComparisonBlock(scope, ov) {
 
     const upHoverTip = `${upLabel.charAt(0).toUpperCase() + upLabel.slice(1)}: ${formatHours(upPrev || 0)}`;
     const uptimeEl = document.getElementById('ov-uptime-card');
-    uptimeEl.onmousemove = (e) => showTooltip(e, upHoverTip);
+    // Uptime/AFK/Music are nested INSIDE ov-hero-block (the dial + its side
+    // readouts read as one band, see the markup comment above them), so a
+    // mousemove here also bubbles up to the hero block's own handler right
+    // after this one runs -- which used to win, silently replacing this
+    // tooltip with the hero's ("Yesterday: <focus time>") on every single
+    // hover. stopPropagation is what actually fixes it; the other two cards
+    // below need the same treatment for the same reason.
+    uptimeEl.onmousemove = (e) => { e.stopPropagation(); showTooltip(e, upHoverTip); };
     uptimeEl.onmouseleave = hideTooltip;
 
     renderHeroShare(scope, ov, cur || 0, upCur || 0);
@@ -178,12 +185,15 @@ function renderComparisonBlock(scope, ov) {
     if (afkVal !== undefined && afkVal !== null) {
         afkCard.style.opacity = '1';
         afkEl.textContent = formatHours(afkVal || 0);
-        afkCard.onmousemove = null;
-        afkCard.onmouseleave = null;
+        // Still needs to swallow the event -- null here doesn't stop it
+        // bubbling to ov-hero-block, which would show the hero's own tooltip
+        // over a card that isn't the hero.
+        afkCard.onmousemove = (e) => e.stopPropagation();
+        afkCard.onmouseleave = hideTooltip;
     } else {
         afkCard.style.opacity = '0.5';
         afkEl.textContent = '—';
-        afkCard.onmousemove = (e) => showTooltip(e, 'No AFK figure came back for this range.');
+        afkCard.onmousemove = (e) => { e.stopPropagation(); showTooltip(e, 'No AFK figure came back for this range.'); };
         afkCard.onmouseleave = hideTooltip;
     }
 
@@ -205,12 +215,15 @@ function renderComparisonBlock(scope, ov) {
         if (musicVal !== undefined && musicVal !== null) {
             musicCard.style.opacity = '1';
             musicEl.textContent = formatHours(musicVal || 0);
-            musicCard.onmousemove = null;
-            musicCard.onmouseleave = null;
+            // Same stopPropagation-only handler as the AFK card above: this
+            // card sits inside ov-hero-block, so a bare null here still lets
+            // the hero's own mousemove handler fire on the same hover.
+            musicCard.onmousemove = (e) => e.stopPropagation();
+            musicCard.onmouseleave = hideTooltip;
         } else {
             musicCard.style.opacity = '0.5';
             musicEl.textContent = '—';
-            musicCard.onmousemove = (e) => showTooltip(e, 'No music figure came back for this range.');
+            musicCard.onmousemove = (e) => { e.stopPropagation(); showTooltip(e, 'No music figure came back for this range.'); };
             musicCard.onmouseleave = hideTooltip;
         }
     }
