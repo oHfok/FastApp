@@ -152,6 +152,12 @@ namespace FastApp.ViewModels
         // Centered "Opening X of Y" popup shown while auto-launch apps are starting
         [ObservableProperty] private bool _showAutoLaunchProgress;
 
+        // The full-width "AFK DETECTED" strip across the top of the screen
+        // while the tracker considers you away. Off by default -- a
+        // screen-spanning red bar is a bold, opt-in thing, not something
+        // that should appear the moment someone installs the app.
+        [ObservableProperty] private bool _showAfkBar;
+
         // Notification settings. Held here for binding and mirrored into
         // NotificationService, which is static because it is called from the
         // tracker thread and has no view model to reach for.
@@ -396,6 +402,15 @@ namespace FastApp.ViewModels
             LoadOsdSetting();
             LoadAutoLaunchProgressSetting();
             LoadNotificationSettings();
+
+            // No legacy file to migrate from (unlike OSD/auto-launch progress
+            // above) -- this setting never existed before, so a plain read
+            // with a false default is enough. Through the property, same as
+            // EnableOsd/ShowAutoLaunchProgress above: OnShowAfkBarChanged
+            // re-persisting the value it was just given is a harmless no-op,
+            // and the false default means SetVisible's own early-return
+            // never lets it create the window this early.
+            ShowAfkBar = Services.AppSettingsStore.GetBool(ShowAfkBarKey, false);
             LoadAfkSettings();
 
             // --- ONE-TIME MIGRATION: backfill the fast INTEGER Ticks columns for rows
@@ -756,6 +771,22 @@ namespace FastApp.ViewModels
             {
                 Debug.WriteLine($"Failed to save OSD setting: {ex.Message}");
             }
+        }
+
+        public const string ShowAfkBarKey = "ShowAfkBar";
+
+        partial void OnShowAfkBarChanged(bool value)
+        {
+            Services.AppSettingsStore.SetBool(ShowAfkBarKey, value);
+
+            // Mirrored into the static service the tracker thread actually
+            // reads, the same way NotificationsEnabled feeds
+            // NotificationService.Enabled. Turning the setting off also hides
+            // the bar immediately rather than waiting up to 5s for the next
+            // tick to notice -- nobody who just unchecked this wants to keep
+            // looking at it until the next tick catches up.
+            Services.AfkBarService.Enabled = value;
+            if (!value) Services.AfkBarService.SetVisible(false);
         }
 
         private bool _suppressNotificationSettingSave;
@@ -2048,6 +2079,7 @@ namespace FastApp.ViewModels
                     playingMediaSources, allProcessNames, managedAppLookup, categoryByApp);
 
                 bool isAfk = await Services.SystemIdleTracker.IsTrulyAfkAsync(nonMusicMediaPlaying);
+                Services.AfkBarService.SetVisible(isAfk);
                 TimeSpan tickDuration = TimeSpan.FromSeconds(5);
                 DateTime now = DateTime.Now;
 
