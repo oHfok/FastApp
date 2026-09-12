@@ -2518,6 +2518,14 @@ namespace FastApp.ViewModels
                     }
                 }
 
+                // allProcesses is done being read at this point. Each entry
+                // holds a native handle that Process.GetProcesses()'s own docs
+                // say to dispose -- a fresh ~200-300 of them are allocated every
+                // tick for the life of a tracker meant to run continuously, so
+                // this closes them promptly rather than leaving it to the
+                // finalizer queue.
+                foreach (var p in allProcesses) p.Dispose();
+
                 // --- DATABASE FLUSH ---
                 tickCount++;
                 if (tickCount >= FlushIntervalTicks)

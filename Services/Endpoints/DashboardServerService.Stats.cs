@@ -631,13 +631,23 @@ namespace FastApp.Services
                         TotalAfkTicks = g.Sum(x => (long?)x.AfkTimeSpentTicks) ?? 0
                     }).ToListAsync();
 
-                var sessionData = await db.SessionLogs
-                    .Where(s => s.AppName != "SYSTEM_PC") // Removed hidden apps filter
-                    .Select(s => new { s.AppName, s.StartTime, s.EndTime })
-                    .ToListAsync();
-
-                var maxSessions = sessionData.GroupBy(s => s.AppName)
-                    .ToDictionary(g => g.Key, g => g.Max(s => (s.EndTime - s.StartTime).TotalMinutes));
+                // Longest session per app, computed in SQL rather than pulling
+                // every SessionLogs row ever recorded (one row per app switch,
+                // so this table only grows) just to take an in-memory Max().
+                var maxSessions = new Dictionary<string, double>();
+                using (var cmd = db.Database.GetDbConnection().CreateCommand())
+                {
+                    cmd.CommandText =
+                        "SELECT AppName, MAX((julianday(EndTime) - julianday(StartTime)) * 1440.0) " +
+                        "FROM SessionLogs WHERE AppName != 'SYSTEM_PC' GROUP BY AppName";
+                    db.Database.OpenConnection();
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        if (reader.IsDBNull(0) || reader.IsDBNull(1)) continue;
+                        maxSessions[reader.GetString(0)] = reader.GetDouble(1);
+                    }
+                }
 
                 // What each app has been costing the machine, averaged over the
                 // last 30 days -- recent state rather than a lifetime figure,
