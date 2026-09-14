@@ -403,23 +403,43 @@ function renderOverviewLeaderboards(leaderboard) {
     }
 }
 
-// --- Activity body: day ribbon, or a heatmap for week/month/year ------------
+// Set only when the activity body's shape actually needs rebuilding (a real
+// scope or date change, or the very first render) -- not on every 8s poll of
+// the same scope/date. Every poll used to blow away this whole container and
+// rebuild it from an empty skeleton before the fetch even started, which is
+// the actual "site blinks" the polling used to cause: a real empty-then-
+// filled gap on the Timeline, and a literal "Loading…" flash on Week. A
+// same-scope poll now goes straight from old content to new in one
+// synchronous DOM write, the same way the comparison cards above it already
+// update in place without a visible flash.
+let lastActivityKey = null;
+
 async function renderActivityBody(scope, dateStr, ov, signal) {
     const body = document.getElementById('ov-activity-body');
+    const key = `${scope}:${dateStr}`;
+    const isNew = key !== lastActivityKey;
+    lastActivityKey = key;
+
     if (scope === 'day') {
-        body.innerHTML = `
-            <div class="timeline-wrap">
-                <div class="timeline-grid">
-                    <div class="timeline-gutter"></div>
-                    <div class="timeline-ticks" id="ov-timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
-                    <div class="timeline-gutter"></div>
-                    <div class="timeline-track" id="ov-timeline-track"></div>
-                    <div class="timeline-subrows" id="ov-timeline-subrows"></div>
-                </div>
-            </div>`;
+        // The `|| !...` half is a safety net, not the common path: if the
+        // skeleton is somehow missing even though the key says it shouldn't
+        // be (a stray re-render elsewhere), rebuild rather than write into
+        // elements that don't exist.
+        if (isNew || !document.getElementById('ov-timeline-track')) {
+            body.innerHTML = `
+                <div class="timeline-wrap">
+                    <div class="timeline-grid">
+                        <div class="timeline-gutter"></div>
+                        <div class="timeline-ticks" id="ov-timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+                        <div class="timeline-gutter"></div>
+                        <div class="timeline-track" id="ov-timeline-track"></div>
+                        <div class="timeline-subrows" id="ov-timeline-subrows"></div>
+                    </div>
+                </div>`;
+        }
         await renderDayTimeline(dateStr, signal);
     } else if (scope === 'week') {
-        body.innerHTML = `<div class="empty-state">Loading…</div>`;
+        if (isNew) body.innerHTML = `<div class="empty-state">Loading…</div>`;
         await renderWeekHeatmap(dateStr, ov, signal);
     } else {
         renderDayHeatmap(scope, dateStr, ov.yearlyHeatmap || []);
