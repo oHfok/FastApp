@@ -57,6 +57,22 @@ namespace FastApp.Services
             await context.Response.WriteAsJsonAsync(await GetAllCategoriesAsync(db));
         });
 
+        // ---- /api/live-state -------------------------------------------------
+        // Just the two "right now" flags the top bar's status dot needs, no
+        // database at all -- both are static fields already kept live by the
+        // tracker loop (the same ones the Timeline's own live segments read).
+        // Split out from /api/overview so the dot can be polled every few
+        // seconds without also re-running that endpoint's full daily
+        // aggregation on the same cadence.
+        app.MapGet("/api/live-state", (HttpContext context) =>
+        {
+            return context.Response.WriteAsJsonAsync(new
+            {
+                IsAfkNow = AfkIntervalStore.CurrentOpenStart != null,
+                IsMusicNow = MusicIntervalStore.CurrentOpenStart != null
+            });
+        });
+
         // OVERVIEW - UPGRADED WITH HEAD-TO-HEAD MATH
         app.MapGet("/api/overview", async (string date, HttpContext context) =>
         {

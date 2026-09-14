@@ -324,24 +324,43 @@ function updateStatusGlow() {
     }
 }
 
-async function refreshTopBar() {
+const LIVE_STATE_POLL_MS = 3000;
+
+// Separate from refreshTopBar (30s, full daily aggregation) on purpose: going
+// AFK or starting a song should show up in a few seconds, not whenever the
+// heavier stats next happen to refresh. /api/live-state costs nothing (two
+// static-field reads, no database), so polling it this much more often is
+// free in a way re-running the overview aggregation every 3s would not be.
+async function refreshLiveState() {
     const dotEl = document.getElementById('tb-status-dot');
+    try {
+        const data = await apiFetch('/api/live-state');
+        if (dotEl) dotEl.classList.remove('offline');
+
+        tbLastUpdateAt = Date.now();
+        tbLiveAfk = !!data.isAfkNow;
+        tbLiveMusic = !!data.isMusicNow;
+        updateStatusGlow();
+    } catch (err) {
+        if (dotEl) {
+            dotEl.classList.add('offline');
+            dotEl.style.background = '';
+            dotEl.style.boxShadow = '';
+        }
+        // No console.error here -- refreshTopBar already logs the same
+        // "can't reach FastApp" on the same failure, seconds apart at most,
+        // and this poll is frequent enough that a dropped connection would
+        // otherwise spam the console several times a minute.
+    }
+}
+
+async function refreshTopBar() {
     try {
         const fresh = _lastOverviewPayload && (Date.now() - _lastOverviewAt) < OVERVIEW_REUSE_WINDOW_MS;
         const data = fresh
             ? _lastOverviewPayload
             : await apiFetch(`/api/overview?date=${getLocalTodayStr()}`);
         if (!fresh) cacheOverviewPayload(data);
-        if (dotEl) dotEl.classList.remove('offline');
-
-        // This is the "last pull" the glow measures from, regardless of
-        // whether the overview payload itself was reused rather than
-        // refetched -- either way, this is the moment we last confirmed
-        // FastApp is alive and got its current AFK/music state.
-        tbLastUpdateAt = Date.now();
-        tbLiveAfk = !!data.isAfkNow;
-        tbLiveMusic = !!data.isMusicNow;
-        updateStatusGlow();
 
         const focusToday = data.focusToday ?? 0;
         const usual = data.usualDailyFocus ?? 0;
@@ -377,14 +396,9 @@ async function refreshTopBar() {
             ringHost.innerHTML = chronoRing({ pct, size: 30, stroke: 3, mini: true });
         }
     } catch (err) {
-        if (dotEl) {
-            dotEl.classList.add('offline');
-            // Falls back to .offline's own static rose -- a stale glow still
-            // claiming to know the current AFK/music state would be a lie
-            // once FastApp itself can't be reached to confirm it.
-            dotEl.style.background = '';
-            dotEl.style.boxShadow = '';
-        }
+        // The status dot itself is refreshLiveState's responsibility now, not
+        // this poll's -- it runs far more often and would already be showing
+        // .offline within a few seconds of the same failure.
         console.error('Top bar refresh failed', err);
     }
 }
@@ -421,8 +435,11 @@ async function boot() {
 
     refreshTopBar();
     setInterval(refreshTopBar, 30000);
-    // Independent of the poll itself -- this is what actually ages the glow
-    // between polls rather than it only ever snapping between two states.
+
+    refreshLiveState();
+    setInterval(refreshLiveState, LIVE_STATE_POLL_MS);
+    // Independent of both polls -- this is what actually ages the glow
+    // between them rather than it only ever snapping between two states.
     setInterval(updateStatusGlow, 1000);
 
     loadWrappedAvailable();
