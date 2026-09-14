@@ -645,6 +645,7 @@ namespace FastApp.Services
                 await initDb.Database.ExecuteSqlRawAsync(ResourceStatsStore.CreateTableSql);
                 await initDb.Database.ExecuteSqlRawAsync(MusicStatsStore.CreateTableSql);
                 await initDb.Database.ExecuteSqlRawAsync(AfkIntervalStore.CreateTableSql);
+                await initDb.Database.ExecuteSqlRawAsync(MusicIntervalStore.CreateTableSql);
 
                 // One-time backfill of the wall-clock music row. Between 5.0.0 and
                 // 5.0.1 the headline "Music Playing Time" switched from summing the

@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using Microsoft.EntityFrameworkCore;
 
 namespace FastApp.Services
 {
@@ -16,70 +14,24 @@ namespace FastApp.Services
     /// </summary>
     public static class AfkIntervalStore
     {
-        public const string CreateTableSql =
-            "CREATE TABLE IF NOT EXISTS AfkIntervals (" +
-            "StartTime TEXT NOT NULL, " +
-            "EndTime TEXT NOT NULL);";
+        private const string Table = "AfkIntervals";
+
+        public static string CreateTableSql => IntervalStore.CreateTableSql(Table);
 
         /// <summary>
         /// Records one AFK stretch. Called wherever the tracker closes one out --
         /// the isAfk true-&gt;false transition, and (mirroring SessionLog's own
         /// close-out points) on pause, day rollover, and shutdown while still AFK.
         /// </summary>
-        public static void RecordInterval(DateTime start, DateTime end)
-        {
-            if (end <= start) return;
-            try
-            {
-                using var db = new AppDbContext();
-                db.Database.ExecuteSqlRaw(
-                    "INSERT INTO AfkIntervals (StartTime, EndTime) VALUES ({0}, {1});",
-                    start.ToString("o"), end.ToString("o"));
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"AfkIntervalStore.RecordInterval failed: {ex.Message}");
-            }
-        }
+        public static void RecordInterval(DateTime start, DateTime end) =>
+            IntervalStore.RecordInterval(Table, start, end);
 
         /// <summary>
         /// AFK intervals overlapping the given calendar day, clipped to that
         /// day's own boundaries so a stretch spanning midnight doesn't paint
         /// past either edge of the ribbon it's drawn on.
         /// </summary>
-        public static List<(DateTime Start, DateTime End)> GetForDay(DateTime day)
-        {
-            var result = new List<(DateTime, DateTime)>();
-            DateTime dayStart = day.Date;
-            DateTime dayEnd = dayStart.AddDays(1);
-            try
-            {
-                using var db = new AppDbContext();
-                using var cmd = db.Database.GetDbConnection().CreateCommand();
-                cmd.CommandText =
-                    "SELECT StartTime, EndTime FROM AfkIntervals " +
-                    "WHERE StartTime < $dayEnd AND EndTime > $dayStart ORDER BY StartTime";
-                var p1 = cmd.CreateParameter(); p1.ParameterName = "$dayEnd"; p1.Value = dayEnd.ToString("o"); cmd.Parameters.Add(p1);
-                var p2 = cmd.CreateParameter(); p2.ParameterName = "$dayStart"; p2.Value = dayStart.ToString("o"); cmd.Parameters.Add(p2);
-
-                db.Database.OpenConnection();
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    if (reader.IsDBNull(0) || reader.IsDBNull(1)) continue;
-                    if (!DateTime.TryParse(reader.GetString(0), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var s)) continue;
-                    if (!DateTime.TryParse(reader.GetString(1), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var e)) continue;
-
-                    if (s < dayStart) s = dayStart;
-                    if (e > dayEnd) e = dayEnd;
-                    if (e > s) result.Add((s, e));
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"AfkIntervalStore.GetForDay failed: {ex.Message}");
-            }
-            return result;
-        }
+        public static List<(DateTime Start, DateTime End)> GetForDay(DateTime day) =>
+            IntervalStore.GetForDay(Table, day);
     }
 }

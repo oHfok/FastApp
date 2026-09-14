@@ -282,6 +282,7 @@ namespace FastApp.Services
                 // frontend fire a second request for it.
                 List<object> daySessions = new List<object>();
                 List<object> dayAfkIntervals = new List<object>();
+                List<object> dayMusicIntervals = new List<object>();
                 if (periodKind == "day")
                 {
                     var sessionsForDay = await db.SessionLogs
@@ -310,6 +311,15 @@ namespace FastApp.Services
                             DurationMinutes = (a.End - a.Start).TotalMinutes,
                             StartMinutes = a.Start.TimeOfDay.TotalMinutes
                         }).ToList();
+
+                    dayMusicIntervals = MusicIntervalStore.GetForDay(chosenS)
+                        .Select(m => (object)new
+                        {
+                            Start = m.Start.ToString("HH:mm"),
+                            End = m.End.ToString("HH:mm"),
+                            DurationMinutes = (m.End - m.Start).TotalMinutes,
+                            StartMinutes = m.Start.TimeOfDay.TotalMinutes
+                        }).ToList();
                 }
 
                 var payload = new
@@ -330,7 +340,8 @@ namespace FastApp.Services
                     TopCategories = topCategories,
                     Days = days,
                     DaySessions = daySessions,
-                    DayAfkIntervals = dayAfkIntervals
+                    DayAfkIntervals = dayAfkIntervals,
+                    DayMusicIntervals = dayMusicIntervals
                 };
 
                 await context.Response.WriteAsJsonAsync(payload);

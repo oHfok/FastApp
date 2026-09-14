@@ -430,11 +430,18 @@
                             <div class="view-title">Periods</div>
                             <div class="view-sub">Browse and compare your tracked history.</div>
                         </div>
-                        <div class="segmented period-toggle" id="period-toggle">
-                            <button onclick="setPeriodType('day', this)">Days</button>
-                            <button class="active" onclick="setPeriodType('week', this)">Weeks</button>
-                            <button onclick="setPeriodType('month', this)">Months</button>
-                            <button onclick="setPeriodType('year', this)">Years</button>
+                        <div class="period-controls">
+                            <div class="segmented period-toggle" id="period-toggle">
+                                <button onclick="setPeriodType('day', this)">Days</button>
+                                <button class="active" onclick="setPeriodType('week', this)">Weeks</button>
+                                <button onclick="setPeriodType('month', this)">Months</button>
+                                <button onclick="setPeriodType('year', this)">Years</button>
+                            </div>
+                            <div class="segmented period-sort-toggle" id="period-sort-toggle">
+                                <button class="active" onclick="setPeriodSort('recent', this)">Recent</button>
+                                <button onclick="setPeriodSort('best', this)">Best</button>
+                                <button onclick="setPeriodSort('worst', this)">Worst</button>
+                            </div>
                         </div>
                     </div>
                     <div class="period-list" id="period-list"></div>
