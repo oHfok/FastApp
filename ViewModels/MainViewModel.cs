@@ -1948,6 +1948,26 @@ namespace FastApp.ViewModels
             // further down) instead of isAfk.
             DateTime? musicIntervalStart = null;
 
+            // Mirrors afkIntervalStart/musicIntervalStart into the stores'
+            // own static field the instant either changes, so /api/timeline
+            // can show the AFK/music stretch you're currently in -- clipped to
+            // "now" -- instead of it only appearing once it closes. Local
+            // functions rather than editing every assignment site by hand:
+            // there are half a dozen of them (pause, transition, day
+            // rollover), and a spot that set the local but forgot the static
+            // would silently freeze the live Timeline until the next
+            // genuine open/close.
+            void SetAfkIntervalStart(DateTime? v)
+            {
+                afkIntervalStart = v;
+                Services.AfkIntervalStore.CurrentOpenStart = v;
+            }
+            void SetMusicIntervalStart(DateTime? v)
+            {
+                musicIntervalStart = v;
+                Services.MusicIntervalStore.CurrentOpenStart = v;
+            }
+
             // Shared by the periodic flush and the final flush-on-exit below,
             // so a normal quit persists exactly the same way a scheduled flush does.
             void FlushDailySummaries(DateTime today)
@@ -2089,12 +2109,12 @@ namespace FastApp.ViewModels
                     if (afkIntervalStart.HasValue)
                     {
                         Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, DateTime.Now);
-                        afkIntervalStart = null;
+                        SetAfkIntervalStart(null);
                     }
                     if (musicIntervalStart.HasValue)
                     {
                         Services.MusicIntervalStore.RecordInterval(musicIntervalStart.Value, DateTime.Now);
-                        musicIntervalStart = null;
+                        SetMusicIntervalStart(null);
                     }
 
                     continue;
@@ -2171,12 +2191,12 @@ namespace FastApp.ViewModels
                 // off isAfk instead of the active app.
                 if (isAfk && !afkIntervalStart.HasValue)
                 {
-                    afkIntervalStart = now;
+                    SetAfkIntervalStart(now);
                 }
                 else if (!isAfk && afkIntervalStart.HasValue)
                 {
                     Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, now);
-                    afkIntervalStart = null;
+                    SetAfkIntervalStart(null);
                 }
 
                 // The day rolls over here, on the tick that first sees it, rather
@@ -2228,7 +2248,7 @@ namespace FastApp.ViewModels
                     if (afkIntervalStart.HasValue)
                     {
                         Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, DateTime.Today);
-                        afkIntervalStart = isAfk ? DateTime.Today : (DateTime?)null;
+                        SetAfkIntervalStart(isAfk ? DateTime.Today : (DateTime?)null);
                     }
 
                     // Same split, but simply closed rather than reopened: unlike
@@ -2239,7 +2259,7 @@ namespace FastApp.ViewModels
                     if (musicIntervalStart.HasValue)
                     {
                         Services.MusicIntervalStore.RecordInterval(musicIntervalStart.Value, DateTime.Today);
-                        musicIntervalStart = null;
+                        SetMusicIntervalStart(null);
                     }
 
                     timeCache.Clear();
@@ -2470,12 +2490,12 @@ namespace FastApp.ViewModels
                 // the tick anyMusicThisTick is known.
                 if (anyMusicThisTick && !musicIntervalStart.HasValue)
                 {
-                    musicIntervalStart = now;
+                    SetMusicIntervalStart(now);
                 }
                 else if (!anyMusicThisTick && musicIntervalStart.HasValue)
                 {
                     Services.MusicIntervalStore.RecordInterval(musicIntervalStart.Value, now);
-                    musicIntervalStart = null;
+                    SetMusicIntervalStart(null);
                 }
 
                 // C & D touch properties on the shared, UI-thread-bound ManagedApps
