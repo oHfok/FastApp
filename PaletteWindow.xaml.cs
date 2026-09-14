@@ -383,7 +383,7 @@ namespace FastApp
                     break;
 
                 case "activate-app":
-                    ActivateApp(message.Id);
+                    ActivateApp(message.Id, message.ViaSearch);
                     break;
 
                 case "edit-app":
@@ -491,10 +491,12 @@ namespace FastApp
             }
         }
 
-        private void ActivateApp(string id)
+        private void ActivateApp(string id, bool viaSearch)
         {
             var app = FindApp(id);
             if (app == null) return;
+
+            Services.PaletteEventStore.RecordActivated(app.Name, viaSearch, DateTime.Now);
 
             HidePalette();
             Task.Run(() =>
@@ -1771,9 +1773,17 @@ namespace FastApp
         /// </summary>
         public void ShowPalette(PaletteView view = PaletteView.Search)
         {
+            // Guarded on "was actually hidden" rather than logged on every
+            // call -- ShowPalette also runs when an already-open window
+            // navigates straight to a sub-view (Manage/Settings/Extend), and
+            // that isn't a fresh summon.
+            bool wasHidden = !IsVisible;
+
             _allowAutoHide = false;
             _pinned = false;
             _shownAtUtc = DateTime.UtcNow;
+
+            if (wasHidden) Services.PaletteEventStore.RecordOpened(DateTime.Now);
 
             // Before Show, so it never appears at the prewarm's parking spot
             // and slides into place afterwards.
@@ -1894,6 +1904,7 @@ namespace FastApp
             public List<string> Paths { get; set; }
             public int Minutes { get; set; }
             public string Pin { get; set; }
+            public bool ViaSearch { get; set; }
         }
 
         /// <summary>

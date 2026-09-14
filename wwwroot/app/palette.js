@@ -796,7 +796,9 @@ function activate(row) {
     const current = row || visible().all[active];
     if (!current) return;
 
-    if (current.kind === 'app') send('activate-app', { id: current.item.id });
+    // Whether this launch came from typing a search, not what was typed --
+    // the query text itself never leaves the page.
+    if (current.kind === 'app') send('activate-app', { id: current.item.id, viaSearch: query.trim().length > 0 });
     else if (current.kind === 'trackable') send('add-tracked', { text: current.item.name });
     else send('run-command', { id: current.item.id });
 }
