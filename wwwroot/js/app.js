@@ -278,6 +278,52 @@ function cacheOverviewPayload(data) {
     _lastOverviewAt = Date.now();
 }
 
+// --- Status dot: a live glow, not just a pulse -----------------------------
+// The dot used to say one thing (teal = tracking, rose = can't reach FastApp).
+// It now also says two more: how current the numbers on screen are (this
+// poll's own cadence is the only "last pull" that means anything for a
+// machine-wide fact like AFK/music — a tab's own 8s data poll has nothing to
+// do with either), and whether you're AFK/listening right now, in the same
+// rose/violet this app already uses for those ideas everywhere else. A
+// gradient between the two when both are true, rather than picking one.
+const TB_GLOW_STALE_MS = 45000; // ~1.5 poll cycles -- fully dark by the next one if it's late
+const TB_GLOW_BLUE   = { fresh: [125, 211, 252], stale: [20, 30, 45] };
+const TB_GLOW_AFK    = { fresh: [255, 107, 107], stale: [70, 25, 25] };  // matches --rose
+const TB_GLOW_MUSIC  = { fresh: [139, 124, 255], stale: [40, 34, 80] };  // matches --violet
+
+let tbLastUpdateAt = Date.now();
+let tbLiveAfk = false;
+let tbLiveMusic = false;
+
+function tbLerpColor(ramp, t) {
+    return ramp.fresh.map((v, i) => Math.round(v + (ramp.stale[i] - v) * t));
+}
+
+function updateStatusGlow() {
+    const dot = document.getElementById('tb-status-dot');
+    if (!dot || dot.classList.contains('offline')) return;
+
+    const t = Math.min(1, (Date.now() - tbLastUpdateAt) / TB_GLOW_STALE_MS);
+    // Never fully extinguished -- a glow at t=1 is "the last known state,
+    // aging," not "nothing to show."
+    const intensity = 1 - t * 0.7;
+    const blur = Math.round(6 + 10 * intensity);
+
+    const colors = [];
+    if (tbLiveAfk) colors.push(tbLerpColor(TB_GLOW_AFK, t));
+    if (tbLiveMusic) colors.push(tbLerpColor(TB_GLOW_MUSIC, t));
+    if (colors.length === 0) colors.push(tbLerpColor(TB_GLOW_BLUE, t));
+
+    const rgb = (c) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+    if (colors.length === 2) {
+        dot.style.background = `linear-gradient(135deg, ${rgb(colors[0])}, ${rgb(colors[1])})`;
+        dot.style.boxShadow = `0 0 ${blur}px 1px ${rgb(colors[0])}, 0 0 ${blur}px 1px ${rgb(colors[1])}`;
+    } else {
+        dot.style.background = rgb(colors[0]);
+        dot.style.boxShadow = `0 0 ${blur}px 2px ${rgb(colors[0])}`;
+    }
+}
+
 async function refreshTopBar() {
     const dotEl = document.getElementById('tb-status-dot');
     try {
@@ -287,6 +333,15 @@ async function refreshTopBar() {
             : await apiFetch(`/api/overview?date=${getLocalTodayStr()}`);
         if (!fresh) cacheOverviewPayload(data);
         if (dotEl) dotEl.classList.remove('offline');
+
+        // This is the "last pull" the glow measures from, regardless of
+        // whether the overview payload itself was reused rather than
+        // refetched -- either way, this is the moment we last confirmed
+        // FastApp is alive and got its current AFK/music state.
+        tbLastUpdateAt = Date.now();
+        tbLiveAfk = !!data.isAfkNow;
+        tbLiveMusic = !!data.isMusicNow;
+        updateStatusGlow();
 
         const focusToday = data.focusToday ?? 0;
         const usual = data.usualDailyFocus ?? 0;
@@ -322,7 +377,14 @@ async function refreshTopBar() {
             ringHost.innerHTML = chronoRing({ pct, size: 30, stroke: 3, mini: true });
         }
     } catch (err) {
-        if (dotEl) dotEl.classList.add('offline');
+        if (dotEl) {
+            dotEl.classList.add('offline');
+            // Falls back to .offline's own static rose -- a stale glow still
+            // claiming to know the current AFK/music state would be a lie
+            // once FastApp itself can't be reached to confirm it.
+            dotEl.style.background = '';
+            dotEl.style.boxShadow = '';
+        }
         console.error('Top bar refresh failed', err);
     }
 }
@@ -359,6 +421,9 @@ async function boot() {
 
     refreshTopBar();
     setInterval(refreshTopBar, 30000);
+    // Independent of the poll itself -- this is what actually ages the glow
+    // between polls rather than it only ever snapping between two states.
+    setInterval(updateStatusGlow, 1000);
 
     loadWrappedAvailable();
     initWrappedPanelOutsideClick();
