@@ -391,6 +391,11 @@ namespace FastApp.ViewModels
             _dbContext.Database.ExecuteSqlRaw(Services.AfkIntervalStore.CreateTableSql);
             _dbContext.Database.ExecuteSqlRaw(Services.MusicIntervalStore.CreateTableSql);
             _dbContext.Database.ExecuteSqlRaw(Services.LimitEventStore.CreateTableSql);
+            _dbContext.Database.ExecuteSqlRaw(Services.AutoLaunchEventStore.CreateTableSql);
+            _dbContext.Database.ExecuteSqlRaw(Services.PauseIntervalStore.CreateTableSql);
+            _dbContext.Database.ExecuteSqlRaw(Services.PaletteEventStore.CreateTableSql);
+            _dbContext.Database.ExecuteSqlRaw(Services.SystemLockTracker.CreateTableSql);
+            Services.SystemLockTracker.Start();
 
             // Read here, not at the top of this constructor, because every one
             // of them reads AppSettings and that table is only guaranteed to
@@ -809,6 +814,11 @@ namespace FastApp.ViewModels
         // is a timed pause that expires on its own. Persisted, so a restart
         // during a pause does not silently resume.
         private const string PauseUntilKey = "TrackingPausedUntil";
+        // When the current pause began -- kept alongside PauseUntilKey so a
+        // restart mid-pause doesn't lose it, and read once the pause actually
+        // ends (ResumeTracking) to log the whole interval to PauseIntervalStore.
+        private const string PauseStartedAtKey = "TrackingPausedAt";
+        private DateTime? _pauseStartedAt;
 
         [ObservableProperty] private DateTime? _pauseUntil;
 
@@ -824,6 +834,8 @@ namespace FastApp.ViewModels
         /// <param name="duration">null pauses until it is turned back on.</param>
         public void PauseTracking(TimeSpan? duration)
         {
+            _pauseStartedAt = DateTime.Now;
+            Services.AppSettingsStore.Set(PauseStartedAtKey, _pauseStartedAt.Value.ToString("o"));
             PauseUntil = duration.HasValue ? DateTime.Now + duration.Value : DateTime.MaxValue;
             Services.AppSettingsStore.Set(PauseUntilKey, PauseUntil.Value.ToString("o"));
 
@@ -841,6 +853,13 @@ namespace FastApp.ViewModels
         public void ResumeTracking(bool automatic = false)
         {
             if (!PauseUntil.HasValue) return;
+
+            if (_pauseStartedAt.HasValue)
+            {
+                Services.PauseIntervalStore.RecordInterval(_pauseStartedAt.Value, DateTime.Now);
+                _pauseStartedAt = null;
+            }
+            Services.AppSettingsStore.Set(PauseStartedAtKey, string.Empty);
 
             PauseUntil = null;
             Services.AppSettingsStore.Set(PauseUntilKey, string.Empty);
@@ -867,14 +886,23 @@ namespace FastApp.ViewModels
             if (!DateTime.TryParse(stored, null,
                     System.Globalization.DateTimeStyles.RoundtripKind, out var until)) return;
 
+            string startedRaw = Services.AppSettingsStore.Get(PauseStartedAtKey);
+            DateTime? started = DateTime.TryParse(startedRaw, null,
+                System.Globalization.DateTimeStyles.RoundtripKind, out var s) ? s : (DateTime?)null;
+
             // A timed pause that expired while the app was closed is simply
             // over; restoring it would pause a fresh session for no reason.
+            // Still worth its own interval row -- it ran its full course, it's
+            // just being closed out late.
             if (until <= DateTime.Now)
             {
+                if (started.HasValue) Services.PauseIntervalStore.RecordInterval(started.Value, until);
                 Services.AppSettingsStore.Set(PauseUntilKey, string.Empty);
+                Services.AppSettingsStore.Set(PauseStartedAtKey, string.Empty);
                 return;
             }
 
+            _pauseStartedAt = started;
             PauseUntil = until;
             OnPropertyChanged(nameof(IsTrackingPaused));
             OnPropertyChanged(nameof(PauseDescription));
@@ -1367,17 +1395,32 @@ namespace FastApp.ViewModels
                     {
                         Services.OsdService.Show(app.DisplayNamePrimary, OsdKind.Blocked);
                     }
+                    // A blocked trigger left no trace at all before -- neither
+                    // a success nor a failure of the macro itself, but its own
+                    // outcome, and "how often does this fire mid-game" is
+                    // exactly the kind of thing the gaming guard exists to
+                    // answer.
+                    _pendingMacros.Enqueue(new ViewModels.MacroEventLog
+                    {
+                        AppName = app.Name,
+                        Timestamp = DateTime.Now,
+                        Success = false,
+                        Blocked = true
+                    });
                     continue;
                 }
                 // ----------------------------------
-                _pendingMacros.Enqueue(new ViewModels.MacroEventLog
-                {
-                    AppName = app.Name,
-                    Timestamp = DateTime.Now
-                });
 
                 // 1. Execute the heavy Action entirely in the background
                 var result = Services.ActionHookEngine.Execute(app);
+
+                _pendingMacros.Enqueue(new ViewModels.MacroEventLog
+                {
+                    AppName = app.Name,
+                    Timestamp = DateTime.Now,
+                    Success = result.Success,
+                    FailureReason = result.Success ? null : result.Message
+                });
 
                 if (!result.Success)
                 {
@@ -1566,6 +1609,15 @@ namespace FastApp.ViewModels
             int started = outcomes.Count(o => o.Outcome == LaunchOutcome.Started);
             int already = outcomes.Count(o => o.Outcome == LaunchOutcome.AlreadyRunning);
             var problems = outcomes.Where(o => o.Outcome is LaunchOutcome.NotFound or LaunchOutcome.Failed).ToList();
+
+            // One row per app per pass -- the progress window that already
+            // shows this closes and forgets it, so "did Slack actually start
+            // this morning" was unanswerable an hour later.
+            DateTime runAt = DateTime.Now;
+            foreach (var (app, outcome, detail) in outcomes)
+            {
+                Services.AutoLaunchEventStore.RecordEvent(app.Name, outcome.ToString(), detail, runAt);
+            }
 
             // "Opened N apps" used to count apps that were already running, so a
             // pass that opened nothing at all still claimed to have opened
