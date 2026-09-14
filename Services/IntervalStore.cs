@@ -33,8 +33,16 @@ namespace FastApp.Services
             }
         }
 
-        /// <summary>Intervals overlapping the given day, clipped to its boundaries.</summary>
-        public static List<(DateTime Start, DateTime End)> GetForDay(string table, DateTime day)
+        /// <summary>
+        /// Intervals overlapping the given day, clipped to its boundaries.
+        /// <paramref name="openStart"/> is the caller's own CurrentOpenStart --
+        /// a stretch that began but hasn't closed (and so has no row yet) --
+        /// added as one more interval running through to now. Only applied
+        /// when the requested day is today: an interval still open always
+        /// started (or was normalized to, at midnight) today, so it has
+        /// nothing to add to a query for any other day.
+        /// </summary>
+        public static List<(DateTime Start, DateTime End)> GetForDay(string table, DateTime day, DateTime? openStart = null)
         {
             var result = new List<(DateTime, DateTime)>();
             DateTime dayStart = day.Date;
@@ -66,6 +74,14 @@ namespace FastApp.Services
             {
                 System.Diagnostics.Debug.WriteLine($"IntervalStore.GetForDay({table}) failed: {ex.Message}");
             }
+
+            if (openStart.HasValue && dayStart == DateTime.Today)
+            {
+                DateTime s = openStart.Value < dayStart ? dayStart : openStart.Value;
+                DateTime e = DateTime.Now > dayEnd ? dayEnd : DateTime.Now;
+                if (e > s) result.Add((s, e));
+            }
+
             return result;
         }
     }

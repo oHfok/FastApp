@@ -19,6 +19,15 @@ namespace FastApp.Services
         public static string CreateTableSql => IntervalStore.CreateTableSql(Table);
 
         /// <summary>
+        /// When the AFK stretch you're currently in (if any) began. Mirrored
+        /// by MainViewModel's SetAfkIntervalStart the instant its own local
+        /// afkIntervalStart changes, so GetForDay can show it running through
+        /// to "now" on the Timeline instead of it only appearing once it
+        /// closes and gets a real row.
+        /// </summary>
+        public static DateTime? CurrentOpenStart { get; set; }
+
+        /// <summary>
         /// Records one AFK stretch. Called wherever the tracker closes one out --
         /// the isAfk true-&gt;false transition, and (mirroring SessionLog's own
         /// close-out points) on pause, day rollover, and shutdown while still AFK.
@@ -29,9 +38,10 @@ namespace FastApp.Services
         /// <summary>
         /// AFK intervals overlapping the given calendar day, clipped to that
         /// day's own boundaries so a stretch spanning midnight doesn't paint
-        /// past either edge of the ribbon it's drawn on.
+        /// past either edge of the ribbon it's drawn on. Includes the
+        /// currently-open stretch, running through to now, when the day is today.
         /// </summary>
         public static List<(DateTime Start, DateTime End)> GetForDay(DateTime day) =>
-            IntervalStore.GetForDay(Table, day);
+            IntervalStore.GetForDay(Table, day, CurrentOpenStart);
     }
 }

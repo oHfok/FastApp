@@ -16,10 +16,14 @@ namespace FastApp.Services
 
         public static string CreateTableSql => IntervalStore.CreateTableSql(Table);
 
+        /// <summary>Same idea as AfkIntervalStore.CurrentOpenStart, for music.</summary>
+        public static DateTime? CurrentOpenStart { get; set; }
+
         public static void RecordInterval(DateTime start, DateTime end) =>
             IntervalStore.RecordInterval(Table, start, end);
 
+        /// <summary>Includes the currently-open stretch, running through to now, when the day is today.</summary>
         public static List<(DateTime Start, DateTime End)> GetForDay(DateTime day) =>
-            IntervalStore.GetForDay(Table, day);
+            IntervalStore.GetForDay(Table, day, CurrentOpenStart);
     }
 }
