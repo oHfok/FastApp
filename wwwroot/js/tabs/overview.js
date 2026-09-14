@@ -409,9 +409,13 @@ async function renderActivityBody(scope, dateStr, ov, signal) {
     if (scope === 'day') {
         body.innerHTML = `
             <div class="timeline-wrap">
-                <div class="timeline-ticks" id="ov-timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
-                <div class="timeline-track" id="ov-timeline-track"></div>
-                <div class="timeline-subrows" id="ov-timeline-subrows"></div>
+                <div class="timeline-grid">
+                    <div class="timeline-gutter"></div>
+                    <div class="timeline-ticks" id="ov-timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+                    <div class="timeline-gutter"></div>
+                    <div class="timeline-track" id="ov-timeline-track"></div>
+                    <div class="timeline-subrows" id="ov-timeline-subrows"></div>
+                </div>
             </div>`;
         await renderDayTimeline(dateStr, signal);
     } else if (scope === 'week') {

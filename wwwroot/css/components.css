@@ -437,13 +437,30 @@
 /* ---------- Timeline ribbon (Day view only) ---------- */
 .timeline-wrap { padding: 8px 4px; }
 
+/* One grid for the ticks row, the main track row, and every AFK/music lane
+   below it -- a single grid-template-columns computes one column boundary
+   for all of them, so "this segment starts at 34% of the track" means the
+   same pixel x in every row by construction, not by four separate elements
+   happening to agree. The gutter column also gives the sub-lane labels
+   somewhere to sit without stealing width from their own track (see
+   timelineSubRowsHtml for why that stealing was the actual bug). */
+.timeline-grid {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    align-items: center;
+    row-gap: 6px;
+    column-gap: 10px;
+}
+
+.timeline-gutter { /* empty -- just reserves the label column for the ticks/track rows */ }
+
 .timeline-ticks {
     display: flex;
     justify-content: space-between;
     font-family: var(--font-mono);
     font-size: var(--fs-micro);
     color: var(--text-faint);
-    padding: 0 2px 8px;
+    padding: 0 2px 2px;
 }
 
 .timeline-track {
@@ -470,15 +487,16 @@
 /* AFK/music lanes: labelled rows under the main track rather than a bare bar
    crammed along its bottom edge -- the label is what makes a rose or violet
    sliver legible at a glance instead of a colour the viewer has to learn.
-   A row only renders (see timelineSubRowsHtml) when that day actually has
-   something in it, so a normal day doesn't grow two empty lanes. */
-.timeline-subrows { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
-
-.timeline-subrow { display: flex; align-items: center; gap: 8px; }
+   Each lane only renders (see timelineSubRowsHtml) when that day actually
+   has something in it, so a normal day doesn't grow two empty lanes.
+   `display: contents` is the load-bearing rule here: the container the
+   caller writes this into (#ov-timeline-subrows etc.) is itself a single
+   cell of the outer .timeline-grid, and without `contents` its label/track
+   children would be laid out INSIDE that one cell rather than becoming grid
+   items in their own right, undoing the whole point of sharing the grid. */
+.timeline-subrows { display: contents; }
 
 .timeline-subrow-label {
-    flex: 0 0 auto;
-    width: 38px;
     font-family: var(--font-mono);
     font-size: var(--fs-micro);
     color: var(--text-faint);
@@ -487,7 +505,6 @@
 
 .timeline-subrow-track {
     position: relative;
-    flex: 1;
     height: 7px;
     border-radius: 4px;
     background: var(--bg-raised);
@@ -504,8 +521,8 @@
 }
 .timeline-subrow-seg:hover { filter: brightness(1.2); z-index: 2; }
 
-.timeline-subrow-afk .timeline-subrow-seg { background: var(--rose); }
-.timeline-subrow-music .timeline-subrow-seg { background: var(--violet); }
+.timeline-subrow-seg.afk { background: var(--rose); }
+.timeline-subrow-seg.music { background: var(--violet); }
 
 /* Only applied to blocks measured wide enough to hold the whole name (see
    labelWideTimelineSegments), so there is deliberately no ellipsis here -- a

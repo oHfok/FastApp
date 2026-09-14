@@ -593,9 +593,20 @@ function timelineSegmentsHtml(sessions, afkIntervals, musicIntervals) {
 
 // AFK/music are machine-wide, not per-app, so either can overlap a session
 // that stayed focused on an app across it -- shown as their own labelled
-// lanes under the main track (a "Legend" you don't have to hover to read)
+// lanes under the main track (a "legend" you don't have to hover to read)
 // rather than crammed into the app row, which is also where an earlier flat
 // bar-at-the-bottom version of this lived and looked like an afterthought.
+//
+// Each lane is TWO direct children (label, track) of the shared
+// .timeline-grid a caller lays out alongside the ticks and the main track --
+// not a self-contained row with its own label column. A self-contained row
+// has its own track start a label-width to the right of the main track
+// above it, so the same left%/width% put a segment at a different pixel x
+// in each row -- exactly the misalignment bug this replaced. One grid, one
+// column boundary, and every row's 0%-100% maps to the same pixels by
+// construction. The caller's wrapper element needs `display:contents` so
+// these children actually join that grid instead of being boxed inside it.
+//
 // Colors match every other place these two ideas already show up on the
 // dashboard: rose for AFK (the Overview AFK card, the hero dial's AFK share,
 // the AFK screen bar), violet for music (the Music Playing Time card, the
@@ -610,16 +621,14 @@ function timelineSubRowsHtml(sessions, afkIntervals, musicIntervals) {
             const left = ((iv.startMinutes ?? 0) - win.startMin) / span * 100;
             const width = Math.max(((iv.durationMinutes ?? 0) / span) * 100, 0.4);
             const range = `${iv.start} – ${iv.end}`;
-            return `<div class="timeline-subrow-seg" style="left:${left}%;width:${width}%"
+            return `<div class="timeline-subrow-seg ${kind}" style="left:${left}%;width:${width}%"
                         data-name="${label}" data-range="${escapeHtml(range)}"
                         data-dur="${escapeHtml(formatTime(iv.durationMinutes ?? 0))}"
                         aria-label="${escapeHtml(`${label}, ${range}, ${formatTime(iv.durationMinutes ?? 0)}`)}"
                         onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"></div>`;
         }).join('');
-        return `<div class="timeline-subrow timeline-subrow-${kind}">
-                    <span class="timeline-subrow-label">${label}</span>
-                    <div class="timeline-subrow-track">${segs}</div>
-                </div>`;
+        return `<div class="timeline-subrow-label">${label}</div>
+                <div class="timeline-subrow-track">${segs}</div>`;
     };
 
     return row('afk', 'Away', afkIntervals) + row('music', 'Music', musicIntervals);

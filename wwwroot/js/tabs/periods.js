@@ -162,9 +162,13 @@ function periodHeatmapHtml(days, periodType, daySessions, dayAfkIntervals, dayMu
     if (periodType === 'day') {
         return `
             <div class="timeline-wrap">
-                <div class="timeline-ticks">${timelineTicksHtml(timelineWindow(daySessions, dayAfkIntervals, dayMusicIntervals))}</div>
-                <div class="timeline-track">${timelineSegmentsHtml(daySessions, dayAfkIntervals, dayMusicIntervals)}</div>
-                <div class="timeline-subrows">${timelineSubRowsHtml(daySessions, dayAfkIntervals, dayMusicIntervals)}</div>
+                <div class="timeline-grid">
+                    <div class="timeline-gutter"></div>
+                    <div class="timeline-ticks">${timelineTicksHtml(timelineWindow(daySessions, dayAfkIntervals, dayMusicIntervals))}</div>
+                    <div class="timeline-gutter"></div>
+                    <div class="timeline-track">${timelineSegmentsHtml(daySessions, dayAfkIntervals, dayMusicIntervals)}</div>
+                    <div class="timeline-subrows">${timelineSubRowsHtml(daySessions, dayAfkIntervals, dayMusicIntervals)}</div>
+                </div>
             </div>`;
     }
     if (!days || days.length === 0) return `<div class="empty-state" style="padding:28px 16px;">No activity recorded yet.</div>`;
