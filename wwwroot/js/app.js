@@ -301,6 +301,7 @@ function tbLerpColor(ramp, t) {
 
 function updateStatusGlow() {
     const dot = document.getElementById('tb-status-dot');
+    const label = document.getElementById('tb-status-label');
     if (!dot || dot.classList.contains('offline')) return;
 
     const t = Math.min(1, (Date.now() - tbLastUpdateAt) / TB_GLOW_STALE_MS);
@@ -312,15 +313,48 @@ function updateStatusGlow() {
     const colors = [];
     if (tbLiveAfk) colors.push(tbLerpColor(TB_GLOW_AFK, t));
     if (tbLiveMusic) colors.push(tbLerpColor(TB_GLOW_MUSIC, t));
+    const notable = colors.length > 0; // AFK and/or music -- the states worth calling out
     if (colors.length === 0) colors.push(tbLerpColor(TB_GLOW_BLUE, t));
 
     const rgb = (c) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+    const rgba = (c, a) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a})`;
     if (colors.length === 2) {
         dot.style.background = `linear-gradient(135deg, ${rgb(colors[0])}, ${rgb(colors[1])})`;
         dot.style.boxShadow = `0 0 ${blur}px 1px ${rgb(colors[0])}, 0 0 ${blur}px 1px ${rgb(colors[1])}`;
     } else {
         dot.style.background = rgb(colors[0]);
         dot.style.boxShadow = `0 0 ${blur}px 2px ${rgb(colors[0])}`;
+    }
+
+    // The label only picks up the tint for AFK/music -- ordinary "tracking,
+    // data is fresh" stays the quiet default text colour. A little dot is
+    // easy to miss; a word that changes colour next to it is not, but that's
+    // only worth spending on the two states actually worth noticing, not on
+    // every routine poll.
+    if (!label) return;
+    if (!notable) {
+        label.style.color = '';
+        label.style.textShadow = '';
+        label.style.backgroundImage = '';
+        label.style.webkitBackgroundClip = '';
+        label.style.backgroundClip = '';
+        label.style.webkitTextFillColor = '';
+        return;
+    }
+    if (colors.length === 2) {
+        label.style.backgroundImage = `linear-gradient(90deg, ${rgb(colors[0])}, ${rgb(colors[1])})`;
+        label.style.webkitBackgroundClip = 'text';
+        label.style.backgroundClip = 'text';
+        label.style.webkitTextFillColor = 'transparent';
+        label.style.color = '';
+        label.style.textShadow = `0 0 ${Math.round(blur * 0.6)}px ${rgba(colors[0], 0.4)}`;
+    } else {
+        label.style.backgroundImage = '';
+        label.style.webkitBackgroundClip = '';
+        label.style.backgroundClip = '';
+        label.style.webkitTextFillColor = '';
+        label.style.color = rgb(colors[0]);
+        label.style.textShadow = `0 0 ${Math.round(blur * 0.6)}px ${rgba(colors[0], 0.4)}`;
     }
 }
 
@@ -346,6 +380,19 @@ async function refreshLiveState() {
             dotEl.classList.add('offline');
             dotEl.style.background = '';
             dotEl.style.boxShadow = '';
+        }
+        // The label doesn't have its own .offline CSS to fall back on the
+        // way the dot does, so it has to be reset by hand here -- otherwise
+        // a rose/violet tint picked up right before the connection dropped
+        // would sit there claiming a state FastApp can no longer confirm.
+        const labelEl = document.getElementById('tb-status-label');
+        if (labelEl) {
+            labelEl.style.color = '';
+            labelEl.style.textShadow = '';
+            labelEl.style.backgroundImage = '';
+            labelEl.style.webkitBackgroundClip = '';
+            labelEl.style.backgroundClip = '';
+            labelEl.style.webkitTextFillColor = '';
         }
         // No console.error here -- refreshTopBar already logs the same
         // "can't reach FastApp" on the same failure, seconds apart at most,
