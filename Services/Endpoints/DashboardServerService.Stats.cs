@@ -187,6 +187,14 @@ namespace FastApp.Services
                     MusicMonth = musicMonth,
                     MusicYear = musicYear,
 
+                    // Live, machine-wide "right now" flags -- not tied to
+                    // targetDate at all (the top bar's own poll always asks
+                    // for today anyway). Read straight from the same statics
+                    // the Timeline's live segments use, so "currently AFK"
+                    // here means exactly what the ribbon would already show.
+                    IsAfkNow = AfkIntervalStore.CurrentOpenStart != null,
+                    IsMusicNow = MusicIntervalStore.CurrentOpenStart != null,
+
                     ContextSwitches = await db.SessionLogs.CountAsync(s => s.StartTime >= targetDate && s.StartTime < targetDate.AddDays(1) && !hiddenApps.Contains(s.AppName)),
                     TopAppsToday = todaysLogs.OrderByDescending(l => l.TimeFocused).Take(5).Select(l => new { AppName = l.AppName, FocusedMinutes = l.TimeFocused.TotalMinutes }).ToList(),
                     WeeklyTrend = recentLogs.Where(l => l.AppName == "SYSTEM_PC").OrderBy(l => l.Date).Select(l => new { Day = l.Date.ToString("ddd"), FocusedHours = l.TimeFocused.TotalHours }).ToList(),
