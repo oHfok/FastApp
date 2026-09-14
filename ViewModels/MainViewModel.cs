@@ -390,6 +390,7 @@ namespace FastApp.ViewModels
             _dbContext.Database.ExecuteSqlRaw(Services.MusicStatsStore.CreateTableSql);
             _dbContext.Database.ExecuteSqlRaw(Services.AfkIntervalStore.CreateTableSql);
             _dbContext.Database.ExecuteSqlRaw(Services.MusicIntervalStore.CreateTableSql);
+            _dbContext.Database.ExecuteSqlRaw(Services.LimitEventStore.CreateTableSql);
 
             // Read here, not at the top of this constructor, because every one
             // of them reads AppSettings and that table is only guaranteed to
@@ -579,10 +580,12 @@ namespace FastApp.ViewModels
                         {
                             existingApp.TodayBonusMinutes = 0;
                         }
-                        existingApp.TodayBonusMinutes += Math.Max(0, message.ExtraMinutes);
+                        int grantedMinutes = Math.Max(0, message.ExtraMinutes);
+                        existingApp.TodayBonusMinutes += grantedMinutes;
                         existingApp.BonusMinutesDate = DateTime.Today;
                         existingApp.HasNotifiedToday = false; // re-arm against the raised effective limit
                         existingApp.HasWarnedToday = false;
+                        Services.LimitEventStore.RecordEvent(existingApp.Name, "Extended", DateTime.Now, grantedMinutes);
                         FilteredManagedApps?.Refresh();
                     }
                 });
@@ -2468,6 +2471,7 @@ namespace FastApp.ViewModels
                             if (!limitedApp.HasNotifiedToday)
                             {
                                 limitedApp.HasNotifiedToday = true;
+                                Services.LimitEventStore.RecordEvent(limitedApp.Name, "LimitReached", DateTime.Now);
                                 try
                                 {
                                     NotificationService.Show(
@@ -2518,6 +2522,12 @@ namespace FastApp.ViewModels
                                 // and it covers every child process rather than
                                 // one. Slack, Signal, VS Code, Teams and GitHub
                                 // Desktop all have the same Update.exe shape.
+                                // Logged once per app per tick, not once per
+                                // process killed -- Discord alone is several
+                                // Electron processes, and "killed 5 times" for
+                                // one relaunch would overstate how often this
+                                // actually happened.
+                                bool killedAny = false;
                                 foreach (var proc in allProcesses)
                                 {
                                     string pn;
@@ -2531,14 +2541,17 @@ namespace FastApp.ViewModels
 
                                     if (resolved == limitedApp.Name)
                                     {
-                                        try { proc.Kill(); } catch { /* already exited, access denied, etc. */ }
+                                        try { proc.Kill(); killedAny = true; } catch { /* already exited, access denied, etc. */ }
                                     }
                                 }
+                                if (killedAny)
+                                    Services.LimitEventStore.RecordEvent(limitedApp.Name, "Killed", DateTime.Now);
                             }
                         }
                         else if (remaining <= WarningThresholdMinutes && !limitedApp.HasWarnedToday)
                         {
                             limitedApp.HasWarnedToday = true;
+                            Services.LimitEventStore.RecordEvent(limitedApp.Name, "Warned", DateTime.Now);
                             try
                             {
                                 NotificationService.Show(
