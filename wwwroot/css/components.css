@@ -750,32 +750,87 @@
 
 .back-btn:hover { color: var(--brass); border-color: var(--brass-dim); }
 
-.compare-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-    margin-bottom: 24px;
+/* Period detail hero: the period being viewed as one ring, the same dial
+   language Overview's own "Today" hero uses (focus arc, AFK arc beneath it,
+   a thin music overlay) -- so "how full is the ring" already means the same
+   thing by the time someone reaches this tab. Self-contained rather than
+   reusing .stat-hero/.hero-dial directly: those carry several Overview-only
+   breakpoint and #view-overview-scoped overrides that don't apply here, and
+   untangling which parts to inherit costs more than writing Periods its own
+   (much smaller) copy of the geometry. */
+.pd-hero {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
 }
 
-.compare-block {
-    padding: 14px 16px;
+.pd-dial { position: relative; width: 210px; height: 210px; flex-shrink: 0; }
+.pd-dial-svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+.pd-dial-svg circle { fill: none; stroke-width: 15; }
+.pd-dial-track { stroke: var(--bg-raised); }
+.pd-dial-afk   { stroke: var(--rose-dim); stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+.pd-dial-focus { stroke: var(--brass);    stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+.pd-dial-music { stroke: var(--violet); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+
+.pd-dial-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
+    gap: 2px;
+    padding: 0 20px;
+}
+.pd-dial-face .stat-value { font-size: 38px; line-height: 1.05; }
+
+.pd-hero-side { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }
+.pd-hero-stats { display: flex; gap: 32px; flex-wrap: wrap; }
+.pd-stat .stat-value { font-size: var(--fs-stat); font-weight: 600; margin-top: 4px; }
+
+/* Previous/Next/Current used to each get a full card repeating the hero's own
+   layout for a single number nobody was here to study closely -- a strip of
+   compact, clickable chips instead: an outward-pointing arrow, the period's
+   own label, and its total, each one a real link (data-open-period) into
+   that period's own detail rather than a dead reference card. */
+.pd-nav { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+
+.pd-nav-chip {
+    flex: 1;
+    min-width: 180px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    background: var(--panel);
     border: 1px solid transparent;
+    cursor: pointer;
     transition: border-color 0.15s, transform 0.15s;
 }
-.compare-block.is-current { border-color: var(--brass-dim); background: var(--wash-brass); }
-/* Previous/Next/Current already show another period's real numbers -- letting
-   a click jump straight there turns three dead reference cards into three
-   more ways into your history, the same "click what you're looking at" rule
-   every other card in the dashboard already follows. */
-.compare-block.is-linked { cursor: pointer; }
-.compare-block.is-linked:hover { border-color: var(--brass-dim); transform: translateY(-2px); }
-/* The period being viewed is the number that should catch your eye first —
-   Previous/Next/Current are comparison anchors, not the headline. Uptime
-   never gets its own number here at all (just the bar's caption line),
-   which is already about as minor as it can be. */
-.compare-block.is-current .card-label { color: var(--brass-dim); font-weight: 700; }
-.compare-block.is-current .stat-value { font-size: 36px; }
+.pd-nav-chip:hover { border-color: var(--brass-dim); transform: translateY(-2px); }
+.pd-nav-right { flex-direction: row; }
+.pd-nav-arrow { font-size: 16px; color: var(--text-faint); flex-shrink: 0; transition: color 0.15s; }
+.pd-nav-chip:hover .pd-nav-arrow { color: var(--brass); }
+.pd-nav-text { flex: 1; min-width: 0; }
+.pd-nav-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+}
+.pd-nav-period { font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-nav-value { font-family: var(--font-mono); font-weight: 700; color: var(--brass); flex-shrink: 0; }
+.pd-nav-dot { display: inline-block; margin-right: 6px; vertical-align: 1px; }
+
+@media (max-width: 640px) {
+    .pd-hero { flex-direction: column; }
+    .pd-dial { width: 180px; height: 180px; }
+}
 
 /* Focus/AFK share of Uptime, as a bar instead of two more raw-number lines.
    A flat 6px rectangle with square ends read as an afterthought sitting under
