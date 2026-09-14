@@ -526,14 +526,13 @@ function getTimelineRangeMode() {
 // Returns the window the ribbon spans, in minutes past midnight, plus the tick
 // labels to print under it. Callers render the ticks so both the Overview and
 // the Periods ribbon stay in step with whatever range is in force.
-function timelineWindow(sessions, afkIntervals) {
+function timelineWindow(sessions, afkIntervals, musicIntervals) {
     const FULL = { startMin: 0, endMin: 1440 };
-    const hasSessions = sessions && sessions.length;
-    const hasAfk = afkIntervals && afkIntervals.length;
-    if (getTimelineRangeMode() !== 'activity' || (!hasSessions && !hasAfk)) return FULL;
+    const all = (sessions || []).concat(afkIntervals || []).concat(musicIntervals || []);
+    if (getTimelineRangeMode() !== 'activity' || !all.length) return FULL;
 
     let lo = Infinity, hi = -Infinity;
-    (sessions || []).concat(afkIntervals || []).forEach(s => {
+    all.forEach(s => {
         const st = s.startMinutes ?? 0;
         lo = Math.min(lo, st);
         hi = Math.max(hi, st + (s.durationMinutes ?? 0));
@@ -560,19 +559,14 @@ function timelineTicksHtml(win) {
     return out;
 }
 
-// afkIntervals are machine-wide, not per-app, so they can overlap a session
-// that stayed focused on an app across an away stretch -- they're drawn as
-// their own thin strip along the bottom edge of the track rather than mixed
-// into the main row, so an away period never visually competes with, or gets
-// hidden behind, whatever app segment happens to span the same minutes.
-function timelineSegmentsHtml(sessions, afkIntervals) {
-    if ((!sessions || sessions.length === 0) && (!afkIntervals || afkIntervals.length === 0)) {
+function timelineSegmentsHtml(sessions, afkIntervals, musicIntervals) {
+    if ((!sessions || sessions.length === 0) && (!afkIntervals || afkIntervals.length === 0) && (!musicIntervals || musicIntervals.length === 0)) {
         return `<div class="empty-state" style="border:none;background:none;">No sessions recorded for this day.</div>`;
     }
-    const win = timelineWindow(sessions, afkIntervals);
+    const win = timelineWindow(sessions, afkIntervals, musicIntervals);
     const span = Math.max(1, win.endMin - win.startMin);
 
-    const sessionsHtml = (sessions || []).map(s => {
+    return (sessions || []).map(s => {
         const name = s.appName;
         const cat = s.category;
         const startStr = s.start;
@@ -595,25 +589,40 @@ function timelineSegmentsHtml(sessions, afkIntervals) {
                     aria-label="${escapeHtml(`${name}, ${startStr} to ${endStr}, ${formatTime(dur)}`)}"
                     onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"></div>`;
     }).join('');
+}
 
-    // Same rose used everywhere else AFK shows up (the Overview AFK card, the
-    // hero dial's AFK share, the AFK screen bar) so this reads as the same
-    // concept rather than a new color the viewer has to learn.
-    const afkHtml = (afkIntervals || []).map(a => {
-        const startStr = a.start;
-        const endStr = a.end;
-        const dur = a.durationMinutes ?? 0;
-        const startMins = a.startMinutes ?? 0;
-        const left = ((startMins - win.startMin) / span) * 100;
-        const width = Math.max((dur / span) * 100, 0.25);
-        return `<div class="timeline-seg timeline-seg-afk" style="left:${left}%;width:${width}%"
-                    data-name="Away" data-range="${escapeHtml(startStr + ' – ' + endStr)}"
-                    data-dur="${escapeHtml(formatTime(dur))}"
-                    aria-label="${escapeHtml(`Away, ${startStr} to ${endStr}, ${formatTime(dur)}`)}"
-                    onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"></div>`;
-    }).join('');
+// AFK/music are machine-wide, not per-app, so either can overlap a session
+// that stayed focused on an app across it -- shown as their own labelled
+// lanes under the main track (a "Legend" you don't have to hover to read)
+// rather than crammed into the app row, which is also where an earlier flat
+// bar-at-the-bottom version of this lived and looked like an afterthought.
+// Colors match every other place these two ideas already show up on the
+// dashboard: rose for AFK (the Overview AFK card, the hero dial's AFK share,
+// the AFK screen bar), violet for music (the Music Playing Time card, the
+// hero dial's music ring).
+function timelineSubRowsHtml(sessions, afkIntervals, musicIntervals) {
+    const win = timelineWindow(sessions, afkIntervals, musicIntervals);
+    const span = Math.max(1, win.endMin - win.startMin);
 
-    return sessionsHtml + afkHtml;
+    const row = (kind, label, intervals) => {
+        if (!intervals || !intervals.length) return '';
+        const segs = intervals.map(iv => {
+            const left = ((iv.startMinutes ?? 0) - win.startMin) / span * 100;
+            const width = Math.max(((iv.durationMinutes ?? 0) / span) * 100, 0.4);
+            const range = `${iv.start} – ${iv.end}`;
+            return `<div class="timeline-subrow-seg" style="left:${left}%;width:${width}%"
+                        data-name="${label}" data-range="${escapeHtml(range)}"
+                        data-dur="${escapeHtml(formatTime(iv.durationMinutes ?? 0))}"
+                        aria-label="${escapeHtml(`${label}, ${range}, ${formatTime(iv.durationMinutes ?? 0)}`)}"
+                        onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"></div>`;
+        }).join('');
+        return `<div class="timeline-subrow timeline-subrow-${kind}">
+                    <span class="timeline-subrow-label">${label}</span>
+                    <div class="timeline-subrow-track">${segs}</div>
+                </div>`;
+    };
+
+    return row('afk', 'Away', afkIntervals) + row('music', 'Music', musicIntervals);
 }
 
 // The ribbon identified its blocks on hover alone, so a day that was glanced at
@@ -623,9 +632,7 @@ function timelineSegmentsHtml(sessions, afkIntervals) {
 // means nothing until the container has been laid out.
 function labelWideTimelineSegments(trackEl) {
     if (!trackEl) return;
-    // The AFK strip is only 5px tall -- there's no room for a centered label,
-    // and "Away" is already legible at a glance from its color and position.
-    trackEl.querySelectorAll('.timeline-seg:not(.timeline-seg-afk)').forEach(seg => {
+    trackEl.querySelectorAll('.timeline-seg').forEach(seg => {
         const old = seg.querySelector('.timeline-seg-label');
         if (old) old.remove();
 

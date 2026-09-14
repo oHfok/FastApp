@@ -482,7 +482,17 @@ namespace FastApp.Services
                         StartMinutes = a.Start.TimeOfDay.TotalMinutes
                     }).ToList();
 
-                await context.Response.WriteAsJsonAsync(new { Sessions = sessionPayload, Afk = afkPayload });
+                // Same shape, same reasoning: music can play through a session
+                // OR through an AFK stretch, so it's its own list too.
+                var musicPayload = MusicIntervalStore.GetForDay(targetDate)
+                    .Select(m => new {
+                        Start = m.Start.ToString("HH:mm"),
+                        End = m.End.ToString("HH:mm"),
+                        DurationMinutes = (m.End - m.Start).TotalMinutes,
+                        StartMinutes = m.Start.TimeOfDay.TotalMinutes
+                    }).ToList();
+
+                await context.Response.WriteAsJsonAsync(new { Sessions = sessionPayload, Afk = afkPayload, Music = musicPayload });
             }
             catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
         });

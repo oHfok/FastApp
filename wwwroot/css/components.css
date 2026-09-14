@@ -467,21 +467,45 @@
 
 .timeline-seg:hover { filter: brightness(1.3); z-index: 2; }
 
-/* AFK stretches ride a thin strip along the bottom edge of the track rather
-   than the full-height row app segments use -- machine-wide, not per-app, so
-   it can overlap a session that stayed focused across an away period without
-   visually fighting it for the same space. */
-.timeline-seg-afk {
-    top: auto;
-    bottom: 0;
-    height: 5px;
-    border-radius: 0;
-    border-right: none;
-    cursor: default;
-    background: var(--rose);
-    opacity: 0.85;
+/* AFK/music lanes: labelled rows under the main track rather than a bare bar
+   crammed along its bottom edge -- the label is what makes a rose or violet
+   sliver legible at a glance instead of a colour the viewer has to learn.
+   A row only renders (see timelineSubRowsHtml) when that day actually has
+   something in it, so a normal day doesn't grow two empty lanes. */
+.timeline-subrows { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+
+.timeline-subrow { display: flex; align-items: center; gap: 8px; }
+
+.timeline-subrow-label {
+    flex: 0 0 auto;
+    width: 38px;
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    color: var(--text-faint);
+    text-align: right;
 }
-.timeline-seg-afk:hover { filter: brightness(1.15); opacity: 1; z-index: 3; }
+
+.timeline-subrow-track {
+    position: relative;
+    flex: 1;
+    height: 7px;
+    border-radius: 4px;
+    background: var(--bg-raised);
+    overflow: hidden;
+}
+
+.timeline-subrow-seg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 4px;
+    cursor: default;
+    transition: filter 0.12s;
+}
+.timeline-subrow-seg:hover { filter: brightness(1.2); z-index: 2; }
+
+.timeline-subrow-afk .timeline-subrow-seg { background: var(--rose); }
+.timeline-subrow-music .timeline-subrow-seg { background: var(--violet); }
 
 /* Only applied to blocks measured wide enough to hold the whole name (see
    labelWideTimelineSegments), so there is deliberately no ellipsis here -- a

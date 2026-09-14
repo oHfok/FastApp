@@ -389,6 +389,7 @@ namespace FastApp.ViewModels
             _dbContext.Database.ExecuteSqlRaw(Services.ResourceStatsStore.CreateTableSql);
             _dbContext.Database.ExecuteSqlRaw(Services.MusicStatsStore.CreateTableSql);
             _dbContext.Database.ExecuteSqlRaw(Services.AfkIntervalStore.CreateTableSql);
+            _dbContext.Database.ExecuteSqlRaw(Services.MusicIntervalStore.CreateTableSql);
 
             // Read here, not at the top of this constructor, because every one
             // of them reads AppSettings and that table is only guaranteed to
@@ -1888,6 +1889,10 @@ namespace FastApp.ViewModels
             // points a focus session is: pause, day rollover, and shutdown.
             DateTime? afkIntervalStart = null;
 
+            // Same idea as afkIntervalStart, keyed off anyMusicThisTick (B3,
+            // further down) instead of isAfk.
+            DateTime? musicIntervalStart = null;
+
             // Shared by the periodic flush and the final flush-on-exit below,
             // so a normal quit persists exactly the same way a scheduled flush does.
             void FlushDailySummaries(DateTime today)
@@ -2031,6 +2036,11 @@ namespace FastApp.ViewModels
                         Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, DateTime.Now);
                         afkIntervalStart = null;
                     }
+                    if (musicIntervalStart.HasValue)
+                    {
+                        Services.MusicIntervalStore.RecordInterval(musicIntervalStart.Value, DateTime.Now);
+                        musicIntervalStart = null;
+                    }
 
                     continue;
                 }
@@ -2164,6 +2174,17 @@ namespace FastApp.ViewModels
                     {
                         Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, DateTime.Today);
                         afkIntervalStart = isAfk ? DateTime.Today : (DateTime?)null;
+                    }
+
+                    // Same split, but simply closed rather than reopened: unlike
+                    // isAfk, whether music is still playing isn't known until B3
+                    // runs later this same tick -- the transition check right
+                    // after B3 reopens a fresh interval there if it is, at worst
+                    // a few seconds after midnight rather than exactly on it.
+                    if (musicIntervalStart.HasValue)
+                    {
+                        Services.MusicIntervalStore.RecordInterval(musicIntervalStart.Value, DateTime.Today);
+                        musicIntervalStart = null;
                     }
 
                     timeCache.Clear();
@@ -2348,10 +2369,10 @@ namespace FastApp.ViewModels
                 // apps play at once, so a separate SYSTEM_MUSIC row counts the
                 // tick ONCE if any of them was playing -- that is the wall-clock
                 // figure the dashboard headline reads.
+                bool anyMusicThisTick = false;
                 if (playingMediaSources.Count > 0)
                 {
                     var sourcesLower = playingMediaSources.Select(s => s.ToLowerInvariant()).ToList();
-                    bool anyMusicThisTick = false;
 
                     foreach (var name in trackedNames)
                     {
@@ -2388,6 +2409,19 @@ namespace FastApp.ViewModels
                             + (long)tickDuration.TotalSeconds;
                 }
 
+                // Music interval boundary, same false<->true edge logic as the
+                // AFK one above -- just keyed off anyMusicThisTick instead of
+                // isAfk, and computed here since that's the earliest point in
+                // the tick anyMusicThisTick is known.
+                if (anyMusicThisTick && !musicIntervalStart.HasValue)
+                {
+                    musicIntervalStart = now;
+                }
+                else if (!anyMusicThisTick && musicIntervalStart.HasValue)
+                {
+                    Services.MusicIntervalStore.RecordInterval(musicIntervalStart.Value, now);
+                    musicIntervalStart = null;
+                }
 
                 // C & D touch properties on the shared, UI-thread-bound ManagedApps
                 // entities (TimeRunning, HasNotifiedToday, etc.) — _dbContext is not
@@ -2647,11 +2681,15 @@ namespace FastApp.ViewModels
                         });
                     }
 
-                    // Same shutdown close-out, for whatever AFK stretch was
-                    // still open.
+                    // Same shutdown close-out, for whatever AFK/music stretch
+                    // was still open.
                     if (afkIntervalStart.HasValue)
                     {
                         Services.AfkIntervalStore.RecordInterval(afkIntervalStart.Value, DateTime.Now);
+                    }
+                    if (musicIntervalStart.HasValue)
+                    {
+                        Services.MusicIntervalStore.RecordInterval(musicIntervalStart.Value, DateTime.Now);
                     }
 
                     lock (_dbContext)

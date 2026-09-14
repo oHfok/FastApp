@@ -411,6 +411,7 @@ async function renderActivityBody(scope, dateStr, ov, signal) {
             <div class="timeline-wrap">
                 <div class="timeline-ticks" id="ov-timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
                 <div class="timeline-track" id="ov-timeline-track"></div>
+                <div class="timeline-subrows" id="ov-timeline-subrows"></div>
             </div>`;
         await renderDayTimeline(dateStr, signal);
     } else if (scope === 'week') {
@@ -426,12 +427,15 @@ async function renderDayTimeline(dateStr, signal) {
         const data = await apiFetch(`/api/timeline?date=${dateStr}`, { signal });
         const sessions = data?.sessions ?? [];
         const afk = data?.afk ?? [];
+        const music = data?.music ?? [];
         const track = document.getElementById('ov-timeline-track');
         if (!track) return;
-        track.innerHTML = timelineSegmentsHtml(sessions, afk);
+        track.innerHTML = timelineSegmentsHtml(sessions, afk, music);
         labelWideTimelineSegments(track);
+        const subrows = document.getElementById('ov-timeline-subrows');
+        if (subrows) subrows.innerHTML = timelineSubRowsHtml(sessions, afk, music);
         const ticks = document.getElementById('ov-timeline-ticks');
-        if (ticks && (sessions.length || afk.length)) ticks.innerHTML = timelineTicksHtml(timelineWindow(sessions, afk));
+        if (ticks && (sessions.length || afk.length || music.length)) ticks.innerHTML = timelineTicksHtml(timelineWindow(sessions, afk, music));
     } catch (err) { if (!isAbort(err)) console.error(err); }
 }
 
