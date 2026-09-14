@@ -530,7 +530,12 @@
 .timeline-seg-label.on-light { color: #14161C; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.45); }
 
 /* ---------- Weeks & Months tab ---------- */
-.period-toggle { margin-bottom: 20px; }
+.period-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.period-toggle, .period-sort-toggle { margin-bottom: 0; }
+/* A hairline rather than another pill-shaped control -- Recent/Best/Worst is
+   a sort direction on the same list, not a second filter competing for
+   attention with Days/Weeks/Months/Years. */
+.period-sort-toggle { padding-left: 10px; border-left: 1px solid var(--panel-border); }
 
 .period-list { display: flex; flex-direction: column; gap: 12px; }
 
@@ -680,9 +685,13 @@
 .month-heat-weekdays,
 .month-heat-grid {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 52px));
+    /* The Daily Activity card spans the full detail-view width -- at the old
+       52px cap a 5-row month left most of that width as dead space either
+       side of a small, lonely grid. 76px still reads as a calendar rather
+       than a wall of tiles, and actually uses the room it's given. */
+    grid-template-columns: repeat(7, minmax(0, 76px));
     justify-content: center;
-    gap: 5px;
+    gap: 6px;
 }
 
 .month-heat-weekdays { margin-bottom: 8px; }
@@ -748,8 +757,19 @@
     margin-bottom: 24px;
 }
 
-.compare-block { padding: 14px 16px; text-align: center; }
+.compare-block {
+    padding: 14px 16px;
+    text-align: center;
+    border: 1px solid transparent;
+    transition: border-color 0.15s, transform 0.15s;
+}
 .compare-block.is-current { border-color: var(--brass-dim); background: var(--wash-brass); }
+/* Previous/Next/Current already show another period's real numbers -- letting
+   a click jump straight there turns three dead reference cards into three
+   more ways into your history, the same "click what you're looking at" rule
+   every other card in the dashboard already follows. */
+.compare-block.is-linked { cursor: pointer; }
+.compare-block.is-linked:hover { border-color: var(--brass-dim); transform: translateY(-2px); }
 /* The period being viewed is the number that should catch your eye first —
    Previous/Next/Current are comparison anchors, not the headline. Uptime
    never gets its own number here at all (just the bar's caption line),
@@ -757,18 +777,23 @@
 .compare-block.is-current .card-label { color: var(--brass-dim); font-weight: 700; }
 .compare-block.is-current .stat-value { font-size: 36px; }
 
-/* Focus/AFK share of Uptime, as a bar instead of two more raw-number lines */
+/* Focus/AFK share of Uptime, as a bar instead of two more raw-number lines.
+   A flat 6px rectangle with square ends read as an afterthought sitting under
+   a 36px headline number -- a full pill (rounded ends on the TRACK, not just
+   each segment) plus a hairline border reads as a drawn meter instead of a
+   stray strip of color. */
 .compare-bar {
     display: flex;
     width: 100%;
-    height: 6px;
-    border-radius: 3px;
+    height: 10px;
+    border-radius: var(--radius-pill);
     overflow: hidden;
     background: var(--bg-raised);
-    margin-top: 12px;
+    border: 1px solid var(--panel-border-soft);
+    margin-top: 14px;
 }
 
-.compare-bar-seg { height: 100%; }
+.compare-bar-seg { height: 100%; transition: width 0.2s; }
 
 .compare-bar-caption {
     font-family: var(--font-mono);

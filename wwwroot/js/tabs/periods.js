@@ -12,6 +12,17 @@
 let periodType = 'week'; // 'day' | 'week' | 'month' | 'year'
 const PERIOD_NOUNS = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
 
+// Recent (server order, newest first) / Best / Worst by total focus. Sorting
+// is done client-side against the already-fetched list rather than a second
+// request -- the server already returns every period's total, so re-sorting
+// is instant and never needs to hit the network.
+let periodSort = 'recent';
+// The last-fetched list, each entry carrying its own prevFocusMinutes
+// (computed once, while still in date order) so "vs Previous" keeps meaning
+// "the period right before this one" no matter which order Best/Worst later
+// displays them in.
+let periodListData = [];
+
 // Window Activity card state (Day period detail) — held here rather than
 // re-fetched, since the raw titled sessions for the open day are already in
 // hand; search/sort just re-filter and re-render the row list in place.
@@ -38,6 +49,12 @@ function showPeriodList() {
     document.getElementById('period-detail-view').style.display = 'none';
 }
 
+function setPeriodSort(sort, btnEl) {
+    periodSort = sort;
+    document.querySelectorAll('#period-sort-toggle button').forEach(b => b.classList.toggle('active', b === btnEl));
+    renderPeriodList();
+}
+
 async function loadPeriodList(silent) {
     const listEl = document.getElementById('period-list');
     if (!silent && isEmptyContainer(listEl)) listEl.innerHTML = loadingRowsHtml(5);
@@ -46,63 +63,20 @@ async function loadPeriodList(silent) {
                                       { signal: abortableSignal('periods') });
 
         if (!periods || periods.length === 0) {
+            periodListData = [];
             listEl.innerHTML = `<div class="empty-state">No ${periodType}s recorded yet.</div>`;
             return;
         }
 
-        listEl.innerHTML = periods.map((p, i) => {
-            const rank = p.rank;
-            const label = p.label;
-            const start = p.startDate;
-            const end = p.endDate;
-            const totalMins = p.totalFocusMinutes ?? 0;
-            const mostUsed = p.mostUsedApp ?? '—';
-            // The right-hand column used to repeat the rank badge ("#4 of 8"),
-            // spending one of the row's five slots on a fact the row already
-            // stated. It now answers the question the list could not: was this
-            // period better or worse than the one before it? The denominator
-            // moved into the badge's tooltip so nothing was actually lost.
-            //
-            // The list arrives newest-first and the server drops periods with no
-            // activity, so periods[i + 1] is the previous period that had any —
-            // which is the more useful comparison anyway, and never divides by
-            // zero the way an empty calendar-adjacent period would.
-            const prev = periods[i + 1];
-            const changeHtml = prev
-                ? trendPill(totalMins, prev.totalFocusMinutes ?? 0)
-                : `<span class="trend-pill trend-flat">First on record</span>`;
-
-            const rangeText = periodType === 'week'
-                ? `${fmtDateEU(parseDateStr(start))} → ${fmtDateEU(parseDateStr(end))}`
-                : periodType === 'day'
-                    ? DAY_NAMES[isoDow(parseDateStr(start))]
-                    : label;
-
-            return `
-                <div class="card period-card" data-open-period="${escapeHtml(start)}" role="button" tabindex="0">
-                    <div class="period-row">
-                        <div class="period-rank-badge ${rank === 1 ? 'rank-1' : ''}" title="Rank ${rank ?? '–'} of ${p.totalPeriods ?? '–'} by focus time">#${rank ?? '–'}</div>
-                        <div class="period-main">
-                            <div class="period-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
-                            <div class="period-range">${escapeHtml(rangeText)}</div>
-                        </div>
-                        <div class="period-stats">
-                            <div class="period-stat">
-                                <div class="period-stat-label">Total Focus</div>
-                                <div class="period-stat-value" style="color:var(--brass)">${formatTime(totalMins)}</div>
-                            </div>
-                            <div class="period-stat">
-                                <div class="period-stat-label">Most Used</div>
-                                <div class="period-stat-value app-link" title="${escapeHtml(mostUsed)}" data-open-app="${escapeHtml(mostUsed)}" role="button" tabindex="0">${escapeHtml(displayAppName(mostUsed))}</div>
-                            </div>
-                            <div class="period-stat">
-                                <div class="period-stat-label">vs Previous</div>
-                                <div class="period-stat-value">${changeHtml}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-        }).join('');
+        // The list arrives newest-first and the server already drops periods
+        // with no activity, so periods[i + 1] is the previous period that had
+        // any -- computed once here, before Best/Worst gets a chance to
+        // reorder the array for display.
+        periodListData = periods.map((p, i) => ({
+            ...p,
+            prevFocusMinutes: periods[i + 1] ? (periods[i + 1].totalFocusMinutes ?? 0) : null
+        }));
+        renderPeriodList();
     } catch (err) {
         // A failed silent poll shouldn't blow away an already-valid list with
         // an error message — just log it and leave what's on screen alone.
@@ -113,6 +87,65 @@ async function loadPeriodList(silent) {
             'retryPeriodList'
         );
     }
+}
+
+function renderPeriodList() {
+    const listEl = document.getElementById('period-list');
+    if (!periodListData.length) return;
+
+    const sorted = [...periodListData].sort((a, b) => {
+        if (periodSort === 'best') return (b.totalFocusMinutes ?? 0) - (a.totalFocusMinutes ?? 0);
+        if (periodSort === 'worst') return (a.totalFocusMinutes ?? 0) - (b.totalFocusMinutes ?? 0);
+        return b.startDate.localeCompare(a.startDate); // 'recent': server's own newest-first order
+    });
+
+    listEl.innerHTML = sorted.map((p) => {
+        const rank = p.rank;
+        const label = p.label;
+        const start = p.startDate;
+        const end = p.endDate;
+        const totalMins = p.totalFocusMinutes ?? 0;
+        const mostUsed = p.mostUsedApp ?? '—';
+        // The right-hand column used to repeat the rank badge ("#4 of 8"),
+        // spending one of the row's five slots on a fact the row already
+        // stated. It now answers the question the list could not: was this
+        // period better or worse than the one before it? The denominator
+        // moved into the badge's tooltip so nothing was actually lost.
+        const changeHtml = p.prevFocusMinutes != null
+            ? trendPill(totalMins, p.prevFocusMinutes)
+            : `<span class="trend-pill trend-flat">First on record</span>`;
+
+        const rangeText = periodType === 'week'
+            ? `${fmtDateEU(parseDateStr(start))} → ${fmtDateEU(parseDateStr(end))}`
+            : periodType === 'day'
+                ? DAY_NAMES[isoDow(parseDateStr(start))]
+                : label;
+
+        return `
+            <div class="card period-card" data-open-period="${escapeHtml(start)}" role="button" tabindex="0">
+                <div class="period-row">
+                    <div class="period-rank-badge ${rank === 1 ? 'rank-1' : ''}" title="Rank ${rank ?? '–'} of ${p.totalPeriods ?? '–'} by focus time">#${rank ?? '–'}</div>
+                    <div class="period-main">
+                        <div class="period-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
+                        <div class="period-range">${escapeHtml(rangeText)}</div>
+                    </div>
+                    <div class="period-stats">
+                        <div class="period-stat">
+                            <div class="period-stat-label">Total Focus</div>
+                            <div class="period-stat-value" style="color:var(--brass)">${formatTime(totalMins)}</div>
+                        </div>
+                        <div class="period-stat">
+                            <div class="period-stat-label">Most Used</div>
+                            <div class="period-stat-value app-link" title="${escapeHtml(mostUsed)}" data-open-app="${escapeHtml(mostUsed)}" role="button" tabindex="0">${escapeHtml(displayAppName(mostUsed))}</div>
+                        </div>
+                        <div class="period-stat">
+                            <div class="period-stat-label">vs Previous</div>
+                            <div class="period-stat-value">${changeHtml}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
 }
 
 // Daily-activity visual for the period detail page.
@@ -370,10 +403,15 @@ function renderPeriodDetail(d, isNewDay) {
     const chosenMusicMins = d.totalMusicMinutes;
     const periodNoun = PERIOD_NOUNS[periodType] || 'Period';
     const blocks = [
-        prev ? { tag: 'Previous', obj: prev } : null,
-        { tag: 'This ' + periodNoun, obj: { totalFocusMinutes: totalMins, totalAfkMinutes: chosenAfkMins, totalUptimeMinutes: chosenUptimeMins, totalMusicMinutes: chosenMusicMins, label }, current: true },
-        next ? { tag: 'Next', obj: next } : null,
-        current ? { tag: 'Current ' + periodNoun, obj: current } : null
+        prev ? { tag: 'Previous', obj: prev, openStart: prev.startDate } : null,
+        { tag: 'This ' + periodNoun, obj: { totalFocusMinutes: totalMins, totalAfkMinutes: chosenAfkMins, totalUptimeMinutes: chosenUptimeMins, totalMusicMinutes: chosenMusicMins, label }, current: true, trendVs: prev },
+        next ? { tag: 'Next', obj: next, openStart: next.startDate } : null,
+        // Live: an in-progress period ("Current Week" while you're three weeks
+        // deep into browsing history) is a partial total, not a finished one --
+        // sat next to a completed period's number with no distinction it reads
+        // as a huge decline. The pulse dot and "so far" wording are the same
+        // "still live" language the top bar's own status dot already uses.
+        current ? { tag: 'Current ' + periodNoun, obj: current, openStart: current.startDate, live: true } : null
     ].filter(Boolean);
 
     // Focus is the headline number. Uptime/AFK used to be two more raw-number
@@ -395,6 +433,7 @@ function renderPeriodDetail(d, isNewDay) {
         const musicCaption = (musicMins != null && musicMins > 0)
             ? ` · <span style="color:var(--violet)">${formatTime(musicMins)} music</span>`
             : '';
+        const soFar = b.live ? ' so far' : '';
 
         let barHtml = '';
         if (uptimeMins > 0) {
@@ -405,17 +444,31 @@ function renderPeriodDetail(d, isNewDay) {
                     <div class="compare-bar-seg" style="width:${focusPct}%;background:var(--brass)"></div>
                     <div class="compare-bar-seg" style="width:${afkPct}%;background:var(--rose)"></div>
                 </div>
-                <div class="compare-bar-caption"><span style="color:var(--rose)">${formatTime(afkMins || 0)} AFK</span>${musicCaption} · ${formatTime(uptimeMins)} online</div>`;
+                <div class="compare-bar-caption"><span style="color:var(--rose)">${formatTime(afkMins || 0)} AFK</span>${musicCaption} · ${formatTime(uptimeMins)} online${soFar}</div>`;
         }
+
+        // Only the headline "This [Period]" card gets a trend pill -- it's the
+        // one number every other card exists to give context to, and it's the
+        // only one with a real "period right before it" on hand (prev/next/
+        // current don't carry their own predecessor's total).
+        const trendHtml = b.trendVs
+            ? `<div style="margin-top:6px;">${trendPill(mins, b.trendVs.totalFocusMinutes ?? 0, 'previous')}</div>`
+            : '';
+
+        const liveDot = b.live ? '<span class="status-dot" style="margin-right:7px;vertical-align:1px;"></span>' : '';
+        const linkAttrs = b.openStart
+            ? `data-open-period="${escapeHtml(b.openStart)}" role="button" tabindex="0"`
+            : '';
 
         // Color the headline number brass to match the bar's "focus" segment,
         // and fold "Focused" into the existing sub-label line rather than
         // adding a whole new line just to say what the number is.
         return `
-            <div class="card compare-block ${b.current ? 'is-current' : ''}">
-                <div class="card-label">${b.tag}</div>
+            <div class="card compare-block ${b.current ? 'is-current' : ''} ${b.openStart ? 'is-linked' : ''}" ${linkAttrs}>
+                <div class="card-label">${liveDot}${b.tag}</div>
                 <div class="stat-value mono" style="margin-top:6px;color:var(--brass)">${formatHours((mins || 0) / 60)}</div>
-                <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:4px;">Focused · ${lbl}</div>
+                <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:4px;">Focused · ${lbl}${soFar}</div>
+                ${trendHtml}
                 ${barHtml}
             </div>`;
     }).join('');
