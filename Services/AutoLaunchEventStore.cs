@@ -21,7 +21,7 @@ namespace FastApp.Services
             "Detail TEXT, " +           // the launch error, when there was one
             "Timestamp TEXT NOT NULL);";
 
-        public static void RecordEvent(string appName, string outcome, string detail, DateTime when)
+        public static void RecordEvent(string appName, string outcome, string? detail, DateTime when)
         {
             if (string.IsNullOrWhiteSpace(appName)) return;
             try
@@ -29,7 +29,7 @@ namespace FastApp.Services
                 using var db = new AppDbContext();
                 db.Database.ExecuteSqlRaw(
                     "INSERT INTO AutoLaunchEvents (Date, AppName, Outcome, Detail, Timestamp) VALUES ({0}, {1}, {2}, {3}, {4});",
-                    when.ToString("yyyy-MM-dd"), appName, outcome, (object)detail ?? DBNull.Value, when.ToString("o"));
+                    when.ToString("yyyy-MM-dd"), appName, outcome, (object?)detail ?? DBNull.Value, when.ToString("o"));
             }
             catch (Exception ex)
             {
