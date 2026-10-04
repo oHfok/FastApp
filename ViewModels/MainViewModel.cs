@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FastApp.Services;
 using Microsoft.EntityFrameworkCore;
@@ -477,10 +477,12 @@ namespace FastApp.ViewModels
                     }
 
                     var cutoffDate = DateTime.Today.AddDays(-retentionDays);
+                    // Kept as the same text format the columns are stored in, but
+                    // sent as a bound parameter rather than spliced into the SQL.
                     string sqlDateFormat = cutoffDate.ToString("yyyy-MM-dd HH:mm:ss");
 
-                    cleanupDb.Database.ExecuteSqlRaw($"DELETE FROM SessionLogs WHERE StartTime < '{sqlDateFormat}';");
-                    cleanupDb.Database.ExecuteSqlRaw($"DELETE FROM MacroEventLogs WHERE Timestamp < '{sqlDateFormat}';");
+                    cleanupDb.Database.ExecuteSqlInterpolated($"DELETE FROM SessionLogs WHERE StartTime < {sqlDateFormat};");
+                    cleanupDb.Database.ExecuteSqlInterpolated($"DELETE FROM MacroEventLogs WHERE Timestamp < {sqlDateFormat};");
                 }
                 catch (Exception ex)
                 {
@@ -2121,6 +2123,8 @@ namespace FastApp.ViewModels
                 }
 
                 var allProcesses = Process.GetProcesses();
+                try
+                {
                 var allProcessNames = allProcesses.Select(p => p.ProcessName.ToLower()).ToHashSet();
 
                 var visibleProcessNames = allProcesses
@@ -2636,14 +2640,18 @@ namespace FastApp.ViewModels
                         }
                     }
                 }
-
-                // allProcesses is done being read at this point. Each entry
-                // holds a native handle that Process.GetProcesses()'s own docs
-                // say to dispose -- a fresh ~200-300 of them are allocated every
-                // tick for the life of a tracker meant to run continuously, so
-                // this closes them promptly rather than leaving it to the
-                // finalizer queue.
-                foreach (var p in allProcesses) p.Dispose();
+                }
+                finally
+                {
+                    // allProcesses is done being read at this point. Each entry
+                    // holds a native handle that Process.GetProcesses()'s own docs
+                    // say to dispose -- a fresh ~200-300 of them are allocated every
+                    // tick for the life of a tracker meant to run continuously, so
+                    // this closes them promptly rather than leaving it to the
+                    // finalizer queue. In a finally so an exception anywhere in the
+                    // tick above cannot skip it and leak a tick's worth of handles.
+                    foreach (var p in allProcesses) p.Dispose();
+                }
 
                 // --- DATABASE FLUSH ---
                 tickCount++;
@@ -2652,9 +2660,9 @@ namespace FastApp.ViewModels
                     DateTime today = DateTime.Today;
 
                     // Locked as one unit: FlushDailySummaries/FlushPendingQueues/
-                    // SaveChanges all touch the shared _dbContext, and RefreshStats
-                    // (which internally re-enters this same lock — safe, lock is
-                    // reentrant per-thread) queries it too.
+                    // SaveChanges all touch the shared _dbContext. RefreshStats is
+                    // deliberately NOT called in here -- see below.
+                    bool saved = false;
                     lock (_dbContext)
                     {
                         // 1. Flush Daily Summaries
@@ -2675,12 +2683,25 @@ namespace FastApp.ViewModels
                         {
                             _dbContext.SaveChanges();
                             Services.DatabaseHealth.ReportWriteSucceeded();
-                            StatisticsVM?.RefreshStats();
+                            saved = true;
                         }
                         catch (Exception ex)
                         {
                             Services.DatabaseHealth.ReportWriteFailed(ex);
                         }
+                    }
+
+                    // After the lock is released. RefreshStats finishes with a
+                    // blocking Dispatcher.Invoke onto the UI thread; calling it
+                    // from inside the lock meant a UI thread waiting for that same
+                    // lock (a reorder, a category change) and this thread waiting
+                    // for the UI thread would each wait on the other forever.
+                    // Contained here so a failure refreshing the numbers can
+                    // neither be mistaken for a failed write nor stop the tracker.
+                    if (saved)
+                    {
+                        try { StatisticsVM?.RefreshStats(); }
+                        catch (Exception ex) { Debug.WriteLine($"RefreshStats failed: {ex.Message}"); }
                     }
 
                     // Outside the _dbContext lock: its own context, and it must

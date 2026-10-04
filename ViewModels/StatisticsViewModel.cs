@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FastApp.Services;
 using Microsoft.EntityFrameworkCore;
@@ -65,14 +65,11 @@ namespace FastApp.ViewModels
         // OFF-LOADED AFK TOGGLE METHOD TO FIX UI LAG
         partial void OnExcludeAfkTimeChanged(bool value)
         {
-            // Running on a background task so it doesn't freeze the toggle UI
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                lock (_dbContext)
-                {
-                    RefreshStats();
-                }
-            });
+            // Running on a background task so it doesn't freeze the toggle UI.
+            // No lock here: RefreshStats takes it internally, and holding it
+            // across RefreshStats's closing Dispatcher.Invoke would deadlock
+            // against any UI-thread work waiting for the same lock.
+            System.Threading.Tasks.Task.Run(() => RefreshStats());
         }
 
         // Active Time Detail Fields
@@ -217,12 +214,23 @@ namespace FastApp.ViewModels
             _hasLoadedOnce = true;
 
             // _dbContext is shared with MainViewModel's background tracker loop,
-            // which is not safe to touch concurrently from multiple threads — this
-            // wraps the whole method (including the Dispatcher.Invoke blocks below,
-            // which still run on this same locked call) so every caller, on any
-            // thread, is automatically protected without having to remember to lock
-            // at each call site. Safe to call while already holding this lock
-            // (e.g. from OnExcludeAfkTimeChanged below) — lock is reentrant per-thread.
+            // which is not safe to touch concurrently from multiple threads — the
+            // database reads below take the lock themselves, so callers do not
+            // have to.
+            //
+            // CONTRACT: do not call this while holding lock (_dbContext) on a
+            // non-UI thread. The final step is a blocking Dispatcher.Invoke, and
+            // a UI thread that is itself waiting for the lock would then never
+            // let it return -- the deadlock this method used to have, back when
+            // the Invokes ran inside the lock.
+            //
+            // Built under the lock, applied to the UI collections after it is
+            // released -- see the Dispatcher.Invoke at the end of this method.
+            var newHidden = new List<HiddenApp>();
+            var newDiet = new List<DietSegment>();
+            var newTopApps = new List<AppStatItem>();
+            var newHeatmap = new List<HeatmapDay>();
+
             lock (_dbContext)
             {
             DateTime today = DateTime.Today;
@@ -267,12 +275,7 @@ namespace FastApp.ViewModels
 
             // Fetch Hidden Apps
             var hiddenAppNames = _dbContext.HiddenApps.Select(h => h.AppName).ToHashSet();
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-            {
-                HiddenAppsList.Clear();
-                foreach (var hidden in _dbContext.HiddenApps.ToList())
-                    HiddenAppsList.Add(hidden);
-            });
+            newHidden.AddRange(_dbContext.HiddenApps.ToList());
 
             // ==========================================
             // DIGITAL DIET CHART DATA — SQL-SIDE AGGREGATION
@@ -301,19 +304,15 @@ namespace FastApp.ViewModels
 
             long totalDietTicks = dietData.Sum(x => x.Ticks);
 
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            foreach (var item in dietData.OrderByDescending(x => x.Ticks))
             {
-                DietSegments.Clear();
-                foreach (var item in dietData.OrderByDescending(x => x.Ticks))
+                newDiet.Add(new DietSegment
                 {
-                    DietSegments.Add(new DietSegment
-                    {
-                        Category = item.Category,
-                        Percentage = totalDietTicks > 0 ? (double)item.Ticks / totalDietTicks * 100 : 0,
-                        Color = GetCategoryColor(item.Category)
-                    });
-                }
-            });
+                    Category = item.Category,
+                    Percentage = totalDietTicks > 0 ? (double)item.Ticks / totalDietTicks * 100 : 0,
+                    Color = GetCategoryColor(item.Category)
+                });
+            }
 
             // ==========================================
             // SPOTIFY RANKING MATH — SQL-SIDE AGGREGATION
@@ -354,45 +353,60 @@ namespace FastApp.ViewModels
 
             long maxTicks = appGroups.FirstOrDefault()?.TotalTicks ?? 1;
 
+            int currentRank = 1;
+            foreach (var app in appGroups)
+            {
+                int historicalRank = yesterdayRanks.GetValueOrDefault(app.AppName, currentRank);
+                string cat = categoryMap.GetValueOrDefault(app.AppName, "Other");
+
+                newTopApps.Add(new AppStatItem
+                {
+                    AppName = app.AppName,
+                    DisplayTime = FormatTime(app.TotalTicks),
+                    PercentageOfMax = (double)app.TotalTicks / maxTicks * 100,
+                    CurrentRank = currentRank,
+                    RankChange = historicalRank - currentRank,
+                    Category = cat,
+                    CategoryColor = GetCategoryColor(cat)
+                });
+                currentRank++;
+            }
+
+            // Heatmap still needs per-day PC totals, so this stays a targeted 30-row query
+            DateTime heatmapStart = today.AddDays(-29);
+            var pcDailyTotals = _dbContext.DailyLogs.AsNoTracking()
+                .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= heatmapStart)
+                .Select(l => new { l.Date, Ticks = l.TimeSpentTicks ?? 0 })
+                .ToDictionary(x => x.Date, x => x.Ticks);
+
+            for (int i = 0; i <= 29; i++)
+            {
+                DateTime d = heatmapStart.AddDays(i);
+                double hours = TimeSpan.FromTicks(pcDailyTotals.GetValueOrDefault(d, 0)).TotalHours;
+                string color = hours <= 0 ? "#161B22" : hours <= 2 ? "#0E4429" : hours <= 5 ? "#006D32" : hours <= 8 ? "#26A641" : "#39D353";
+                newHeatmap.Add(new HeatmapDay { ColorHex = color, Tooltip = $"{hours:F1} hours on {d.ToString("MMM dd")}" });
+            }
+            }
+
+            // Applied OUTSIDE the _dbContext lock, and in one hop. This used to be
+            // three Dispatcher.Invoke calls made while holding the lock: if the UI
+            // thread was meanwhile waiting for that same lock (a reorder, a category
+            // change), each side waited on the other forever. Nothing below touches
+            // the database, so the lock has no business being held here.
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
+                HiddenAppsList.Clear();
+                foreach (var hidden in newHidden) HiddenAppsList.Add(hidden);
+
+                DietSegments.Clear();
+                foreach (var seg in newDiet) DietSegments.Add(seg);
+
                 TopApps.Clear();
-                int currentRank = 1;
-                foreach (var app in appGroups)
-                {
-                    int historicalRank = yesterdayRanks.GetValueOrDefault(app.AppName, currentRank);
-                    string cat = categoryMap.GetValueOrDefault(app.AppName, "Other");
+                foreach (var item in newTopApps) TopApps.Add(item);
 
-                    TopApps.Add(new AppStatItem
-                    {
-                        AppName = app.AppName,
-                        DisplayTime = FormatTime(app.TotalTicks),
-                        PercentageOfMax = (double)app.TotalTicks / maxTicks * 100,
-                        CurrentRank = currentRank,
-                        RankChange = historicalRank - currentRank,
-                        Category = cat,
-                        CategoryColor = GetCategoryColor(cat)
-                    });
-                    currentRank++;
-                }
-
-                // Heatmap still needs per-day PC totals, so this stays a targeted 30-row query
                 HeatmapDays.Clear();
-                DateTime heatmapStart = today.AddDays(-29);
-                var pcDailyTotals = _dbContext.DailyLogs.AsNoTracking()
-                    .Where(l => l.AppName == "SYSTEM_PC" && l.Date >= heatmapStart)
-                    .Select(l => new { l.Date, Ticks = l.TimeSpentTicks ?? 0 })
-                    .ToDictionary(x => x.Date, x => x.Ticks);
-
-                for (int i = 0; i <= 29; i++)
-                {
-                    DateTime d = heatmapStart.AddDays(i);
-                    double hours = TimeSpan.FromTicks(pcDailyTotals.GetValueOrDefault(d, 0)).TotalHours;
-                    string color = hours <= 0 ? "#161B22" : hours <= 2 ? "#0E4429" : hours <= 5 ? "#006D32" : hours <= 8 ? "#26A641" : "#39D353";
-                    HeatmapDays.Add(new HeatmapDay { ColorHex = color, Tooltip = $"{hours:F1} hours on {d.ToString("MMM dd")}" });
-                }
+                foreach (var day in newHeatmap) HeatmapDays.Add(day);
             });
-            }
         }
 
         // NEW: Command to securely launch default browser to local Web Dashboard
