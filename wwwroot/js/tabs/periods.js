@@ -431,11 +431,14 @@ function renderPeriodDetail(d, isNewDay) {
         musicPct = Math.min(100, ((chosenMusicMins || 0) / chosenUptimeMins) * 100);
     }
     const PD_DIAL_SIZE = 210, PD_DIAL_R = 93;
-    const PD_DIAL_CIRC = 2 * Math.PI * PD_DIAL_R;
-    const dialOffset = (pct) => PD_DIAL_CIRC * (1 - Math.max(0, Math.min(100, pct)) / 100);
-    const dialCircle = (cls, pct) =>
-        `<circle class="${cls}" cx="${PD_DIAL_SIZE / 2}" cy="${PD_DIAL_SIZE / 2}" r="${PD_DIAL_R}"
-            style="stroke-dasharray:${PD_DIAL_CIRC};stroke-dashoffset:${dialOffset(pct)};opacity:${pct > 0.5 ? 1 : 0}"></circle>`;
+    const dialCircle = (cls, pct, r = PD_DIAL_R) => {
+        const circ = 2 * Math.PI * r;
+        const offset = circ * (1 - Math.max(0, Math.min(100, pct)) / 100);
+        return `<circle class="${cls}" cx="${PD_DIAL_SIZE / 2}" cy="${PD_DIAL_SIZE / 2}" r="${r}"
+            style="stroke-dasharray:${circ};stroke-dashoffset:${offset};opacity:${pct > 0.5 ? 1 : 0}"></circle>`;
+    };
+    // Music rides its own thinner ring inside the focus ring (see .pd-dial-music).
+    const PD_MUSIC_R = PD_DIAL_R - 16;
 
     const heroLiveDot = isLive ? '<span class="status-dot" style="margin-right:7px;vertical-align:1px;"></span>' : '';
     const heroTrend = prev ? trendPill(totalMins, prev.totalFocusMinutes ?? 0, 'previous') : '';
@@ -461,7 +464,8 @@ function renderPeriodDetail(d, isNewDay) {
                     <circle class="pd-dial-track" cx="${PD_DIAL_SIZE / 2}" cy="${PD_DIAL_SIZE / 2}" r="${PD_DIAL_R}"></circle>
                     ${dialCircle('pd-dial-afk', focusPct + afkPct)}
                     ${dialCircle('pd-dial-focus', focusPct)}
-                    ${dialCircle('pd-dial-music', musicPct)}
+                    <circle class="pd-dial-music-track" cx="${PD_DIAL_SIZE / 2}" cy="${PD_DIAL_SIZE / 2}" r="${PD_MUSIC_R}"></circle>
+                    ${dialCircle('pd-dial-music', musicPct, PD_MUSIC_R)}
                 </svg>
                 <div class="pd-dial-face">
                     <div class="card-label">${heroLiveDot}${escapeHtml(label)}</div>

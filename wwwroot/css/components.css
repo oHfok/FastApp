@@ -104,8 +104,11 @@
    as one continuous ring. */
 .hero-dial-afk   { stroke: var(--afk);   stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; opacity: 0.55; transition: stroke-dashoffset 0.45s ease; }
 .hero-dial-focus { stroke: var(--focus); stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease; }
-/* Music is a thin overlay on the same track, not a slice of it. */
-.hero-dial-svg .hero-dial-music { stroke: var(--music); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+/* Music has its own thinner ring inside the focus ring. Drawn on top of the
+   focus arc it was violet on blue and nearly invisible. pathLength="653.5" on
+   the circle keeps the same dash maths as the outer arcs at this smaller radius. */
+.hero-dial-svg .hero-dial-music-track { stroke: var(--surface-2); stroke-width: 6; }
+.hero-dial-svg .hero-dial-music { stroke: var(--music); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
 
 .hero-dial-face {
     position: absolute;
@@ -486,7 +489,8 @@
 .pd-dial-track { stroke: var(--surface-2); }
 .pd-dial-afk   { stroke: var(--afk);   opacity: 0.55; stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
 .pd-dial-focus { stroke: var(--focus); stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
-.pd-dial-music { stroke: var(--music); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+.pd-dial-svg .pd-dial-music-track { stroke: var(--surface-2); stroke-width: 6; }
+.pd-dial-svg .pd-dial-music { stroke: var(--music); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
 .pd-dial-face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; padding: 0 20px; }
 .pd-dial-face .stat-value { font-size: 30px; font-weight: 700; line-height: 1.05; white-space: nowrap; }
 .pd-hero-side { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }

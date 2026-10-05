@@ -109,7 +109,10 @@ body {
     font-weight: 500;
 }
 
-.figure { display: flex; align-items: baseline; gap: 7px; }
+/* Centred, not baseline-aligned: the big value made the caption sit lower than
+   the "Tracking" text beside it. Everything in the header shares one centre line. */
+.figure { display: flex; align-items: center; gap: 7px; line-height: 1; }
+.status .label, .figure .label { line-height: 1; }
 .figure-value { font-size: var(--fs-stat); font-weight: 650; letter-spacing: -0.015em; color: var(--accent); }
 
 /* ---------- The input ---------- */
