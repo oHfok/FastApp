@@ -47,6 +47,9 @@
     --focus: var(--accent);
     --afk: #D92D3A;
     --music: #8B3FD9;
+    /* Music on the focus dial only: vivid amber, because violet disappeared against
+       the blue focus arc and the rose AFK arc it is drawn over. Same in both themes. */
+    --music-arc: #F5A524;
     --good: #0A7F72;
     --warn: #B45309;
     --wash-afk: rgba(217, 45, 58, 0.08);

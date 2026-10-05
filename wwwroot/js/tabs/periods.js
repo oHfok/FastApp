@@ -437,13 +437,12 @@ function renderPeriodDetail(d, isNewDay) {
         return `<circle class="${cls}" cx="${PD_DIAL_SIZE / 2}" cy="${PD_DIAL_SIZE / 2}" r="${r}"
             style="stroke-dasharray:${circ};stroke-dashoffset:${offset};opacity:${pct > 0.5 ? 1 : 0}"></circle>`;
     };
-    // Music rides its own thinner ring inside the focus ring (see .pd-dial-music).
-    const PD_MUSIC_R = PD_DIAL_R - 16;
+
 
     const heroLiveDot = isLive ? '<span class="status-dot" style="margin-right:7px;vertical-align:1px;"></span>' : '';
     const heroTrend = prev ? trendPill(totalMins, prev.totalFocusMinutes ?? 0, 'previous') : '';
     const heroMusicCaption = (chosenMusicMins != null && chosenMusicMins > 0)
-        ? ` · <span style="color:var(--violet)">${formatTime(chosenMusicMins)} music</span>` : '';
+        ? ` · <span style="color:var(--music-arc)">${formatTime(chosenMusicMins)} music</span>` : '';
     const heroCaption = chosenUptimeMins > 0
         ? `<span style="color:var(--rose)">${formatTime(chosenAfkMins || 0)} AFK</span>${heroMusicCaption} · ${formatTime(chosenUptimeMins)} online${isLive ? ' so far' : ''}`
         : '';
@@ -464,8 +463,7 @@ function renderPeriodDetail(d, isNewDay) {
                     <circle class="pd-dial-track" cx="${PD_DIAL_SIZE / 2}" cy="${PD_DIAL_SIZE / 2}" r="${PD_DIAL_R}"></circle>
                     ${dialCircle('pd-dial-afk', focusPct + afkPct)}
                     ${dialCircle('pd-dial-focus', focusPct)}
-                    <circle class="pd-dial-music-track" cx="${PD_DIAL_SIZE / 2}" cy="${PD_DIAL_SIZE / 2}" r="${PD_MUSIC_R}"></circle>
-                    ${dialCircle('pd-dial-music', musicPct, PD_MUSIC_R)}
+                    ${dialCircle('pd-dial-music', musicPct)}
                 </svg>
                 <div class="pd-dial-face">
                     <div class="card-label">${heroLiveDot}${escapeHtml(label)}</div>
