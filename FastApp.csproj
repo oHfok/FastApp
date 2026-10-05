@@ -22,6 +22,10 @@
   </PropertyGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="FastApp.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 
@@ -56,6 +60,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="FastApp.Tests\**" />
+    <EmbeddedResource Remove="FastApp.Tests\**" />
+    <None Remove="FastApp.Tests\**" />
     <Folder Include="Views\" />
     <Folder Include="wwwroot\partials\" />
   </ItemGroup>

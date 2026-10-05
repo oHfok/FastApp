@@ -36,8 +36,14 @@ namespace FastApp.Services
 
         public static string GetDbFolder()
         {
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            string folder = Path.Combine(appData, "FastAppData");
+            // FASTAPP_DATA_DIR lets the test project point at a throwaway folder so
+            // no test can ever read or write the real database.
+            string folder = Environment.GetEnvironmentVariable("FASTAPP_DATA_DIR");
+            if (string.IsNullOrEmpty(folder))
+            {
+                string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                folder = Path.Combine(appData, "FastAppData");
+            }
             Directory.CreateDirectory(folder);
             return folder;
         }
@@ -82,7 +88,7 @@ namespace FastApp.Services
             // One-time self-heal for anyone whose data still sits at the old,
             // collision-prone path from before this fix -- copies it over the
             // first time this runs and never touches it again afterward.
-            if (!File.Exists(dbPath))
+            if (!File.Exists(dbPath) && Environment.GetEnvironmentVariable("FASTAPP_DATA_DIR") == null)
             {
                 string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 string oldDbPath = System.IO.Path.Combine(appData, "FastApp", "appmanager.db");
