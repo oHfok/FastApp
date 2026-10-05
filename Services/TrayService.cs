@@ -102,6 +102,7 @@ namespace FastApp.Services
             menu.Opening += (s, e) =>
             {
                 _status.Text = StatusLine();
+                RefreshHotkeyText();
                 RefreshPauseItem();
                 TrayMenuTheme.Refresh(menu);
             };

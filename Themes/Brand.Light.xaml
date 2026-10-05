@@ -7,33 +7,30 @@
         absent keeps the value Brand.xaml gave it, which is the point of merging
         rather than duplicating the whole file.
 
-        The same values as the light block in wwwroot/css/tokens.css, so the two
-        surfaces of the same application agree. They were measured there against
-        WCAG AA in the pairings they actually appear in, including accent text
-        sitting on its own wash, which is where a naive inversion fails.
+        The same values as the light block in wwwroot/css/tokens.css, so every
+        surface of the application agrees.
     -->
 
-    <!-- Read, not sat on. #8A6321 clears AA on the light ground; #E8A33D is
-         2:1 there. Anything with dark ink on top keeps the vivid fill below. -->
-    <Color x:Key="BrandBrassColor">#8A6321</Color>
+    <!-- The accent as text/marker on a light surface. -->
+    <Color x:Key="BrandBrassColor">#3D5AFE</Color>
     <SolidColorBrush x:Key="BrandBrass" Color="{StaticResource BrandBrassColor}"/>
-    <SolidColorBrush x:Key="BrandBrassDim" Color="#B08A4A"/>
+    <SolidColorBrush x:Key="BrandBrassDim" Color="#7F97FF"/>
 
-    <SolidColorBrush x:Key="BrandAction" Color="#5B4FC7"/>
+    <SolidColorBrush x:Key="BrandAction" Color="#8B3FD9"/>
 
-    <SolidColorBrush x:Key="BrandText" Color="#16171D"/>
-    <SolidColorBrush x:Key="BrandTextDim" Color="#4E5262"/>
-    <SolidColorBrush x:Key="BrandTextFaint" Color="#63687A"/>
+    <SolidColorBrush x:Key="BrandText" Color="#101828"/>
+    <SolidColorBrush x:Key="BrandTextDim" Color="#475467"/>
+    <SolidColorBrush x:Key="BrandTextFaint" Color="#667085"/>
 
     <!-- The overlays sit over whatever is on screen, so they stay nearly
          opaque; what changes is which way the wash goes. -->
-    <SolidColorBrush x:Key="BrandOverlayBackground" Color="#F2FBFAF7"/>
-    <SolidColorBrush x:Key="BrandOverlayBorder" Color="#2216171D"/>
-    <SolidColorBrush x:Key="BrandOverlayTrack" Color="#1416171D"/>
+    <SolidColorBrush x:Key="BrandOverlayBackground" Color="#F2FFFFFF"/>
+    <SolidColorBrush x:Key="BrandOverlayBorder" Color="#26101828"/>
+    <SolidColorBrush x:Key="BrandOverlayTrack" Color="#14101828"/>
 
-    <SolidColorBrush x:Key="BrandTeal" Color="#0F6B61"/>
-    <SolidColorBrush x:Key="BrandRose" Color="#A32929"/>
+    <SolidColorBrush x:Key="BrandTeal" Color="#0A7F72"/>
+    <SolidColorBrush x:Key="BrandRose" Color="#D92D3A"/>
 
-    <SolidColorBrush x:Key="BrandChipBackground" Color="#1216171D"/>
+    <SolidColorBrush x:Key="BrandChipBackground" Color="#12101828"/>
 
 </ResourceDictionary>

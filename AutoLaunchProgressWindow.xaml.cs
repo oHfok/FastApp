@@ -75,7 +75,7 @@ namespace FastApp
             RowList.Visibility = Visibility.Visible;
             ProgressTrack.Visibility = Visibility.Visible;
             SummaryText.Visibility = Visibility.Collapsed;
-            HeadingText.Text = "STARTING YOUR APPS";
+            HeadingText.Text = "Starting your apps";
 
             UpdateCount(0);
             Appear();
@@ -108,7 +108,7 @@ namespace FastApp
         /// </summary>
         public void ShowSummary(string summaryText)
         {
-            HeadingText.Text = "STARTUP COMPLETE";
+            HeadingText.Text = "Startup complete";
             CountText.Text = string.Empty;
             RowList.Visibility = Visibility.Collapsed;
             MoreText.Visibility = Visibility.Collapsed;
@@ -200,23 +200,23 @@ namespace FastApp
         private static Brush Text => Light ? LightText : DarkText;
         private static Brush Dim => Light ? LightDim : DarkDim;
         private static Brush Faint => Light ? LightFaint : DarkFaint;
-        private static Brush Brass => Light ? LightBrass : DarkBrass;
+        private static Brush Accent => Light ? LightAccent : DarkAccent;
         private static Brush Teal => Light ? LightTeal : DarkTeal;
         private static Brush Rose => Light ? LightRose : DarkRose;
 
-        private static readonly Brush DarkText = Frozen("#F3F1EA");
-        private static readonly Brush DarkDim = Frozen("#9C9FAE");
-        private static readonly Brush DarkFaint = Frozen("#7C8194");
-        private static readonly Brush DarkBrass = Frozen("#E8A33D");
-        private static readonly Brush DarkTeal = Frozen("#34D3C4");
-        private static readonly Brush DarkRose = Frozen("#FF6B6B");
+        private static readonly Brush DarkText = Frozen("#EEF0F4");
+        private static readonly Brush DarkDim = Frozen("#A8B0BE");
+        private static readonly Brush DarkFaint = Frozen("#8791A3");
+        private static readonly Brush DarkAccent = Frozen("#7F97FF");
+        private static readonly Brush DarkTeal = Frozen("#34D6C2");
+        private static readonly Brush DarkRose = Frozen("#FF7A82");
 
-        private static readonly Brush LightText = Frozen("#16171D");
-        private static readonly Brush LightDim = Frozen("#4E5262");
-        private static readonly Brush LightFaint = Frozen("#63687A");
-        private static readonly Brush LightBrass = Frozen("#8A6321");
-        private static readonly Brush LightTeal = Frozen("#0F6B61");
-        private static readonly Brush LightRose = Frozen("#A32929");
+        private static readonly Brush LightText = Frozen("#101828");
+        private static readonly Brush LightDim = Frozen("#475467");
+        private static readonly Brush LightFaint = Frozen("#667085");
+        private static readonly Brush LightAccent = Frozen("#3D5AFE");
+        private static readonly Brush LightTeal = Frozen("#0A7F72");
+        private static readonly Brush LightRose = Frozen("#D92D3A");
 
         public LaunchRow(string name) { Name = name; }
 
@@ -236,11 +236,11 @@ namespace FastApp
             switch (step)
             {
                 case LaunchStep.Waiting:
-                    Marker = "·"; MarkerBrush = Brass; NameBrush = Text; DetailBrush = Brass;
+                    Marker = "·"; MarkerBrush = Accent; NameBrush = Text; DetailBrush = Accent;
                     Detail = detail ?? "waiting";
                     break;
                 case LaunchStep.Opening:
-                    Marker = "●"; MarkerBrush = Brass; NameBrush = Text; DetailBrush = Brass;
+                    Marker = "●"; MarkerBrush = Accent; NameBrush = Text; DetailBrush = Accent;
                     Detail = detail ?? "opening";
                     break;
                 case LaunchStep.Started:

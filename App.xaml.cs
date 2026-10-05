@@ -39,10 +39,10 @@ namespace FastApp
             }
         }
 
-        // Kept in step with BrandBrassColor in Themes/Brand.xaml and --brass in
-        // wwwroot/css/base.css. WPF-UI's accent has to be applied in code, so
-        // this one value cannot live in the dictionary with the others.
-        private const string BrandAccentHex = "#E8A33D";
+        // Kept in step with --accent-fill in wwwroot/css/tokens.css. WPF-UI's
+        // accent has to be applied in code, so this one value cannot live in the
+        // dictionary with the others.
+        private const string BrandAccentHex = "#3D5AFE";
 
         private static System.Windows.Media.Color Brand(string hex) =>
             (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
@@ -98,28 +98,28 @@ namespace FastApp
 
             base.OnStartup(e);
 
-            // Accent the Fluent controls with the product's brass rather than
+            // Accent the Fluent controls with the product's blue rather than
             // whatever blue Windows happens to be set to. Everything with
             // Appearance="Primary" picks this up -- most visibly the "Open Web
             // Dashboard" button, which is the one place a user crosses from the
             // desktop app into the dashboard and would otherwise click a blue
-            // button and land in a brass interface.
+            // button and land in a differently coloured interface.
             //
             // Driven through WPF-UI rather than by overriding its resource keys
             // by hand: this overload derives the light/dark variants the control
             // templates expect, so hover, pressed and disabled states stay
             // consistent instead of only the resting colour changing.
             // The four-colour overload, not the theme one: the theme overload
-            // derives a pale cream for the button fill, and the point is for a
-            // Primary button to be the same brass as the dashboard's own.
+            // derives a pale tint for the button fill, and the point is for a
+            // Primary button to be the same blue as the dashboard's own.
             // Verified against WPF-UI 4.3.0 with sentinel colours --
             // AccentFillColorDefaultBrush, the resting fill, comes from the
             // second argument.
             ApplicationAccentColorManager.Apply(
                 Brand(BrandAccentHex),   // systemAccent  -> SystemAccentBrush
                 Brand(BrandAccentHex),   // primaryAccent -> accent fill, matches .btn-brass
-                Brand("#F0B155"),   // secondary     -> accent-coloured text on dark
-                Brand("#F5C57E"));  // tertiary      -> quieter accent text
+                Brand("#7F97FF"),   // secondary     -> accent-coloured text on dark
+                Brand("#A9B8FF"));  // tertiary      -> quieter accent text
 
             // 2. Create the host. It owns the tray icon, the keyboard hook, the
             //    view model and the palette; it is never shown itself.

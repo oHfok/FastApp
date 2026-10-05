@@ -1197,6 +1197,10 @@ namespace FastApp
                 MainWindow.SetPaletteHotkey(MainWindow.DefaultPaletteHotkey);
                 HotkeyResult(true, $"Back to {MainWindow.PaletteHotkeyDisplay}.");
                 PushSettings();
+
+                // Same as the branch below: the tray quotes the combination.
+                _mainWindow ??= System.Windows.Application.Current.MainWindow as MainWindow;
+                _mainWindow?.RefreshTrayHotkey();
                 return;
             }
 
