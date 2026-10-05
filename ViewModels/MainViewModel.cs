@@ -1839,6 +1839,7 @@ namespace FastApp.ViewModels
         private async Task StartProcessTrackerAsync()
         {
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+            bool firstTickPending = true;
 
             var timeCache = new Dictionary<string, TimeSpan>();
             var afkCache = new Dictionary<string, TimeSpan>();
@@ -2078,6 +2079,8 @@ namespace FastApp.ViewModels
             {
             while (await timer.WaitForNextTickAsync(_trackerCts.Token))
             {
+                long perfTick = Services.PerfLog.Stamp();
+                if (firstTickPending) { firstTickPending = false; Services.PerfLog.Milestone("tracker.first-tick"); }
                 // A timed pause expires here rather than on a timer of its own:
                 // this loop already runs every five seconds, which is finer
                 // granularity than a pause needs.
@@ -2670,9 +2673,12 @@ namespace FastApp.ViewModels
                     // Locked as one unit: FlushDailySummaries/FlushPendingQueues/
                     // SaveChanges all touch the shared _dbContext. RefreshStats is
                     // deliberately NOT called in here -- see below.
+                    long perfFlush = Services.PerfLog.Stamp();
                     bool saved = false;
+                    long perfLockWait = Services.PerfLog.Stamp();
                     lock (_dbContext)
                     {
+                        Services.PerfLog.Done("tracker.dblock-wait", perfLockWait, 100);
                         // 1. Flush Daily Summaries
                         FlushDailySummaries(today);
 
@@ -2768,7 +2774,9 @@ namespace FastApp.ViewModels
                     afkCache.Clear();
                     focusCache.Clear();
                     tickCount = 0;
+                    Services.PerfLog.Done("tracker.flush", perfFlush, 250);
                 }
+                Services.PerfLog.Done("tracker.tick", perfTick, 500);
             }
             }
             catch (OperationCanceledException)

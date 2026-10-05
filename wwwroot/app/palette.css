@@ -601,7 +601,32 @@ body {
 .s-grid { display: flex; flex-direction: column; flex-grow: 1; min-height: 0; overflow-y: auto; }
 .s-grid::-webkit-scrollbar { width: 0; }
 
-.s-list { display: flex; flex-direction: column; gap: 12px; max-width: 540px; width: 100%; margin: 0 auto; padding-bottom: 4px; }
+.s-list { display: flex; flex-direction: column; gap: 12px; max-width: 540px; width: 100%; padding-bottom: 4px; }
+
+/* The list of groups on the left, and the one pane shown beside it. */
+.s-layout { display: flex; gap: 22px; flex-grow: 1; min-height: 0; }
+.s-nav { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
+.s-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--text-dim);
+    font-size: var(--fs-body);
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+.s-nav-item svg { flex-shrink: 0; }
+.s-nav-item:hover { background: var(--surface-2); color: var(--text); }
+.s-nav-item[aria-selected="true"] { background: var(--wash-accent); color: var(--accent); font-weight: 600; }
+.s-nav-item:focus-visible { outline-offset: -2px; border-radius: 10px; }
+
+.s-pane { display: flex; flex-direction: column; gap: 12px; }
+.s-pane-head { margin: 2px 0 4px; }
+.s-pane-title { font-size: var(--fs-title); font-weight: 650; letter-spacing: -0.015em; margin: 0; }
+.s-pane-sub { margin: 3px 0 0; font-size: var(--fs-small); color: var(--text-faint); }
 
 /* One section, one concern. */
 .s-sec {
@@ -614,9 +639,12 @@ body {
     gap: 11px;
 }
 
-.s-sec-title { font-size: var(--fs-strong); font-weight: 650; color: var(--text); letter-spacing: -0.01em; margin: 0; }
+.s-sec-title { display: flex; align-items: center; gap: 10px; font-size: var(--fs-strong); font-weight: 650; color: var(--text); letter-spacing: -0.01em; margin: 0; }
 .s-sec-title-row { display: flex; align-items: center; gap: 10px; }
-.s-sec-title-row > span:first-child { flex-grow: 1; }
+.s-sec-title-row > span:first-of-type { flex-grow: 1; }
+/* A small tile beside every section title: something to find a section by at a
+   glance, rather than reading nine identical headings. */
+.s-sec-icon { box-sizing: content-box; width: 15px; height: 15px; padding: 6px; border-radius: 8px; background: var(--wash-accent); color: var(--accent); flex-shrink: 0; }
 
 /* One row everywhere: name and hint on the left, one control on the right. */
 .s-row { display: flex; align-items: center; gap: 14px; min-height: 24px; }

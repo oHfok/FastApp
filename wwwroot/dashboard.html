@@ -688,6 +688,22 @@
         <button class="btn" style="display:block;width:100%;text-align:center;box-sizing:border-box;" onclick="document.getElementById('restore-file-input').click()">Restore From Backup&hellip;</button>
         <div class="retention-status" id="restore-status">Saved.</div>
     </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Performance Report</div>
+        <p class="dd-hint">
+            FastApp quietly records how long its own work takes and when the window stops responding. If something
+            ever feels slow, download this report and send it over &mdash; it holds timings and counts only, never app
+            names, window titles or web addresses. The same report is in the tray menu as &ldquo;Save diagnostics report&rdquo;.
+        </p>
+        <label class="dd-toggle-label">
+            <input type="checkbox" id="perf-logging-toggle" onchange="savePerfLoggingSetting()">
+            <span>Record performance timings</span>
+        </label>
+        <div class="retention-status" id="perf-logging-status">Saved.</div>
+        <a class="btn" href="/api/diagnostics" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box;">Download Performance Report</a>
+        <p class="dd-hint">Turning this off stops recording straight away. What was already recorded stays in the report until you delete the <code>perf</code> folder inside FastAppData.</p>
+    </div>
     </div>
 
     <div class="settings-tab-panel" data-tab="privacy" style="display:none;">

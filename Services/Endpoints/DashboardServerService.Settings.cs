@@ -22,6 +22,14 @@ namespace FastApp.Services
     {
         private static void MapSettingsEndpoints(WebApplication app)
         {
+        // The performance recorder's report, as a download, for sending when something felt slow.
+        app.MapGet("/api/diagnostics", async (HttpContext context) =>
+        {
+            context.Response.ContentType = "text/plain; charset=utf-8";
+            context.Response.Headers.ContentDisposition = $"attachment; filename=\"fastapp-diagnostics-{DateTime.Now:yyyyMMdd-HHmm}.txt\"";
+            await context.Response.WriteAsync(PerfLog.BuildReport());
+        });
+
         // Card order and hidden cards, per view. Stored server-side rather than in
         // localStorage so a layout someone arranged survives opening the
         // dashboard in a different browser, which is where per-browser storage
@@ -96,7 +104,8 @@ namespace FastApp.Services
             catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
         });
 
-        app.MapGet("/api/settings", async (HttpContext context) => { using var db = new AppDbContext(); await context.Response.WriteAsJsonAsync(new { RetentionDays = GetRetentionDays(db), CaptureWindowTitles = GetCaptureWindowTitles(db) }); });
+        app.MapGet("/api/settings", async (HttpContext context) => { using var db = new AppDbContext(); await context.Response.WriteAsJsonAsync(new { RetentionDays = GetRetentionDays(db), CaptureWindowTitles = GetCaptureWindowTitles(db), PerformanceLogging = PerfLog.Enabled }); });
+        app.MapPost("/api/settings/performance-logging", async (HttpContext context) => { using var reader = new StreamReader(context.Request.Body); PerfLog.SetEnabled((await reader.ReadToEndAsync()).Trim().ToLower() == "true"); });
         // Validated before storing: this value drives an irreversible DELETE on
         // every app start, so an unparseable or nonsensical entry landing in the
         // DB is not something to discover later. Anything invalid is rejected

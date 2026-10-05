@@ -133,6 +133,7 @@ async function loadRetentionSetting() {
 
         const captureWindowTitles = data.captureWindowTitles ?? false;
         document.getElementById('window-titles-toggle').checked = captureWindowTitles;
+        document.getElementById('perf-logging-toggle').checked = data.performanceLogging ?? true;
     } catch (err) { console.error(err); }
 }
 
@@ -180,6 +181,14 @@ async function saveWindowTitlesSetting() {
     const enabled = document.getElementById('window-titles-toggle').checked;
     await fetch('/api/settings/window-titles', { method: 'POST', body: String(enabled) });
     const status = document.getElementById('window-titles-status');
+    status.style.display = 'block';
+    setTimeout(() => { status.style.display = 'none'; }, 2500);
+}
+
+async function savePerfLoggingSetting() {
+    const enabled = document.getElementById('perf-logging-toggle').checked;
+    await fetch('/api/settings/performance-logging', { method: 'POST', body: String(enabled) });
+    const status = document.getElementById('perf-logging-status');
     status.style.display = 'block';
     setTimeout(() => { status.style.display = 'none'; }, 2500);
 }

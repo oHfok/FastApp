@@ -627,7 +627,11 @@ namespace FastApp.Services
                     }
                 }
 
+                // Paths only (never the query string, which can carry app names).
+                long perfReq = Services.PerfLog.Stamp();
                 await next();
+                if (context.Request.Path.StartsWithSegments("/api"))
+                    Services.PerfLog.Done($"http {method} {context.Request.Path}", perfReq, 400);
             });
 
             // no-cache means "keep it, but ask before using it": the browser revalidates

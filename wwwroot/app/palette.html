@@ -325,20 +325,38 @@
         <button class="btn btn-primary" id="s-fix" type="button">Use this copy</button>
     </div>
 
+    <div class="s-layout">
+    <nav class="s-nav" role="tablist" aria-label="Settings groups" aria-orientation="vertical">
+        <button class="s-nav-item" type="button" role="tab" id="s-tab-general" data-pane-btn="general" aria-selected="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h8.5M17.5 7H20M4 17h2.5M11.5 17H20"></path><circle cx="15" cy="7" r="2.2"></circle><circle cx="9" cy="17" r="2.2"></circle></svg>
+            <span>General</span>
+        </button>
+        <button class="s-nav-item" type="button" role="tab" id="s-tab-notifications" data-pane-btn="notifications" aria-selected="false" tabindex="-1">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>
+            <span>Notifications</span>
+        </button>
+        <button class="s-nav-item" type="button" role="tab" id="s-tab-tracking" data-pane-btn="tracking" aria-selected="false" tabindex="-1">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg>
+            <span>Tracking &amp; privacy</span>
+        </button>
+        <button class="s-nav-item" type="button" role="tab" id="s-tab-about" data-pane-btn="about" aria-selected="false" tabindex="-1">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+            <span>About &amp; updates</span>
+        </button>
+    </nav>
+
     <div class="s-grid">
 
-        <!-- One column, top to bottom. The two-column masonry it replaced
-             flowed reading-order down then across, so Appearance ended up
-             below Notifications-on-the-right and the eye could not follow it;
-             the columns also ended at wildly different heights because the
-             balancer packs by height, which is the exact fault the version
-             before it was meant to fix. A single readable column, sections
-             that announce themselves, and the two forms nobody touches daily
-             folded away. -->
+        <!-- Four groups, one at a time, chosen from the list on the left. Nine
+             identical cards in one scrolling column left nothing to find your way
+             by; a short list of named groups does. -->
         <div class="s-list">
 
+            <div class="s-pane" data-pane="general" role="tabpanel" aria-labelledby="s-tab-general">
+                <div class="s-pane-head"><h2 class="s-pane-title">General</h2><p class="s-pane-sub">How FastApp starts, how you open it, and how it looks.</p></div>
+
             <section class="s-sec">
-                <h3 class="s-sec-title">Startup</h3>
+                <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"></path><path d="M6.3 7.3a8 8 0 1 0 11.4 0"></path></svg><span>Startup</span></h3>
                 <div class="s-row">
                     <span class="s-row-text">
                         <span class="s-row-name">Start with Windows</span>
@@ -349,7 +367,7 @@
             </section>
 
             <section class="s-sec">
-                <h3 class="s-sec-title">Shortcut</h3>
+                <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"></rect><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7 14h10"></path></svg><span>Shortcut</span></h3>
                 <!-- Rebindable since 3.3.0: the tray icon opens the window too
                      and cannot be rebound, so the way in can never be lost. -->
                 <div class="s-row">
@@ -365,8 +383,24 @@
                 </div>
             </section>
 
+            
             <section class="s-sec">
-                <h3 class="s-sec-title">Notifications &amp; popups</h3>
+                <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"></path></svg><span>Appearance</span></h3>
+                <div class="pillgroup" id="s-theme" role="group" aria-label="Theme">
+                    <button class="pill" type="button" data-theme-pref="system" aria-pressed="true">System</button>
+                    <button class="pill" type="button" data-theme-pref="dark" aria-pressed="false">Dark</button>
+                    <button class="pill" type="button" data-theme-pref="light" aria-pressed="false">Light</button>
+                </div>
+                <span class="s-row-hint" id="s-theme-hint"></span>
+                <span class="s-row-hint">The statistics dashboard keeps its own theme, chosen in the browser.</span>
+            </section>
+            </div>
+
+            <div class="s-pane" data-pane="notifications" role="tabpanel" aria-labelledby="s-tab-notifications" hidden>
+                <div class="s-pane-head"><h2 class="s-pane-title">Notifications</h2><p class="s-pane-sub">What pops up, and when it is allowed to.</p></div>
+
+            <section class="s-sec">
+                <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span>Notifications &amp; popups</span></h3>
                 <!-- On-screen display and Auto-launch progress live here, not
                      under a "this computer" bucket: both are popups, and that
                      is where someone hunting for "the thing that pops up" will
@@ -406,20 +440,13 @@
                     <button class="toggle" id="s-progress" type="button" role="switch"><span></span></button>
                 </div>
             </section>
+            </div>
+
+            <div class="s-pane" data-pane="tracking" role="tabpanel" aria-labelledby="s-tab-tracking" hidden>
+                <div class="s-pane-head"><h2 class="s-pane-title">Tracking &amp; privacy</h2><p class="s-pane-sub">How FastApp decides what counts, and what it records.</p></div>
 
             <section class="s-sec">
-                <h3 class="s-sec-title">Appearance</h3>
-                <div class="pillgroup" id="s-theme" role="group" aria-label="Theme">
-                    <button class="pill" type="button" data-theme-pref="system" aria-pressed="true">System</button>
-                    <button class="pill" type="button" data-theme-pref="dark" aria-pressed="false">Dark</button>
-                    <button class="pill" type="button" data-theme-pref="light" aria-pressed="false">Light</button>
-                </div>
-                <span class="s-row-hint" id="s-theme-hint"></span>
-                <span class="s-row-hint">The statistics dashboard keeps its own theme, chosen in the browser.</span>
-            </section>
-
-            <section class="s-sec">
-                <h3 class="s-sec-title">Away detection</h3>
+                <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg><span>Away detection</span></h3>
                 <!-- How the tracker decides you have stepped away, so that time
                      shows separately and is kept off daily limits. The 5-second
                      sampling interval is deliberately not exposed: how fast
@@ -451,7 +478,7 @@
             </section>
 
             <section class="s-sec">
-                <h3 class="s-sec-title">Privacy</h3>
+                <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2"></rect><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"></path></svg><span>Privacy</span></h3>
                 <div class="s-row">
                     <span class="s-row-text">
                         <span class="s-row-name">Record window titles</span>
@@ -460,6 +487,20 @@
                     <button class="toggle" id="s-titles" type="button" role="switch"><span></span></button>
                 </div>
                 <span class="s-row-hint" id="s-titles-note"></span>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Record performance timings</span>
+                        <span class="s-row-hint">How long FastApp&rsquo;s own work takes, so a slowdown can be diagnosed. Timings only, never app names.</span>
+                    </span>
+                    <button class="toggle" id="s-perf" type="button" role="switch"><span></span></button>
+                </div>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Performance report</span>
+                        <span class="s-row-hint">Saves a file to your Desktop that you can send if something felt slow</span>
+                    </span>
+                    <button class="btn" id="s-perf-report" type="button">Save report</button>
+                </div>
             </section>
 
             <!-- Folded shut. The PIN is set once or never; open it always
@@ -467,7 +508,7 @@
                  page for a setting almost nobody revisits. -->
             <details class="s-sec s-fold">
                 <summary class="s-sec-title">
-                    <span>Parental controls</span>
+                    <svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6L12 3z"></path></svg><span>Parental controls</span>
                     <svg class="s-fold-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg>
                 </summary>
                 <div class="s-fold-body">
@@ -490,12 +531,17 @@
                 </div>
             </details>
 
+            </div>
+
+            <div class="s-pane" data-pane="about" role="tabpanel" aria-labelledby="s-tab-about" hidden>
+                <div class="s-pane-head"><h2 class="s-pane-title">About &amp; updates</h2><p class="s-pane-sub">This version, updates, and the statistics dashboard.</p></div>
+
             <!-- Not settings. Where the dashboard is, which version this is,
                  and going back to an earlier one are facts about the
                  installation; kept last and lighter so the page reads as the
                  settings, then the facts. -->
             <section class="s-sec s-about">
-                <h3 class="s-sec-title">About FastApp</h3>
+                <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span>About FastApp</span></h3>
                 <div class="s-row">
                     <span class="s-row-text">
                         <span class="s-row-name">Statistics server</span>
@@ -532,14 +578,16 @@
 
             <section class="s-sec" id="s-whatsnew-card">
                 <h3 class="s-sec-title s-sec-title-row">
-                    <span id="s-whatsnew-label">What's new</span>
+                    <svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"></path></svg><span id="s-whatsnew-label">What's new</span>
                     <button class="out-link" id="s-all-notes" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>Every version</span></button>
                 </h3>
                 <div class="s-notes" id="s-whatsnew"></div>
                 <span class="s-row-hint" id="s-whatsnew-empty" hidden></span>
             </section>
+            </div>
 
         </div>
+    </div>
     </div>
 
     <div class="detail-foot">

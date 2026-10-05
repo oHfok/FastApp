@@ -49,6 +49,9 @@ namespace FastApp
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            Services.PerfLog.Start();
+            Services.PerfLog.Milestone("startup.begin");
+
             // Before anything renders, so the first window is already the right
             // colour rather than repainting on its first frame.
             Services.SystemTheme.Start();
@@ -124,6 +127,7 @@ namespace FastApp
             // 2. Create the host. It owns the tray icon, the keyboard hook, the
             //    view model and the palette; it is never shown itself.
             var mainWindow = new MainWindow();
+            Services.PerfLog.Milestone("startup.main-window-created");
 
             // 3. The host window is never shown -- it has no interface any more.
             //    Opening FastApp by hand means opening the palette; launching at

@@ -118,6 +118,7 @@ namespace FastApp.Services
                 new ToolStripSeparator(),
                 _pause,
                 TrayMenuTheme.Item("Statistics dashboard", (s, e) => OpenDashboard()),
+                TrayMenuTheme.Item("Save diagnostics report", (s, e) => PerfLog.SaveReportAndReveal()),
                 TrayMenuTheme.Item("Extend app time…", (s, e) => ShowExtendDialog()),
                 new ToolStripSeparator(),
                 TrayMenuTheme.Item("Exit FastApp", (s, e) => ExitApplication())

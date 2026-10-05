@@ -1329,6 +1329,7 @@ namespace FastApp
                     // property: the tracker re-reads this from the database on
                     // every flush, so there is nothing in memory to keep in step.
                     captureWindowTitles = AppSettingsStore.GetBool("CaptureWindowTitles", false),
+                    performanceLogging = Services.PerfLog.Enabled,
 
                     paletteHotkey = MainWindow.PaletteHotkeyDisplay,
                     paletteHotkeyIsDefault =
@@ -1406,6 +1407,9 @@ namespace FastApp
                 case "captureWindowTitles":
                     AppSettingsStore.SetBool("CaptureWindowTitles", value);
                     break;
+                case "performanceLogging":
+                    Services.PerfLog.SetEnabled(value);
+                    break;
 
                 // Not a view-model property: this one is drawn by four surfaces
                 // that have no view model between them -- the window, the tray
@@ -1440,6 +1444,9 @@ namespace FastApp
                     break;
                 case "rollback":
                     Execute(_viewModel.RollBackCommand);
+                    break;
+                case "save-diagnostics":
+                    Services.PerfLog.SaveReportAndReveal();
                     break;
                 case "open-release-notes":
                     OpenDashboard("?settings=whatsnew");
@@ -1607,6 +1614,7 @@ namespace FastApp
 
             try
             {
+            long perfPush = Services.PerfLog.Stamp();
             var data = await Task.Run(() => new
             {
                 Usage = TodayUsage.Read(),
@@ -1621,6 +1629,8 @@ namespace FastApp
                     .Select(c => new { name = c.Name, minutes = c.Minutes })
                     .ToList()
             });
+
+            Services.PerfLog.Done("palette.pushstate", perfPush, 300);
 
             // A newer push has started (or the window is gone); its answer wins.
             if (version != _pushVersion || Web.CoreWebView2 == null) return;
@@ -1839,6 +1849,7 @@ namespace FastApp
             // navigates straight to a sub-view (Manage/Settings/Extend), and
             // that isn't a fresh summon.
             bool wasHidden = !IsVisible;
+            long perfShow = Services.PerfLog.Stamp();
 
             _allowAutoHide = false;
             _pinned = false;
@@ -1883,6 +1894,7 @@ namespace FastApp
             // even if Activated never arrives. The floor in OnDeactivated is
             // what actually protects the summon; this only guarantees the
             // window can always be dismissed.
+            Services.PerfLog.Done(wasHidden ? "palette.summon" : "palette.navigate", perfShow, 150);
             Dispatcher.BeginInvoke(new Action(PushState));
             _ = Task.Delay(SettleWindow).ContinueWith(_ =>
                 Dispatcher.BeginInvoke(new Action(() => _allowAutoHide = true)));

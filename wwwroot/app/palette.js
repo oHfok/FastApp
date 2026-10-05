@@ -886,7 +886,7 @@ const VIEWS = {
     palette: { el: document.getElementById('view-palette'), w: 820, h: 560 },
     detail: { el: document.getElementById('view-detail'), w: 820, h: 560 },
     manage: { el: document.getElementById('view-manage'), w: 940, h: 620 },
-    settings: { el: document.getElementById('view-settings'), w: 620, h: 700 },
+    settings: { el: document.getElementById('view-settings'), w: 780, h: 640 },
     scanner: { el: document.getElementById('view-scanner'), w: 880, h: 640 },
     extend: { el: document.getElementById('view-extend'), w: 620, h: 470 }
 };
@@ -907,6 +907,38 @@ function show(name) {
 
     if (name === 'palette') els.q.focus();
 }
+
+/* Settings is four groups, one shown at a time. Arrow keys move through the
+   list (and select as they go), Home/End jump to the ends, and Tab still reaches
+   every control in the pane that is showing. */
+const settingsNav = document.querySelector('.s-nav');
+const settingsTabs = [...settingsNav.querySelectorAll('[data-pane-btn]')];
+
+function showSettingsPane(name, focus) {
+    for (const tab of settingsTabs) {
+        const on = tab.dataset.paneBtn === name;
+        tab.setAttribute('aria-selected', String(on));
+        tab.tabIndex = on ? 0 : -1;
+        if (on && focus) tab.focus();
+    }
+    for (const pane of document.querySelectorAll('.s-pane')) pane.hidden = pane.dataset.pane !== name;
+    document.querySelector('.s-grid').scrollTop = 0;
+}
+
+settingsNav.addEventListener('click', event => {
+    const tab = event.target.closest('[data-pane-btn]');
+    if (tab) showSettingsPane(tab.dataset.paneBtn, false);
+});
+
+settingsNav.addEventListener('keydown', event => {
+    const i = settingsTabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    const target = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: settingsTabs.length - 1 }[event.key];
+    if (target === undefined) return;
+    event.preventDefault();
+    event.stopPropagation();   // the view-level handler below must not also act on it
+    showSettingsPane(settingsTabs[(target + settingsTabs.length) % settingsTabs.length].dataset.paneBtn, true);
+});
 
 document.addEventListener('keydown', e => {
     if (view === 'scanner') {
@@ -1313,6 +1345,8 @@ const st = {
     theme: document.getElementById('s-theme'),
     themeHint: document.getElementById('s-theme-hint'),
     titles: document.getElementById('s-titles'),
+    perf: document.getElementById('s-perf'),
+    perfReport: document.getElementById('s-perf-report'),
     titlesNote: document.getElementById('s-titles-note'),
     pinState: document.getElementById('s-pin-state'),
     pinCurrentRow: document.getElementById('s-pin-current-row'),
@@ -1400,6 +1434,7 @@ function renderSettings(v) {
 
     setToggle(st.titles, v.captureWindowTitles);
     st.titlesNote.textContent = titlesNote(v.captureWindowTitles);
+    setToggle(st.perf, v.performanceLogging);
 
     // The PIN card. Only the fields are left alone here, because a settings
     // push can arrive while somebody is halfway through typing one.
@@ -1627,7 +1662,8 @@ for (const [el, key] of [
     [st.progress, 'showAutoLaunchProgress'],
     [st.afkBar, 'showAfkBar'],
     [st.notify, 'notificationsEnabled'],
-    [st.quiet, 'quietHoursEnabled']
+    [st.quiet, 'quietHoursEnabled'],
+    [st.perf, 'performanceLogging']
 ]) {
     el.addEventListener('click', () => {
         const next = !toggleOn(el);
@@ -1642,6 +1678,7 @@ st.afkThreshold.addEventListener('change', () => settingText('afkThresholdMinute
 st.afkGrace.addEventListener('change', () => settingText('passiveMediaGraceMinutes', st.afkGrace.value));
 st.rollbackVersion.addEventListener('change', () => settingText('selectedRollback', st.rollbackVersion.value));
 
+st.perfReport.addEventListener('click', () => send('settings-command', { id: 'save-diagnostics' }));
 st.fix.addEventListener('click', () => send('settings-command', { id: 'fix-startup' }));
 st.check.addEventListener('click', () => send('settings-command', { id: 'check-updates' }));
 st.apply.addEventListener('click', () => send('settings-command', { id: 'apply-update' }));
