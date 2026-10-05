@@ -23,6 +23,14 @@ namespace FastApp.Services
         private static void MapSettingsEndpoints(WebApplication app)
         {
         // The performance recorder's report, as a download, for sending when something felt slow.
+        // Feeds the unlinked /debug.html page: only what is newer than `since`, so a poll is tiny.
+        app.MapGet("/api/diagnostics/log", async (string since, HttpContext context) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            var lines = await Task.Run(() => PerfLog.ReadLines(since));
+            await context.Response.WriteAsJsonAsync(new { Enabled = PerfLog.Enabled, Lines = lines });
+        });
+
         app.MapGet("/api/diagnostics", async (HttpContext context) =>
         {
             context.Response.ContentType = "text/plain; charset=utf-8";

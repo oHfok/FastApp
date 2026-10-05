@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>FastApp Diagnostics</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23475467'/%3E%3Cpath d='M18 58h16l10-26 14 40 10-22h14' fill='none' stroke='white' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<!-- Deliberately not linked from anywhere: the page is a developer tool. It reads
+     the performance recorder's log (Services/PerfLog.cs) through
+     /api/diagnostics/log and only does anything while someone has it open. -->
+<link href="vendor/fonts.css" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<script src="vendor/chart.umd.min.js"></script>
+<script>
+    (function () {
+        try {
+            var saved = localStorage.getItem('fastapp-theme');
+            if (saved === 'light' || saved === 'dark') document.documentElement.setAttribute('data-theme', saved);
+        } catch (e) { }
+    })();
+</script>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+        background: var(--bg); color: var(--text);
+        font-family: var(--font-body); font-size: var(--fs-body); line-height: 1.45;
+        font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; color: inherit; }
+    h1, h2 { font-weight: 600; letter-spacing: -0.015em; }
+
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 72px; display: flex; flex-direction: column; gap: 18px; }
+
+    /* ---------- header ---------- */
+    .top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+    .top h1 { font-size: var(--fs-view); }
+    .sub { color: var(--text-faint); font-size: var(--fs-small); margin-top: 2px; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px; }
+    .seg button { border: 0; background: transparent; padding: 5px 11px; border-radius: 6px; cursor: pointer; color: var(--text-dim); font-size: var(--fs-small); }
+    .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); font-weight: 600; }
+    .btn {
+        border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+        padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: var(--fs-small);
+        text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:hover { background: var(--surface-2); }
+    .status { display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs-small); color: var(--text-dim); padding: 0 4px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+    .status.paused .dot { background: var(--text-faint); }
+    .status.bad .dot { background: var(--afk); }
+    .status.live .dot { animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .35; } }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .banner { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: var(--fs-small); background: var(--wash-warn); color: var(--text); }
+    .banner.bad { background: var(--wash-afk); }
+
+    /* ---------- tiles ---------- */
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+    .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-sm); }
+    .k { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); font-weight: 600; }
+    .tile .v { font-size: var(--fs-display); font-weight: 600; letter-spacing: -0.02em; margin: 4px 0 2px; line-height: 1.1; }
+    .tile .s { font-size: var(--fs-caption); color: var(--text-dim); }
+    .tile.good .v { color: var(--good); }
+    .tile.warn .v { color: var(--warn); }
+    .tile.bad .v { color: var(--afk); }
+
+    /* ---------- cards ---------- */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow-sm); min-width: 0; }
+    .card h2 { font-size: var(--fs-strong); }
+    .card .hint { color: var(--text-faint); font-size: var(--fs-caption); margin: 2px 0 12px; }
+    .card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr)); gap: 16px; }
+    .chartbox { position: relative; height: 220px; }
+
+    /* ---------- findings ---------- */
+    .findings { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .findings li { display: flex; gap: 10px; align-items: baseline; font-size: var(--fs-body); }
+    .chip { flex: none; font-size: var(--fs-micro); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 2px 8px; border-radius: var(--radius-pill); }
+    .chip.good { background: var(--wash-good); color: var(--good); }
+    .chip.warn { background: var(--wash-warn); color: var(--warn); }
+    .chip.bad { background: var(--wash-afk); color: var(--afk); }
+    .chip.info { background: var(--surface-2); color: var(--text-dim); }
+
+    /* ---------- tables ---------- */
+    .tablewrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+    th { position: sticky; top: 0; background: var(--surface); text-align: left; font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th.num, td.num { text-align: right; }
+    td { padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr.pick { cursor: pointer; }
+    tr.pick:hover td { background: var(--surface-2); }
+    tr.sel td { background: var(--wash-accent); }
+    td.name { font-family: var(--font-mono); font-size: var(--fs-caption); word-break: break-all; }
+    td.detail { color: var(--text-dim); font-family: var(--font-mono); font-size: var(--fs-caption); }
+    .tone-warn { color: var(--warn); font-weight: 600; }
+    .tone-bad { color: var(--afk); font-weight: 600; }
+    .empty { color: var(--text-faint); padding: 18px 4px; text-align: center; }
+    .filter { border: 1px solid var(--border-strong); background: var(--surface-2); border-radius: var(--radius-sm); padding: 5px 10px; min-width: 200px; }
+    select.filter { min-width: 0; }
+
+    /* ---------- sessions ---------- */
+    .session { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .session:last-child { border-bottom: 0; }
+    .session .row { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+    .session .when { font-weight: 600; }
+    .session .meta { color: var(--text-faint); font-size: var(--fs-caption); }
+    .miles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .mile { font-family: var(--font-mono); font-size: var(--fs-caption); background: var(--surface-2); border-radius: 6px; padding: 2px 8px; color: var(--text-dim); }
+
+    details > summary { cursor: pointer; font-weight: 600; font-size: var(--fs-strong); list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary::before { content: "▸ "; color: var(--text-faint); }
+    details[open] > summary::before { content: "▾ "; }
+    pre.raw { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; max-height: 380px; overflow: auto; margin-top: 10px; white-space: pre; color: var(--text-dim); }
+    @media (prefers-reduced-motion: reduce) { .status.live .dot { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+    <header class="top">
+        <div>
+            <h1>Diagnostics</h1>
+            <div class="sub" id="sub">Connecting&hellip;</div>
+        </div>
+        <div class="controls">
+            <span class="status live" id="status"><span class="dot"></span><span id="status-text">Live</span></span>
+            <div class="seg" id="range" role="group" aria-label="Time range">
+                <button data-min="15" aria-pressed="false">15 min</button>
+                <button data-min="60" aria-pressed="false">1 h</button>
+                <button data-min="360" aria-pressed="true">6 h</button>
+                <button data-min="1440" aria-pressed="false">24 h</button>
+                <button data-min="0" aria-pressed="false">All</button>
+            </div>
+            <button class="btn" id="live-btn" type="button">Pause</button>
+            <a class="btn" href="/api/diagnostics" title="The same report FastApp saves from the tray menu">Download report</a>
+        </div>
+    </header>
+
+    <div id="banners"></div>
+
+    <section class="tiles" id="tiles"></section>
+
+    <section class="card">
+        <h2>What stands out</h2>
+        <div class="hint">Read from the data in the selected range &mdash; a starting point, not a verdict.</div>
+        <ul class="findings" id="findings"></ul>
+    </section>
+
+    <section class="card" id="anom-card">
+        <h2>Captured incidents</h2>
+        <div class="hint">When FastApp&rsquo;s CPU stays high or its memory climbs, it records what was running at that moment: the busiest threads and the busiest timed operations.</div>
+        <div id="anoms"></div>
+    </section>
+
+    <section class="grid2">
+        <div class="card">
+            <h2>UI responsiveness</h2>
+            <div class="hint">Worst wait per minute for the window to react. Red dots are freezes over 100&nbsp;ms.</div>
+            <div class="chartbox"><canvas id="c-ui"></canvas></div>
+        </div>
+        <div class="card">
+            <h2>Memory</h2>
+            <div class="hint">Working set, private bytes, managed heap, and FastApp&rsquo;s WebView2 processes. A line that only climbs is a leak.</div>
+            <div class="chartbox"><canvas id="c-mem"></canvas></div>
+        </div>
+        <div class="card">
+            <h2>CPU &amp; machine load</h2>
+            <div class="hint">FastApp and its WebView2 processes, as a share of one core (left), against the whole machine&rsquo;s CPU and memory use (right).</div>
+            <div class="chartbox"><canvas id="c-cpu"></canvas></div>
+        </div>
+        <div class="card">
+            <h2>Managed heap breakdown</h2>
+            <div class="hint">Size by generation as of the last collection (left) and memory allocated per minute (right). A leak climbs in gen 2 or the large-object heap; churn shows as high allocation with a flat heap.</div>
+            <div class="chartbox"><canvas id="c-heap"></canvas></div>
+        </div>
+        <div class="card">
+            <h2>Garbage collection</h2>
+            <div class="hint">Time the app was paused collecting memory per minute (left) and full collections (right).</div>
+            <div class="chartbox"><canvas id="c-gc"></canvas></div>
+        </div>
+        <div class="card">
+            <h2>Threads &amp; handles</h2>
+            <div class="hint">Both should settle. A steady rise means something is not being released.</div>
+            <div class="chartbox"><canvas id="c-res"></canvas></div>
+        </div>
+        <div class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Operation timings</h2>
+                    <div class="hint">Average and worst per minute for one operation. Dots are individual slow ones.</div>
+                </div>
+                <select class="filter" id="op-select" aria-label="Operation"></select>
+            </div>
+            <div class="chartbox"><canvas id="c-op"></canvas></div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Operations</h2>
+        <div class="hint">Everything the app times, over the selected range. Click a row to chart it above.</div>
+        <div class="tablewrap"><table id="ops-table"></table></div>
+    </section>
+
+    <section class="card">
+        <div class="card-head">
+            <div>
+                <h2>Slow events</h2>
+                <div class="hint">Each time an operation went over its own limit, newest first.</div>
+            </div>
+            <input class="filter" id="ev-filter" type="search" placeholder="Filter&hellip;" aria-label="Filter slow events">
+        </div>
+        <div class="tablewrap"><table id="ev-table"></table></div>
+    </section>
+
+    <section class="card">
+        <h2>Sessions &amp; startup</h2>
+        <div class="hint">Each launch, how it ended, and how long startup took. &ldquo;Ended unexpectedly&rdquo; means no clean exit was recorded &mdash; a crash or a killed process.</div>
+        <div id="sessions"></div>
+    </section>
+
+    <section class="card">
+        <details>
+            <summary>Raw log</summary>
+            <input class="filter" id="raw-filter" type="search" placeholder="Filter lines&hellip;" aria-label="Filter raw log" style="margin-top:10px;">
+            <pre class="raw" id="raw"></pre>
+        </details>
+    </section>
+</div>
+
+<script>
+'use strict';
+
+/* =============================================================================
+   Data: the recorder's lines, parsed once as they arrive.
+
+   Line format (Services/PerfLog.cs):  "yyyy-MM-dd HH:mm:ss.fff <kind> <text>"
+     sample        ws=..MB priv=..MB heap=..MB threads= handles= cpu=..% sysCpu= sysMem= gc0= gc1= gc2= gcPause=..ms pool=a/b
+     ops           <name> n=.. avg=..ms max=..ms          (one per operation per minute)
+     slow          <name> <ms>ms [detail]                 (one operation over its limit)
+     milestone     <name> +<ms>ms                         (startup timeline)
+     session-start / session-end
+   ============================================================================= */
+const S = {
+    samples: [], ops: [], slows: [], miles: [], marks: [], anoms: [], raw: [],
+    lastTs: '', enabled: true, live: true, rangeMin: 360, error: null, selOp: 'tracker.tick', lastOk: 0
+};
+
+const LINE = /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)\.(\d{3}) (\S+) ?(.*)$/;
+const num = v => (v == null ? NaN : parseFloat(v));
+function kv(text) {
+    const o = {};
+    for (const m of text.matchAll(/(\w+)=(\S+)/g)) o[m[1]] = m[2];
+    return o;
+}
+
+function ingest(line) {
+    const m = LINE.exec(line);
+    if (!m) return;
+    const t = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], +m[7]).getTime();
+    const kind = m[8], text = m[9];
+    S.raw.push(line);
+    S.lastTs = line.slice(0, 23);
+
+    if (kind === 'sample') {
+        const o = kv(text), pool = (o.pool || '0/0').split('/');
+        S.samples.push({
+            t, ws: num(o.ws), priv: num(o.priv), heap: num(o.heap), threads: num(o.threads), handles: num(o.handles),
+            cpu: num(o.cpu), core: num(o.core), sysCpu: num(o.sysCpu), sysMem: num(o.sysMem),
+            sz0: num(o.sz0), sz1: num(o.sz1), sz2: num(o.sz2), loh: num(o.loh), poh: num(o.poh), alloc: num(o.alloc),
+            wv: num(o.wv), wvWs: num(o.wvWs), wvPriv: num(o.wvPriv), wvCore: num(o.wvCore),
+            gc0: num(o.gc0), gc1: num(o.gc1), gc2: num(o.gc2), gcPause: num(o.gcPause),
+            poolThreads: num(pool[0]), poolPending: num(pool[1])
+        });
+    } else if (kind === 'ops') {
+        const o = /^(.*) n=(\d+) avg=([\d.]+)ms max=([\d.]+)ms$/.exec(text);
+        if (o) S.ops.push({ t, name: o[1], n: +o[2], avg: +o[3], max: +o[4] });
+    } else if (kind === 'slow') {
+        const o = /^(.*?) (\d+)ms(?: (.*))?$/.exec(text);
+        if (o) {
+            const d = o[3] || '';
+            S.slows.push({ t, name: o[1], ms: +o[2], detail: d, gcPause: num(kv(d).gcPause) });
+        }
+    } else if (kind === 'milestone') {
+        const o = /^(.*) \+(\d+)ms$/.exec(text);
+        if (o) S.miles.push({ t, name: o[1], ms: +o[2] });
+    } else if (kind === 'anomaly') {
+        const parts = text.split(' | ');
+        const sec = pre => (parts.find(x => x.startsWith(pre)) || '').slice(pre.length);
+        S.anoms.push({
+            t, type: parts[0].split(' ')[0], info: kv(parts[0]),
+            threads: sec('threads: '), ops: sec('ops: '), change: sec('change since ') && 'Change since ' + sec('change since ')
+        });
+    } else if (kind === 'session-start') {
+        S.marks.push({ t, type: 'start', info: kv(text), text });
+    } else if (kind === 'session-end') {
+        S.marks.push({ t, type: 'end', text });
+    }
+}
+
+/* =============================================================================
+   Formatting
+   ============================================================================= */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+function fmtMs(ms) {
+    if (!isFinite(ms)) return '–';
+    if (ms >= 60000) return (ms / 60000).toFixed(1) + ' min';
+    if (ms >= 1000) return (ms / 1000).toFixed(ms >= 10000 ? 0 : 1) + ' s';
+    return (ms >= 10 ? Math.round(ms) : Math.round(ms * 10) / 10) + ' ms';
+}
+function fmtClock(t, withSeconds = true) {
+    const d = new Date(t);
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}` + (withSeconds ? `:${pad(d.getSeconds())}` : '');
+}
+function fmtStamp(t) {
+    const d = new Date(t), now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    return sameDay ? fmtClock(t) : `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${fmtClock(t)}`;
+}
+const fmtMB = mb => (isFinite(mb) ? Math.round(mb) + ' MB' : '–');
+const ago = ms => ms < 90000 ? Math.max(0, Math.round(ms / 1000)) + ' s' : ms < 5400000 ? Math.round(ms / 60000) + ' min' : (ms / 3600000).toFixed(1) + ' h';
+
+/* =============================================================================
+   Range & derived numbers
+   ============================================================================= */
+function bounds() {
+    const now = Date.now();
+    if (S.rangeMin > 0) return { from: now - S.rangeMin * 60000, to: now };
+    const first = Math.min(S.samples[0]?.t ?? now, S.slows[0]?.t ?? now, S.ops[0]?.t ?? now);
+    return { from: first, to: now };
+}
+const within = (arr, b) => arr.filter(x => x.t >= b.from && x.t <= b.to);
+
+/** Least-squares slope of y over time, per hour. Needs enough span to mean anything. */
+function slopePerHour(pts) {
+    if (pts.length < 5) return null;
+    const span = pts[pts.length - 1].t - pts[0].t;
+    if (span < 20 * 60000) return null;
+    const mx = pts.reduce((a, p) => a + p.t, 0) / pts.length, my = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+    let nu = 0, de = 0;
+    for (const p of pts) { nu += (p.t - mx) * (p.y - my); de += (p.t - mx) ** 2; }
+    return de ? (nu / de) * 3600000 : null;
+}
+const series = (arr, f) => arr.map(x => ({ t: x.t, y: f(x) })).filter(p => isFinite(p.y));
+
+function opStats(b) {
+    const ops = within(S.ops, b), slows = within(S.slows, b), by = new Map();
+    const get = n => { if (!by.has(n)) by.set(n, { name: n, n: 0, sum: 0, max: 0, slow: 0, lastSlow: 0 }); return by.get(n); };
+    for (const o of ops) { const a = get(o.name); a.n += o.n; a.sum += o.avg * o.n; if (o.max > a.max) a.max = o.max; }
+    for (const s of slows) { const a = get(s.name); a.slow++; a.lastSlow = Math.max(a.lastSlow, s.t); if (s.ms > a.max) a.max = s.ms; }
+    return [...by.values()].map(a => ({ ...a, avg: a.n ? a.sum / a.n : NaN })).sort((x, y) => y.max - x.max);
+}
+
+/** Which other slow events (or a GC) overlapped each UI freeze. */
+function correlate(slows) {
+    const stalls = slows.filter(s => s.name === 'ui.latency');
+    const others = slows.filter(s => s.name !== 'ui.latency');
+    const causes = new Map(); let unexplained = 0;
+    for (const st of stalls) {
+        const a0 = st.t - st.ms - 250, a1 = st.t + 250, hit = new Set();
+        for (const o of others) if (o.t >= a0 && o.t - o.ms <= a1) hit.add(o.name.replace(/^http (GET|POST) .*/, 'dashboard request'));
+        if (st.gcPause >= st.ms * 0.5) hit.add('garbage collection');
+        if (!hit.size) unexplained++;
+        for (const c of hit) causes.set(c, (causes.get(c) || 0) + 1);
+    }
+    return { stalls, causes: [...causes.entries()].sort((a, b) => b[1] - a[1]), unexplained };
+}
+
+function sessionList() {
+    const marks = [...S.marks].sort((a, b) => a.t - b.t), list = [];
+    let cur = null;
+    for (const m of marks) {
+        if (m.type === 'start') {
+            if (cur) { cur.state = cur.endedAt ? 'ended' : 'unexpected'; list.push(cur); }
+            cur = { start: m.t, info: m.info, endedAt: 0, endText: '', miles: [] };
+        } else if (cur) { cur.endedAt = m.t; cur.endText = m.text; }
+    }
+    if (cur) { cur.state = cur.endedAt ? 'ended' : 'running'; list.push(cur); }
+    for (const ml of S.miles) {
+        const s = [...list].reverse().find(x => x.start - 60000 <= ml.t);
+        if (s) s.miles.push(ml);
+    }
+    return list.reverse();
+}
+
+/* =============================================================================
+   Rendering: tiles and findings
+   ============================================================================= */
+function tile(label, value, sub, tone) {
+    return `<div class="tile ${tone || ''}"><div class="k">${esc(label)}</div><div class="v">${esc(value)}</div><div class="s">${esc(sub)}</div></div>`;
+}
+
+function render() {
+    const b = bounds();
+    const samples = within(S.samples, b), slows = within(S.slows, b), opsRows = within(S.ops, b);
+    const stats = opStats(b), cor = correlate(slows), sessions = sessionList();
+
+    // --- header ---
+    const last = S.samples[S.samples.length - 1];
+    document.getElementById('sub').textContent = S.raw.length
+        ? `${S.raw.length.toLocaleString()} recorded lines · latest sample ${last ? ago(Date.now() - last.t) + ' ago' : 'none yet'}` +
+          (sessions[0]?.info?.version ? ` · FastApp ${sessions[0].info.version}` : '')
+        : 'Nothing recorded yet';
+    renderStatus();
+    renderBanners(last);
+
+    // --- tiles ---
+    const uiOps = opsRows.filter(o => o.name === 'ui.latency');
+    const worstUi = Math.max(0, ...uiOps.map(o => o.max), ...cor.stalls.map(s => s.ms));
+    const tick = stats.find(s => s.name === 'tracker.tick');
+    const wsSlope = slopePerHour(series(samples, s => s.ws).map(p => ({ t: p.t, y: p.y })));
+    const cpuAvg = avg(samples.map(s => s.core)), wvAvg = avg(samples.map(s => s.wvCore)), sysAvg = avg(samples.map(s => s.sysCpu)), memAvg = avg(samples.map(s => s.sysMem));
+    const gcTotal = samples.reduce((a, s) => a + (s.gcPause || 0), 0), gen2 = samples.reduce((a, s) => a + (s.gc2 || 0), 0);
+    const unclean = sessions.filter(s => s.state === 'unexpected').length;
+
+    document.getElementById('tiles').innerHTML =
+        tile('UI freezes', String(cor.stalls.length), cor.stalls.length ? `worst ${fmtMs(worstUi)}` : (uiOps.length ? `none · worst wait ${fmtMs(worstUi)}` : 'no data'),
+             !uiOps.length && !cor.stalls.length ? '' : cor.stalls.length === 0 ? 'good' : worstUi >= 500 ? 'bad' : 'warn') +
+        tile('Tracker tick', tick ? fmtMs(tick.avg) : '–', tick ? `worst ${fmtMs(tick.max)} · runs every 5 s` : 'no data',
+             !tick ? '' : tick.max >= 2000 ? 'bad' : tick.max >= 500 ? 'warn' : 'good') +
+        tile('Memory', last ? fmtMB(last.ws) : '–', (wsSlope == null ? 'trend needs 20+ min of data' : (Math.abs(wsSlope) < 2 ? 'steady' : `${wsSlope > 0 ? '+' : ''}${wsSlope.toFixed(0)} MB / hour`)) + (last && last.wv ? ` · WebView2 ${fmtMB(last.wvPriv)}` : ''),
+             wsSlope == null ? '' : wsSlope > 100 ? 'bad' : wsSlope > 30 ? 'warn' : 'good') +
+        tile('CPU', isFinite(cpuAvg) ? cpuAvg.toFixed(1) + '%' : '–', (isFinite(sysAvg) ? `of one core · machine ${sysAvg.toFixed(0)}%` : 'of one core, averaged') + (isFinite(wvAvg) && wvAvg >= 0.1 ? ` · WebView2 ${wvAvg.toFixed(1)}%` : ''),
+             cpuAvg >= 20 ? 'bad' : cpuAvg >= 8 ? 'warn' : '') +
+        tile('GC pauses', fmtMs(gcTotal), `${gen2} full collection${gen2 === 1 ? '' : 's'} in range`, gcTotal > 2000 ? 'warn' : '') +
+        tile('Sessions', String(sessions.filter(s => s.start >= b.from - 1).length || sessions.length), unclean ? `${unclean} ended unexpectedly` : 'all ended cleanly', unclean ? 'bad' : '');
+
+    const anoms = within(S.anoms, b);
+    renderFindings({ b, samples, slows, stats, cor, sessions, worstUi, tick, last, anoms });
+    renderAnoms(anoms);
+    renderCharts(b, samples, slows, opsRows);
+    renderOps(stats);
+    renderEvents(slows);
+    renderSessions(sessions);
+    renderRaw();
+}
+const avg = a => { const v = a.filter(isFinite); return v.length ? v.reduce((x, y) => x + y, 0) / v.length : NaN; };
+
+function renderStatus() {
+    const el = document.getElementById('status'), tx = document.getElementById('status-text');
+    el.className = 'status';
+    if (S.error) { el.classList.add('bad'); tx.textContent = "Can't reach FastApp"; }
+    else if (!S.live) { el.classList.add('paused'); tx.textContent = 'Paused'; }
+    else { el.classList.add('live'); tx.textContent = 'Live'; }
+}
+
+function renderBanners(last) {
+    const out = [];
+    if (S.error) out.push(`<div class="banner bad">FastApp isn&rsquo;t answering (${esc(S.error)}). Showing what was loaded before.</div>`);
+    if (!S.enabled) out.push('<div class="banner">Performance recording is turned off in Settings, so nothing new is being added. Showing what was recorded earlier.</div>');
+    else if (last && Date.now() - last.t > 150000 && !S.error)
+        out.push(`<div class="banner">The newest sample is ${esc(ago(Date.now() - last.t))} old. Samples are written once a minute, so FastApp may have stopped or be badly stalled.</div>`);
+    if (!S.raw.length && !S.error) out.push('<div class="banner">No data yet. The first sample is written a minute after FastApp starts.</div>');
+    document.getElementById('banners').innerHTML = out.join('');
+}
+
+function renderFindings(c) {
+    const f = [];
+    const add = (sev, html) => f.push({ sev, html });
+    const { cor, stats, samples, sessions } = c;
+
+    if (!samples.length && !c.slows.length) {
+        add('info', 'Not enough data in this range yet. Try a wider range.');
+    } else {
+        // --- freezes ---
+        if (cor.stalls.length) {
+            const worst = cor.stalls.reduce((a, s) => s.ms > a.ms ? s : a);
+            let why = '';
+            if (cor.causes.length) why = ' Overlapping: ' + cor.causes.map(([n, k]) => `<b>${esc(n)}</b> (${k})`).join(', ') + (cor.unexplained ? `, and ${cor.unexplained} with no known cause` : '') + '.';
+            else why = ' None of them lined up with a recorded slow operation or a GC pause, so the cause is outside what FastApp measures.';
+            add(c.worstUi >= 500 ? 'bad' : 'warn', `<b>${cor.stalls.length}</b> time${cor.stalls.length === 1 ? '' : 's'} the window stopped responding for over 100&nbsp;ms; the worst was <b>${fmtMs(worst.ms)}</b> at ${fmtStamp(worst.t)}.${why}`);
+        } else if (stats.some(s => s.name === 'ui.latency')) {
+            add('good', `The window never stopped responding for more than 100&nbsp;ms (worst wait <b>${fmtMs(c.worstUi)}</b>).`);
+        }
+
+        // --- tracker ---
+        if (c.tick) {
+            if (c.tick.max >= 5000) add('bad', `The tracker&rsquo;s 5-second tick took up to <b>${fmtMs(c.tick.max)}</b> &mdash; longer than its own interval, so ticks were skipped or bunched up.`);
+            else if (c.tick.max >= 500) add('warn', `The tracker tick peaked at <b>${fmtMs(c.tick.max)}</b> (average ${fmtMs(c.tick.avg)}).`);
+        }
+        const lock = stats.find(s => s.name === 'tracker.dblock-wait');
+        if (lock && lock.slow) add('warn', `Something waited on the database lock for over 100&nbsp;ms <b>${lock.slow}</b> time${lock.slow === 1 ? '' : 's'} (worst ${fmtMs(lock.max)}). The UI and the tracker are contending for the same database connection.`);
+        const flush = stats.find(s => s.name === 'tracker.flush');
+        if (flush && flush.slow) add('warn', `The 30-second database flush was slow <b>${flush.slow}</b> time${flush.slow === 1 ? '' : 's'} (worst ${fmtMs(flush.max)}).`);
+
+        // --- palette & dashboard ---
+        const summon = stats.find(s => s.name === 'palette.summon');
+        if (summon && summon.slow) add('warn', `Opening the palette took over 150&nbsp;ms <b>${summon.slow}</b> time${summon.slow === 1 ? '' : 's'} (worst ${fmtMs(summon.max)}).`);
+        const slowHttp = stats.filter(s => s.name.startsWith('http ') && s.slow);
+        if (slowHttp.length) add('warn', `Slow dashboard requests: ` + slowHttp.slice(0, 3).map(s => `<b>${esc(s.name.replace(/^http /, ''))}</b> (${s.slow}×, worst ${fmtMs(s.max)})`).join(', ') + '.');
+
+        // --- trends ---
+        const memS = slopePerHour(series(samples, s => s.ws)), hS = slopePerHour(series(samples, s => s.handles)), thS = slopePerHour(series(samples, s => s.threads));
+        if (memS != null && memS > 30) {
+            // Which kind of memory? Managed objects, native memory, or the WebView2 processes.
+            const privS = slopePerHour(series(samples, s => s.priv)), heapS = slopePerHour(series(samples, s => s.heap)),
+                  lohS = slopePerHour(series(samples, s => s.loh)), g2S = slopePerHour(series(samples, s => s.sz2));
+            let kind = '';
+            if (privS != null && privS > 10 && heapS != null)
+                kind = heapS >= 0.6 * privS
+                    ? ` Most of it is <b>managed objects</b> kept alive in .NET (managed heap ${heapS >= 0 ? '+' : ''}${heapS.toFixed(0)} MB/h${g2S != null ? `, gen 2 ${g2S >= 0 ? '+' : ''}${g2S.toFixed(0)}` : ''}${lohS != null && lohS > 5 ? `, large-object heap +${lohS.toFixed(0)}` : ''}), which points at something being held in a list, cache or event handler.`
+                    : ` The managed heap is only ${heapS >= 0 ? '+' : ''}${heapS.toFixed(0)} MB/h of ${privS.toFixed(0)} MB/h private growth, so it is <b>native memory</b> (SQLite, interop, unmanaged handles), not .NET objects.`;
+            add(memS > 100 ? 'bad' : 'warn', `Memory is growing by about <b>${memS.toFixed(0)} MB per hour</b>. If it keeps going without levelling off, something is leaking.${kind}`);
+        }
+        const wvS = slopePerHour(series(samples, s => s.wvPriv));
+        if (wvS != null && wvS > 30) add('warn', `FastApp&rsquo;s WebView2 processes (the palette) are growing by about <b>${wvS.toFixed(0)} MB per hour</b>. That is the web page inside the palette, not the main app.`);
+        const allocAvg = avg(samples.map(s => s.alloc));
+        if (allocAvg > 300) add('warn', `The app allocates about <b>${allocAvg.toFixed(0)} MB per minute</b> on average. That is a lot of short-lived garbage and drives GC pauses even without a leak.`);
+        const wvCpu = avg(samples.map(s => s.wvCore));
+        if (wvCpu > 20) add('warn', `FastApp&rsquo;s WebView2 processes averaged <b>${wvCpu.toFixed(0)}% of a core</b>. The palette&rsquo;s web page is busy, not the main app.`);
+        if (hS != null && hS > 50) add('warn', `Handle count is growing by about <b>${hS.toFixed(0)} per hour</b>.`);
+        if (thS != null && thS > 5) add('warn', `Thread count is growing by about <b>${thS.toFixed(0)} per hour</b>.`);
+
+        // --- the machine ---
+        const sysCpu = avg(samples.map(s => s.sysCpu)), sysMem = avg(samples.map(s => s.sysMem));
+        if (sysCpu > 80) add('warn', `The whole machine averaged <b>${sysCpu.toFixed(0)}% CPU</b> in this range. Lag may come from something else using the PC.`);
+        if (sysMem > 90) add('warn', `Memory use across the machine averaged <b>${sysMem.toFixed(0)}%</b>, so Windows is likely paging.`);
+        const gcTotal = samples.reduce((a, s) => a + (s.gcPause || 0), 0);
+        if (gcTotal > 2000) add('warn', `The app spent <b>${fmtMs(gcTotal)}</b> paused in garbage collection in this range.`);
+    }
+
+    for (const a of (c.anoms || []).slice().reverse().slice(0, 3)) {
+        if (a.type === 'cpu') add('bad', `At ${fmtStamp(a.t)} FastApp used <b>${esc(a.info.core || '?')} of one core</b> for ${esc(a.info.sustained || 'a while')}. Busiest: ${esc(a.threads || 'unknown')}. Timed operations then: ${esc(a.ops || 'none')}.`);
+        else add('bad', `At ${fmtStamp(a.t)} private memory had grown <b>${esc(a.info.growth || '?')}</b> in the previous hour. ${esc(a.change)}`);
+    }
+
+    const unclean = sessions.filter(s => s.state === 'unexpected');
+    if (unclean.length) add('bad', `<b>${unclean.length}</b> launch${unclean.length === 1 ? '' : 'es'} ended with no clean exit (latest started ${fmtStamp(unclean[0].start)}). That is a crash, a kill, or a forced restart &mdash; check the crash log in the report.`);
+
+    if (f.length && !f.some(x => x.sev !== 'good' && x.sev !== 'info')) add('good', 'Nothing here looks wrong.');
+    document.getElementById('findings').innerHTML = (f.length ? f : [{ sev: 'info', html: 'No data yet.' }])
+        .map(x => `<li><span class="chip ${x.sev}">${{ good: 'ok', warn: 'check', bad: 'problem', info: 'note' }[x.sev]}</span><span>${x.html}</span></li>`).join('');
+}
+
+/* =============================================================================
+   Charts
+   ============================================================================= */
+let charts = {};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function xScale(b) {
+    return {
+        type: 'linear', min: b.from, max: b.to, grid: { color: css('--chart-grid') },
+        ticks: { color: css('--text-dim'), maxTicksLimit: 8, callback: v => (b.to - b.from > 86400000 ? `${pad(new Date(v).getDate())}.${pad(new Date(v).getMonth() + 1)} ` : '') + fmtClock(v, false) }
+    };
+}
+function yScale(extra) {
+    return Object.assign({ beginAtZero: true, grid: { color: css('--chart-grid') }, ticks: { color: css('--text-dim') } }, extra || {});
+}
+function ds(label, color, extra) {
+    return Object.assign({ label, data: [], borderColor: color, backgroundColor: color, borderWidth: 1.8, pointRadius: 0, pointHoverRadius: 3, tension: 0.25, spanGaps: false }, extra || {});
+}
+function dots(label, color) {
+    return ds(label, color, { showLine: false, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: color });
+}
+
+function mk(id, datasets, scales, fmtY) {
+    const ctx = document.getElementById(id);
+    return new Chart(ctx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+            parsing: false, normalized: true, animation: false, maintainAspectRatio: false,
+            interaction: { mode: 'nearest', axis: 'x', intersect: false },
+            plugins: {
+                legend: { labels: { color: css('--text-dim'), usePointStyle: true, boxWidth: 8, font: { size: 11 } } },
+                tooltip: {
+                    backgroundColor: css('--chart-tooltip-bg'), titleColor: css('--chart-tooltip-title'), bodyColor: css('--chart-tooltip-text'),
+                    callbacks: {
+                        title: it => it.length ? fmtStamp(it[0].parsed.x) : '',
+                        label: it => ` ${it.dataset.label}: ${fmtY ? fmtY(it.parsed.y, it.dataset) : it.parsed.y}`
+                    }
+                }
+            },
+            scales
+        }
+    });
+}
+
+function buildCharts() {
+    Object.values(charts).forEach(c => c.destroy());
+    const c = { accent: css('--accent'), afk: css('--afk'), good: css('--good'), music: css('--music'), warn: css('--warn'), dim: css('--text-faint') };
+    const b = bounds();
+    charts = {
+        ui: mk('c-ui', [ds('Worst wait per minute', c.accent, { fill: true, backgroundColor: css('--wash-accent'), stepped: true }), dots('Freeze', c.afk)],
+            { x: xScale(b), y: yScale({ title: { display: true, text: 'ms', color: c.dim } }) }, v => fmtMs(v)),
+        mem: mk('c-mem', [ds('Working set', c.accent), ds('Private', c.music), ds('Managed heap', c.good), ds('WebView2 (private)', c.dim, { borderDash: [5, 4] })],
+            { x: xScale(b), y: yScale({ title: { display: true, text: 'MB', color: c.dim } }) }, v => Math.round(v) + ' MB'),
+        cpu: mk('c-cpu', [ds('FastApp (% of a core)', c.accent, { yAxisID: 'y' }), ds('WebView2 (% of a core)', c.good, { yAxisID: 'y' }), ds('Machine CPU %', c.warn, { yAxisID: 'y1' }), ds('Machine memory %', c.music, { yAxisID: 'y1', borderDash: [5, 4] })],
+            { x: xScale(b), y: yScale({ position: 'left', title: { display: true, text: '% of one core', color: c.dim } }), y1: yScale({ position: 'right', max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: 'Machine %', color: c.dim } }) }, v => v.toFixed(1) + '%'),
+        heap: mk('c-heap', [ds('Gen 2', c.accent, { yAxisID: 'y' }), ds('Large objects', c.afk, { yAxisID: 'y' }), ds('Pinned', c.music, { yAxisID: 'y' }), ds('Gen 0 + 1', c.good, { yAxisID: 'y' }), ds('Allocated per minute', c.warn, { yAxisID: 'y1', borderDash: [5, 4] })],
+            { x: xScale(b), y: yScale({ position: 'left', title: { display: true, text: 'MB', color: c.dim } }), y1: yScale({ position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'MB / min', color: c.dim } }) }, v => v.toFixed(1) + ' MB'),
+        gc: mk('c-gc', [ds('Pause per minute', c.afk, { yAxisID: 'y', stepped: true }), ds('Full collections', c.music, { yAxisID: 'y1', stepped: true })],
+            { x: xScale(b), y: yScale({ position: 'left', title: { display: true, text: 'ms', color: c.dim } }), y1: yScale({ position: 'right', grid: { drawOnChartArea: false }, ticks: { precision: 0, color: css('--text-dim') }, title: { display: true, text: 'count', color: c.dim } }) }, (v, d) => d.yAxisID === 'y' ? fmtMs(v) : String(v)),
+        res: mk('c-res', [ds('Threads', c.accent, { yAxisID: 'y' }), ds('Handles', c.warn, { yAxisID: 'y1' })],
+            { x: xScale(b), y: yScale({ position: 'left', beginAtZero: false, title: { display: true, text: 'threads', color: c.dim } }), y1: yScale({ position: 'right', beginAtZero: false, grid: { drawOnChartArea: false }, title: { display: true, text: 'handles', color: c.dim } }) }, v => Math.round(v)),
+        op: mk('c-op', [ds('Average', c.accent), ds('Worst', c.warn), dots('Slow occurrence', c.afk)],
+            { x: xScale(b), y: yScale({ title: { display: true, text: 'ms', color: c.dim } }) }, v => fmtMs(v))
+    };
+}
+
+// A gap of several minutes (the app was closed) breaks the line instead of drawing across it.
+const pts = (arr, fy) => {
+    const out = [];
+    for (const x of arr) {
+        const y = fy(x);
+        if (!isFinite(y)) continue;
+        if (out.length && x.t - out[out.length - 1].x > 150000) out.push({ x: out[out.length - 1].x + 1, y: null });
+        out.push({ x: x.t, y });
+    }
+    return out;
+};
+
+function renderCharts(b, samples, slows, opsRows) {
+    if (!charts.ui) buildCharts();
+    const set = (chart, lists) => {
+        const x = chart.options.scales.x; x.min = b.from; x.max = b.to;
+        lists.forEach((d, i) => { chart.data.datasets[i].data = d; });
+        chart.update('none');
+    };
+    set(charts.ui, [pts(opsRows.filter(o => o.name === 'ui.latency'), o => o.max), pts(slows.filter(s => s.name === 'ui.latency'), s => s.ms)]);
+    set(charts.mem, [pts(samples, s => s.ws), pts(samples, s => s.priv), pts(samples, s => s.heap), pts(samples, s => s.wv ? s.wvPriv : NaN)]);
+    set(charts.cpu, [pts(samples, s => s.core), pts(samples, s => s.wv ? s.wvCore : NaN), pts(samples, s => s.sysCpu), pts(samples, s => s.sysMem)]);
+    set(charts.heap, [pts(samples, s => s.sz2), pts(samples, s => s.loh), pts(samples, s => s.poh), pts(samples, s => s.sz0 + s.sz1), pts(samples, s => s.alloc)]);
+    set(charts.gc, [pts(samples, s => s.gcPause), pts(samples, s => s.gc2)]);
+    set(charts.res, [pts(samples, s => s.threads), pts(samples, s => s.handles)]);
+
+    // operation picker: keep the choice, fall back to the first op that exists
+    const names = [...new Set([...S.ops.map(o => o.name), ...S.slows.map(s => s.name)])].sort();
+    if (!names.includes(S.selOp) && names.length) S.selOp = names.includes('tracker.tick') ? 'tracker.tick' : names[0];
+    const sel = document.getElementById('op-select');
+    if (sel.dataset.sig !== names.join('|')) {
+        sel.innerHTML = names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+        sel.dataset.sig = names.join('|');
+    }
+    sel.value = S.selOp;
+    const mine = opsRows.filter(o => o.name === S.selOp);
+    set(charts.op, [pts(mine, o => o.avg), pts(mine, o => o.max), pts(slows.filter(s => s.name === S.selOp), s => s.ms)]);
+}
+
+/* =============================================================================
+   Tables
+   ============================================================================= */
+const tone = (ms, warn, bad) => ms >= bad ? 'tone-bad' : ms >= warn ? 'tone-warn' : '';
+
+function renderAnoms(list) {
+    const el = document.getElementById('anoms');
+    if (!list.length) { el.innerHTML = '<div class="empty">None in this range. FastApp&rsquo;s CPU and memory stayed within normal limits.</div>'; return; }
+    const items = list.slice().reverse().map(a => {
+        const head = a.type === 'cpu'
+            ? `${esc(a.info.core || '?')} of one core for ${esc(a.info.sustained || '?')}`
+            : `private memory +${esc(a.info.growth || '?')} in the last hour (now ${esc(a.info.priv || '?')})`;
+        const rows = a.type === 'cpu'
+            ? `<div class="meta"><b>Busiest threads:</b> ${esc(a.threads || 'none above noise')}</div>`
+            : `<div class="meta">${esc(a.change)}</div>`;
+        return `<div class="session"><div class="row"><span class="when">${fmtStamp(a.t)}</span><span class="chip bad">${a.type === 'cpu' ? 'CPU' : 'memory'}</span><span>${head}</span></div>` +
+            `${rows}<div class="meta"><b>Timed operations at the time:</b> ${esc(a.ops || 'none')}</div></div>`;
+    });
+    el.innerHTML = items.join('');
+}
+
+function renderOps(stats) {
+    const t = document.getElementById('ops-table');
+    if (!stats.length) { t.innerHTML = '<tr><td class="empty">Nothing timed in this range yet.</td></tr>'; return; }
+    t.innerHTML = '<tr><th>Operation</th><th class="num">Calls</th><th class="num">Average</th><th class="num">Worst</th><th class="num">Slow</th><th>Last slow</th></tr>' +
+        stats.map(s => `<tr class="pick ${s.name === S.selOp ? 'sel' : ''}" data-op="${esc(s.name)}"><td class="name">${esc(s.name)}</td>` +
+            `<td class="num">${s.n ? s.n.toLocaleString() : '–'}</td><td class="num">${fmtMs(s.avg)}</td>` +
+            `<td class="num ${tone(s.max, 100, 500)}">${fmtMs(s.max)}</td><td class="num">${s.slow || '–'}</td><td>${s.lastSlow ? fmtStamp(s.lastSlow) : '–'}</td></tr>`).join('');
+}
+
+function renderEvents(slows) {
+    const q = document.getElementById('ev-filter').value.trim().toLowerCase();
+    const rows = slows.filter(s => !q || (s.name + ' ' + s.detail).toLowerCase().includes(q)).reverse();
+    const t = document.getElementById('ev-table');
+    if (!rows.length) { t.innerHTML = `<tr><td class="empty">${slows.length ? 'No events match.' : 'No slow events in this range. That is good news.'}</td></tr>`; return; }
+    t.innerHTML = '<tr><th>When</th><th>Operation</th><th class="num">Took</th><th>Detail</th></tr>' +
+        rows.slice(0, 300).map(s => `<tr><td>${fmtStamp(s.t)}</td><td class="name">${esc(s.name)}</td><td class="num ${tone(s.ms, 300, 1000)}">${fmtMs(s.ms)}</td><td class="detail">${esc(s.detail)}</td></tr>`).join('') +
+        (rows.length > 300 ? `<tr><td colspan="4" class="empty">${rows.length - 300} older events not shown &mdash; narrow the range or filter.</td></tr>` : '');
+}
+
+function renderSessions(list) {
+    const el = document.getElementById('sessions');
+    if (!list.length) { el.innerHTML = '<div class="empty">No launches recorded yet.</div>'; return; }
+    el.innerHTML = list.slice(0, 12).map(s => {
+        const chip = s.state === 'running' ? '<span class="chip good">running</span>' : s.state === 'ended'
+            ? `<span class="chip info">${/off/.test(s.endText) ? 'recording turned off' : 'clean exit'} ${fmtStamp(s.endedAt)}</span>` : '<span class="chip bad">ended unexpectedly</span>';
+        const i = s.info || {};
+        const meta = [i.version && 'v' + i.version, i.os && 'Windows ' + i.os, i.cores && i.cores + ' cores', i.ram].filter(Boolean).join(' · ');
+        const miles = s.miles.sort((a, b) => a.t - b.t).map(m => `<span class="mile">${esc(m.name)} +${fmtMs(m.ms)}</span>`).join('');
+        return `<div class="session"><div class="row"><span class="when">${fmtStamp(s.start)}</span>${chip}<span class="meta">${esc(meta)}</span></div>${miles ? `<div class="miles">${miles}</div>` : ''}</div>`;
+    }).join('');
+}
+
+function renderRaw() {
+    const q = document.getElementById('raw-filter').value.trim().toLowerCase();
+    const lines = q ? S.raw.filter(l => l.toLowerCase().includes(q)) : S.raw;
+    document.getElementById('raw').textContent = lines.slice(-400).reverse().join('\n');
+}
+
+/* =============================================================================
+   Loading: everything once, then only what is newer, only while visible.
+   ============================================================================= */
+let timer = 0, busy = false;
+async function poll() {
+    if (busy) return;
+    busy = true;
+    try {
+        const r = await fetch('/api/diagnostics/log?since=' + encodeURIComponent(S.lastTs), { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        S.enabled = d.enabled; S.error = null; S.lastOk = Date.now();
+        for (const l of d.lines) ingest(l);
+    } catch (e) { S.error = e.message || 'network error'; }
+    finally { busy = false; }
+    render();
+}
+function schedule() {
+    clearInterval(timer);
+    if (S.live) timer = setInterval(() => { if (!document.hidden) poll(); }, 5000);
+}
+
+document.getElementById('range').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    S.rangeMin = +b.dataset.min;
+    document.querySelectorAll('#range button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    render();
+});
+document.getElementById('live-btn').addEventListener('click', e => {
+    S.live = !S.live; e.target.textContent = S.live ? 'Pause' : 'Resume';
+    schedule(); if (S.live) poll(); else renderStatus();
+});
+document.getElementById('op-select').addEventListener('change', e => { S.selOp = e.target.value; render(); });
+document.getElementById('ops-table').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-op]'); if (!tr) return;
+    S.selOp = tr.dataset.op; render();
+    document.getElementById('c-op').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+document.getElementById('ev-filter').addEventListener('input', () => renderEvents(within(S.slows, bounds())));
+document.getElementById('raw-filter').addEventListener('input', renderRaw);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.live) poll(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { setTimeout(() => { buildCharts(); render(); }, 50); });
+
+poll().then(schedule);
+</script>
+</body>
+</html>
