@@ -468,13 +468,32 @@ async function loadAppSites(appName) {
         }
 
         const max = Math.max(...sites.map(s => s.minutes), 1);
-        body.innerHTML = `<div class="dd-sites-list">${sites.slice(0, 12).map(s => `
-            <div class="dd-site-row">
-                <div class="dd-site-name${s.site === 'Other pages' || s.site === 'New tab' ? ' is-other' : ''}" title="${escapeHtml(s.site)}">${escapeHtml(s.site)}</div>
-                <div class="lb-bar"><div class="lb-bar-fill" style="width:${(s.minutes / max) * 100}%"></div></div>
-                <div class="dd-site-time">${formatTime(s.minutes)}</div>
+        // Every row opens up to the pages inside it. "Other pages" in particular is
+        // where the heuristic found no site to name, so this is how you read it.
+        body.innerHTML = `<div class="dd-sites-list">${sites.slice(0, 12).map((s, i) => `
+            <div class="dd-site">
+                <div class="dd-site-row" data-site-toggle="${i}" role="button" tabindex="0" aria-expanded="false">
+                    <div class="dd-site-name${s.site === 'Other pages' || s.site === 'New tab' ? ' is-other' : ''}" title="${escapeHtml(s.site)}"><span class="dd-site-chev">\u25B8</span>${escapeHtml(s.site)}</div>
+                    <div class="lb-bar"><div class="lb-bar-fill" style="width:${(s.minutes / max) * 100}%"></div></div>
+                    <div class="dd-site-time">${formatTime(s.minutes)}</div>
+                </div>
+                <div class="dd-site-pages" hidden>${(s.pages || []).map(p => `
+                    <div class="dd-page-row"><span class="dd-page-title" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</span><span class="dd-page-time">${p.minutes < 1 ? '<1m' : formatTime(p.minutes)}</span></div>`).join('')}
+                </div>
             </div>`).join('')}</div>
-            <div class="dd-sites-note">Worked out from window titles, so it is a best guess, not an exact web address.</div>${noteHtml}`;
+            <div class="dd-sites-note">Worked out from window titles, so it is a best guess, not an exact web address. Click a site to see its pages.</div>${noteHtml}`;
+
+        const toggle = (row) => {
+            const pages = row.parentElement.querySelector('.dd-site-pages');
+            const open = pages.hidden;
+            pages.hidden = !open;
+            row.setAttribute('aria-expanded', String(open));
+            row.querySelector('.dd-site-chev').textContent = open ? '\u25BE' : '\u25B8';
+        };
+        body.querySelectorAll('[data-site-toggle]').forEach(row => {
+            row.addEventListener('click', () => toggle(row));
+            row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(row); } });
+        });
     } catch (err) {
         if (isAbort(err)) return;
         console.error('Failed to load top sites', err);

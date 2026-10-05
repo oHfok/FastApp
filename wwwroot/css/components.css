@@ -799,10 +799,16 @@
 .tl-feed-more { padding: 8px 6px; font-size: var(--fs-caption); color: var(--text-faint); }
 
 .dd-sites-list { display: flex; flex-direction: column; gap: 2px; }
-.dd-site-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 54px; gap: 12px; align-items: center; padding: 6px 0; }
+.dd-site-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 76px; gap: 12px; align-items: center; padding: 6px 4px; margin: 0 -4px; border-radius: var(--radius-sm); cursor: pointer; }
+.dd-site-row:hover { background: var(--surface-2); }
 .dd-site-name { font-size: var(--fs-body); font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-site-name.is-other { color: var(--text-faint); font-weight: 500; }
-.dd-site-time { font-size: var(--fs-small); font-weight: 600; color: var(--text-dim); text-align: right; }
+.dd-site-chev { display: inline-block; width: 14px; color: var(--text-faint); font-size: var(--fs-caption); }
+.dd-site-time { font-size: var(--fs-small); font-weight: 600; color: var(--text-dim); text-align: right; white-space: nowrap; }
+.dd-site-pages { margin: 2px 0 8px 14px; padding: 4px 0 4px 12px; border-left: 2px solid var(--border); max-height: 280px; overflow-y: auto; }
+.dd-page-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 3px 0; font-size: var(--fs-small); }
+.dd-page-title { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-page-time { color: var(--text-faint); white-space: nowrap; }
 .dd-sites-note { margin-top: 12px; font-size: var(--fs-caption); color: var(--text-faint); line-height: 1.55; }
 
 /* ---------------------------------------------------------

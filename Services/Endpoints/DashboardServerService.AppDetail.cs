@@ -494,6 +494,9 @@ namespace FastApp.Services
                     .ToListAsync();
 
                 var minutesBySite = new Dictionary<string, (string Label, double Minutes, int Visits)>(StringComparer.OrdinalIgnoreCase);
+                // Which pages made up each site, so a row can be opened up -- above
+                // all "Other pages", where the heuristic found no site to name.
+                var pagesBySite = new Dictionary<string, Dictionary<string, double>>(StringComparer.OrdinalIgnoreCase);
                 double privateMinutes = 0, untitledMinutes = 0;
 
                 foreach (var s in sessions)
@@ -505,6 +508,11 @@ namespace FastApp.Services
                     string site = SiteFromTitle.Extract(s.WindowTitle) ?? "Other pages";
                     minutesBySite.TryGetValue(site, out var running);
                     minutesBySite[site] = (running.Label ?? site, running.Minutes + minutes, running.Visits + 1);
+
+                    string page = SiteFromTitle.Clean(s.WindowTitle);
+                    if (page.Length == 0) page = "(untitled)";
+                    if (!pagesBySite.TryGetValue(site, out var pages)) pagesBySite[site] = pages = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                    pages[page] = pages.GetValueOrDefault(page) + minutes;
                 }
 
                 double total = minutesBySite.Values.Sum(v => v.Minutes);
@@ -516,7 +524,14 @@ namespace FastApp.Services
                         Site = v.Label,
                         Minutes = Math.Round(v.Minutes, 1),
                         Visits = v.Visits,
-                        Share = total > 0 ? Math.Round(v.Minutes / total * 100, 1) : 0
+                        Share = total > 0 ? Math.Round(v.Minutes / total * 100, 1) : 0,
+                        // "Other pages" is the one people want to read through, so it gets more.
+                        Pages = pagesBySite.TryGetValue(v.Label, out var pages)
+                            ? pages.OrderByDescending(p => p.Value)
+                                .Take(v.Label == "Other pages" ? 40 : 10)
+                                .Select(p => new { Title = p.Key, Minutes = Math.Round(p.Value, 1) })
+                                .ToList()
+                            : null
                     })
                     .ToList();
 

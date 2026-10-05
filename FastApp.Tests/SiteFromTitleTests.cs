@@ -54,6 +54,15 @@ public class SiteFromTitleTests
         Assert.Equal(expected, SiteFromTitle.IsPrivate(title));
 
     [Theory]
+    [InlineData("(37) Some video - YouTube \u2014 Zen Browser", "Some video - YouTube")]
+    [InlineData("A page - Google Chrome", "A page")]
+    [InlineData("Plain title", "Plain title")]
+    [InlineData("", "")]
+    [InlineData(null, "")]
+    public void CleanDropsTheBrowserNameAndUnreadCount(string title, string expected) =>
+        Assert.Equal(expected, SiteFromTitle.Clean(title));
+
+    [Theory]
     [InlineData("Zen")] [InlineData("Firefox")] [InlineData("CHROME")] [InlineData("Msedge")]
     public void KnowsTheBrowsers(string process) =>
         Assert.Contains(process, SiteFromTitle.BrowserProcesses);

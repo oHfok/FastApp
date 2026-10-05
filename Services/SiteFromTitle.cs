@@ -69,6 +69,17 @@ namespace FastApp.Services
             ["amazon"] = "Amazon", ["amazon.com"] = "Amazon", ["allegro"] = "Allegro", ["olx"] = "OLX",
         };
 
+        /// <summary>
+        /// The page title as shown in a list: without the trailing browser name
+        /// ("- Zen Browser") or an unread-count prefix ("(37) ").
+        /// </summary>
+        public static string Clean(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title)) return string.Empty;
+            string t = BrowserSuffix.Replace(title.Trim(), string.Empty);
+            return LeadingCount.Replace(t, string.Empty).Trim();
+        }
+
         /// <summary>True for titles of private/incognito windows, which are never listed.</summary>
         public static bool IsPrivate(string title) =>
             !string.IsNullOrEmpty(title) && PrivateWindow.IsMatch(title);
@@ -81,8 +92,7 @@ namespace FastApp.Services
         {
             if (string.IsNullOrWhiteSpace(title)) return null;
 
-            string t = BrowserSuffix.Replace(title.Trim(), string.Empty);
-            t = LeadingCount.Replace(t, string.Empty).Trim();
+            string t = Clean(title);
             if (t.Length == 0) return null;
             if (NewTab.IsMatch(t)) return "New tab";
 
