@@ -72,9 +72,9 @@ function renderAllApps() {
         // scaled so 100% is one core, the way Task Manager shows it.
         const hasRes = app.avgCpuPercent != null || app.avgRamMB != null;
         const resHtml = hasRes ? `
-                <div class="allapps-metrics" style="margin-top:6px;border-top:1px solid var(--border-soft);padding-top:6px;">
-                    <div><span>CPU</span><span class="v mono">${app.avgCpuPercent ?? 0}% <span style="color:var(--text-faint)">· peak ${app.peakCpuPercent ?? 0}%</span></span></div>
-                    <div style="text-align:right;"><span>Memory</span><span class="v mono">${fmtMB(app.avgRamMB)} <span style="color:var(--text-faint)">· peak ${fmtMB(app.peakRamMB)}</span></span></div>
+                <div class="allapps-metrics" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+                    <div><span>CPU</span><span class="v mono">${app.avgCpuPercent ?? 0}% <span class="allapps-peak">peak ${app.peakCpuPercent ?? 0}%</span></span></div>
+                    <div style="text-align:right;"><span>Memory</span><span class="v mono">${fmtMB(app.avgRamMB)} <span class="allapps-peak">peak ${fmtMB(app.peakRamMB)}</span></span></div>
                 </div>` : '';
 
         return `

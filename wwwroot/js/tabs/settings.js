@@ -20,7 +20,10 @@ function setSettingsTab(tab, btnEl) {
 function loadDashboardTheme() {
     // No stored choice means Windows decides, which is the new default: the
     // app used to be dark whatever the OS was set to, with no way out.
-    const current = localStorage.getItem(DASHBOARD_THEME_KEY) || 'system';
+    // Themes from earlier versions (terminal, glass, nova...) no longer exist
+    // and count as "follow Windows".
+    const stored = localStorage.getItem(DASHBOARD_THEME_KEY);
+    const current = stored === 'light' || stored === 'dark' ? stored : 'system';
     updateThemePickerActiveState(current);
 }
 

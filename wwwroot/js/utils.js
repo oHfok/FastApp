@@ -496,9 +496,9 @@ function hideTooltip() {
 // not just a CSS variable name, so a hex custom property has to be parsed at
 // runtime rather than hardcoded like it used to be.
 function themeAccentRgb() {
-    const hex = getComputedStyle(document.documentElement).getPropertyValue('--brass').trim();
+    const hex = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     const parts = hex.replace('#', '').match(/.{1,2}/g);
-    if (!parts || parts.length < 3) return '232, 163, 61'; // fallback: default brass
+    if (!parts || parts.length < 3) return '61, 90, 254'; // fallback: the default accent
     return parts.slice(0, 3).map(h => parseInt(h, 16)).join(', ');
 }
 function themeAccentAlpha(alpha) {
@@ -785,12 +785,13 @@ function getChartTheme() {
         grid: v('--chart-grid'),
         tick: v('--text-dim'),
         tooltipBg: v('--chart-tooltip-bg'),
-        tooltipTitle: v('--brass'),
-        tooltipBody: v('--text'),
-        brass: v('--brass'),
-        teal: v('--teal'),
-        violet: v('--violet'),
-        rose: v('--rose'),
+        tooltipTitle: v('--chart-tooltip-title'),
+        tooltipBody: v('--chart-tooltip-text'),
+        brass: v('--accent'),
+        muted: v('--border-strong'),
+        teal: v('--good'),
+        violet: v('--music'),
+        rose: v('--afk'),
         pointBorder: v('--bg'),
         fontBody: v('--font-body') || "'Inter', sans-serif",
         fontMono: v('--font-mono') || "'JetBrains Mono', monospace"

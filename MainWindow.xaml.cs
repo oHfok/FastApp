@@ -160,6 +160,11 @@ namespace FastApp
             // After the view model, because that is what migrates the database.
             LoadPaletteHotkey();
 
+            // The tray was built in step 1, before the stored combination was
+            // known, so its tooltip and first menu line quoted the default until
+            // the shortcut was next changed. Tell it now that it is loaded.
+            RefreshTrayHotkey();
+
             // 4. WIRE THE HOOK: Connect the live hook to the loaded ViewModel.
             //
             // Not subscribed directly: while a hotkey is being recorded, the keys

@@ -16,11 +16,11 @@
         <span class="chrome-spacer"></span>
         <span class="status">
             <span class="status-dot" id="status-dot"></span>
-            <span class="label" id="status-text">TRACKING</span>
+            <span class="label" id="status-text">Tracking</span>
         </span>
         <span class="chrome-sep"></span>
         <span class="figure">
-            <span class="label">FOCUS</span>
+            <span class="label">Focus</span>
             <span class="figure-value" id="focus-today">—</span>
         </span>
     </div>
@@ -51,11 +51,11 @@
     <div class="command-bar" id="command-bar"></div>
 
     <div class="footer">
-        <span class="hint"><span class="hint-key">↑↓</span><span class="label">MOVE</span></span>
-        <span class="hint"><span class="hint-key">↵</span><span class="label" id="enter-verb">LAUNCH</span></span>
-        <span class="hint"><span class="hint-key">→</span><span class="label">OPEN</span></span>
-        <span class="hint" id="hint-reorder"><span class="hint-key">⌥↑↓</span><span class="label">REORDER</span></span>
-        <span class="hint"><span class="hint-key">⇥</span><span class="label">CONTROLS</span></span>
+        <span class="hint"><span class="hint-key">↑↓</span><span class="label">Move</span></span>
+        <span class="hint"><span class="hint-key">↵</span><span class="label" id="enter-verb">Launch</span></span>
+        <span class="hint"><span class="hint-key">→</span><span class="label">Open</span></span>
+        <span class="hint" id="hint-reorder"><span class="hint-key">⌥↑↓</span><span class="label">Reorder</span></span>
+        <span class="hint"><span class="hint-key">⇥</span><span class="label">Controls</span></span>
         <span class="chrome-spacer"></span>
         <span class="label" id="counts"></span>
     </div>
@@ -82,14 +82,14 @@
              end for the one thing the row used to do. -->
         <button class="run-btn" id="d-run" type="button">
             <span class="run-btn-icon" id="d-run-icon"></span>
-            <span class="label" id="d-run-label">LAUNCH</span>
+            <span class="label" id="d-run-label">Launch</span>
         </button>
         <span class="stat">
-            <span class="label">TODAY</span>
+            <span class="label">Today</span>
             <span class="stat-value" id="d-today">—</span>
         </span>
         <span class="stat">
-            <span class="label">TRIGGERED</span>
+            <span class="label">Triggered</span>
             <span class="stat-value stat-muted" id="d-triggers">0</span>
         </span>
     </div>
@@ -97,7 +97,7 @@
     <div class="detail-grid">
 
         <section class="card">
-            <span class="label">IDENTITY</span>
+            <span class="label">Identity</span>
             <label class="field-label">Display name</label>
             <input class="field" id="d-custom-name" type="text" placeholder="Leave blank to use the real name" spellcheck="false">
             <span id="d-exec-row" class="stack">
@@ -107,7 +107,7 @@
         </section>
 
         <section class="card">
-            <span class="label">HOTKEY</span>
+            <span class="label">Hotkey</span>
             <div class="field-row">
                 <button class="field field-button" id="d-hotkey" type="button">None</button>
                 <button class="btn" id="d-hotkey-clear" type="button">Clear</button>
@@ -122,7 +122,7 @@
         </section>
 
         <section class="card" id="d-startup-card">
-            <span class="label">STARTUP</span>
+            <span class="label">Startup</span>
             <div class="opt">
                 <span class="opt-text">
                     <span>Open when I log in</span>
@@ -144,7 +144,7 @@
 
 
         <section class="card" id="d-action-card" hidden>
-            <span class="label">WHAT IT DOES</span>
+            <span class="label">What it does</span>
             <div class="pillgroup" id="d-action-type">
                 <button class="pill" type="button" data-action="1">Toggle mute</button>
                 <button class="pill" type="button" data-action="2">Centre window</button>
@@ -154,12 +154,12 @@
         </section>
 
         <section class="card" id="d-payload-card" hidden>
-            <span class="label">TEXT TO PASTE</span>
+            <span class="label">Text to paste</span>
             <input class="field" id="d-payload" type="text" placeholder="The snippet this hotkey pastes" spellcheck="false">
         </section>
         <section class="card" id="d-limit-card">
             <div class="card-head">
-                <span class="label">DAILY LIMIT</span>
+                <span class="label">Daily limit</span>
                 <span class="chrome-spacer"></span>
                 <span class="locked" id="d-locked" hidden>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -167,7 +167,7 @@
                         <rect x="4" y="11" width="16" height="10" rx="2.5"></rect>
                         <path d="M8 11V7a4 4 0 018 0v4"></path>
                     </svg>
-                    <span class="label label-brass">PIN LOCKED</span>
+                    <span class="label label-brass">PIN locked</span>
                 </span>
             </div>
             <!-- The switch comes first because most apps have no limit, and
@@ -251,7 +251,7 @@
 
     <div class="detail-foot">
         <button class="out-link" id="d-dashboard" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg><span>See the full history</span></button>
-        <span class="label">ESC BACK · CHANGES SAVE AS YOU MAKE THEM</span>
+        <span class="label">Esc back · changes save as you make them</span>
         <span class="chrome-spacer"></span>
         <button class="btn btn-danger" id="d-delete" type="button">Remove from FastApp</button>
     </div>
@@ -278,17 +278,17 @@
 
     <div class="m-cols">
         <span></span>
-        <span class="label">ENTRY</span>
-        <span class="label">HOTKEY</span>
-        <span class="label">LIMIT</span>
-        <span class="label">AUTO</span>
-        <span class="label m-right">TODAY</span>
+        <span class="label">Entry</span>
+        <span class="label">Hotkey</span>
+        <span class="label">Limit</span>
+        <span class="label">Auto</span>
+        <span class="label m-right">Today</span>
     </div>
 
     <div class="m-list" id="m-list"></div>
 
     <div class="detail-foot">
-        <span class="label">↑↓ MOVE · ALT+↑↓ REORDER · ↵ EDIT · ESC BACK</span>
+        <span class="label">↑↓ move · Alt+↑↓ reorder · ↵ edit · Esc back</span>
         <span class="chrome-spacer"></span>
         <span class="label" id="m-counts"></span>
     </div>
@@ -386,9 +386,9 @@
                     <button class="toggle" id="s-quiet" type="button" role="switch"><span></span></button>
                 </div>
                 <div class="s-sub field-row" id="s-quiet-times">
-                    <span class="label">FROM</span>
+                    <span class="label">From</span>
                     <input class="field field-time" id="s-quiet-from" type="text" placeholder="22:00">
-                    <span class="label">UNTIL</span>
+                    <span class="label">Until</span>
                     <input class="field field-time" id="s-quiet-to" type="text" placeholder="07:00">
                 </div>
                 <div class="s-row">
@@ -543,9 +543,9 @@
     </div>
 
     <div class="detail-foot">
-        <span class="label">ESC BACK</span>
+        <span class="label">Esc back</span>
         <span class="chrome-spacer"></span>
-        <span class="label">DATA IS STORED ON THIS PC ONLY</span>
+        <span class="label">Data is stored on this PC only</span>
     </div>
 
 </div>
@@ -564,7 +564,7 @@
         </span>
         <span class="chrome-spacer"></span>
         <span class="stat">
-            <span class="label">SELECTED</span>
+            <span class="label">Selected</span>
             <span class="stat-value" id="sc-count">0</span>
         </span>
     </div>
@@ -581,7 +581,7 @@
     <div class="sc-list" id="sc-list"></div>
 
     <div class="detail-foot">
-        <span class="label">SPACE TO SELECT · ESC BACK</span>
+        <span class="label">Space to select · Esc back</span>
         <span class="chrome-spacer"></span>
         <button class="btn" id="sc-none" type="button">Clear</button>
         <button class="btn btn-primary" id="sc-add" type="button" disabled>Add</button>
@@ -605,7 +605,7 @@
         </span>
         <span class="chrome-spacer"></span>
         <span class="stat">
-            <span class="label">LIMITED</span>
+            <span class="label">Limited</span>
             <span class="stat-value" id="x-count">0</span>
         </span>
     </div>
@@ -613,11 +613,11 @@
     <div class="detail-grid extend-grid">
 
         <section class="card" id="x-form">
-            <span class="label">APP</span>
+            <span class="label">App</span>
             <select class="field" id="x-app"></select>
             <span class="field-label" id="x-usage"></span>
 
-            <span class="label" style="margin-top: 4px;">EXTRA TIME</span>
+            <span class="label" style="margin-top: 4px;">Extra time</span>
             <div class="x-minutes" id="x-minutes"></div>
 
             <span class="label" style="margin-top: 4px;">PIN</span>
@@ -627,14 +627,14 @@
         </section>
 
         <section class="card" id="x-empty" hidden>
-            <span class="label">NOTHING TO EXTEND</span>
+            <span class="label">Nothing to extend</span>
             <span class="field-label" id="x-empty-text">No app has a daily limit set.</span>
         </section>
 
     </div>
 
     <div class="detail-foot">
-        <span class="label">ESC BACK</span>
+        <span class="label">Esc back</span>
         <span class="chrome-spacer"></span>
         <button class="btn btn-primary" id="x-grant" type="button">Grant</button>
     </div>

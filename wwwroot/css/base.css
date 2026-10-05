@@ -1,112 +1,187 @@
 /* ==========================================================
-   CHRONOS — design tokens
-   A time-tracking instrument. Near-black glass base, one warm
-   brass accent for "focus", teal for active/positive, rose for
-   AFK/attention, violet as a category-variety accent.
+   FASTAPP DASHBOARD -- base
+   The app shell and the shared primitives (buttons, fields, segmented
+   controls, pills). Design tokens live in tokens.css.
+
+   Clean and quiet: a cool grey canvas, white cards on thin
+   borders, Inter throughout, and one blue accent. Colour is
+   spent on data -- focus is blue, AFK is rose, music is violet
+   -- never on chrome. Light and dark are both designed; with no
+   stored choice the page follows Windows.
+
    ========================================================== */
 
 @import url("tokens.css");
 
+/* ---------- Reset & document ---------- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* Form controls do not inherit type from their parent, so any button or input
-   that never set a family fell back to the browser default — Arial at
-   13.3333px. Mostly invisible on icon buttons, but the drawers' close "✕" was
-   genuinely rendering in Arial. Rules that set their own family (.segmented
-   button, .btn) are more specific and still win. */
-button, input, select, textarea { font-family: inherit; font-size: inherit; }
+/* Form controls do not inherit type by default (Arial 13.33px). */
+button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 
-html, body {
-    height: 100%;
-}
+html, body { height: 100%; }
 
 body {
     background: var(--bg);
-    background-image:
-        radial-gradient(ellipse 900px 500px at 15% -10%, var(--wash-brass), transparent 60%),
-        radial-gradient(ellipse 700px 500px at 100% 10%, rgba(139, 124, 255, 0.06), transparent 60%);
     color: var(--text);
     font-family: var(--font-body);
-    /* The ramp needs a root. Without this, body took the UA default of 16px and
-       anything added without its own rule inherited a size that is not a step
-       on the scale -- which is how the drift started. */
     font-size: var(--fs-body);
+    line-height: 1.45;
     -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
     overflow: hidden;
 }
 
-h1, h2, h3, .num-display {
-    font-family: var(--font-display);
-    letter-spacing: -0.01em;
+h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; }
+
+/* Kept as a hook: dates and timestamps use it. Inter's tabular figures are
+   enough for alignment, so it no longer switches to a second face. */
+.mono { font-variant-numeric: tabular-nums; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); background-clip: content-box; border: 3px solid transparent; }
+
+/* ---------- App shell: sidebar | (top bar over content) ---------- */
+.app-shell { display: flex; height: 100vh; }
+.app-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* ---------- Sidebar ----------
+   Geometry lives in these tokens, because two things collapse the rail -- an
+   explicit choice and a window too narrow for labels -- and duplicating the
+   rules for each is how the two drift. --rail-collapsed carries the answer to
+   JS (railIsCollapsed in app.js). */
+:root {
+    --rail-w: 244px;
+    --rail-pad: 12px;
+    --rail-item-pad: 12px;
+    --rail-label: inline;
+    --rail-chevron: none;
+    --rail-collapsed: 0;
+}
+:root[data-rail="collapsed"] {
+    --rail-w: 68px;
+    --rail-item-pad: 0px;
+    --rail-label: none;
+    --rail-chevron: rotate(180deg);
+    --rail-collapsed: 1;
+}
+@media (max-width: 1040px) {
+    :root:not([data-rail]) {
+        --rail-w: 68px;
+        --rail-item-pad: 0px;
+        --rail-label: none;
+        --rail-chevron: rotate(180deg);
+        --rail-collapsed: 1;
+    }
 }
 
-.mono { font-family: var(--font-mono); }
-
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 4px; }
-
-/* ---------- App shell ---------- */
-.app-shell {
+.rail {
+    width: var(--rail-w);
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    gap: 2px;
+    padding: 14px var(--rail-pad);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+    transition: width 0.18s ease;
+    z-index: 20;
 }
+
+.rail-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 40px;
+    margin: 0 0 14px;
+    padding: 0 6px;
+    white-space: nowrap;
+}
+.rail-brand .tb-mark-logo { width: 28px; height: 28px; flex-shrink: 0; }
+.rail-brand-name {
+    display: var(--rail-label);
+    font-size: var(--fs-strong);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+:root[data-rail="collapsed"] .rail-brand { justify-content: center; padding: 0; }
+@media (max-width: 1040px) {
+    :root:not([data-rail]) .rail-brand { justify-content: center; padding: 0; }
+}
+
+/* A real <button>: the rail is the primary navigation. */
+.rail-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 11px;
+    width: 100%;
+    height: 38px;
+    padding: 0 var(--rail-item-pad);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-dim);
+    font-size: var(--fs-body);
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+:root[data-rail="collapsed"] .rail-item { justify-content: center; }
+@media (max-width: 1040px) {
+    :root:not([data-rail]) .rail-item { justify-content: center; }
+}
+.rail-item span.label-text { white-space: nowrap; display: var(--rail-label); }
+.rail-item svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 1.8; }
+
+.rail-item:hover:not(.active) { background: var(--surface-2); color: var(--text); }
+.rail-item.active { background: var(--wash-accent); color: var(--accent); font-weight: 600; }
+
+.rail-toggle { margin-top: auto; color: var(--text-faint); }
+.rail-toggle svg { transition: transform 0.18s ease; transform: var(--rail-chevron); }
 
 /* ---------- Top bar ---------- */
 .topbar {
     display: flex;
     align-items: center;
-    /* Tighter, and no left padding: the mark owns the first 72px so it lines up
-       with the rail beneath it -- the icons hold that line whether the rail is
-       collapsed or expanded -- and the reference packs the metrics close
-       together rather than spreading them across the bar. */
     gap: 22px;
-    padding: 10px 24px 10px 0;
-    background: rgba(16, 18, 25, 0.7);
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    border-bottom: 1px solid var(--panel-border-soft);
+    min-height: 60px;
+    padding: 0 28px;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    z-index: 30;
+    z-index: 15;
 }
 
-/* The brand mark, aligned to the icon column below it -- which sits in the
-   same place in both rail states, so this needs no collapsed variant. */
-.tb-mark {
-    width: 72px;
-    margin-right: -10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-.tb-mark-logo {
-    display: block;
-    width: 20px;
-    height: 20px;
-}
+/* The wordmark moved into the sidebar; these classes are kept because the
+   logo SVG still carries tb-mark-logo. */
+.tb-mark { display: contents; }
 
-.tb-wordmark {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: var(--fs-strong);
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-/* "Tracking" is a status line, not a title: quiet, and the same size as the
-   other secondary text in the bar. */
 .tb-status {
     display: flex;
     align-items: center;
-    gap: 9px;
-    font-family: var(--font-body);
-    font-weight: 400;
+    gap: 8px;
+    padding: 5px 12px 5px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
     font-size: var(--fs-small);
+    font-weight: 500;
     color: var(--text-dim);
-    letter-spacing: 0;
     flex-shrink: 0;
 }
 
@@ -114,272 +189,72 @@ h1, h2, h3, .num-display {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--teal);
+    background: var(--good);
     animation: pulse-dot 2.6s ease-in-out infinite;
     flex-shrink: 0;
 }
+.status-dot.offline { background: var(--afk); box-shadow: 0 0 8px var(--afk); animation: none; }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-.status-dot.offline {
-    background: var(--rose);
-    box-shadow: 0 0 8px var(--rose);
-    animation: none;
-}
+.tb-divider { width: 1px; height: 26px; background: var(--border); margin: 0 2px; }
 
-@keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.35; }
-}
+.tb-clock { display: flex; flex-direction: column; line-height: 1.2; white-space: nowrap; }
+.tb-time { font-size: var(--fs-strong); font-weight: 600; letter-spacing: -0.01em; }
+.tb-date { font-size: var(--fs-caption); color: var(--text-faint); }
 
-/* The design separates top-bar groups with space rather than rules. Kept in the
-   markup (it is a layout hook the JS does not touch) but drawn as a gap. */
-.tb-divider {
-    width: 0;
-    height: 24px;
-    background: none;
-    margin: 0 8px;
-}
-
-.tb-clock {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.15;
-    white-space: nowrap;
-}
-
-.tb-time {
-    font-family: var(--font-mono);
-    font-size: var(--fs-strong);
-    font-weight: 600;
-    letter-spacing: 0.03em;
-}
-
-.tb-date {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    color: var(--text-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.tb-metric {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* nowrap on both: below ~1200px the flex row squeezed these until the label
-   broke over two lines and "2h 55m" split into "2h" above "55m", which grew the
-   whole bar by a third and made the most persistently visible number in the
-   product briefly unreadable. */
-.tb-metric-label {
-    font-size: var(--fs-micro);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-faint);
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.tb-metric-value {
-    font-family: var(--font-mono);
-    font-size: var(--fs-strong);
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-/* Rather than let all three compress, drop the least useful one first.
-   All-Time Focus moves imperceptibly minute to minute, so losing it costs
-   almost nothing; Focus Today and Most Used are the reasons to glance up. */
-/* Lowered: the rail went from 208px to 72px, so the top bar has 136px more room
-   than when these were chosen and was dropping metrics that now fit. */
-/* The reference fits mark, status, clock and all three metrics at 766px, so
-   these only take effect below that. */
-@media (max-width: 740px) {
-    .topbar { gap: 16px; }
-    .tb-metric.alltime { display: none; }
-}
-@media (max-width: 600px) {
-    .tb-metric.mostused { display: none; }
-}
-
-.tb-metric.focus .tb-metric-value { color: var(--brass); }
-.tb-metric.alltime .tb-metric-value { color: var(--text-dim); }
-.tb-metric.mostused .tb-metric-value { color: var(--text); }
+.tb-metric { display: flex; align-items: center; gap: 10px; }
+.tb-metric-label { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 500; white-space: nowrap; }
+.tb-metric-value { font-size: var(--fs-strong); font-weight: 600; white-space: nowrap; letter-spacing: -0.01em; }
+.tb-metric.focus .tb-metric-value { color: var(--accent); }
+.tb-metric.alltime .tb-metric-value { color: var(--text); }
 .tb-metric.mostused { cursor: pointer; }
-.tb-metric.mostused:hover .tb-metric-value { text-decoration: underline; }
-
+.tb-metric.mostused:hover .tb-metric-value { color: var(--accent); }
 .tb-spacer { flex: 1; }
 
+/* Drop the least useful metric first when the bar runs out of room. */
+@media (max-width: 1100px) { .tb-metric.alltime { display: none; } }
+@media (max-width: 860px) { .tb-clock { display: none; } .tb-metric.mostused { display: none; } }
+@media (max-width: 640px) { .topbar { padding: 0 16px; gap: 12px; } }
+
 .tb-gear {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
     border: none;
     background: none;
-    color: var(--text-faint);
+    color: var(--text-dim);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.12s, color 0.12s;
     flex-shrink: 0;
 }
+.tb-gear:hover { color: var(--text); background: var(--surface-2); }
+.tb-gear svg { width: 18px; height: 18px; }
 
-.tb-gear:hover {
-    color: var(--text);
-    background: var(--panel);
-}
+/* The topbar's Focus-today mini ring. */
+.chrono-ring-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+.chrono-ring-wrap svg { transform: rotate(-90deg); }
+.chrono-track { fill: none; stroke: var(--surface-3); }
+.chrono-arc { fill: none; stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+.chrono-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; }
+.chrono-mini { width: 32px; height: 32px; }
 
-.tb-gear svg { width: 17px; height: 17px; }
-
-/* ---------- Body: rail + main ---------- */
-.body-row {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-}
-
-/* Labelled by default, collapsible to icons. The collapsed state is the whole
-   point of the redesign's rail -- 72px instead of 208px, no border down the
-   page -- but naming the views outright is worth the width to most people, so
-   it is the default and the preference is remembered.
-
-   The geometry lives in these six custom properties rather than in the rules,
-   because two separate things collapse the rail -- an explicit choice, and a
-   window too narrow to afford the labels -- and duplicating the whole block
-   for each is how the two drift apart. The rules below read the tokens; the
-   two triggers only reset them.
-
-   Expanded is the token default, so the state the markup ships in is the
-   state it renders in if the script never runs. */
-:root {
-    /* 188px: the widest label, "All Applications", needs 181px including both
-       paddings. Measured rather than guessed, so the rail is 20px narrower
-       than the labelled one this replaces. */
-    --rail-w: 188px;
-    --rail-pad: 12px;
-    --rail-gap: 3px;
-    --rail-item-w: 100%;
-    --rail-item-pad: 14px;
-    --rail-item-radius: var(--radius-pill);
-    --rail-label: inline;
-    --rail-chevron: none;
-}
-
-.rail {
-    width: var(--rail-w);
-    flex-shrink: 0;
-    padding: 14px var(--rail-pad);
-    border-right: none;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--rail-gap);
-    overflow: hidden;
-    transition: width 0.18s ease, padding 0.18s ease;
-}
-
-/* A real <button>, not a div — the rail is the primary navigation and was
-   previously unreachable by keyboard entirely. It has no interactive
-   descendants, so a button is valid here; the row/card elements elsewhere
-   keep role="button" instead because they contain their own controls. */
-.rail-item {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 13px;
-    padding: 0 var(--rail-item-pad);
-    border-radius: var(--rail-item-radius);
-    color: var(--text-dim);
-    font-size: var(--fs-body);
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s, width 0.18s ease, padding 0.18s ease;
-    border-left: none;
-    /* button reset */
-    width: var(--rail-item-w);
-    height: 44px;
-    background: none;
-    border-top: none;
-    border-right: none;
-    border-bottom: none;
-    font-family: inherit;
-    text-align: left;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.rail-item span.label-text { white-space: nowrap; display: var(--rail-label); }
-.rail-item svg { width: 19px; height: 19px; flex-shrink: 0; opacity: 0.85; }
-
-/* The toggle sits at the foot of the rail, away from the six views so it never
-   reads as a seventh one. */
-.rail-toggle { margin-top: auto; color: var(--text-faint); }
-.rail-toggle svg { transition: transform 0.18s ease; transform: var(--rail-chevron); }
-
-.rail-item:hover:not(.active) {
-    background: var(--panel);
-    color: var(--text);
-}
-
-.rail-item.active {
-    background: var(--wash-brass);
-    color: var(--brass);
-    border-left-color: var(--brass);
-}
-
-.rail-item.active svg { opacity: 1; }
-
-/* ---------- Collapsed rail ---------- */
-/* Icon-only. Neither state centres anything: the two paddings are swapped
-   (12/14 expanded, 14/12 collapsed) so they sum to 26px either way and the
-   icons sit on the same line in both. That matters mid-transition -- centring
-   the icons when collapsed would fling them to the middle of a rail that is
-   still 188px wide, and they would slide back as it narrowed. */
-:root[data-rail="collapsed"] {
-    --rail-w: 72px;
-    --rail-pad: 14px;
-    --rail-gap: 6px;
-    --rail-item-w: 44px;
-    --rail-item-pad: 12px;
-    --rail-item-radius: 50%;
-    --rail-label: none;
-    --rail-chevron: rotate(180deg);
-}
-
-/* Below 1040px the labels cost more than they are worth: every other
-   breakpoint in these stylesheets was measured against a 72px rail, so an
-   expanded one silently takes 116px off the width they were tuned for. This
-   only applies when the reader has expressed no preference -- an explicit
-   choice is stamped either "expanded" or "collapsed", and both beat this. */
-@media (max-width: 1040px) {
-    :root:not([data-rail]) {
-        --rail-w: 72px;
-        --rail-pad: 14px;
-        --rail-gap: 6px;
-        --rail-item-w: 44px;
-        --rail-item-pad: 12px;
-        --rail-item-radius: 50%;
-        --rail-label: none;
-        --rail-chevron: rotate(180deg);
-    }
-}
-
+/* ---------- Main ---------- */
 .main {
     flex: 1;
     min-width: 0;
     overflow-y: auto;
-    padding: 28px 36px 60px;
+    padding: 28px 32px 64px;
     position: relative;
 }
+@media (max-width: 900px) { .main { padding: 20px 16px 48px; } }
 
-.view { display: none; }
-.view.active { display: block; animation: view-in 0.18s ease; }
-
-@keyframes view-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+/* A comfortable measure on very wide windows without stranding content. */
+.view { display: none; max-width: 1280px; margin: 0 auto; }
+.view.active { display: block; animation: view-in 0.16s ease; }
+@keyframes view-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 .view-head {
     display: flex;
@@ -389,97 +264,82 @@ h1, h2, h3, .num-display {
     gap: 16px;
     margin-bottom: 24px;
 }
+.view-title { font-size: var(--fs-view); font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; }
+.view-sub { font-size: var(--fs-body); color: var(--text-faint); margin-top: 4px; }
 
-.view-title {
-    font-size: var(--fs-view);
-    font-weight: 700;
-}
-
-.view-sub {
-    font-size: var(--fs-body);
-    color: var(--text-faint);
-    margin-top: 4px;
-}
-
-/* ---------- Glass panel primitive ---------- */
-.glass {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-}
-
+/* ---------- Surfaces ---------- */
 .card {
-    background: var(--panel);
-    border: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
     padding: 20px;
 }
+.glass { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 
 .card-label {
-    /* Mono, because these sit beside figures and the wide tracking the design
-       uses only holds together on a monospaced face. */
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    text-transform: uppercase;
-    letter-spacing: 0.17em;
-    color: var(--text-faint);
-    font-weight: 700;
+    font-size: var(--fs-small);
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: 0;
 }
 
-/* ---------- Segmented control (timestamp selector) ---------- */
+/* ---------- Segmented control ----------
+   A track with a raised thumb: the selected option is a white chip, not an
+   accent fill -- fill is reserved for the primary action on a screen. */
 .segmented {
     display: inline-flex;
-    background: var(--panel);
-    border: none;
-    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
     padding: 3px;
     gap: 2px;
 }
-
 .segmented button {
     background: transparent;
     border: none;
     outline: none;
     cursor: pointer;
-    padding: 7px 16px;
-    border-radius: var(--radius-pill);
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-faint);
-    transition: all 0.15s;
+    padding: 6px 14px;
+    border-radius: 7px;
+    font-size: var(--fs-small);
+    font-weight: 500;
+    color: var(--text-dim);
+    white-space: nowrap;
+    transition: color 0.12s, background 0.12s;
 }
-
-.segmented button:hover:not(.active) { color: var(--text-dim); }
-
+.segmented button:hover:not(.active) { color: var(--text); }
 .segmented button.active {
-    background: var(--brass-fill);
-    color: var(--ink-on-fill);
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.10), 0 0 0 1px var(--border);
+}
+:root[data-theme="dark"] .segmented button.active { background: var(--surface-3); box-shadow: 0 0 0 1px var(--border-strong); }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .segmented button.active { background: var(--surface-3); box-shadow: 0 0 0 1px var(--border-strong); }
 }
 
 /* ---------- Inputs ---------- */
 .field {
-    background: var(--panel);
-    border: 1px solid transparent;
-    border-radius: var(--radius-pill);
-    padding: 9px 16px;
+    height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 0 12px;
     color: var(--text);
     font-size: var(--fs-body);
-    font-family: var(--font-body);
     outline: none;
-    transition: border-color 0.15s;
+    transition: border-color 0.12s, box-shadow 0.12s;
 }
-
-.field:focus { border-color: var(--brass-dim); }
+.field::placeholder { color: var(--text-faint); }
+.field:hover { border-color: var(--text-faint); }
+.field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--wash-accent-strong); }
 
 select.field {
     -webkit-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239C9FAE' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat;
     background-position: right 10px center;
     background-size: 14px;
@@ -487,315 +347,188 @@ select.field {
     cursor: pointer;
 }
 
+/* ---------- Buttons ---------- */
 .btn {
-    padding: 9px 20px;
-    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    line-height: 34px; /* centres text when the class sits on an <a> with display:block */
+    padding: 0 16px;
+    border-radius: var(--radius-sm);
     font-size: var(--fs-small);
-    font-weight: 700;
-    font-family: var(--font-body);
+    font-weight: 600;
     cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.15s;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--shadow-sm);
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
+.btn:hover { background: var(--surface-2); }
 
-.btn-brass {
-    background: var(--brass-fill);
-    color: var(--ink-on-fill);
-}
+/* Primary. The class keeps its old name so no markup has to change. */
+.btn-brass { background: var(--accent-fill); color: var(--ink-on-fill); border-color: transparent; box-shadow: var(--shadow-sm); }
+.btn-brass:hover { background: var(--accent-hover); }
 
-.btn-brass:hover { filter: brightness(1.08); }
+.btn-ghost { background: transparent; color: var(--text-dim); border-color: transparent; box-shadow: none; }
+.btn-ghost:hover { background: var(--surface-2); color: var(--text); }
 
-.btn-ghost {
-    background: var(--panel);
-    color: var(--text-dim);
-}
-
-.btn-ghost:hover { color: var(--text); background: var(--bg-raised); }
-
-/* ---------- Trend pill ---------- */
+/* ---------- Pills ---------- */
 .trend-pill {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-family: var(--font-mono);
     font-size: var(--fs-caption);
     font-weight: 600;
-    padding: 3px 9px;
-    border-radius: 20px;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
     cursor: default;
 }
+.trend-up { background: var(--wash-good); color: var(--good); }
+.trend-down { background: var(--wash-afk); color: var(--afk); }
+.trend-flat { background: var(--surface-2); color: var(--text-faint); }
+.trend-new { background: var(--wash-accent); color: var(--accent); }
 
-.trend-up { background: var(--wash-teal); color: var(--teal); }
-.trend-down { background: var(--wash-rose); color: var(--rose); }
-
-/* App Detail's comparison rows are the one place where all four trends describe
-   a single app's own usage going up or down. Using an app less is not a failure
-   -- for a browser or a game it is arguably the opposite -- so a column of rose
-   arrows read as a verdict the tracker has not earned. The arrows still carry
-   the direction; only the good/bad colouring is dropped, which keeps red
-   meaningful for the things that do warrant attention, like passing a limit. */
+/* Using an app less is not a failure, so App Detail's comparison arrows keep
+   their direction but drop the good/bad colour. */
 .dd-compare-row .trend-up,
-.dd-compare-row .trend-down {
-    background: rgba(127, 132, 148, 0.14);
-    color: var(--text-dim);
-}
-.trend-flat { background: rgba(156, 159, 174, 0.1); color: var(--text-faint); }
-.trend-new { background: var(--wash-brass); color: var(--brass); }
+.dd-compare-row .trend-down { background: var(--surface-3); color: var(--text-dim); }
 
-/* ---------- Tooltip (custom, fixed-position) ---------- */
+/* ---------- Tooltip ---------- */
 .tooltip-box {
     position: fixed;
-    background: #1A1D28;
-    border: 1px solid var(--panel-border);
-    padding: 9px 12px;
-    border-radius: 8px;
-    font-family: var(--font-mono);
+    background: var(--chart-tooltip-bg);
+    color: var(--chart-tooltip-text);
+    padding: 8px 11px;
+    border-radius: var(--radius-sm);
     font-size: var(--fs-caption);
     line-height: 1.5;
-    color: var(--text);
     pointer-events: none;
     z-index: 999;
     display: none;
     white-space: pre-line;
-    box-shadow: 0 12px 30px var(--scrim);
-    max-width: 240px;
+    box-shadow: var(--shadow-md);
+    max-width: 260px;
 }
 
-/* ---------- Empty state ---------- */
+/* ---------- States ---------- */
 .empty-state {
     text-align: center;
     padding: 48px 16px;
     color: var(--text-faint);
-    font-weight: 600;
     font-size: var(--fs-body);
-    background: var(--panel);
-    border: 1px dashed var(--panel-border);
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
     border-radius: var(--radius);
 }
 
-/* Shared loading skeleton. Shown on first load only, never on poll refreshes. */
 .skeleton-list { display: flex; flex-direction: column; gap: 8px; }
 .skeleton-row {
     height: 44px;
     border-radius: var(--radius-sm);
-    background: linear-gradient(90deg, var(--panel) 0%, var(--bg-raised) 50%, var(--panel) 100%);
+    background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
     background-size: 200% 100%;
     animation: skeleton-sweep 1.4s ease-in-out infinite;
 }
-@keyframes skeleton-sweep {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-/* Respect a reduced-motion preference: keep the placeholder, drop the sweep. */
+@keyframes skeleton-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) {
     .skeleton-row { animation: none; }
-    /* Collapsing the rail slides 116px of layout and reflows every chart on
-       the page with it -- the largest movement in the dashboard, and the one
-       most worth dropping here. The rail still collapses, it just arrives. */
-    .rail, .rail-item, .rail-toggle svg { transition: none; }
+    .rail, .rail-toggle svg { transition: none; }
+    .view.active { animation: none; }
 }
 
-/* First-run explainer. Brass rather than the warning tone of .stale-banner —
-   nothing is wrong here, the app is simply new. */
 .first-run {
     padding: 18px 20px;
     margin-bottom: 22px;
-    border-radius: var(--radius-sm);
-    background: var(--wash-brass);
-    border: 1px solid var(--brass-dim);
+    border-radius: var(--radius);
+    background: var(--wash-accent);
+    border: 1px solid var(--wash-accent-strong);
 }
-.first-run-title {
-    font-family: var(--font-display);
-    font-size: var(--fs-strong);
-    font-weight: 700;
-    color: var(--brass);
-    margin-bottom: 8px;
-}
-.first-run-body {
-    margin: 0 0 8px;
-    font-size: var(--fs-body);
-    line-height: 1.6;
-    color: var(--text-dim);
-    max-width: 68ch;
-}
+.first-run-title { font-size: var(--fs-strong); font-weight: 650; color: var(--accent); margin-bottom: 8px; }
+.first-run-body { margin: 0 0 8px; font-size: var(--fs-body); line-height: 1.6; color: var(--text-dim); max-width: 68ch; }
 .first-run-body:last-child { margin-bottom: 0; }
 
-/* A button that reads as a link — keeps keyboard/screen-reader semantics
-   correct for something that performs an action rather than navigating. */
-.link-button {
-    background: none;
-    border: none;
-    padding: 0;
-    font: inherit;
-    color: var(--brass);
-    text-decoration: underline;
-    cursor: pointer;
-}
+.link-button { background: none; border: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
 
-/* Overview date stepper. Sits beside the scope toggle and borrows its shape so
-   the two read as one control group rather than two unrelated widgets. */
-/* margin-left: auto -- .view-head is space-between with three children, so the
-   controls floated in the middle with dead space between them and Customise. */
-.ov-controls { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; margin-left: auto; }
-
-.date-stepper {
-    display: flex;
-    align-items: stretch;
-    border: none;
-    border-radius: var(--radius-pill);
-    overflow: hidden;
-    background: var(--panel);
-}
-.date-stepper button {
-    background: none;
-    border: none;
-    color: var(--text-dim);
-    font-family: var(--font-body);
-    font-size: var(--fs-body);
-    font-weight: 600;
-    padding: 7px 12px;
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s;
-}
-.date-stepper button + button { border-left: none; }
-.date-stepper button:hover:not(:disabled) { background: var(--panel); color: var(--text); }
-.date-stepper button:disabled { opacity: 0.35; cursor: default; }
-#ov-date-prev, #ov-date-next { font-size: var(--fs-stat); line-height: 1; padding: 6px 12px; }
-
-/* Stale-data banner. Sits at the top of the content area rather than in the
-   top bar, because the top bar already carries a small status dot that is easy
-   to miss — this is the case where the numbers below it are wrong, so it has to
-   be unmissable without being alarming enough to hide the data itself. */
 .stale-banner {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
     margin-bottom: 20px;
-    border-radius: var(--radius-sm);
-    background: var(--wash-rose-soft);
-    border: 1px solid var(--rose-dim, rgba(255, 107, 107, 0.35));
+    border-radius: var(--radius);
+    background: var(--wash-afk);
+    border: 1px solid color-mix(in srgb, var(--afk) 30%, transparent);
     color: var(--text);
     font-size: var(--fs-body);
-    font-weight: 600;
+    font-weight: 500;
 }
-.stale-banner svg { width: 17px; height: 17px; color: var(--rose); flex-shrink: 0; }
+.stale-banner svg { width: 18px; height: 18px; color: var(--afk); flex-shrink: 0; }
 .stale-banner-text { flex: 1; }
 
-/* ---------- Keyboard focus ----------------------------------------------
-   The dashboard previously had exactly one :focus rule in the entire
-   stylesheet, so even the controls that WERE reachable gave no sign of it.
-   :focus-visible rather than :focus, so the ring appears for keyboard and
-   assistive navigation without drawing a box around every mouse click.
-   Applied broadly on purpose — anything focusable should say so. */
-:focus-visible {
-    outline: 2px solid var(--brass);
-    outline-offset: 2px;
-    border-radius: var(--radius-sm);
+.error-state {
+    text-align: center;
+    padding: 40px 20px;
+    background: var(--surface);
+    border: 1px solid color-mix(in srgb, var(--afk) 35%, var(--border));
+    border-radius: var(--radius);
 }
-/* Rows and cards sit flush against their neighbours, so an outward ring gets
-   clipped by the next element; inset it slightly for those. */
-.lb-row:focus-visible,
-.full-lb-row:focus-visible,
-.activity-row:focus-visible,
-.period-card:focus-visible,
-.allapps-card:focus-visible,
-.cat-legend-item:focus-visible {
-    outline-offset: -2px;
-}
-/* Timeline segments can be a fraction of a percent wide, where a 2px ring on
-   each side would swamp the element itself. */
-.timeline-seg:focus-visible,
-.cat-bar-seg:focus-visible {
-    outline-offset: 1px;
-    outline-width: 2px;
-}
+.error-state-title { font-weight: 650; font-size: var(--fs-strong); margin-bottom: 6px; }
+.error-state-detail { color: var(--text-faint); font-size: var(--fs-small); max-width: 46ch; margin: 0 auto 16px; line-height: 1.55; }
 
-/* Skip link — first tab stop, lets keyboard users jump the rail. */
+/* ---------- Overview date stepper ---------- */
+.ov-controls { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; margin-left: auto; }
+.date-stepper {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-2);
+    padding: 3px;
+    gap: 2px;
+}
+.date-stepper button {
+    background: none;
+    border: none;
+    border-radius: 7px;
+    color: var(--text-dim);
+    font-size: var(--fs-small);
+    font-weight: 500;
+    padding: 6px 11px;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+.date-stepper button:hover:not(:disabled) { background: var(--surface); color: var(--text); }
+.date-stepper button:disabled { opacity: 0.4; cursor: default; }
+#ov-date-prev, #ov-date-next { font-size: var(--fs-stat); line-height: 1; padding: 4px 11px; }
+
+/* ---------- Focus, skip link ---------- */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm); }
+.lb-row:focus-visible, .full-lb-row:focus-visible, .activity-row:focus-visible,
+.period-card:focus-visible, .allapps-card:focus-visible, .cat-legend-item:focus-visible { outline-offset: -2px; }
+.timeline-seg:focus-visible, .cat-bar-seg:focus-visible { outline-offset: 1px; }
+
 .skip-link {
     position: absolute;
     left: -9999px;
     top: 0;
     z-index: 200;
-    background: var(--brass-fill);
+    background: var(--accent-fill);
     color: var(--ink-on-fill);
     padding: 10px 18px;
-    font-weight: 700;
+    font-weight: 600;
     font-size: var(--fs-body);
     border-radius: 0 0 var(--radius-sm) 0;
 }
 .skip-link:focus { left: 0; }
 
-/* Failure, as distinct from "nothing here yet". An empty state is a normal
-   outcome; this one means something went wrong and the data on screen may be
-   incomplete, so it reads as a problem (solid border, warning tone) and always
-   offers a way out rather than leaving the user stuck. */
-.error-state {
-    text-align: center;
-    padding: 40px 20px;
-    background: var(--panel);
-    border: 1px solid var(--rose-dim, var(--panel-border));
-    border-radius: var(--radius);
-}
-.error-state-title {
-    color: var(--text);
-    font-weight: 700;
-    font-size: var(--fs-strong);
-    margin-bottom: 6px;
-}
-.error-state-detail {
-    color: var(--text-faint);
-    font-size: var(--fs-small);
-    max-width: 46ch;
-    margin: 0 auto 16px;
-    line-height: 1.55;
-}
-
-/* ---------- App name link (used everywhere an app is referenced) ---------- */
-.app-link {
-    cursor: pointer;
-    color: inherit;
-    transition: color 0.12s;
-}
-
-.app-link:hover { color: var(--brass); }
-
-/* ---------- Category link (used everywhere a category label is shown) ---------- */
-.cat-link {
-    cursor: pointer;
-    transition: color 0.12s, filter 0.12s;
-}
-
-.cat-link:hover { color: var(--brass); }
-.cat-bar-seg.cat-link:hover { filter: brightness(1.25); }
-
-/* ---------- Chronometer ring (signature element) ---------- */
-.chrono-ring-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.chrono-ring-wrap svg { transform: rotate(-90deg); }
-
-.chrono-track { fill: none; stroke: var(--panel-border); }
-.chrono-arc { fill: none; stroke: var(--brass); stroke-linecap: round; filter: drop-shadow(0 0 6px var(--brass-glow)); transition: stroke-dashoffset 0.6s ease; }
-
-.chrono-center {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-/* Mini ring used in top bar */
-.chrono-mini { width: 30px; height: 30px; }
-
-/* ---------- Responsive ---------- */
-@media (max-width: 900px) {
-    .main { padding: 20px; }
-}
+/* ---------- Links ---------- */
+.app-link { cursor: pointer; color: inherit; transition: color 0.12s; }
+.app-link:hover { color: var(--accent); }
+.cat-link { cursor: pointer; transition: color 0.12s, filter 0.12s; }
+.cat-link:hover { color: var(--accent); }
+.cat-bar-seg.cat-link:hover { filter: brightness(1.1); }

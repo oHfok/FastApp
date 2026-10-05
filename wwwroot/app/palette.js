@@ -79,11 +79,11 @@ function score(name, q) {
 /* Which facets this machine actually has anything in. A setup that only uses
    hotkeys should never be offered a STARTUP filter that returns nothing. */
 const FACETS = [
-    { id: 'all', label: 'ALL', match: () => true },
-    { id: 'hotkeys', label: 'HOTKEYS', match: a => !!a.hotkey },
-    { id: 'startup', label: 'STARTUP', match: a => a.autoStart },
-    { id: 'limited', label: 'LIMITED', match: a => a.limitMinutes > 0 },
-    { id: 'actions', label: 'ACTIONS', match: a => a.isAction }
+    { id: 'all', label: 'All', match: () => true },
+    { id: 'hotkeys', label: 'Hotkeys', match: a => !!a.hotkey },
+    { id: 'startup', label: 'Startup', match: a => a.autoStart },
+    { id: 'limited', label: 'Limited', match: a => a.limitMinutes > 0 },
+    { id: 'actions', label: 'Actions', match: a => a.isAction }
 ];
 
 let facet = 'all';
@@ -162,25 +162,25 @@ function render() {
         // not carry a STARTUP or LIMIT heading over four permanently empty
         // cells just because some app elsewhere in the list has one.
         let index = 0;
-        index = appendGroup(query ? 'APPS' : 'YOUR APPS', programs, index, activeColumns(programs));
-        index = appendGroup('ACTIONS', actions, index, activeColumns(actions));
-        index = appendGroup('YOU USE THESE, BUT HAVE NOT ADDED THEM', trackable, index, null);
-        appendGroup('COMMANDS', commands, index, null);
+        index = appendGroup(query ? 'Apps' : 'Your apps', programs, index, activeColumns(programs));
+        index = appendGroup('Actions', actions, index, activeColumns(actions));
+        index = appendGroup('You use these, but have not added them', trackable, index, null);
+        appendGroup('Commands', commands, index, null);
     }
 
     renderCommandBar();
     fitWindow();
 
     els.count.textContent = query ? `${all.length} result${all.length === 1 ? '' : 's'}` : '';
-    // Actions are not apps, and counting them as such made "6 APPS" out of four
+    // Actions are not apps, and counting them as such made "6 apps" out of four
     // programs and two macros.
     const programCount = state.apps.filter(a => !a.isAction).length;
     const actionCount = state.apps.length - programCount;
     const hotkeyCount = state.apps.filter(a => a.hotkey).length;
     els.counts.textContent = [
-        `${programCount} APPS`,
-        actionCount ? `${actionCount} ACTIONS` : null,
-        `${hotkeyCount} HOTKEYS`
+        `${programCount} apps`,
+        actionCount ? `${actionCount} actions` : null,
+        `${hotkeyCount} hotkeys`
     ].filter(Boolean).join(' · ');
 
     // Reordering only means anything on the unfiltered, untyped list, where the
@@ -197,10 +197,10 @@ function render() {
 
     const current = all[active];
     els.enterVerb.textContent =
-        !current ? 'LAUNCH'
-        : current.kind === 'command' ? 'RUN'
-        : current.kind === 'trackable' ? 'ADD'
-        : current.item.running ? 'FOCUS' : 'LAUNCH';
+        !current ? 'Launch'
+        : current.kind === 'command' ? 'Run'
+        : current.kind === 'trackable' ? 'Add'
+        : current.item.running ? 'Focus' : 'Launch';
 }
 
 /// The commands, as one row of chips under the list. Still reachable by typing;
@@ -433,7 +433,7 @@ function renderCommandBar() {
 /// is being recorded, so it now says which.
 function renderStatus() {
     const paused = state.tracking === false;
-    els.statusText.textContent = (state.trackingText || (paused ? 'Paused' : 'Tracking')).toUpperCase();
+    els.statusText.textContent = state.trackingText || (paused ? 'Paused' : 'Tracking');
     els.statusDot.classList.toggle('paused', paused);
 }
 
@@ -488,11 +488,11 @@ function renderAttention() {
     if (attention.startupConflict) {
         strip('warn', ICON_WARN,
             attention.startupConflictText || 'Startup is registered to a different copy of FastApp.',
-            'FIX', () => send('settings-command', { id: 'fix-startup' }));
+            'Fix', () => send('settings-command', { id: 'fix-startup' }));
     }
     if (attention.updateReady) {
         strip('info', ICON_UPDATE, 'A new version of FastApp is ready to install.',
-            'RESTART', () => send('settings-command', { id: 'apply-update' }));
+            'Restart', () => send('settings-command', { id: 'apply-update' }));
     }
 }
 
@@ -579,10 +579,10 @@ function columnHeader(label, columns) {
         head.appendChild(cell);
     };
 
-    if (columns.hotkey) column('col-hotkey', 'HOTKEY');
-    if (columns.startup) column('col-startup', 'STARTUP');
-    if (columns.limit) column('col-limit', 'LIMIT');
-    if (columns.today) column('row-figure', 'TODAY');
+    if (columns.hotkey) column('col-hotkey', 'Hotkey');
+    if (columns.startup) column('col-startup', 'Startup');
+    if (columns.limit) column('col-limit', 'Limit');
+    if (columns.today) column('row-figure', 'Today');
 
     const end = document.createElement('span');
     end.className = 'head-end';
@@ -677,7 +677,7 @@ function buildRow(row, index, columns) {
         // adds it.
         add.tabIndex = -1;
         add.className = 'row-add';
-        add.textContent = 'ADD';
+        add.textContent = 'Add';
         add.setAttribute('aria-label', `Add ${candidate.name} to FastApp`);
         add.addEventListener('click', event => {
             event.stopPropagation();
@@ -1366,7 +1366,7 @@ function renderSettings(v) {
     const devBuild = /dev/i.test(v.version || '');
 
     st.whatsNewLabel.textContent =
-        v.hasWhatsNew && v.version ? `WHAT'S NEW IN ${v.version}` : "WHAT'S NEW";
+        v.hasWhatsNew && v.version ? `What's new in ${v.version}` : "What's new";
     renderNotes(v.hasWhatsNew ? (v.whatsNew || '') : '');
     st.whatsNewEmpty.hidden = v.hasWhatsNew;
     st.whatsNewEmpty.textContent = devBuild
@@ -1700,7 +1700,7 @@ function renderManage() {
     const withHotkeys = state.apps.filter(a => a.hotkey).length;
     const withAuto = state.apps.filter(a => a.autoStart).length;
     mCounts.textContent =
-        `${state.apps.length} ENTRIES · ${withHotkeys} HOTKEYS · ${withAuto} AUTO-START`;
+        `${state.apps.length} entries · ${withHotkeys} hotkeys · ${withAuto} auto-start`;
 
     const active = mList.querySelector('.m-row.active');
     if (active) active.scrollIntoView({ block: 'nearest' });
@@ -1811,7 +1811,7 @@ function renderDetail(app) {
     const running = !!app.running;
     d.run.className = 'run-btn' + (running ? ' running' : '');
     d.runIcon.innerHTML = runIcon(running, 15);
-    d.runLabel.textContent = app.isAction ? 'RUN' : running ? 'FOCUS' : 'LAUNCH';
+    d.runLabel.textContent = app.isAction ? 'Run' : running ? 'Focus' : 'Launch';
     d.run.title = `${d.runLabel.textContent[0]}${d.runLabel.textContent.slice(1).toLowerCase()} ${app.displayName}`;
     d.run.setAttribute('aria-label', d.run.title);
 
@@ -2339,8 +2339,8 @@ if (bridge) {
         state = { ...state, ...message.state };
         if (view === 'manage') renderManage();
         els.focus.textContent = state.focusToday || '—';
-        els.statusText.textContent = state.tracking ? 'TRACKING' : 'PAUSED';
-        els.statusDot.style.background = state.tracking ? 'var(--teal)' : 'var(--text-faint)';
+        els.statusText.textContent = state.tracking ? 'Tracking' : 'Paused';
+        els.statusDot.style.background = state.tracking ? 'var(--good)' : 'var(--warn)';
         render();
     });
 }

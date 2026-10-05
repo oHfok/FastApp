@@ -27,17 +27,17 @@ namespace FastApp
         // is a colour the theme cannot reach.
         private static bool Light => Services.SystemTheme.IsLight;
 
-        private static Brush Brass => Light ? LightBrass : DarkBrass;
+        private static Brush Accent => Light ? LightAccent : DarkAccent;
         private static Brush Violet => Light ? LightViolet : DarkViolet;
         private static Brush Rose => Light ? LightRose : DarkRose;
 
-        private static readonly Brush DarkBrass = Frozen("#E8A33D");
-        private static readonly Brush DarkViolet = Frozen("#8B7CFF");
-        private static readonly Brush DarkRose = Frozen("#FF6B6B");
+        private static readonly Brush DarkAccent = Frozen("#7F97FF");
+        private static readonly Brush DarkViolet = Frozen("#BE9BFF");
+        private static readonly Brush DarkRose = Frozen("#FF7A82");
 
-        private static readonly Brush LightBrass = Frozen("#8A6321");
-        private static readonly Brush LightViolet = Frozen("#5B4FC7");
-        private static readonly Brush LightRose = Frozen("#A32929");
+        private static readonly Brush LightAccent = Frozen("#3D5AFE");
+        private static readonly Brush LightViolet = Frozen("#8B3FD9");
+        private static readonly Brush LightRose = Frozen("#D92D3A");
 
         private readonly DispatcherTimer _hideTimer;
 
@@ -73,7 +73,7 @@ namespace FastApp
             switch (kind)
             {
                 case OsdKind.Action:
-                    KindText.Text = "ACTION";
+                    KindText.Text = "Action";
                     MarkerText.Text = "●";
                     MarkerText.Foreground = Violet;
                     break;
@@ -82,14 +82,14 @@ namespace FastApp
                     // rather than a second phrase for one behaviour. The old
                     // "blocked in game" could also be read as FastApp being the
                     // thing that was blocked.
-                    KindText.Text = "NOT PASSED THROUGH";
+                    KindText.Text = "Not passed through";
                     MarkerText.Text = "✕";
                     MarkerText.Foreground = Rose;
                     break;
                 default:
-                    KindText.Text = "HOTKEY";
+                    KindText.Text = "Hotkey";
                     MarkerText.Text = "●";
-                    MarkerText.Foreground = Brass;
+                    MarkerText.Foreground = Accent;
                     break;
             }
 

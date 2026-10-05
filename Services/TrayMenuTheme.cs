@@ -17,9 +17,9 @@ namespace FastApp.Services
     /// because it is how you reach everything without the hotkey.
     ///
     /// The colours are the token values transcribed, not re-picked: GDI+ cannot
-    /// lay an alpha wash over an unknown backdrop the way CSS can, so the two
-    /// translucent tokens are composited against --panel-solid here and written
-    /// as the flat results. The rest are copied exactly.
+    /// lay an alpha wash over an unknown backdrop the way CSS can, so the
+    /// translucent tokens are composited against --surface here and written as
+    /// the flat results. The rest are copied exactly from wwwroot/css/tokens.css.
     /// </summary>
     internal static class TrayMenuTheme
     {
@@ -30,33 +30,32 @@ namespace FastApp.Services
         // with.
         private static bool Light => SystemTheme.IsLight;
 
-        // --panel-solid, the menu surface
+        // --surface, the menu surface
         private static Color Surface => Light
             ? Color.FromArgb(0xFF, 0xFF, 0xFF)
-            : Color.FromArgb(0x14, 0x16, 0x1F);
-        // --panel-border rgba(255,255,255,0.08) over that surface
+            : Color.FromArgb(0x14, 0x17, 0x1E);
+        // --border: rgba(255,255,255,0.08) over that surface on dark
         private static Color Border => Light
-            ? Color.FromArgb(0xE0, 0xDE, 0xD9)
-            : Color.FromArgb(0x2B, 0x2D, 0x35);
-        // --panel-border-soft, for the dividers
+            ? Color.FromArgb(0xE4, 0xE7, 0xEC)
+            : Color.FromArgb(0x27, 0x2A, 0x30);
+        // A shade softer than --border, for the dividers
         private static Color Divider => Light
-            ? Color.FromArgb(0xEC, 0xEA, 0xE6)
-            : Color.FromArgb(0x23, 0x25, 0x2C);
+            ? Color.FromArgb(0xEE, 0xF0, 0xF3)
+            : Color.FromArgb(0x22, 0x25, 0x2C);
         // --text and --text-faint
         private static Color Text => Light
-            ? Color.FromArgb(0x16, 0x17, 0x1D)
-            : Color.FromArgb(0xF3, 0xF1, 0xEA);
+            ? Color.FromArgb(0x10, 0x18, 0x28)
+            : Color.FromArgb(0xEE, 0xF0, 0xF4);
         private static Color TextFaint => Light
-            ? Color.FromArgb(0x63, 0x68, 0x7A)
-            : Color.FromArgb(0x7C, 0x81, 0x94);
-        // --brass, and --brass at 0.12 over the surface: focus, and only focus
-        // Darker on light, where the vivid brass measures 2:1 as text.
-        private static Color Brass => Light
-            ? Color.FromArgb(0x8A, 0x63, 0x21)
-            : Color.FromArgb(0xE8, 0xA3, 0x3D);
-        private static Color BrassWash => Light
-            ? Color.FromArgb(0xF7, 0xEC, 0xDC)
-            : Color.FromArgb(0x2D, 0x27, 0x23);
+            ? Color.FromArgb(0x66, 0x70, 0x85)
+            : Color.FromArgb(0x87, 0x91, 0xA3);
+        // --accent, and --wash-accent over the surface: focus, and only focus
+        private static Color Accent => Light
+            ? Color.FromArgb(0x3D, 0x5A, 0xFE)
+            : Color.FromArgb(0x7F, 0x97, 0xFF);
+        private static Color AccentWash => Light
+            ? Color.FromArgb(0xEC, 0xEF, 0xFF)
+            : Color.FromArgb(0x21, 0x26, 0x39);
 
         private const int DwmwaWindowCornerPreference = 33;
         private const int DwmwcpRound = 2;
@@ -155,7 +154,7 @@ namespace FastApp.Services
             new ToolStripMenuItem(text)
             {
                 Enabled = false,
-                Font = new Font("Consolas", 8.25f, FontStyle.Regular, GraphicsUnit.Point),
+                Font = new Font("Segoe UI", 8.75f, FontStyle.Regular, GraphicsUnit.Point),
                 Padding = new Padding(6, 3, 6, 3)
             };
 
@@ -180,11 +179,10 @@ namespace FastApp.Services
 
         private static GraphicsPath Pill(Rectangle bounds)
         {
-            // --radius-pill: anything interactive is fully rounded. At menu-row
-            // height that makes the radius simply half the height, unless the
-            // menu is somehow narrower than a row is tall, in which case the
-            // arcs would overlap and draw a bow tie.
-            int radius = Math.Max(2, Math.Min(bounds.Height, bounds.Width) / 2);
+            // --radius-sm: a row is a rounded rectangle, not a pill. Capped at
+            // half the height so a menu narrower than a row is tall cannot make
+            // the arcs overlap and draw a bow tie.
+            int radius = Math.Max(2, Math.Min(8, Math.Min(bounds.Height, bounds.Width) / 2));
             int d = radius * 2;
             var path = new GraphicsPath();
             path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
@@ -204,13 +202,13 @@ namespace FastApp.Services
         {
             public override Color ToolStripDropDownBackground => Surface;
             public override Color MenuBorder => Border;
-            public override Color MenuItemBorder => BrassWash;
-            public override Color MenuItemSelected => BrassWash;
-            public override Color MenuItemSelectedGradientBegin => BrassWash;
-            public override Color MenuItemSelectedGradientEnd => BrassWash;
-            public override Color MenuItemPressedGradientBegin => BrassWash;
-            public override Color MenuItemPressedGradientMiddle => BrassWash;
-            public override Color MenuItemPressedGradientEnd => BrassWash;
+            public override Color MenuItemBorder => AccentWash;
+            public override Color MenuItemSelected => AccentWash;
+            public override Color MenuItemSelectedGradientBegin => AccentWash;
+            public override Color MenuItemSelectedGradientEnd => AccentWash;
+            public override Color MenuItemPressedGradientBegin => AccentWash;
+            public override Color MenuItemPressedGradientMiddle => AccentWash;
+            public override Color MenuItemPressedGradientEnd => AccentWash;
             public override Color ImageMarginGradientBegin => Surface;
             public override Color ImageMarginGradientMiddle => Surface;
             public override Color ImageMarginGradientEnd => Surface;
@@ -263,7 +261,7 @@ namespace FastApp.Services
                 var previous = e.Graphics.SmoothingMode;
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 using (var path = Pill(bounds))
-                using (var brush = new SolidBrush(BrassWash))
+                using (var brush = new SolidBrush(AccentWash))
                 {
                     e.Graphics.FillPath(brush, path);
                 }
@@ -279,10 +277,10 @@ namespace FastApp.Services
                 // with the thing you came to click.
                 bool shortcut = (e.TextFormat & TextFormatFlags.Right) != 0;
 
-                // Brass means focus and nothing else, which here is the row
+                // The accent means focus and nothing else, which here is the row
                 // under the pointer.
                 e.TextColor = shortcut || !e.Item.Enabled ? TextFaint
-                            : e.Item.Selected ? Brass
+                            : e.Item.Selected ? Accent
                             : Text;
                 base.OnRenderItemText(e);
             }
