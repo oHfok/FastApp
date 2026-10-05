@@ -141,7 +141,7 @@ const RAIL_KEY = 'fastapp-rail';
    measured width it is not mid-transition when we read it. */
 function railIsCollapsed() {
     return getComputedStyle(document.documentElement)
-        .getPropertyValue('--rail-w').trim() === '72px';
+        .getPropertyValue('--rail-collapsed').trim() === '1';
 }
 
 /* Point the toggle's chevrons, and its accessible name, at what pressing it
@@ -287,9 +287,11 @@ function cacheOverviewPayload(data) {
 // rose/violet this app already uses for those ideas everywhere else. A
 // gradient between the two when both are true, rather than picking one.
 const TB_GLOW_STALE_MS = 45000; // ~1.5 poll cycles -- fully dark by the next one if it's late
-const TB_GLOW_BLUE   = { fresh: [125, 211, 252], stale: [20, 30, 45] };
-const TB_GLOW_AFK    = { fresh: [255, 107, 107], stale: [70, 25, 25] };  // matches --rose
-const TB_GLOW_MUSIC  = { fresh: [139, 124, 255], stale: [40, 34, 80] };  // matches --violet
+// "Stale" fades toward a mid slate rather than toward black, so an ageing glow
+// still reads on a light page as well as a dark one.
+const TB_GLOW_BLUE   = { fresh: [56, 189, 248], stale: [120, 134, 156] };
+const TB_GLOW_AFK    = { fresh: [244, 87, 98],  stale: [160, 124, 130] };  // the AFK rose
+const TB_GLOW_MUSIC  = { fresh: [167, 119, 245], stale: [136, 126, 164] }; // the music violet
 
 let tbLastUpdateAt = Date.now();
 let tbLiveAfk = false;

@@ -71,9 +71,9 @@ function renderRhythmChart(rhythm, live) {
             datasets: [
                 // Teal for work, violet for play -- the same pairing the legend and
                 // the classification list use. Brass is reserved for focus.
-                // borderRadius 100 rounds to the cap, matching every other bar.
-                { label: 'Work', data: work, backgroundColor: theme.teal, borderRadius: 100, borderSkipped: false, stack: 's' },
-                { label: 'Play', data: play, backgroundColor: theme.violet, borderRadius: 100, borderSkipped: false, stack: 's' }
+                // A small radius, not a pill: stacked segments read as one bar.
+                { label: 'Work', data: work, backgroundColor: theme.teal, borderRadius: 4, borderSkipped: false, stack: 's', maxBarThickness: 26 },
+                { label: 'Play', data: play, backgroundColor: theme.violet, borderRadius: 4, borderSkipped: false, stack: 's', maxBarThickness: 26 }
             ]
         },
         options: {
@@ -81,7 +81,7 @@ function renderRhythmChart(rhythm, live) {
             maintainAspectRatio: false,
             scales: {
                 x: { stacked: true, grid: { display: false }, border: { display: false },
-                     ticks: { color: theme.tick, font: { family: theme.fontMono, size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+                     ticks: { color: theme.tick, font: { family: theme.fontBody, size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
                 // No y-axis. The shape of the day is the point, not the minute
                 // value of any one hour -- and the axis furniture (ticks, grid,
                 // border) was most of the ink in a chart made of eight bars.
@@ -123,7 +123,7 @@ function renderFatigueChart(fatigue, live) {
     const theme = getChartTheme();
     const labels = fatigue.map(f => f.day ?? '');
     const values = fatigue.map(f => Math.round(f.avgMinutes ?? 0));
-    const barColors = values.map(v => v === Math.max(...values, 0) && v > 0 ? theme.brass : theme.teal);
+    const barColors = values.map(v => v === Math.max(...values, 0) && v > 0 ? theme.brass : theme.muted);
 
     if (live && fatigueChartInstance) {
         const c = fatigueChartInstance;
@@ -139,18 +139,18 @@ function renderFatigueChart(fatigue, live) {
         type: 'bar',
         data: {
             labels,
-            // The heaviest day is brass; the rest teal. The design marks the peak
+            // The heaviest day is the accent; the rest are muted. The design marks the peak
             // rather than leaving the reader to compare seven similar bars.
             datasets: [{ label: 'Avg session length', data: values,
                          backgroundColor: barColors,
-                         borderRadius: 100, borderSkipped: false, maxBarThickness: 52 }]
+                         borderRadius: 6, borderSkipped: false, maxBarThickness: 40 }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
                 x: { grid: { display: false }, border: { display: false },
-                     ticks: { color: theme.tick, font: { family: theme.fontMono, size: 11 } } },
+                     ticks: { color: theme.tick, font: { family: theme.fontBody, size: 12 } } },
                 // Same reasoning as the rhythm chart: seven bars compared against
                 // each other need no axis, and the caption underneath says what
                 // the height means.

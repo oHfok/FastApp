@@ -1,1843 +1,111 @@
 /* ==========================================================
-   COMPONENTS
-   ========================================== */
+   FASTAPP DASHBOARD -- components
+   Everything view-specific. Tokens and primitives live in
+   base.css; class names are unchanged from earlier versions
+   because the JS builds markup with them.
+   ========================================================== */
 
-/* ---------- Overview: comparison stat blocks ---------- */
-/* Focus is what you actually came here to see — it gets the full-width hero
-   row and the eye-catching treatment. AFK and Uptime share an even 50/50
-   row underneath, AFK at normal weight (still worth knowing) and Uptime
-   shrunk down to a quiet footnote — it's the least useful of the three on
-   its own (it's just focus + AFK), so it doesn't need equal billing. */
-.stat-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 20px;
-    align-items: start; /* let stat-minor genuinely look smaller instead of stretching to match its row-mate's height */
-}
-@media (max-width: 560px) {
-    .stat-row { grid-template-columns: 1fr; }
-}
-
-.stat-block {
-    padding: 16px 18px;
-}
-
-.stat-block .card-label { margin-bottom: 8px; }
-
+/* ---------------------------------------------------------
+   Shared: stat blocks, bars, rows
+   --------------------------------------------------------- */
+.stat-block { padding: 0; }
+.stat-block .card-label { margin-bottom: 6px; }
 .stat-value {
-    font-family: var(--font-mono);
     font-size: var(--fs-display);
-    font-weight: 600;
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
 }
-
 .stat-block .trend-pill { margin-top: 8px; }
 
-.stat-block.stat-hero {
-    padding: 24px 26px;
-    margin-bottom: 12px;
-    background: linear-gradient(135deg, var(--brass-glow), transparent 65%);
-    border-color: var(--brass-dim);
-}
-.stat-block.stat-hero .card-label {
-    font-size: var(--fs-body);
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    /* --brass-dim (#8A6321) measures 3.64:1 here and fails as text. This is a
-       lighter brass at 5.39:1, still clearly quieter than the value's full
-       --brass (9.12:1) so the label/value hierarchy on the hero card holds.
-       Set here rather than on --brass-dim itself, which is mostly used for
-       borders and hover states where the contrast floor does not apply. */
-    color: #B07C29;
-}
-.stat-block.stat-hero .stat-value { font-size: var(--fs-hero); line-height: 1.05; }
-.hero-share { margin-top: 16px; max-width: 460px; }
-.hero-share .compare-bar { height: 8px; }
-.hero-share .compare-bar-caption { margin-top: 7px; }
-
-.stat-block.stat-minor {
-    padding: 12px 16px;
-}
-.stat-block.stat-minor .card-label { font-size: var(--fs-caption); margin-bottom: 4px; }
-.stat-block.stat-minor .stat-value { font-size: var(--fs-stat); font-weight: 600; color: var(--text-dim); }
-.stat-block.stat-minor .trend-pill { margin-top: 4px; font-size: var(--fs-micro); }
-
-/* ---------- Category progress bar ---------- */
+/* Category share bar: one rounded bar, segments separated by a surface-coloured
+   gap rather than a border. */
 .cat-bar {
     display: flex;
+    gap: 2px;
     width: 100%;
-    height: 18px;
-    border-radius: var(--radius-sm);
+    height: 12px;
+    border-radius: var(--radius-pill);
     overflow: hidden;
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
+    background: var(--surface-2);
 }
+.cat-bar-seg { height: 100%; transition: width 0.4s ease; min-width: 2px; }
+.cat-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; }
+.cat-legend-item { display: flex; align-items: center; gap: 7px; font-size: var(--fs-small); font-weight: 500; color: var(--text-dim); }
+.cat-swatch { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-.cat-bar-seg {
-    height: 100%;
-    transition: width 0.4s ease;
-    border-right: 1px solid var(--shadow-soft);
-}
-
-.cat-legend {
+.compare-bar {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px 20px;
-    margin-top: 14px;
+    gap: 2px;
+    width: 100%;
+    height: 8px;
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    background: var(--surface-2);
 }
+.compare-bar-seg { height: 100%; transition: width 0.25s; }
+.compare-bar-caption { font-size: var(--fs-caption); color: var(--text-faint); margin-top: 8px; }
 
-.cat-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: var(--fs-small);
-    font-weight: 600;
-    color: var(--text-dim);
-}
-
-.cat-swatch {
-    width: 9px;
-    height: 9px;
-    border-radius: 2px;
-    flex-shrink: 0;
-}
-
-/* ---------- Leaderboard rows ---------- */
-.lb-list { display: flex; flex-direction: column; gap: 10px; }
-
-/* Window Activity (period detail, Days) can run to dozens of titled sessions
-   in a single day — cap it and let it scroll internally rather than pushing
-   the rest of the page down. */
-.window-activity-list { max-height: 420px; overflow-y: auto; padding-right: 4px; }
-
-.wa-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 14px;
-}
-.wa-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.wa-controls .field { width: 220px; }
-
-@media (max-width: 640px) {
-    .wa-controls { width: 100%; }
-    .wa-controls .field { flex: 1; width: auto; }
-}
-
+/* List rows (Overview top lists, drawer app lists) */
+.lb-list { display: flex; flex-direction: column; gap: 2px; margin: 0 -8px; }
 .lb-row {
     display: grid;
-    /* rank | name | proportional bar | time. The design gives the bar its own
-       column instead of washing it behind the text: a tinted fill under a row
-       has to stay faint enough to read through, which makes the comparison it
-       exists for hard to see. A bar in its own track can be solid. */
-    /* Name fixed, BAR flexible -- the design's proportion. Built the other way
-       round the bar was pinned to 88px in a row hundreds of pixels wide, so a
-       100% bar looked like a stub and the comparison was unreadable. */
     grid-template-columns: 22px minmax(84px, 168px) minmax(0, 1fr) auto;
     align-items: center;
     gap: 14px;
-    padding: 11px 18px;
-    border-radius: var(--radius-pill);
-    background: var(--panel);
-    border: none;
+    padding: 9px 8px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.12s;
 }
-
-.lb-row:hover { background: var(--panel); }
-
-.lb-bar {
-    height: 6px;
-    border-radius: var(--radius-pill);
-    background: var(--bg-raised);
-    overflow: hidden;
-}
-.lb-bar-fill {
-    height: 100%;
-    border-radius: var(--radius-pill);
-    background: var(--brass);
-    transition: width 0.35s ease;
-}
-
-/* The bar is a column now, so the row no longer needs a proportional wash. */
+.lb-row:hover { background: var(--surface-2); }
+.lb-row:hover .lb-name { color: var(--accent); }
+.lb-bar { height: 6px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.lb-row:hover .lb-bar { background: var(--surface-3); }
+.lb-bar-fill { height: 100%; border-radius: var(--radius-pill); background: var(--accent); transition: width 0.35s ease; }
+.lb-rank { font-size: var(--fs-small); font-weight: 600; color: var(--text-faint); text-align: center; }
+.lb-name { font-weight: 550; font-size: var(--fs-body); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.12s; }
+.lb-time { font-size: var(--fs-body); font-weight: 550; color: var(--text-dim); }
 @media (max-width: 620px) {
     .lb-row { grid-template-columns: 22px minmax(0, 1fr) auto; }
     .lb-bar { display: none; }
 }
 
-
-
-.lb-rank {
-    font-family: var(--font-mono);
-    font-size: var(--fs-small);
-    font-weight: 700;
-    color: var(--text-faint);
-    text-align: center;
-}
-
-.lb-name { font-weight: 600; font-size: var(--fs-body); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lb-time { font-family: var(--font-mono); font-size: var(--fs-body); font-weight: 600; color: var(--text-dim); }
+.window-activity-list { max-height: 420px; overflow-y: auto; padding-right: 4px; }
+.wa-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.wa-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wa-controls .field { width: 220px; }
+@media (max-width: 640px) { .wa-controls { width: 100%; } .wa-controls .field { flex: 1; width: auto; } }
 
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-
-@media (max-width: 820px) {
-    .two-col { grid-template-columns: 1fr; }
-}
-
-/* ---------- Full leaderboard tab (spotify-style) ---------- */
-.lb-toolbar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    /* Scope and Rank-by are one decision made twice, so they sit together.
-       space-between shoved them to opposite ends of the toolbar. */
-    gap: 14px;
-    margin-bottom: 20px;
-}
-/* Search is the only thing that belongs on the far side. */
-.lb-toolbar > .lb-search-wrap,
-.lb-toolbar > #lb-search { margin-left: auto; }
-
-.full-lb-header {
-    display: grid;
-    grid-template-columns: 30px 30px 1fr 110px 90px 150px;
-    gap: 18px;
-    padding: 0 20px 12px;
-    font-size: var(--fs-micro);
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--text-faint);
-    font-weight: 700;
-}
-
-.full-lb-header.no-movement,
-.full-lb-row.no-movement { grid-template-columns: 30px 1fr 110px 90px 150px; }
-
-.full-lb-header span:nth-child(1) { text-align: center; }
-.full-lb-header span:nth-child(4),
-.full-lb-header span:nth-child(5) { text-align: right; }
-
-.full-lb-row {
-    display: grid;
-    grid-template-columns: 30px 30px 1fr 110px 90px 150px;
-    align-items: center;
-    gap: 18px;
-    padding: 16px 20px;
-    border-radius: var(--radius-pill);
-    background: var(--panel);
-    border: none;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.full-lb-afk { font-family: var(--font-mono); font-weight: 600; font-size: var(--fs-body); text-align: right; color: var(--rose); }
-
-/* Below this width the six columns stop fitting. The old rule set AFK and the
-   efficiency bar to display:none -- the app still computed both, and a merely
-   narrow window made them unreachable with nothing saying anything had been
-   removed. They now wrap onto a second line inside the same row instead, which
-   the row has the vertical space for. The header still hides (it cannot span
-   two lines), so AFK gains an inline label to replace it. */
-@media (max-width: 1040px) {
-    .full-lb-header { display: none; }
-
-    .full-lb-row { grid-template-columns: 36px 24px 1fr auto; row-gap: 8px; }
-    .full-lb-row > .full-lb-rank,
-    .full-lb-row > .medal        { grid-row: 1; grid-column: 1; }
-    .full-lb-row > .full-lb-trend{ grid-row: 1; grid-column: 2; }
-    .full-lb-row > .full-lb-name-wrap { grid-row: 1; grid-column: 3; }
-    .full-lb-row > .full-lb-time { grid-row: 1; grid-column: 4; }
-    .full-lb-row > .full-lb-afk  { grid-row: 2; grid-column: 3; text-align: left; }
-    .full-lb-row > div:last-child{ grid-row: 2; grid-column: 4; }
-
-    .full-lb-row.no-movement { grid-template-columns: 36px 1fr auto; }
-    .full-lb-row.no-movement > .full-lb-rank,
-    .full-lb-row.no-movement > .medal        { grid-column: 1; }
-    .full-lb-row.no-movement > .full-lb-name-wrap { grid-column: 2; }
-    .full-lb-row.no-movement > .full-lb-time { grid-column: 3; }
-    .full-lb-row.no-movement > .full-lb-afk  { grid-column: 2; }
-    .full-lb-row.no-movement > div:last-child{ grid-column: 3; }
-
-    /* The column header is gone at this width, so the value labels itself. */
-    .full-lb-afk::before {
-        content: "AFK ";
-        color: var(--text-faint);
-        font-weight: 600;
-    }
-}
-
-.full-lb-row:hover { border-color: var(--brass-dim); }
-
-/* Every rank occupies the same 30px circle, medal or not. Before, positions 1-3
-   were 30px medals sitting at the LEFT of a 46px column while 4+ were bare text
-   centred in that same column -- so the numbers never lined up with the medals
-   above them, which is what read as off-centre. */
-.full-lb-rank {
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: var(--fs-small);
-    color: var(--text-faint);
-}
-
-.medal {
-    width: 30px;
-    height: 30px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: var(--fs-small);
-}
-
-/* The numeral used to be near-black on the medal colour, measuring 1.13-1.34:1
-   -- effectively invisible on the three rows meant to draw the eye first. The
-   fills are darkened enough to carry white text while keeping each medal's
-   identity, and the glow is unchanged so they still stand out. */
-.medal-gold { background: linear-gradient(135deg, #E0A63C, #9A6B15); color: var(--ink-on-fill); }
-.medal-silver { background: linear-gradient(135deg, #A8AEBC, #6B7180); color: #14161C; }
-.medal-bronze { background: linear-gradient(135deg, #C07A44, #7E4A24); color: var(--ink-on-fill); }
-
-.full-lb-trend {
-    display: flex;
-    justify-content: center;
-}
-
-.full-lb-name-wrap { display: flex; align-items: center; gap: 14px; min-width: 0; }
-
-.full-lb-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: var(--bg-raised);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: var(--fs-strong);
-    flex-shrink: 0;
-}
-
-.full-lb-name-col { min-width: 0; }
-.full-lb-app-name { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.full-lb-cat { font-size: var(--fs-caption); color: var(--cat-color, var(--text-faint)); font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.full-lb-time { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-strong); text-align: right; color: var(--brass); }
-
-.full-lb-eff-bar {
-    height: 6px;
-    border-radius: 3px;
-    background: var(--bg-raised);
-    overflow: hidden;
-}
-
-.full-lb-eff-fill { height: 100%; border-radius: var(--radius-pill); }
-/* Reads as a sentence rather than a figure now that it states what the bar
-   measures, so it drops the mono face -- mono is ~20% wider per character
-   and the phrase would have wrapped inside the 150px column. */
-.full-lb-eff-label { font-size: var(--fs-micro); color: var(--text-faint); text-align: right; margin-top: 4px; white-space: nowrap; }
-
-/* ---------- Activity heatmaps (Week/Month/Year scopes) ---------- */
-.ov-week-divider { height: 1px; background: var(--panel-border-soft); margin: 24px 0; }
-
-.heat-hours-wrap { display: flex; gap: 10px; }
-
-.heat-day-labels {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    color: var(--text-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 2px 0;
-}
-
-.heat-hours-grid {
-    flex: 1;
-    display: grid;
-    grid-template-columns: repeat(24, minmax(0, 1fr));
-    gap: 3px;
-}
-
-.heat-cell {
-    aspect-ratio: 1;
-    border-radius: 4px;
-    background: var(--bg-raised);
-    border: none;
-    cursor: default;
-    transition: transform 0.1s;
-}
-
-.heat-cell:hover { transform: scale(1.25); z-index: 2; }
-
-.heat-hours-ticks {
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    color: var(--text-faint);
-    margin-top: 8px;
-    padding-left: 34px;
-}
-
-.heat-days-grid {
-    display: grid;
-    grid-auto-flow: column;
-    grid-template-rows: repeat(7, 1fr);
-    gap: 4px;
-    /* Thirty days is five columns of cells. Left-aligned in a full-width
-       section they sat in the corner of a large empty area with the legend
-       stranded at the far right. Centred, the block reads as a deliberate
-       object. Cells are also bigger, since there is room for them. */
-    justify-content: center;
-    grid-auto-columns: 26px;
-    overflow-x: auto;
-    padding-bottom: 6px;
-}
-
-.heat-day-cell {
-    width: 100%;
-    aspect-ratio: 1;
-    border-radius: 5px;
-    background: var(--bg-raised);
-    border: none;
-}
-
-.heat-legend {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    color: var(--text-faint);
-    justify-content: center;
-}
-
-.heat-legend-swatch { width: 10px; height: 10px; border-radius: 3px; }
-
-/* ---------- Insights charts ---------- */
-.chart-wrap { position: relative; height: 260px; }
-.chart-wrap-short { height: 200px; }
-
-/* ---------- Timeline ribbon (Day view only) ---------- */
-.timeline-wrap { padding: 8px 4px; }
-
-/* One grid for the ticks row, the main track row, and every AFK/music lane
-   below it -- a single grid-template-columns computes one column boundary
-   for all of them, so "this segment starts at 34% of the track" means the
-   same pixel x in every row by construction, not by four separate elements
-   happening to agree. The gutter column also gives the sub-lane labels
-   somewhere to sit without stealing width from their own track (see
-   timelineSubRowsHtml for why that stealing was the actual bug). */
-.timeline-grid {
-    display: grid;
-    grid-template-columns: 44px 1fr;
-    align-items: center;
-    row-gap: 6px;
-    column-gap: 10px;
-}
-
-.timeline-gutter { /* empty -- just reserves the label column for the ticks/track rows */ }
-
-.timeline-ticks {
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    color: var(--text-faint);
-    padding: 0 2px 2px;
-}
-
-.timeline-track {
-    position: relative;
-    height: 56px;
-    border-radius: var(--radius-sm);
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
-    overflow: hidden;
-}
-
-.timeline-seg {
-    position: absolute;
-    top: 3px;
-    bottom: 3px;
-    border-radius: 4px;
-    cursor: pointer;
-    border-right: 1px solid var(--shadow-soft);
-    transition: filter 0.12s;
-}
-
-.timeline-seg:hover { filter: brightness(1.3); z-index: 2; }
-
-/* AFK/music lanes: labelled rows under the main track rather than a bare bar
-   crammed along its bottom edge -- the label is what makes a rose or violet
-   sliver legible at a glance instead of a colour the viewer has to learn.
-   Each lane only renders (see timelineSubRowsHtml) when that day actually
-   has something in it, so a normal day doesn't grow two empty lanes.
-   `display: contents` is the load-bearing rule here: the container the
-   caller writes this into (#ov-timeline-subrows etc.) is itself a single
-   cell of the outer .timeline-grid, and without `contents` its label/track
-   children would be laid out INSIDE that one cell rather than becoming grid
-   items in their own right, undoing the whole point of sharing the grid. */
-.timeline-subrows { display: contents; }
-
-.timeline-subrow-label {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    color: var(--text-faint);
-    text-align: right;
-}
-
-.timeline-subrow-track {
-    position: relative;
-    height: 7px;
-    border-radius: 4px;
-    background: var(--bg-raised);
-    overflow: hidden;
-}
-
-.timeline-subrow-seg {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    border-radius: 4px;
-    cursor: default;
-    transition: filter 0.12s;
-}
-.timeline-subrow-seg:hover { filter: brightness(1.2); z-index: 2; }
-
-.timeline-subrow-seg.afk { background: var(--rose); }
-.timeline-subrow-seg.music { background: var(--violet); }
-
-/* Only applied to blocks measured wide enough to hold the whole name (see
-   labelWideTimelineSegments), so there is deliberately no ellipsis here -- a
-   clipped name is worse than no name. pointer-events stays off so the label
-   never sits between the pointer and the block's own tooltip handler. */
-.timeline-seg-label {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--fs-caption);
-    font-weight: 600;
-    pointer-events: none;
-    white-space: nowrap;
-}
-
-/* Ink is picked per block from the colour underneath it -- see
-   labelWideTimelineSegments. The shadow is a halo in the opposite direction from
-   the text, so a block that sits mid-range stays legible either way. */
-.timeline-seg-label.on-dark  { color: #FFFFFF; text-shadow: 0 1px 2px var(--scrim); }
-.timeline-seg-label.on-light { color: #14161C; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.45); }
-
-/* ---------- Weeks & Months tab ---------- */
-.period-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-.period-toggle, .period-sort-toggle { margin-bottom: 0; }
-/* A hairline rather than another pill-shaped control -- Recent/Best/Worst is
-   a sort direction on the same list, not a second filter competing for
-   attention with Days/Weeks/Months/Years. */
-.period-sort-toggle { padding-left: 10px; border-left: 1px solid var(--panel-border); }
-
-.period-list { display: flex; flex-direction: column; gap: 12px; }
-
-.period-card {
-    padding: 15px 18px;
-    border-radius: var(--radius);
-    cursor: pointer;
-}
-
-.period-row {
-    /* A grid, so the three stat columns line up down the list. As a flex row
-       they were sized by their own content, so Total Focus, Most Used and vs
-       Previous started at a different x on every row. */
-    display: grid;
-    grid-template-columns: 30px minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-    align-items: center;
-    gap: 20px;
-}
-
-.period-rank-badge {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: var(--fs-small);
-    color: var(--text-dim);
-    background: var(--bg-raised);
-    border: none;
-    /* A circle, like every other rank marker in the design. */
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    flex-shrink: 0;
-}
-
-.period-rank-badge.rank-1 { color: var(--ink-on-fill); background: var(--brass-fill); }
-
-.period-main { min-width: 0; }
-.period-label { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* overflow/ellipsis matter as much here as on .period-label above. Without them
-   the range ("17.08.2026 → 23.08.2026", ~151px) simply painted outside its box
-   once the flex row squeezed this column below that -- around 1100px it needed
-   151px and was given 81, so 70px of date rendered straight across the Total
-   Focus figure on every row in the list. */
-.period-range {
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Fixed-width columns (not flex) so Total Focus / Most Used / Ranking line up
-   vertically across rows even when one row's text is much longer than another's. */
-.period-stats {
-    /* display: contents -- the row grid places the three stats directly, so
-       they align across every row instead of being packed inside one column. */
-    display: contents;
-}
-.period-stat { min-width: 0; }
-
-.period-stat-label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; white-space: nowrap; }
-.period-stat-value {
-    font-family: var(--font-mono);
-    font-weight: 600;
-    font-size: var(--fs-body);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: block;
-    max-width: 100%;
-}
-
-/* The three stat columns are a fixed 418px that never shrinks, so below roughly
-   1100px they leave the label/date column too little to work with -- ellipsis
-   stops the date painting over them, but "17.08.2026 → 2…" is not much of an
-   improvement. Dropping the stats onto their own full-width line instead gives
-   the date its space back and keeps every value visible, rather than hiding
-   columns the way the Leaderboard currently does at narrow widths. */
-@media (max-width: 1100px) {
-    /* The row is a grid now, so flex-wrap and flex-basis no longer apply.
-       Badge and label take the first line; the three stats fall onto the second,
-       one per column, still aligned with each other down the list. */
-    .period-row {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        row-gap: 14px;
-        column-gap: 16px;
-    }
-    .period-rank-badge { grid-column: 1; grid-row: 1; }
-    .period-main { grid-column: 2 / -1; grid-row: 1; }
-}
-
-/* Daily-activity: week view — a small bar chart. Height (not just color
-   intensity) carries the comparison, so differences between days read
-   instantly instead of requiring a shade-by-shade squint. */
-.week-heat-row {
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    gap: 14px;
-}
-
-.week-heat-day {
-    flex: 1 1 0;
-    max-width: 130px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-}
-
-.week-heat-label {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    color: var(--text-faint);
-    text-transform: uppercase;
-}
-
-.week-heat-bar-track {
-    width: 100%;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-}
-
-.week-heat-bar-fill {
-    width: 100%;
-    border-radius: 8px 8px 3px 3px;
-    background: var(--bg-raised);
-    transition: height 0.3s ease;
-}
-
-.week-heat-value {
-    font-family: var(--font-mono);
-    font-size: var(--fs-small);
-    font-weight: 600;
-    color: var(--text-dim);
-}
-
-/* Daily-activity: month view — a real Mon-Sun calendar grid */
-.month-heat-weekdays,
-.month-heat-grid {
-    display: grid;
-    /* The Daily Activity card spans the full detail-view width -- at the old
-       52px cap a 5-row month left most of that width as dead space either
-       side of a small, lonely grid. 76px still reads as a calendar rather
-       than a wall of tiles, and actually uses the room it's given. */
-    grid-template-columns: repeat(7, minmax(0, 76px));
-    justify-content: center;
-    gap: 6px;
-}
-
-.month-heat-weekdays { margin-bottom: 8px; }
-
-.month-heat-weekdays span {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    color: var(--text-faint);
-    text-transform: uppercase;
-    text-align: center;
-}
-
-.month-heat-cell {
-    width: 100%;
-    aspect-ratio: 1;
-    border-radius: var(--radius-sm);
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
-}
-
-.month-heat-cell.is-empty {
-    background: transparent;
-    border: none;
-}
-
-@media (max-width: 760px) {
-    .period-row { flex-wrap: wrap; }
-    .period-stats { grid-template-columns: repeat(3, 1fr); gap: 14px; width: 100%; padding-left: 56px; }
-    .week-heat-row { flex-wrap: wrap; }
-    .month-heat-weekdays,
-    .month-heat-grid { grid-template-columns: repeat(7, minmax(0, 32px)); }
-}
-
-/* ---------- Period detail subpage ---------- */
-.period-detail-head {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 20px;
-}
-
-.back-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--panel-border);
-    background: var(--panel);
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-
-.back-btn:hover { color: var(--brass); border-color: var(--brass-dim); }
-
-/* Period detail hero: the period being viewed as one ring, the same dial
-   language Overview's own "Today" hero uses (focus arc, AFK arc beneath it,
-   a thin music overlay) -- so "how full is the ring" already means the same
-   thing by the time someone reaches this tab. Self-contained rather than
-   reusing .stat-hero/.hero-dial directly: those carry several Overview-only
-   breakpoint and #view-overview-scoped overrides that don't apply here, and
-   untangling which parts to inherit costs more than writing Periods its own
-   (much smaller) copy of the geometry. */
-.pd-hero {
-    display: flex;
-    align-items: center;
-    gap: 32px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-}
-
-.pd-dial { position: relative; width: 210px; height: 210px; flex-shrink: 0; }
-.pd-dial-svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
-.pd-dial-svg circle { fill: none; stroke-width: 15; }
-.pd-dial-track { stroke: var(--bg-raised); }
-.pd-dial-afk   { stroke: var(--rose-dim); stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
-.pd-dial-focus { stroke: var(--brass);    stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
-.pd-dial-music { stroke: var(--violet); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
-
-.pd-dial-face {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 2px;
-    padding: 0 20px;
-}
-.pd-dial-face .stat-value { font-size: 38px; line-height: 1.05; }
-
-.pd-hero-side { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }
-.pd-hero-stats { display: flex; gap: 32px; flex-wrap: wrap; }
-.pd-stat .stat-value { font-size: var(--fs-stat); font-weight: 600; margin-top: 4px; }
-
-/* Previous/Next/Current used to each get a full card repeating the hero's own
-   layout for a single number nobody was here to study closely -- a strip of
-   compact, clickable chips instead: an outward-pointing arrow, the period's
-   own label, and its total, each one a real link (data-open-period) into
-   that period's own detail rather than a dead reference card. */
-.pd-nav { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
-
-.pd-nav-chip {
-    flex: 1;
-    min-width: 180px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    border-radius: var(--radius);
-    background: var(--panel);
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition: border-color 0.15s, transform 0.15s;
-}
-.pd-nav-chip:hover { border-color: var(--brass-dim); transform: translateY(-2px); }
-.pd-nav-right { flex-direction: row; }
-.pd-nav-arrow { font-size: 16px; color: var(--text-faint); flex-shrink: 0; transition: color 0.15s; }
-.pd-nav-chip:hover .pd-nav-arrow { color: var(--brass); }
-.pd-nav-text { flex: 1; min-width: 0; }
-.pd-nav-label {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-faint);
-}
-.pd-nav-period { font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pd-nav-value { font-family: var(--font-mono); font-weight: 700; color: var(--brass); flex-shrink: 0; }
-.pd-nav-dot { display: inline-block; margin-right: 6px; vertical-align: 1px; }
-
-@media (max-width: 640px) {
-    .pd-hero { flex-direction: column; }
-    .pd-dial { width: 180px; height: 180px; }
-}
-
-/* Focus/AFK share of Uptime, as a bar instead of two more raw-number lines.
-   A flat 6px rectangle with square ends read as an afterthought sitting under
-   a 36px headline number -- a full pill (rounded ends on the TRACK, not just
-   each segment) plus a hairline border reads as a drawn meter instead of a
-   stray strip of color. */
-.compare-bar {
-    display: flex;
-    width: 100%;
-    height: 10px;
-    border-radius: var(--radius-pill);
-    overflow: hidden;
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
-    margin-top: 14px;
-}
-
-.compare-bar-seg { height: 100%; transition: width 0.2s; }
-
-.compare-bar-caption {
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-    margin-top: 8px;
-}
-
-/* ---------- Activity tab (raw chronological session feed) ---------- */
-.activity-day-divider {
-    font-size: var(--fs-micro);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-faint);
-    font-weight: 700;
-    margin: 22px 0 10px;
-}
-
-.activity-day-divider:first-child { margin-top: 0; }
-
-/* Toolbar mirrors the one on All Applications and the Window Activity card, so
-   the three list surfaces are configured the same way. */
-.activity-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-}
-.activity-toolbar .field { width: 280px; }
-.activity-summary {
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-}
-@media (max-width: 640px) {
-    .activity-toolbar .field { flex: 1; width: auto; }
-    .activity-summary { margin-left: 0; }
-}
-
-/* Tightened from 12px/8px: at the old size only 11 rows fitted a screen, for
-   one line of text each. Grouping runs cut the row count; this makes the rows
-   that remain show more of the day at once. */
-.activity-row {
-    display: grid;
-    grid-template-columns: 34px 1fr auto auto;
-    align-items: center;
-    gap: 14px;
-    padding: 10px 18px;
-    margin-bottom: 6px;
-    cursor: pointer;
-    /* A row is a pill, not a card: .card's 20px radius reads as a stack of
-       boxes once there are forty of them down the page. */
-    border-radius: var(--radius-pill);
-    transition: background 0.15s;
-}
-
-/* Name, category and switch count share one line; the window title gets the
-   second. Two lines instead of three. */
-.activity-name-line { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.activity-name-line .activity-app-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.activity-name-line .activity-cat { flex-shrink: 0; }
-
-/* How many focus changes were folded into this stretch. Quiet — it explains the
-   row rather than competing with the app name. */
-.activity-switches {
-    margin-left: 7px;
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    font-weight: 600;
-    color: var(--text-faint);
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
-    border-radius: 4px;
-    padding: 1px 5px;
-}
-.activity-title-more { color: var(--text-faint); font-style: normal; }
-
-.activity-row:hover { border-color: var(--brass-dim); }
-
-.activity-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--bg-raised);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: var(--fs-strong);
-    flex-shrink: 0;
-}
-
-.activity-name-col { min-width: 0; }
-.activity-app-name { font-weight: 700; font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.activity-cat { font-size: var(--fs-caption); color: var(--cat-color, var(--text-faint)); font-weight: 600; margin-top: 1px; }
-.activity-title { font-size: var(--fs-caption); color: var(--text-faint); font-style: italic; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.activity-time-range { font-family: var(--font-mono); font-size: var(--fs-small); color: var(--text-dim); white-space: nowrap; }
-.activity-duration { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-body); color: var(--brass); text-align: right; white-space: nowrap; }
-
-@media (max-width: 640px) {
-    .activity-row { grid-template-columns: 36px 1fr auto; }
-    .activity-time-range { display: none; }
-}
-
-/* ---------- All Apps tab ---------- */
-/* Search, sort, the background-process toggle and the count sit on one line;
-   they wrap together rather than each finding its own row. */
-.allapps-search-row {
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-}
-.allapps-count {
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-}
-
-.allapps-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 12px;
-}
-
-.allapps-card {
-    padding: 16px;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.allapps-card:hover { border-color: var(--brass-dim); transform: translateY(-2px); }
-
-.allapps-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-
-.allapps-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--bg-raised);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: var(--fs-body);
-    flex-shrink: 0;
-}
-
-.allapps-name { font-weight: 700; font-size: var(--fs-body); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.allapps-cat { font-size: var(--fs-micro); color: var(--cat-color, var(--text-faint)); font-weight: 600; margin-top: 1px; }
-
-.allapps-metrics { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: var(--fs-caption); }
-.allapps-metrics .v { display: block; font-size: var(--fs-body); font-weight: 700; margin-top: 2px; }
-
-/* ---------- Drilldown drawer (App Detail Page) ---------- */
-.drawer-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--scrim);
-    z-index: 60;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-}
-
-.drawer-overlay.open { opacity: 1; pointer-events: auto; }
-
-.drawer {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 440px;
-    max-width: 92vw;
-    background: var(--panel-solid);
-    border-left: none;
-    transform: translateX(100%);
-    transition: transform 0.25s ease;
-    z-index: 70;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    padding: 26px;
-}
-
-/* The shadow moves on .open, not the base rule: a box-shadow is painted
-   relative to the (possibly transformed) box regardless of whether that box
-   itself is on screen, so with it on the base rule the closed drawer -- sitting
-   just past the right edge -- still blurred a permanent dark band 60px back
-   into the visible page on every tab, all the time. Scoping it to .open means
-   a closed drawer casts nothing. */
-.drawer.open { transform: translateX(0); box-shadow: -24px 0 60px var(--scrim); }
-
-/* App Detail drawer specifically — enough room for the internal Overview/
-   Limits tabs (Streaks, Period Comparison, etc.) without cramming, while
-   Settings/Category detail stay at the normal .drawer width. */
-.drawer-wide { width: 640px; }
-
-/* ---------- Period Comparison (App Detail drawer, Overview tab) ---------- */
-.dd-compare-list { display: flex; flex-direction: column; gap: 10px; }
-.dd-compare-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--bg-raised);
-    border: none;
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-    transition: border-color 0.15s;
-}
-/* This is one of the drawer's better features and almost nobody found it: the
-   only hint was a tiny chevron in the faint text colour, far from where the eye
-   rests, on a row otherwise indistinguishable from the static stat blocks above
-   it. Now it lifts on hover and the chevron is bigger and brighter. */
-.dd-compare-row:hover {
-    border-color: var(--brass-dim);
-    background: var(--panel);
-}
-.dd-compare-row:hover .dd-compare-chevron { color: var(--brass); }
-.dd-compare-label { flex: 1; font-size: var(--fs-small); color: var(--text-dim); font-weight: 600; }
-.dd-compare-value { font-family: var(--font-mono); font-size: var(--fs-body); font-weight: 700; }
-.dd-compare-chevron {
-    color: var(--text-dim);
-    font-size: var(--fs-body);
-    transition: transform 0.15s, color 0.15s;
-    flex-shrink: 0;
-}
-.dd-compare-row.is-open .dd-compare-chevron { transform: rotate(180deg); }
-
-.dd-compare-chart-wrap {
-    padding: 14px 12px 4px;
-    margin-top: -4px;
-    background: var(--bg-raised);
-    border: none;
-    border-top: none;
-    border-radius: var(--radius);
-}
-.dd-compare-chart-wrap canvas { max-height: 130px; }
-
-/* ---------- Usage Trend (App Detail drawer, Overview tab) ---------- */
-.dd-trend-chart-wrap { height: 140px; margin-bottom: 12px; }
-.dd-trend-numbers {
-    display: flex;
-    gap: 4px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-}
-.dd-trend-cell {
-    flex: 1;
-    /* Wide enough for the longest label these buckets ever produce -- a full
-       Periods-matching day date like "19 August 2026". Rows that overflow
-       the drawer at this width fall back to .dd-trend-numbers' existing
-       horizontal scroll rather than clipping text. */
-    min-width: 82px;
-    text-align: center;
-    padding: 6px 2px;
-    background: var(--bg-raised);
-    border: none;
-    border-radius: var(--radius-sm);
-}
-.dd-trend-cell-label { font-size: var(--fs-micro); color: var(--text-faint); white-space: nowrap; }
-.dd-trend-cell-value { font-family: var(--font-mono); font-size: var(--fs-caption); font-weight: 700; color: var(--text); margin-top: 2px; white-space: nowrap; }
-
-.drawer-close {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 30px;
-    height: 30px;
-    /* The only unstyled control that actually renders text — its ✕ was coming
-       out at the browser's default 13.3333px. The gear and the checkboxes have
-       no text, so they are left alone rather than given a blanket size. */
-    font-size: var(--fs-strong);
-    border-radius: 50%;
-    background: var(--panel);
-    border: none;
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-
-.drawer-close:hover { color: var(--text); }
-
-.dd-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; padding-right: 40px; }
-
-/* Milestone tier ladder — every tier shown at once (not just the one reached)
-   so the drawer actually explains what the tiers are and what it takes to
-   earn each one, not just the current status in isolation. Reached tiers get
-   their medal color; the current tier gets a highlighted ring; anything not
-   reached yet stays dim so the eye goes straight to "where am I". */
-.dd-tier-ladder { display: flex; gap: 8px; }
-.dd-tier-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    padding: 11px 6px;
-    border-radius: var(--radius-sm);
-    background: var(--bg-raised);
-    border: none;
-    opacity: 0.45;
-    transition: opacity 0.2s ease, background 0.2s ease;
-}
-.dd-tier-item.reached { opacity: 1; }
-/* The tier you are on is marked by a brass wash rather than a heavier outline,
-   since nothing else in the design uses border weight to say anything. */
-.dd-tier-item.current { background: var(--wash-brass); }
-.dd-tier-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 2px solid var(--text-faint);
-    background: transparent;
-}
-.dd-tier-item.reached .dd-tier-dot { border-color: transparent; }
-.dd-tier-name {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: var(--fs-small);
-    letter-spacing: 0.02em;
-}
-.dd-tier-req { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-faint); }
-.dd-tier-date { font-size: var(--fs-micro); color: var(--text-faint); }
-
-.dd-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: var(--bg-raised);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 22px;
-    flex-shrink: 0;
-}
-
-.dd-title { font-size: var(--fs-title); font-weight: 700; line-height: 1.2; }
-.dd-rank { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--brass); font-weight: 700; margin-top: 4px; }
-
-/* Each section its own boxed card — was just a label + loose fields with
-   nothing marking where one setting ends and the next begins. Applies to
-   every drawer that uses this class (App detail, Settings, Category detail)
-   so they all read the same way, not just the one that prompted this. */
-.dd-section {
-    margin-bottom: 14px;
-    padding: 18px 20px;
-    background: var(--panel);
-    border: none;
-    border-radius: var(--radius);
-}
-.dd-section-label { font-family: var(--font-mono); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.17em; color: var(--text-faint); font-weight: 700; margin-bottom: 12px; }
-
-.dd-cat-row { display: flex; align-items: center; gap: 10px; }
-
-.dd-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.dd-stat { padding: 12px 14px; }
-.dd-stat-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 700; margin-top: 4px; }
-
-/* Dates ("Aug 16, 2026") are wider than the short numeric values (e.g.
-   "12h 30m") these tiles were sized for — a touch smaller so they don't wrap. */
-.dd-stat-value-date { font-size: var(--fs-body); white-space: nowrap; }
-
-.dd-stat-sub { font-size: var(--fs-micro); color: var(--text-faint); margin-top: 5px; min-height: 12px; }
-
-/* Current streak == longest streak ever — the record is happening right now.
-   Same brass-glow treatment Overview's hero Focus card uses, so it reads as
-   "this number is the one that matters" rather than just another stat tile. */
-.dd-stat.is-personal-best {
-    background: linear-gradient(135deg, var(--brass-glow), transparent 70%);
-    border-color: var(--brass-dim);
-}
-.dd-personal-best-badge {
-    display: inline-block;
-    margin-top: 5px;
-    font-size: var(--fs-micro);
-    font-weight: 800;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--brass);
-}
-
-.dd-actions { display: flex; gap: 10px; margin-top: 4px; }
-
-/* ---------- Daily limit (App Detail drawer) ---------- */
-.dd-limit-bar-wrap { margin-bottom: 14px; }
-.dd-limit-bar { height: 8px; border-radius: var(--radius-pill); overflow: hidden; background: var(--bg-raised); }
-.dd-limit-bar-fill { height: 100%; border-radius: var(--radius-pill); transition: width 0.3s ease, background 0.3s ease; }
-.dd-limit-bar-caption { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); margin-top: 6px; }
-
-.dd-limit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-
-.dd-toggle-label { display: flex; align-items: center; gap: 9px; font-size: var(--fs-small); color: var(--text-dim); cursor: pointer; }
-.dd-toggle-label input[type="checkbox"] { accent-color: var(--brass); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
-
-/* ---------- Theme picker (Settings drawer) ---------- */
-.theme-picker { display: flex; flex-wrap: wrap; gap: 10px; }
-
-.theme-swatch {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    border-radius: var(--radius-sm);
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
-    color: var(--text-dim);
-    font-family: var(--font-body);
-    font-size: var(--fs-body);
-    font-weight: 600;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-.theme-swatch:hover { border-color: var(--brass-dim); }
-.theme-swatch.active { border-color: var(--brass); color: var(--text); background: var(--wash-brass); }
-
-.theme-swatch-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    border: 1px solid var(--lift-strong);
-}
-
-/* ---------- Settings view ---------- */
-.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-
-@media (max-width: 820px) {
-    .settings-grid { grid-template-columns: 1fr; }
-}
-
-.settings-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; padding-right: 4px; }
-
-/* Inside the Settings drawer a capped, scrolling list is right -- the drawer is
-   a fixed-height surface. On the Insights page it is not: the page scrolls too,
-   so the wheel did one of two different things a few pixels apart, and the
-   control that reconfigures the chart above it was the awkward one to reach.
-   On a full page the list just takes the height it needs. */
-.classification-list { max-height: none; overflow-y: visible; padding-right: 0; }
-
-.classification-mins {
-    margin-left: 10px;
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-}
-
-.settings-list-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    border-radius: var(--radius-sm);
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
-    font-size: var(--fs-body);
-    font-weight: 600;
-}
-
-.retention-row { display: flex; gap: 10px; align-items: center; }
-.retention-status { color: var(--teal); font-size: var(--fs-small); font-weight: 600; margin-top: 10px; display: none; }
-
-/* ==========================================================
-   WRAPPED — top bar entry, its 3-card panel, and the story
-   overlay. Kept visually distinct from the rest of the flat,
-   data-table dashboard on purpose: this is a small "event",
-   not another page, matching the approved mockup exactly.
-   ========================================================== */
-.tb-wrapped-wrap { position: relative; }
-
-.tb-wrapped-btn {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 7px 14px 7px 11px;
-    border-radius: var(--radius-pill);
-    border: none;
-    background: var(--wash-brass);
-    color: var(--brass);
-    font-family: var(--font-display);
-    font-size: var(--fs-body);
-    font-weight: 600;
-    cursor: pointer;
-    position: relative;
-    flex-shrink: 0;
-    transition: background 0.15s;
-}
-.tb-wrapped-btn:hover { background: linear-gradient(180deg, var(--wash-brass-strong), var(--wash-brass)); }
-.tb-wrapped-btn svg { width: 15px; height: 15px; }
-.tb-wrapped-ready-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--teal); box-shadow: 0 0 6px var(--teal);
-    position: absolute; top: -2px; right: -2px;
-}
-
-.wrapped-panel {
-    position: absolute;
-    top: calc(100% + 10px);
-    right: 0;
-    width: 320px;
-    border-radius: 14px;
-    border: 1px solid var(--panel-border);
-    background: var(--panel-solid);
-    box-shadow: 0 24px 48px -12px var(--scrim);
-    padding: 16px;
-    z-index: 40;
-}
-.wrapped-panel-title { font-family: var(--font-display); font-size: var(--fs-strong); font-weight: 600; color: var(--text); margin-bottom: 12px; }
-.wrapped-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    border-radius: var(--radius-sm);
-    background: var(--panel);
-    border: 1px solid var(--panel-border-soft);
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-.wrapped-card:hover { background: var(--wash-brass); border-color: var(--brass-dim); }
-.wrapped-card:last-of-type { margin-bottom: 0; }
-.wrapped-card-eyebrow { font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
-.wrapped-card-teaser { font-size: var(--fs-body); color: var(--text); margin-top: 3px; }
-.wrapped-card-teaser strong { color: var(--brass); font-family: var(--font-mono); }
-.wrapped-card-chev { color: var(--text-faint); }
-.wrapped-panel-footer {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--panel-border-soft);
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-    text-align: center;
-}
-
-/* --- Story overlay ---
-   Wrapped is a cinematic full-screen story and stays dark whatever the page
-   is: a year in review is not a form. Rather than special-casing every slide,
-   the overlay redeclares the dark tokens for its own subtree, so every rule
-   inside it keeps resolving the way it was designed. */
-.wrapped-overlay {
-    --bg: #0A0B10;
-    --bg-raised: #101219;
-    --panel: rgba(255, 255, 255, 0.035);
-    --panel-solid: #14161F;
-    --panel-border: rgba(255, 255, 255, 0.08);
-    --panel-border-soft: rgba(255, 255, 255, 0.05);
-    --text: #F3F1EA;
-    --text-dim: #9C9FAE;
-    --text-faint: #7C8194;
-    --brass: #E8A33D;
-    --brass-dim: #8A6321;
-    --teal: #34D3C4;
-    --rose: #FF6B6B;
-    --violet: #8B7CFF;
-    --wash-brass: rgba(232, 163, 61, 0.09);
-    --wash-brass-strong: rgba(232, 163, 61, 0.16);
-    --lift: rgba(255, 255, 255, 0.08);
-    --lift-strong: rgba(255, 255, 255, 0.12);
-
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 6, 9, 0.82);
-    backdrop-filter: blur(6px);
-    z-index: 100;
-    align-items: center;
-    justify-content: center;
-}
-.wrapped-close {
-    position: absolute;
-    top: 20px; right: 24px;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    border: 1px solid var(--panel-border);
-    background: var(--panel);
-    color: var(--text-dim);
-    font-size: var(--fs-title);
-    line-height: 1;
-    cursor: pointer;
-    z-index: 2;
-}
-.wrapped-stage { position: relative; width: 380px; max-width: calc(100vw - 40px); }
-.wrapped-nav-zone {
-    position: absolute; top: 0; bottom: 0; width: 33%; cursor: pointer;
-    display: flex; align-items: center;
-}
-.wrapped-nav-prev { left: 0; justify-content: flex-start; padding-left: 10px; }
-.wrapped-nav-next { right: 0; justify-content: flex-end; padding-right: 10px; }
-
-/* Visible affordance for the hit zones. Faint at rest so it never competes with
-   the slide, brass on hover so the target is unmistakable once the pointer is
-   anywhere near it. */
-.wrapped-chev {
-    font-size: 40px;
-    line-height: 1;
-    color: var(--text-faint);
-    /* 0.75, not lower: the whole point is that the affordance is visible before
-       the pointer finds it. Measured against the overlay backdrop this lands at
-       3.35:1, clearing the 3:1 non-text contrast threshold; 0.45 sat at 1.89:1,
-       which was decorative rather than discoverable. */
-    opacity: 0.75;
-    transition: opacity 0.15s, color 0.15s, transform 0.15s;
-    user-select: none;
-}
-.wrapped-nav-zone:hover .wrapped-chev { opacity: 1; color: var(--brass); }
-.wrapped-nav-prev:hover .wrapped-chev { transform: translateX(-3px); }
-.wrapped-nav-next:hover .wrapped-chev { transform: translateX(3px); }
-
-/* Shown on the first slide only, then faded out for the rest of the story --
-   it answers "is there more?" exactly once and then gets out of the way. */
-.wrapped-hint {
-    position: absolute;
-    left: 50%;
-    bottom: -34px;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    font-size: var(--fs-small);
-    color: var(--text-faint);
-    opacity: 0;
-    transition: opacity 0.4s;
-    pointer-events: none;
-}
-.wrapped-hint.show { opacity: 1; }
-
-@media (prefers-reduced-motion: reduce) {
-    .wrapped-chev, .wrapped-hint { transition: none; }
-    .wrapped-nav-zone:hover .wrapped-chev { transform: none; }
-}
-
-.wrapped-slide {
-    position: relative;
-    aspect-ratio: 9 / 16;
-    max-height: 82vh;
-    margin: 0 auto;
-    border-radius: 22px;
-    border: 1px solid var(--panel-border);
-    background:
-        radial-gradient(circle at 50% 30%, var(--brass-glow) 0%, transparent 55%),
-        linear-gradient(180deg, #0D0E14 0%, #08090D 100%);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    padding: 28px 26px 22px;
-    box-shadow: 0 40px 80px -20px var(--scrim);
-    pointer-events: none; /* the nav zones above handle clicks; content is decorative */
-}
-.wrapped-slide::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(var(--panel) 1px, transparent 1px);
-    background-size: 14px 14px;
-    mask-image: radial-gradient(circle at 50% 35%, black 0%, transparent 70%);
-}
-
-/* #wrapped-slide-body is the plain <div> renderWrappedSlide() injects each
-   slide's HTML into -- without this, it's a normal block element, so every
-   flex:1/justify-content:center on .hero/.bar-row/.ms-list/.rank-list below
-   (all direct children of it) has no effect: those properties only do
-   anything when the PARENT is a flex container. That's why everything sat
-   crammed under the headline instead of centered in the card. */
-.wrapped-slide #wrapped-slide-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-
-.wrapped-slide .progress-row { display: flex; gap: 5px; margin-bottom: 20px; }
-.wrapped-slide .progress-seg { flex: 1; height: 3px; border-radius: 2px; background: var(--lift-strong); }
-.wrapped-slide .progress-seg.done { background: var(--brass-dim); }
-.wrapped-slide .progress-seg.active { background: var(--brass); }
-
-.wrapped-slide .eyebrow {
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-}
-.wrapped-slide .eyebrow strong { color: var(--brass); font-weight: 600; }
-
-.wrapped-slide .headline {
-    font-family: var(--font-display);
-    font-size: 21px;
-    font-weight: 600;
-    line-height: 1.25;
-    text-wrap: balance;
-    color: var(--text);
-    margin: 18px 0 10px;
-}
-.wrapped-slide .headline em { color: var(--brass); font-style: normal; }
-
-.wrapped-slide .hero {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 14px;
-    min-height: 0;
-}
-.wrapped-slide .hero-number {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 96px;
-    line-height: 0.9;
-    color: var(--brass);
-    letter-spacing: -0.02em;
-    text-shadow: 0 0 60px var(--brass-glow);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-.wrapped-slide .hero-number sup,
-.wrapped-slide .hero-number .unit { font-size: 40px; font-weight: 600; vertical-align: super; }
-.wrapped-slide .hero-caption { font-size: var(--fs-strong); color: var(--text-dim); max-width: 260px; }
-
-.wrapped-slide .foot { display: grid; gap: 10px; margin-top: 22px; }
-.wrapped-slide .foot-card { background: var(--panel); border: 1px solid var(--panel-border-soft); border-radius: var(--radius); padding: 12px 14px; }
-.wrapped-slide .foot-label { font-size: var(--fs-micro); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
-.wrapped-slide .foot-value { font-family: var(--font-mono); font-size: var(--fs-strong); font-weight: 700; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
-.wrapped-slide .foot-value.teal { color: var(--teal); }
-
-/* --- Rhythm slide: a small bar chart (day-by-day / week-by-week /
-   month-by-month, whichever fits the period) standing in for the giant
-   hero-number the other slides use -- this one is about a shape, not a
-   single figure. */
-.wrapped-slide .rhythm-caption { font-size: var(--fs-micro); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); text-align: center; margin-bottom: 10px; }
-.wrapped-slide .bar-row { flex: 1; display: flex; align-items: flex-end; gap: 6px; min-height: 0; padding: 0 4px; }
-.wrapped-slide .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
-.wrapped-slide .bar-track { width: 100%; flex: 1; display: flex; align-items: flex-end; }
-.wrapped-slide .bar-fill { width: 100%; min-height: 3px; border-radius: 4px 4px 2px 2px; background: var(--brass-dim); transition: height 0.3s ease; }
-.wrapped-slide .bar-fill.is-peak { background: var(--brass); box-shadow: 0 0 20px var(--brass-glow); }
-.wrapped-slide .bar-fill.is-future { background: var(--panel); }
-.wrapped-slide .bar-label { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-faint); }
-
-/* --- Category breakdown: dominant category as the hero stat, the rest of
-   the split listed underneath so the whole picture is visible at a glance. */
-.wrapped-slide .cat-list { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
-.wrapped-slide .cat-row { display: flex; align-items: center; gap: 10px; }
-.wrapped-slide .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.wrapped-slide .cat-name { flex: 1; font-size: var(--fs-small); color: var(--text-dim); }
-.wrapped-slide .cat-pct { font-family: var(--font-mono); font-size: var(--fs-small); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-
-/* --- Milestones this month/year: a compact list, one row per tier crossed --
-   reuses the same medal colors as the App Detail drawer's tier ladder. */
-.wrapped-slide .ms-list { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; overflow-y: auto; }
-.wrapped-slide .ms-row { display: flex; align-items: center; gap: 12px; }
-.wrapped-slide .ms-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-.wrapped-slide .ms-app { font-size: var(--fs-strong); font-weight: 600; color: var(--text); }
-.wrapped-slide .ms-tier { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); margin-top: 2px; }
-
-/* --- Top apps, plural (Year only): a small ranked list instead of one hero. */
-.wrapped-slide .rank-list { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
-.wrapped-slide .rank-row { display: flex; align-items: center; gap: 14px; }
-.wrapped-slide .rank-num { font-family: var(--font-display); font-size: var(--fs-title); font-weight: 800; color: var(--brass); width: 32px; flex-shrink: 0; }
-.wrapped-slide .rank-name { font-size: var(--fs-strong); font-weight: 600; color: var(--text); }
-.wrapped-slide .rank-sub { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); margin-top: 2px; }
-
-/* --- Archetype ("Your Type" / "This week's vibe"): the payoff slide, a short
-   bespoke label instead of a number. Light weight (Week) is deliberately
-   smaller and less ornamented -- one week isn't enough data to crown a
-   permanent identity, so it reads as a passing observation, not a title. */
-.wrapped-slide .archetype-hero .archetype-label {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 34px;
-    line-height: 1.15;
-    color: var(--brass);
-    text-shadow: 0 0 40px var(--brass-glow);
-    text-wrap: balance;
-}
-.wrapped-slide .archetype-hero.is-light .archetype-label { font-size: 24px; text-shadow: none; }
-
-/* ---------- Version history ("What's New") ---------- */
-.release-item {
-    border: 1px solid var(--panel-border-soft);
-    border-radius: var(--radius-sm);
-    background: var(--panel);
-    margin-bottom: 10px;
-    overflow: hidden;
-}
-.release-item.is-current { border-color: var(--brass-dim); }
-
-.release-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    cursor: pointer;
-    list-style: none;
-    user-select: none;
-}
-.release-head::-webkit-details-marker { display: none; }
-.release-head::before {
-    content: "\25B8";                     /* rotates to point down when open */
-    color: var(--text-faint);
-    transition: transform 0.15s;
-    font-size: var(--fs-caption);
-}
-.release-item[open] .release-head::before { transform: rotate(90deg); }
-.release-head:hover { background: var(--bg-raised); }
-
-.release-version { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-strong); color: var(--text); }
-.release-date { margin-left: auto; font-size: var(--fs-caption); color: var(--text-faint); font-family: var(--font-mono); }
-.release-badge {
-    font-size: var(--fs-micro);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 3px 7px;
-    border-radius: 4px;
-    background: var(--brass-fill);
-    color: var(--ink-on-fill);
-}
-.release-body { padding: 2px 16px 16px; border-top: 1px solid var(--panel-border-soft); }
-.release-nonotes { color: var(--text-faint); font-size: var(--fs-small); font-style: italic; }
-
-/* Markdown produced by renderMarkdown(). Scoped to the release body so it
-   cannot leak into the rest of the dashboard's type. */
-.release-body .md-h { font-size: var(--fs-strong); font-weight: 700; color: var(--text); margin: 16px 0 6px; }
-.release-body p { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.6; margin: 0 0 10px; }
-.release-body ul { margin: 0 0 12px; padding-left: 20px; }
-.release-body li { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.6; margin-bottom: 5px; }
-.release-body strong { color: var(--text); font-weight: 700; }
-.release-body a { color: var(--brass); }
-.release-body .md-code {
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border-soft);
-    border-radius: 4px;
-    padding: 1px 5px;
-}
-.release-body .md-hr { border: none; border-top: 1px solid var(--panel-border-soft); margin: 14px 0; }
-
-/* Wide tables scroll inside their own box rather than pushing the page sideways. */
-.release-body .md-table-wrap { overflow-x: auto; margin: 0 0 12px; }
-.release-body .md-table { border-collapse: collapse; width: 100%; font-size: var(--fs-small); }
-.release-body .md-table th,
-.release-body .md-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--panel-border-soft); }
-.release-body .md-table th { color: var(--text-faint); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; }
-.release-body .md-table td { color: var(--text-dim); }
-
-/* ---------- Card layout editing ---------- */
-.layout-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    border-radius: var(--radius-sm);
-    background: var(--bg-raised);
-    border: 1px solid var(--brass-dim);
-}
-.layout-bar-text { font-size: var(--fs-small); color: var(--text-dim); }
-.layout-bar-status { font-size: var(--fs-caption); color: var(--brass); margin-left: auto; }
-
-/* Only shown while editing, so the handle never sits between the reader and the
-   card's own content during normal use. */
-.layout-handle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    /* Some movable blocks are grids (.stat-row, .two-col). Without this the
-       handle becomes a grid cell, takes one of the two columns and shoves the
-       cards it is labelling out of their own layout. Spanning every column puts
-       it on its own row above them. Inert in flex and block parents. */
-    grid-column: 1 / -1;
-    padding: 6px 10px;
-    margin-bottom: 10px;
-    border-radius: var(--radius-sm);
-    background: var(--bg-raised);
-    border: 1px solid var(--panel-border);
-}
-.layout-grip { color: var(--text-faint); cursor: grab; font-size: var(--fs-strong); line-height: 1; }
-.layout-name { font-size: var(--fs-caption); font-weight: 700; color: var(--text-dim); }
-
-.layout-btn {
-    margin-left: 4px;
-    padding: 3px 8px;
-    font-size: var(--fs-micro);
-    font-weight: 700;
-    color: var(--text-dim);
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 4px;
-    cursor: pointer;
-}
-.layout-btn:last-child { margin-left: auto; }
-.layout-btn:hover:not(:disabled) { color: var(--text); border-color: var(--text-faint); }
-.layout-btn:disabled { opacity: 0.35; cursor: default; }
-.layout-btn-hide[aria-pressed="true"] { color: var(--brass); border-color: var(--brass-dim); }
-
-.layout-editing > [data-card] {
-    outline: 1px dashed var(--panel-border);
-    outline-offset: 4px;
-    border-radius: var(--radius-sm);
-}
-.layout-dragging { opacity: 0.45; }
-
-/* Hidden cards disappear outright in normal use. While editing they stay on
-   screen, dimmed, because a card you cannot see is a card you cannot un-hide. */
-.layout-hidden { display: none; }
-.layout-editing > .layout-hidden { display: block; opacity: 0.4; }
-
-.layout-edit-toggle {
-    margin-left: auto;
-    flex-shrink: 0;
-    padding: 5px 2px;
-    font-size: var(--fs-caption);
-    font-weight: 500;
-    color: var(--text-faint);
-    background: none;
-    border: none;
-    border-radius: 0;
-    cursor: pointer;
-}
-.layout-edit-toggle:hover { color: var(--text); }
-
-@media (prefers-reduced-motion: reduce) {
-    .layout-dragging { opacity: 1; }
-}
-
-/* The drawer's tab strip gained a Customise button beside it. */
-.dd-tab-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-
-/* ---------- Hero dial (Overview) ----------
-   Replaces the flat hero card. The value lives inside the curve, so the largest
-   element on the page is round rather than another rectangle. */
+@media (max-width: 820px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ---------------------------------------------------------
+   Overview
+   --------------------------------------------------------- */
+#view-overview > [data-card],
+#view-insights > [data-card] { margin-bottom: 20px; }
+
+/* The hero: the dial on the left, three readouts and two bars on the right. */
 .stat-block.stat-hero {
     display: flex;
     align-items: center;
-    gap: 40px;
-    padding: 26px 30px;
+    gap: 44px;
+    padding: 28px 32px;
+    flex-wrap: wrap; /* lets the Customise drag handle take its own line */
 }
 
-.hero-dial {
-    position: relative;
-    width: 230px;
-    height: 230px;
-    flex-shrink: 0;
-}
+.hero-dial { position: relative; width: 220px; height: 220px; flex-shrink: 0; }
 .hero-dial-svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
-.hero-dial-svg circle { fill: none; stroke-width: 16; }
-.hero-dial-track { stroke: var(--bg-raised); }
+.hero-dial-svg circle { fill: none; stroke-width: 13; }
+.hero-dial-track { stroke: var(--surface-2); }
 /* 2 * pi * 104 = 653.5. Both arcs start at 12 o'clock and are driven by
-   stroke-dashoffset from renderHeroShare(); afk sits under focus so the two
-   read as one continuous ring. */
-.hero-dial-afk   { stroke: var(--rose-dim); stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease; }
-.hero-dial-focus { stroke: var(--brass);    stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease; }
-/* Music playing time, drawn last so it sits ON TOP of the focus/AFK ring
-   rather than taking a slice of it -- a thin teal line over the band, same
-   12-o'clock origin and same 653.5 track, its length driven separately from
-   setHeroDial(). The compound selector beats `.hero-dial-svg circle` on the
-   16px stroke-width. */
-.hero-dial-svg .hero-dial-music { stroke: var(--violet); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+   stroke-dashoffset from the render code; AFK sits under focus so the two read
+   as one continuous ring. */
+.hero-dial-afk   { stroke: var(--afk);   stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; opacity: 0.55; transition: stroke-dashoffset 0.45s ease; }
+.hero-dial-focus { stroke: var(--focus); stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease; }
+/* Music is a thin overlay on the same track, not a slice of it. */
+.hero-dial-svg .hero-dial-music { stroke: var(--music); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
 
 .hero-dial-face {
     position: absolute;
@@ -1846,638 +114,886 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
     text-align: center;
 }
-/* The hero figure no longer needs to shout across a whole card -- it is framed
-   by the ring, so it can drop from 44px and still dominate. */
-/* Beats .stat-block.stat-hero .stat-value (three classes) rather than tying
-   with it and losing on source order. */
-.stat-block.stat-hero .hero-dial-face .stat-value { font-size: 34px; line-height: 1.05; }
+.stat-block.stat-hero .hero-dial-face .stat-value { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); white-space: nowrap; }
 
-/* The share bar and its caption move out beside the dial. */
-.stat-block.stat-hero .hero-share { margin-top: 0; flex: 1; max-width: none; }
-.hero-share .compare-bar { border-radius: var(--radius-pill); overflow: hidden; }
-.hero-share .compare-bar-seg { border-radius: var(--radius-pill); }
+.hero-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
 
-@media (max-width: 720px) {
-    .stat-block.stat-hero { flex-direction: column; gap: 22px; }
-    .hero-dial { width: 190px; height: 190px; }
-}
+/* Uptime / AFK / Music: three peers, divided by hairlines. */
+.hero-side { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hero-side .stat-block { padding: 0 22px; border-left: 1px solid var(--border); }
+.hero-side .stat-block:first-child { padding-left: 0; border-left: none; }
+.hero-side .stat-block .card-label { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.hero-side .stat-block .card-label::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+#ov-afk-card .card-label::before { background: var(--afk); }
+#ov-music-card .card-label::before { background: var(--music); }
+.stat-block.stat-hero .hero-side .stat-value { font-size: 26px; }
+.hero-side .stat-block .trend-pill { margin-top: 6px; }
 
-/* ---------- Overview composition ----------
-   The port that shipped in 1.1.1 changed shape but not arrangement: every block
-   was still a full-width card stacked on the next, which is why it did not look
-   like the design. These rules do the recomposition.
-
-   Sections lose their card surface entirely. A heading plus its content on the
-   page background is enough separation; a tinted panel around each one is what
-   made the page read as a column of boxes. Rows and controls keep their fill,
-   because those are things you touch. */
-#view-overview > [data-card].card,
-#view-insights > [data-card].card,
-/* Blocks that are a grid of cards rather than a card themselves -- Top
-   Applications beside Top Categories, the two Insights stat cards -- carry the
-   panel on their CHILDREN, so stripping only the top level left those two
-   sitting in tinted boxes while everything around them was bare. */
-#view-overview > [data-card] > .card,
-#view-insights > [data-card] > .card {
-    background: none;
-    padding: 0;
-    border-radius: 0;
-}
-
-/* Space, not panels, separates the sections. */
-#view-overview > [data-card],
-#view-insights > [data-card] {
-    margin-bottom: 34px !important;
-}
-
-/* The hero keeps its surface -- it is the one panel on the page -- and holds the
-   dial, the two secondary readouts and the share bar on ONE line, which is the
-   arrangement that makes the top of the page read as a single statement rather
-   than three stacked cards. */
-#view-overview > [data-card="focus-today"].card,
-#view-overview > [data-card="focus-today"].card.stat-hero {
-    background: var(--panel);
-    padding: 26px 30px;
-    border-radius: var(--radius);
-}
-
-/* AFK and Uptime move up beside the dial instead of forming their own row. */
-.hero-side {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    flex-shrink: 0;
-}
-.hero-side .stat-block {
-    background: none;
-    padding: 0;
-    border-radius: 0;
-}
-.hero-side .card-label { margin-bottom: 4px; }
-
-/* Both of these have to out-specify .stat-block.stat-hero .stat-value, which is
-   a DESCENDANT selector: moving these readouts inside the hero band handed them
-   the hero's 44px, so AFK rendered larger than the focus figure it is a detail
-   of. .stat-minor pulls the other way, to 16px. Pinning both here keeps the two
-   the same size as each other and clearly under the hero. */
-.stat-block.stat-hero .hero-side .stat-value,
-.stat-block.stat-hero .hero-side .stat-minor .stat-value {
-    font-size: 25px;
-    line-height: 1.15;
-}
-
-/* Section headings sit on the page, so they need the label treatment the cards
-   used to give them. */
-#view-overview > [data-card] > .card-label,
-#view-insights > [data-card] > .card-label {
-    margin-bottom: 14px;
-}
-
-/* Two lists side by side with a real gutter and no dividing rule. */
-#view-overview [data-card="top-lists"].two-col { gap: 64px; }
-
-/* The hero band: dial, the two secondary readouts, then the share bar. */
-.stat-block.stat-hero { align-items: center; gap: 36px; }
-.stat-block.stat-hero .hero-share { flex: 1; min-width: 0; }
+.stat-block.stat-hero .hero-share { margin: 0; max-width: none; }
+.hero-share .compare-bar-caption { margin-top: 8px; }
+.hero-cat { display: flex; flex-direction: column; gap: 12px; padding-top: 20px; border-top: 1px solid var(--border); }
+.hero-cat .card-label { margin: 0; }
+.hero-cat .cat-legend { margin-top: 2px; }
 
 @media (max-width: 1080px) {
-    .stat-block.stat-hero { flex-wrap: wrap; gap: 24px; }
-    .hero-side { flex-direction: row; gap: 36px; }
-    .stat-block.stat-hero .hero-share { flex-basis: 100%; }
+    .stat-block.stat-hero { gap: 28px; padding: 24px; }
+    .hero-dial { width: 190px; height: 190px; }
 }
-
-/* ---------- Overview hero band, as designed ----------
-   No panel. The design puts the dial and its supporting detail straight on the
-   page; a tinted box around them was the last thing making the top of the
-   screen read as a card. */
-#view-overview > [data-card="focus-today"].card,
-#view-overview > [data-card="focus-today"].card.stat-hero {
-    background: none;
-    padding: 0;
-    border-radius: 0;
-}
-
-.stat-block.stat-hero { align-items: center; gap: 42px; }
-
-.hero-body {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-/* Uptime and AFK sit side by side, not stacked -- they are peers. */
-.hero-side { flex-direction: row; gap: 44px; }
-
-.stat-block.stat-hero .hero-share { flex: none; margin-top: 0; }
-.hero-cat { display: flex; flex-direction: column; gap: 10px; }
-.hero-cat .card-label { margin-bottom: 0; }
-
-@media (max-width: 900px) {
-    .stat-block.stat-hero { flex-direction: column; align-items: flex-start; gap: 26px; }
+@media (max-width: 720px) {
+    .stat-block.stat-hero { flex-direction: column; align-items: center; }
     .hero-body { width: 100%; }
 }
-
-/* ---------- Overview lists, as designed ----------
-   Bare rows. A pill behind every row turned the two lists back into stacks of
-   boxes; the bar already gives each row its shape. */
-#view-overview .lb-row {
-    background: none;
-    padding: 7px 0;
+@media (max-width: 640px) {
+    .hero-side { grid-template-columns: 1fr; gap: 14px; }
+    .hero-side .stat-block, .hero-side .stat-block:first-child { padding: 0; border-left: none; }
 }
-#view-overview .lb-row:hover { background: none; }
-#view-overview .lb-row:hover .lb-name { color: var(--brass); }
 
-/* ---------- Insights ---------- */
-/* Centred: two dials left-aligned in a full-width section sat in the corner of
-   a large empty area, the same way the 30-day heatmap did. */
-.insight-dials { display: flex; gap: 64px; flex-wrap: wrap; justify-content: center; }
-.insight-dial { display: flex; align-items: center; gap: 20px; }
+[data-card="top-lists"].two-col { gap: 20px; }
+#view-overview > .card > .card-label,
+[data-card="top-lists"] .card-label { margin-bottom: 12px; color: var(--text); font-weight: 600; font-size: var(--fs-body); }
 
-.insight-dial-ring { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
-.insight-dial-ring svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
-.insight-dial-ring circle { fill: none; stroke-width: 9; }
-.insight-dial-track { stroke: var(--bg-raised); }
-/* 2 * pi * 42 = 263.9; driven from setInsightDial(). */
-.insight-dial-arc {
-    stroke: var(--brass);
-    stroke-linecap: round;
-    stroke-dasharray: 263.9;
-    stroke-dashoffset: 263.9;
-    transition: stroke-dashoffset 0.45s ease;
+/* ---------------------------------------------------------
+   Full leaderboard tab
+   --------------------------------------------------------- */
+.lb-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.lb-toolbar > .lb-search-wrap, .lb-toolbar > #lb-search { margin-left: auto; }
+
+/* One card holds the header and every row. */
+#lb-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
 }
-.insight-dial-value {
-    position: absolute;
-    inset: 0;
+#lb-list > .empty-state, #lb-list > .error-state, #lb-list > .skeleton-list { border: none; border-radius: 0; box-shadow: none; }
+#lb-list > .skeleton-list { padding: 14px; }
+
+.full-lb-header {
+    display: grid;
+    grid-template-columns: 30px 30px 1fr 110px 90px 150px;
+    gap: 16px;
+    padding: 12px 20px;
+    font-size: var(--fs-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    font-weight: 600;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+}
+.full-lb-header.no-movement, .full-lb-row.no-movement { grid-template-columns: 30px 1fr 110px 90px 150px; }
+.full-lb-header span:nth-child(1) { text-align: center; }
+.full-lb-header span:nth-child(4), .full-lb-header span:nth-child(5) { text-align: right; }
+
+.full-lb-row {
+    display: grid;
+    grid-template-columns: 30px 30px 1fr 110px 90px 150px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.full-lb-row:last-child { border-bottom: none; }
+.full-lb-row:hover { background: var(--surface-2); }
+
+.full-lb-afk { font-weight: 550; font-size: var(--fs-body); text-align: right; color: var(--afk); }
+
+@media (max-width: 1040px) {
+    .full-lb-header { display: none; }
+    .full-lb-row { grid-template-columns: 36px 24px 1fr auto; row-gap: 8px; }
+    .full-lb-row > .full-lb-rank, .full-lb-row > .medal { grid-row: 1; grid-column: 1; }
+    .full-lb-row > .full-lb-trend { grid-row: 1; grid-column: 2; }
+    .full-lb-row > .full-lb-name-wrap { grid-row: 1; grid-column: 3; }
+    .full-lb-row > .full-lb-time { grid-row: 1; grid-column: 4; }
+    .full-lb-row > .full-lb-afk { grid-row: 2; grid-column: 3; text-align: left; }
+    .full-lb-row > div:last-child { grid-row: 2; grid-column: 4; }
+    .full-lb-row.no-movement { grid-template-columns: 36px 1fr auto; }
+    .full-lb-row.no-movement > .full-lb-rank, .full-lb-row.no-movement > .medal { grid-column: 1; }
+    .full-lb-row.no-movement > .full-lb-name-wrap { grid-column: 2; }
+    .full-lb-row.no-movement > .full-lb-time { grid-column: 3; }
+    .full-lb-row.no-movement > .full-lb-afk { grid-column: 2; }
+    .full-lb-row.no-movement > div:last-child { grid-column: 3; }
+    .full-lb-afk::before { content: "AFK "; color: var(--text-faint); font-weight: 500; }
+}
+
+/* Rank markers share one 28px slot, medal or not, so numbers line up with the
+   medals above them. */
+.full-lb-rank { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: var(--fs-small); color: var(--text-faint); }
+.medal { width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--fs-small); }
+.medal-gold   { background: #FBBF24; color: #422006; }
+.medal-silver { background: #CBD5E1; color: #1E293B; }
+.medal-bronze { background: #F0A36A; color: #431407; }
+
+.full-lb-trend { display: flex; justify-content: center; }
+.full-lb-name-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+/* App avatars: a rounded square tinted with the category (inline, via
+   avatarStyle), the initial in the category's own text colour. */
+.full-lb-icon, .activity-icon, .allapps-icon, .dd-icon {
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: var(--font-mono);
-    font-size: var(--fs-strong);
-    font-weight: 700;
-    color: var(--brass);
+    font-weight: 650;
+    flex-shrink: 0;
 }
-.insight-dial-text { display: flex; flex-direction: column; gap: 5px; }
-.insight-dial-sub { font-size: var(--fs-small); color: var(--text-dim); }
+.full-lb-icon { width: 36px; height: 36px; font-size: var(--fs-strong); }
 
-/* Label and legend on one line, as in the design. */
-.insight-head { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
-.insight-head .card-label { margin-bottom: 0; }
-.insight-key { display: flex; align-items: center; gap: 7px; font-size: var(--fs-small); color: var(--text-dim); }
-.insight-key-dot { width: 7px; height: 7px; border-radius: 50%; }
+.full-lb-name-col { min-width: 0; }
+.full-lb-app-name { font-weight: 600; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.full-lb-cat { font-size: var(--fs-caption); color: var(--cat-color, var(--text-faint)); font-weight: 500; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.full-lb-time { font-weight: 650; font-size: var(--fs-body); text-align: right; color: var(--text); }
+.full-lb-eff-bar { height: 6px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.full-lb-eff-fill { height: 100%; border-radius: var(--radius-pill); }
+.full-lb-eff-label { font-size: var(--fs-micro); color: var(--text-faint); text-align: right; margin-top: 4px; white-space: nowrap; }
 
-/* minmax(0, 1fr), not 1fr: a Chart.js canvas reports its rendered width as
-   min-content, so a plain 1fr column refused to shrink and the pair came out
-   801px against 371px instead of even halves. */
-.insight-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; }
-.insight-caption { margin-top: 10px; font-size: var(--fs-small); color: var(--text-faint); }
-
-/* 820, not 960: the reference sits these two side by side at 953px wide, and
-   the rail only costs 72px now. */
-@media (max-width: 820px) {
-    .insight-pair { grid-template-columns: 1fr; gap: 34px; }
-    .insight-dials { gap: 34px; }
+/* ---------------------------------------------------------
+   Heatmaps (Week / Month / Year scopes, Insights)
+   --------------------------------------------------------- */
+.ov-week-divider { height: 1px; background: var(--border); margin: 24px 0; }
+.heat-hours-wrap { display: flex; gap: 10px; }
+.heat-day-labels { display: flex; flex-direction: column; justify-content: space-between; font-size: var(--fs-micro); color: var(--text-faint); padding: 2px 0; }
+.heat-hours-grid { flex: 1; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; }
+.heat-cell { aspect-ratio: 1; border-radius: 4px; background: var(--surface-2); cursor: default; transition: transform 0.1s; }
+.heat-cell:hover { transform: scale(1.2); z-index: 2; }
+.heat-hours-ticks { display: flex; justify-content: space-between; font-size: var(--fs-micro); color: var(--text-faint); margin-top: 8px; padding-left: 34px; }
+.heat-days-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, 1fr);
+    gap: 4px;
+    justify-content: center;
+    grid-auto-columns: 26px;
+    overflow-x: auto;
+    padding-bottom: 6px;
 }
+.heat-day-cell { width: 100%; aspect-ratio: 1; border-radius: 5px; background: var(--surface-2); }
+.heat-legend { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: var(--fs-micro); color: var(--text-faint); justify-content: center; }
+.heat-legend-swatch { width: 10px; height: 10px; border-radius: 3px; }
 
-/* Heatmap cells: wide, rounded, borderless -- the design's shape. */
-#in-heatmap-body .heat-cell { border-radius: 4px; border: none; }
+/* ---------------------------------------------------------
+   Insights
+   --------------------------------------------------------- */
+.chart-wrap { position: relative; height: 260px; }
+.chart-wrap-short { height: 200px; }
 
-/* Work/Play toggles are coloured by what they mean, matching the chart legend
-   above them, rather than all taking the brass that means focus. */
-.classification-list .segmented button.seg-work.active    { background: var(--teal-fill);   color: var(--ink-on-fill); }
-.classification-list .segmented button.seg-play.active    { background: var(--violet-fill); color: var(--ink-on-fill); }
-.classification-list .segmented button.seg-neutral.active { background: var(--lift-strong); color: var(--text); }
-
-/* Configure Work vs. Play sits in half a row now, so the item has to hold its
-   line at ~370px: the pills lose their generous padding, and the category name
-   truncates rather than pushing the toggle onto a second line. */
-.classification-list .settings-list-item { flex-wrap: nowrap; gap: 10px; }
-.classification-list .settings-list-item > span {
+.insight-dials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.insight-dial {
     display: flex;
     align-items: center;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    gap: 20px;
+    padding: 22px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
 }
-.classification-list .segmented { flex-shrink: 0; padding: 2px; }
-.classification-list .segmented button { padding: 5px 10px; font-size: var(--fs-micro); }
-.classification-list .classification-mins { margin-left: 8px; flex-shrink: 0; }
+.insight-dial-ring { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
+.insight-dial-ring svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+.insight-dial-ring circle { fill: none; stroke-width: 9; }
+.insight-dial-track { stroke: var(--surface-2); }
+.insight-dial-arc { stroke: var(--focus); stroke-linecap: round; stroke-dasharray: 263.9; stroke-dashoffset: 263.9; transition: stroke-dashoffset 0.45s ease; }
+.insight-dial-value { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--fs-strong); font-weight: 700; color: var(--text); }
+.insight-dial-text { display: flex; flex-direction: column; gap: 4px; }
+.insight-dial-text .card-label { color: var(--text); font-weight: 600; font-size: var(--fs-body); }
+.insight-dial-sub { font-size: var(--fs-small); color: var(--text-faint); }
 
-/* Configure Work vs. Play matches Weekday Fatigue's height and scrolls inside
-   itself, so the two halves of the pair start and end together however many
-   categories exist.
+.insight-head { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+.insight-head .card-label { margin: 0 auto 0 0; color: var(--text); font-weight: 600; font-size: var(--fs-body); }
+.insight-key { display: flex; align-items: center; gap: 7px; font-size: var(--fs-small); color: var(--text-dim); }
+.insight-key-dot { width: 8px; height: 8px; border-radius: 50%; }
 
-   Height is taken from the row rather than hardcoded to the chart's 200px: both
-   columns stretch to the taller one, and the list is what gives, so the pair
-   stays matched if the chart is ever resized.
-
-   This restores a nested scroll that was deliberately removed earlier, when the
-   list was a full-width block on a scrolling page and the wheel did two
-   different things a few pixels apart. Bounded to half a row beside a chart, it
-   is the opposite problem: without a cap the list sets the height of the whole
-   row and drags the pair out of line. */
+/* The two halves of the pair share one card. minmax(0,1fr): a Chart.js canvas
+   reports its width as min-content and would otherwise refuse to shrink. */
 .insight-pair {
-    /* start, not stretch: with eleven categories the list was the taller column,
-       so stretching made the chart grow to 646px to match it -- the reverse of
-       what is wanted. The chart sets the height; the list is capped to it. */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 28px;
     align-items: start;
-    --insight-block-h: 200px;   /* the chart's height, shared by both columns */
+    --insight-block-h: 200px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 22px 24px;
 }
 .insight-pair > div { display: flex; flex-direction: column; min-width: 0; }
+.insight-pair .card-label { color: var(--text); font-weight: 600; font-size: var(--fs-body); }
 .insight-pair .chart-wrap-short { height: var(--insight-block-h); }
-.insight-pair .classification-list {
-    /* +28px for the caption that sits under the chart in the other column, so
-       the two columns finish on the same line. */
-    max-height: calc(var(--insight-block-h) + 28px);
-    overflow-y: auto;
-    padding-right: 6px;
+.insight-caption { margin-top: 10px; font-size: var(--fs-small); color: var(--text-faint); }
+.insight-pair .classification-list { max-height: calc(var(--insight-block-h) + 28px); overflow-y: auto; padding-right: 6px; }
+@media (max-width: 820px) {
+    .insight-pair { grid-template-columns: 1fr; gap: 28px; }
+    .insight-dials { grid-template-columns: 1fr; }
 }
-/* A quiet scrollbar -- the default light track is louder than the rows. */
-.insight-pair .classification-list::-webkit-scrollbar { width: 6px; }
-.insight-pair .classification-list::-webkit-scrollbar-track { background: transparent; }
-.insight-pair .classification-list::-webkit-scrollbar-thumb {
-    background: var(--panel-border);
-    border-radius: var(--radius-pill);
-}
-.insight-pair .classification-list::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
+#in-heatmap-body .heat-cell { border-radius: 4px; }
 
-/* On Overview the control group already claims the free space, so Customise must
-   not claim it a second time -- two margin-left: autos split the gap between
-   them and left 211px of dead air between the scope pills and Customise. */
-.ov-controls + .layout-edit-toggle { margin-left: 18px; }
+.classification-list { max-height: none; overflow-y: visible; padding-right: 0; }
+.classification-mins { margin-left: 8px; font-size: var(--fs-caption); color: var(--text-faint); flex-shrink: 0; }
+.classification-list .segmented button.seg-work.active    { background: var(--wash-good);  color: var(--good);  box-shadow: 0 0 0 1px color-mix(in srgb, var(--good) 40%, transparent); }
+.classification-list .segmented button.seg-play.active    { background: var(--wash-music); color: var(--music); box-shadow: 0 0 0 1px color-mix(in srgb, var(--music) 40%, transparent); }
+.classification-list .segmented button.seg-neutral.active { background: var(--surface-3);  color: var(--text); }
+.classification-list .settings-list-item { flex-wrap: nowrap; gap: 10px; }
+.classification-list .settings-list-item > span { display: flex; align-items: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.classification-list .segmented { flex-shrink: 0; padding: 2px; }
+.classification-list .segmented button { padding: 4px 10px; font-size: var(--fs-caption); }
 
-/* ---------- App Detail drawer: content on the system ---------- */
+/* ---------------------------------------------------------
+   Timeline (Overview, Day scope)
+   --------------------------------------------------------- */
+.timeline-wrap { padding: 4px 0 0; }
 
-/* Tiles inside a section sit on the raised tone, not a second panel wash --
-   a wash inside a wash reads as a box inside a box. */
-.dd-stat {
-    padding: 13px 15px;
-    background: var(--bg-raised);
+/* One grid for the ticks, the main track and every AFK/music lane: a single
+   column boundary means a segment at 34% sits at the same x in every row. */
+.timeline-grid { display: grid; grid-template-columns: 44px 1fr; align-items: center; row-gap: 8px; column-gap: 10px; }
+.timeline-ticks { display: flex; justify-content: space-between; font-size: var(--fs-micro); color: var(--text-faint); padding: 0 2px 2px; }
+
+.timeline-track {
+    position: relative;
+    height: 52px;
     border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    overflow: hidden;
+}
+.timeline-seg {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px var(--surface);
+    transition: filter 0.12s;
+}
+.timeline-seg:hover { filter: brightness(1.12) saturate(1.1); z-index: 2; }
+
+/* `display: contents` is load-bearing: the sub-row container is a single cell
+   of the grid above, and without it its label and track would be laid out
+   inside that one cell instead of becoming grid items themselves. */
+.timeline-subrows { display: contents; }
+.timeline-subrow-label { font-size: var(--fs-micro); color: var(--text-faint); text-align: right; }
+.timeline-subrow-track { position: relative; height: 8px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.timeline-subrow-seg { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-pill); cursor: default; transition: filter 0.12s; }
+.timeline-subrow-seg:hover { filter: brightness(1.15); z-index: 2; }
+.timeline-subrow-seg.afk { background: var(--afk); }
+.timeline-subrow-seg.music { background: var(--music); }
+
+/* Only on blocks wide enough to hold the whole name -- a clipped name is worse
+   than none. Ink is chosen per block from the colour underneath. */
+.timeline-seg-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--fs-caption); font-weight: 600; pointer-events: none; white-space: nowrap; }
+.timeline-seg-label.on-dark  { color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.timeline-seg-label.on-light { color: #111827; }
+
+/* ---------------------------------------------------------
+   Periods
+   --------------------------------------------------------- */
+.period-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.period-toggle, .period-sort-toggle { margin-bottom: 0; }
+
+.period-list { display: flex; flex-direction: column; gap: 10px; }
+.period-card {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+.period-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
+
+.period-row {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 20px;
+}
+.period-rank-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: var(--fs-small);
+    color: var(--text-dim);
+    background: var(--surface-2);
+    border-radius: 8px;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+}
+.period-rank-badge.rank-1 { color: var(--ink-on-fill); background: var(--accent-fill); }
+
+.period-main { min-width: 0; }
+.period-label { font-weight: 600; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.period-range { font-size: var(--fs-caption); color: var(--text-faint); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.period-stats { display: contents; }
+.period-stat { min-width: 0; }
+.period-stat-label { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 500; white-space: nowrap; }
+.period-stat-value { font-weight: 600; font-size: var(--fs-body); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; }
+
+@media (max-width: 1100px) {
+    .period-row { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px; column-gap: 16px; }
+    .period-rank-badge { grid-column: 1; grid-row: 1; }
+    .period-main { grid-column: 2 / -1; grid-row: 1; }
 }
 
-/* The app's initial takes its category's tint, the same as every other avatar
-   in the dashboard, instead of a flat grey circle. */
-.dd-icon { font-size: var(--fs-title); }
+/* Week bars */
+.week-heat-row { display: flex; justify-content: center; align-items: flex-end; gap: 14px; }
+.week-heat-day { flex: 1 1 0; max-width: 130px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.week-heat-label { font-size: var(--fs-caption); font-weight: 500; color: var(--text-faint); }
+.week-heat-bar-track { width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.week-heat-bar-fill { width: 100%; border-radius: 8px 8px 3px 3px; background: var(--surface-2); transition: height 0.3s ease; }
+.week-heat-value { font-size: var(--fs-small); font-weight: 600; color: var(--text-dim); }
 
-/* The drawer's own tab strip matches the dashboard's segmented controls. */
-.drawer .segmented { background: var(--panel); }
+/* Month calendar */
+.month-heat-weekdays, .month-heat-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 76px)); justify-content: center; gap: 6px; }
+.month-heat-weekdays { margin-bottom: 8px; }
+.month-heat-weekdays span { font-size: var(--fs-caption); font-weight: 500; color: var(--text-faint); text-align: center; }
+.month-heat-cell { width: 100%; aspect-ratio: 1; border-radius: var(--radius-sm); background: var(--surface-2); }
+.month-heat-cell.is-empty { background: transparent; }
 
-/* Trend pills in the drawer stay neutral -- set earlier so a column of four
-   red arrows would not read as a verdict -- but they should still be pills. */
-.dd-compare-row .trend-pill { border-radius: var(--radius-pill); }
+@media (max-width: 760px) {
+    .period-row { flex-wrap: wrap; }
+    .period-stats { grid-template-columns: repeat(3, 1fr); gap: 14px; width: 100%; padding-left: 56px; }
+    .week-heat-row { flex-wrap: wrap; }
+    .month-heat-weekdays, .month-heat-grid { grid-template-columns: repeat(7, minmax(0, 32px)); }
+}
 
-/* Actions are the same pills as everywhere else. */
+/* Period detail */
+.period-detail-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.back-btn {
+    width: 36px; height: 36px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-dim);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+.back-btn:hover { color: var(--text); background: var(--surface-2); }
+
+.pd-hero { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; margin-bottom: 16px; }
+.pd-dial { position: relative; width: 200px; height: 200px; flex-shrink: 0; }
+.pd-dial-svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+.pd-dial-svg circle { fill: none; stroke-width: 13; }
+.pd-dial-track { stroke: var(--surface-2); }
+.pd-dial-afk   { stroke: var(--afk);   opacity: 0.55; stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+.pd-dial-focus { stroke: var(--focus); stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+.pd-dial-music { stroke: var(--music); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.45s ease, opacity 0.2s ease; }
+.pd-dial-face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; padding: 0 20px; }
+.pd-dial-face .stat-value { font-size: 30px; font-weight: 700; line-height: 1.05; white-space: nowrap; }
+.pd-hero-side { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }
+.pd-hero-stats { display: flex; gap: 32px; flex-wrap: wrap; }
+.pd-stat .stat-value { font-size: var(--fs-stat); font-weight: 650; margin-top: 4px; }
+
+.pd-nav { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+.pd-nav-chip {
+    flex: 1;
+    min-width: 180px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+.pd-nav-chip:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
+.pd-nav-arrow { font-size: var(--fs-stat); color: var(--text-faint); flex-shrink: 0; transition: color 0.12s; }
+.pd-nav-chip:hover .pd-nav-arrow { color: var(--accent); }
+.pd-nav-text { flex: 1; min-width: 0; }
+.pd-nav-label { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 500; }
+.pd-nav-period { font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-nav-value { font-weight: 650; color: var(--accent); flex-shrink: 0; }
+.pd-nav-dot { display: inline-block; margin-right: 6px; vertical-align: 1px; }
+@media (max-width: 640px) { .pd-hero { flex-direction: column; } .pd-dial { width: 180px; height: 180px; } }
+
+/* ---------------------------------------------------------
+   Activity feed
+   --------------------------------------------------------- */
+.activity-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.activity-toolbar .field { width: 280px; }
+.activity-summary { margin-left: auto; font-size: var(--fs-small); color: var(--text-faint); }
+@media (max-width: 640px) { .activity-toolbar .field { flex: 1; width: auto; } .activity-summary { margin-left: 0; } }
+
+.activity-day-divider { font-size: var(--fs-small); font-weight: 600; color: var(--text-dim); margin: 26px 0 10px; }
+.activity-day-divider:first-child { margin-top: 0; }
+
+.activity-row {
+    display: grid;
+    grid-template-columns: 40px 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+.activity-row:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
+.activity-icon { width: 38px; height: 38px; font-size: var(--fs-strong); }
+.activity-name-line { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.activity-name-line .activity-app-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-name-line .activity-cat { flex-shrink: 0; }
+.activity-switches { margin-left: 7px; font-size: var(--fs-micro); font-weight: 600; color: var(--text-faint); background: var(--surface-2); border-radius: 5px; padding: 1px 6px; }
+.activity-title-more { color: var(--text-faint); font-style: normal; }
+.activity-name-col { min-width: 0; }
+.activity-app-name { font-weight: 600; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity-cat { font-size: var(--fs-caption); color: var(--cat-color, var(--text-faint)); font-weight: 500; }
+.activity-title { font-size: var(--fs-caption); color: var(--text-faint); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity-time-range { font-size: var(--fs-small); color: var(--text-faint); white-space: nowrap; }
+.activity-duration { font-weight: 650; font-size: var(--fs-body); color: var(--text); text-align: right; white-space: nowrap; }
+@media (max-width: 640px) { .activity-row { grid-template-columns: 38px 1fr auto; } .activity-time-range { display: none; } }
+
+/* ---------------------------------------------------------
+   All applications
+   --------------------------------------------------------- */
+.allapps-search-row { margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.allapps-count { margin-left: auto; font-size: var(--fs-small); color: var(--text-faint); }
+.allapps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.allapps-card { padding: 16px; cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s; }
+.allapps-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.allapps-card-head { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.allapps-icon { width: 34px; height: 34px; font-size: var(--fs-body); }
+.allapps-name { font-weight: 600; font-size: var(--fs-body); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.allapps-cat { font-size: var(--fs-caption); color: var(--cat-color, var(--text-faint)); font-weight: 500; margin-top: 1px; }
+.allapps-metrics { display: flex; justify-content: space-between; font-size: var(--fs-caption); color: var(--text-faint); }
+.allapps-metrics .v { display: block; font-size: var(--fs-body); font-weight: 600; margin-top: 2px; color: var(--text); }
+.allapps-metrics .v .allapps-peak { display: block; font-size: var(--fs-caption); font-weight: 500; color: var(--text-faint); margin-top: 1px; }
+
+.dd-toggle-label { display: flex; align-items: center; gap: 9px; font-size: var(--fs-small); color: var(--text-dim); cursor: pointer; }
+.dd-toggle-label input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
+
+/* ---------------------------------------------------------
+   Drawers (Settings, App Detail, Category)
+   --------------------------------------------------------- */
+.drawer-overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 60; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+.drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 440px;
+    max-width: 92vw;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 28px;
+}
+/* The shadow lives on .open so a closed drawer past the right edge casts none. */
+.drawer.open { transform: translateX(0); box-shadow: var(--shadow-lg); }
+.drawer-wide { width: 640px; }
+.drawer .view-title { font-size: var(--fs-title); }
+
+.drawer-close {
+    position: absolute;
+    top: 20px; right: 20px;
+    width: 32px; height: 32px;
+    font-size: var(--fs-body);
+    border-radius: var(--radius-sm);
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+.drawer-close:hover { color: var(--text); background: var(--surface-2); }
+
+.dd-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; padding-right: 40px; }
+.dd-icon { width: 52px; height: 52px; font-size: var(--fs-title); border-radius: 14px; }
+.dd-title { font-size: var(--fs-title); font-weight: 650; letter-spacing: -0.015em; line-height: 1.2; }
+.dd-rank { font-size: var(--fs-small); color: var(--accent); font-weight: 600; margin-top: 4px; }
+
+.dd-tab-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+
+/* Sections are plain groups divided by hairlines -- boxes inside a drawer that
+   is itself a surface read as clutter. */
+.dd-section { padding: 20px 0; border-top: 1px solid var(--border); }
+.dd-section:first-of-type { border-top: none; padding-top: 12px; }
+.dd-section-label { font-size: var(--fs-small); font-weight: 600; color: var(--text); margin-bottom: 12px; }
+.dd-hint { font-size: var(--fs-small); color: var(--text-faint); line-height: 1.55; margin-bottom: 14px; }
+.dd-hint strong { color: var(--text-dim); font-weight: 600; }
+
+.dd-cat-row { display: flex; align-items: center; gap: 10px; }
+.dd-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dd-stat { padding: 14px 16px; background: var(--surface-2); border: none; box-shadow: none; border-radius: var(--radius-sm); }
+.dd-stat .card-label { font-size: var(--fs-caption); color: var(--text-faint); }
+.dd-stat-value { font-size: var(--fs-stat); font-weight: 650; margin-top: 4px; }
+.dd-stat-value-date { font-size: var(--fs-body); white-space: nowrap; }
+.dd-stat-sub { font-size: var(--fs-caption); color: var(--text-faint); margin-top: 5px; min-height: 12px; }
+.dd-stat.is-personal-best { background: var(--wash-accent); box-shadow: inset 0 0 0 1px var(--wash-accent-strong); }
+.dd-personal-best-badge { display: inline-block; margin-top: 5px; font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); }
+.dd-actions { display: flex; gap: 10px; margin-top: auto; padding-top: 16px; }
 .dd-actions .btn { flex: 1; }
 
-/* A section holding a chart needs no inner frame: the chart is the content. */
-.dd-trend-chart-wrap, .dd-compare-chart-wrap { background: none; }
+/* Period comparison */
+.dd-compare-list { display: flex; flex-direction: column; gap: 6px; }
+.dd-compare-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-sm); cursor: pointer; transition: background 0.12s; }
+.dd-compare-row:hover { background: var(--surface-3); }
+.dd-compare-row:hover .dd-compare-chevron { color: var(--accent); }
+.dd-compare-label { flex: 1; font-size: var(--fs-small); color: var(--text-dim); font-weight: 500; }
+.dd-compare-value { font-size: var(--fs-body); font-weight: 650; }
+.dd-compare-chevron { color: var(--text-faint); font-size: var(--fs-body); transition: transform 0.15s, color 0.15s; flex-shrink: 0; }
+.dd-compare-row.is-open .dd-compare-chevron { transform: rotate(180deg); }
+.dd-compare-chart-wrap { padding: 14px 4px 4px; }
+.dd-compare-chart-wrap canvas { max-height: 130px; }
 
-/* ---------------------------------------------------------------------------
-   Analytics
+/* Usage trend */
+.dd-trend-chart-wrap { height: 140px; margin-bottom: 12px; }
+.dd-trend-numbers { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+.dd-trend-cell { flex: 1; min-width: 112px; text-align: center; padding: 6px 2px; background: var(--surface-2); border-radius: var(--radius-sm); }
+.dd-trend-cell-label { font-size: var(--fs-micro); color: var(--text-faint); white-space: nowrap; }
+.dd-trend-cell-value { font-size: var(--fs-caption); font-weight: 650; color: var(--text); margin-top: 2px; white-space: nowrap; }
 
-   Set as a report: one column, a readable measure, and space between sections
-   rather than a wall of cards. A page whose job is to tell you something about
-   yourself should look like something written, not like a control panel.
-   --------------------------------------------------------------------------- */
-/* Centred, not left-pinned. The reading measure is what keeps the prose
-   legible, but pinning it to the left of a wide view left the whole right-hand
-   side empty and made the report look like it had failed to load the rest of
-   itself. The heading is centred with it: a title sitting left of its own
-   article reads as two things rather than one. */
-.an-body { display: flex; flex-direction: column; gap: 34px; max-width: 74ch; margin: 0 auto; }
-#view-analytics .view-head { max-width: 74ch; margin-left: auto; margin-right: auto; }
+/* Milestone tiers */
+.dd-tier-ladder { display: flex; gap: 8px; }
+.dd-tier-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 11px 6px; border-radius: var(--radius-sm); background: var(--surface-2); opacity: 0.5; transition: opacity 0.2s, background 0.2s; }
+.dd-tier-item.reached { opacity: 1; }
+.dd-tier-item.current { background: var(--wash-accent); box-shadow: inset 0 0 0 1px var(--wash-accent-strong); }
+.dd-tier-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--text-faint); background: transparent; }
+.dd-tier-item.reached .dd-tier-dot { border-color: transparent; }
+.dd-tier-name { font-weight: 700; font-size: var(--fs-small); }
+.dd-tier-req { font-size: var(--fs-micro); color: var(--text-faint); }
+.dd-tier-date { font-size: var(--fs-micro); color: var(--text-faint); }
 
-.an-summary { display: flex; flex-direction: column; gap: 14px; }
-.an-figure { display: flex; flex-direction: column; gap: 2px; }
-.an-figure-value {
-    font-family: var(--font-mono);
-    font-size: var(--fs-hero);
-    font-weight: 700;
-    color: var(--brass);
-    line-height: 1;
-}
-.an-figure-label {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-}
-.an-delta { font-size: var(--fs-small); color: var(--text-dim); margin-top: 4px; }
-.an-delta.up { color: var(--brass); }
-.an-delta.down { color: var(--teal); }
+/* Limits */
+.dd-limit-bar-wrap { margin-bottom: 14px; }
+.dd-limit-bar { height: 8px; border-radius: var(--radius-pill); overflow: hidden; background: var(--surface-2); }
+.dd-limit-bar-fill { height: 100%; border-radius: var(--radius-pill); transition: width 0.3s ease, background 0.3s ease; }
+.dd-limit-bar-caption { font-size: var(--fs-caption); color: var(--text-faint); margin-top: 6px; }
+.dd-limit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 
-.an-headline {
-    font-size: var(--fs-strong);
-    line-height: 1.6;
-    color: var(--text);
-    margin: 0;
-}
-.an-learning {
-    font-size: var(--fs-small);
-    color: var(--text-faint);
-    background: var(--wash-brass);
+/* Settings pieces */
+.theme-picker { display: flex; flex-wrap: wrap; gap: 10px; }
+.theme-swatch {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 14px;
     border-radius: var(--radius-sm);
-    padding: 12px 15px;
-    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text-dim);
+    font-size: var(--fs-small);
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
+.theme-swatch:hover { border-color: var(--text-faint); }
+.theme-swatch.active { border-color: var(--accent); color: var(--text); background: var(--wash-accent); box-shadow: 0 0 0 1px var(--accent); }
+.theme-swatch-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.45); }
+
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 820px) { .settings-grid { grid-template-columns: 1fr; } }
+.settings-list { display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; padding-right: 4px; }
+.settings-list-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; border-radius: var(--radius-sm); background: var(--surface-2); font-size: var(--fs-body); font-weight: 500; }
+.retention-row { display: flex; gap: 10px; align-items: center; }
+.retention-status { color: var(--good); font-size: var(--fs-small); font-weight: 500; margin-top: 10px; display: none; }
+
+/* Version history */
+.release-item { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); margin-bottom: 8px; overflow: hidden; }
+.release-item.is-current { border-color: var(--wash-accent-strong); box-shadow: 0 0 0 1px var(--wash-accent-strong); }
+.release-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; list-style: none; user-select: none; }
+.release-head::-webkit-details-marker { display: none; }
+.release-head::before { content: "\25B8"; color: var(--text-faint); transition: transform 0.15s; font-size: var(--fs-caption); }
+.release-item[open] .release-head::before { transform: rotate(90deg); }
+.release-head:hover { background: var(--surface-2); }
+.release-version { font-weight: 650; font-size: var(--fs-body); color: var(--text); }
+.release-date { margin-left: auto; font-size: var(--fs-caption); color: var(--text-faint); }
+.release-badge { font-size: var(--fs-micro); font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--wash-accent-strong); color: var(--accent); }
+.release-body { padding: 2px 16px 16px; border-top: 1px solid var(--border); }
+.release-nonotes { color: var(--text-faint); font-size: var(--fs-small); font-style: italic; }
+.release-body .md-h { font-size: var(--fs-body); font-weight: 650; color: var(--text); margin: 16px 0 6px; }
+.release-body p { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.6; margin: 0 0 10px; }
+.release-body ul { margin: 0 0 12px; padding-left: 20px; }
+.release-body li { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.6; margin-bottom: 5px; }
+.release-body strong { color: var(--text); font-weight: 650; }
+.release-body a { color: var(--accent); }
+.release-body .md-code { font-family: var(--font-mono); font-size: var(--fs-caption); background: var(--surface-2); border-radius: 4px; padding: 1px 5px; }
+.release-body .md-hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.release-body .md-table-wrap { overflow-x: auto; margin: 0 0 12px; }
+.release-body .md-table { border-collapse: collapse; width: 100%; font-size: var(--fs-small); }
+.release-body .md-table th, .release-body .md-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.release-body .md-table th { color: var(--text-faint); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.05em; }
+.release-body .md-table td { color: var(--text-dim); }
+
+/* ---------------------------------------------------------
+   Card layout editing (Customise)
+   --------------------------------------------------------- */
+.layout-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; margin-bottom: 16px; border-radius: var(--radius-sm); background: var(--wash-accent); border: 1px solid var(--wash-accent-strong); }
+.layout-bar-text { font-size: var(--fs-small); color: var(--text-dim); }
+.layout-bar-status { font-size: var(--fs-caption); color: var(--accent); margin-left: auto; font-weight: 600; }
+.layout-handle { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; flex: 0 0 100%; padding: 6px 10px; margin-bottom: 10px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); }
+.layout-grip { color: var(--text-faint); cursor: grab; font-size: var(--fs-strong); line-height: 1; }
+.layout-name { font-size: var(--fs-caption); font-weight: 600; color: var(--text-dim); }
+.layout-btn { margin-left: 4px; padding: 3px 9px; font-size: var(--fs-caption); font-weight: 600; color: var(--text-dim); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer; }
+.layout-btn:last-child { margin-left: auto; }
+.layout-btn:hover:not(:disabled) { color: var(--text); border-color: var(--text-faint); }
+.layout-btn:disabled { opacity: 0.4; cursor: default; }
+.layout-btn-hide[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.layout-editing > [data-card] { outline: 1px dashed var(--border-strong); outline-offset: 4px; border-radius: var(--radius-sm); }
+.layout-dragging { opacity: 0.45; }
+.layout-hidden { display: none; }
+.layout-editing > .layout-hidden { display: block; opacity: 0.4; }
+.layout-edit-toggle { flex-shrink: 0; height: 36px; padding: 0 14px; font-size: var(--fs-small); font-weight: 500; color: var(--text-dim); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); cursor: pointer; transition: background 0.12s, color 0.12s; }
+.layout-edit-toggle:hover { color: var(--text); background: var(--surface-2); }
+.ov-controls + .layout-edit-toggle { margin-left: 4px; }
+.view-head > .layout-edit-toggle:not(.ov-controls + *) { margin-left: auto; }
+@media (prefers-reduced-motion: reduce) { .layout-dragging { opacity: 1; } }
+
+/* ---------------------------------------------------------
+   Wrapped (top bar entry, panel, story)
+   --------------------------------------------------------- */
+.tb-wrapped-wrap { position: relative; }
+.tb-wrapped-btn {
+    display: flex; align-items: center; gap: 7px;
+    height: 36px;
+    padding: 0 14px 0 11px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--wash-accent-strong);
+    background: var(--wash-accent);
+    color: var(--accent);
+    font-size: var(--fs-small);
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.12s;
+}
+.tb-wrapped-btn:hover { background: var(--wash-accent-strong); }
+.tb-wrapped-btn svg { width: 15px; height: 15px; }
+.tb-wrapped-ready-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 2px var(--bg); position: absolute; top: -3px; right: -3px; }
+
+.wrapped-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 320px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-lg); padding: 16px; z-index: 40; }
+.wrapped-panel-title { font-size: var(--fs-strong); font-weight: 650; color: var(--text); margin-bottom: 12px; }
+.wrapped-card { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); margin-bottom: 8px; cursor: pointer; transition: background 0.12s; }
+.wrapped-card:hover { background: var(--wash-accent); }
+.wrapped-card:last-of-type { margin-bottom: 0; }
+.wrapped-card-eyebrow { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 500; }
+.wrapped-card-teaser { font-size: var(--fs-body); color: var(--text); margin-top: 3px; }
+.wrapped-card-teaser strong { color: var(--accent); }
+.wrapped-card-chev { color: var(--text-faint); }
+.wrapped-panel-footer { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: var(--fs-caption); color: var(--text-faint); text-align: center; }
+
+/* The story is a cinematic full-screen moment and stays dark whatever the page
+   is. Rather than special-casing every slide, the overlay re-declares the dark
+   tokens (new and legacy names alike, since aliases resolve where they are
+   declared, not where they are used) for its own subtree. */
+.wrapped-overlay {
+    --bg: #0C0E13;
+    --surface: #14171E;
+    --surface-2: #1A1E27;
+    --surface-3: #232834;
+    --border: rgba(255, 255, 255, 0.10);
+    --text: #EEF0F4;
+    --text-dim: #A8B0BE;
+    --text-faint: #8791A3;
+    --accent: #8CA2FF;
+    --accent-fill: #3D5AFE;
+    --focus: #8CA2FF;
+    --afk: #FF7A82;
+    --music: #BE9BFF;
+    --good: #34D6C2;
+    --wash-accent: rgba(140, 162, 255, 0.12);
+    --wash-accent-strong: rgba(140, 162, 255, 0.20);
+    --brass: #8CA2FF;
+    --brass-dim: #3D4FB3;
+    --brass-glow: rgba(140, 162, 255, 0.30);
+    --teal: #34D6C2;
+    --rose: #FF7A82;
+    --violet: #BE9BFF;
+    --panel: rgba(255, 255, 255, 0.04);
+    --panel-border: rgba(255, 255, 255, 0.10);
+    --panel-border-soft: rgba(255, 255, 255, 0.06);
+    --bg-raised: #101319;
+    --lift: rgba(255, 255, 255, 0.08);
+    --lift-strong: rgba(255, 255, 255, 0.12);
+    --scrim: rgba(0, 0, 0, 0.6);
+
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 6, 10, 0.84);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+}
+.wrapped-close { position: absolute; top: 20px; right: 24px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel); color: var(--text-dim); font-size: var(--fs-title); line-height: 1; cursor: pointer; z-index: 2; }
+.wrapped-stage { position: relative; width: 380px; max-width: calc(100vw - 40px); }
+.wrapped-nav-zone { position: absolute; top: 0; bottom: 0; width: 33%; cursor: pointer; display: flex; align-items: center; }
+.wrapped-nav-prev { left: 0; justify-content: flex-start; padding-left: 10px; }
+.wrapped-nav-next { right: 0; justify-content: flex-end; padding-right: 10px; }
+.wrapped-chev { font-size: 40px; line-height: 1; color: var(--text-faint); opacity: 0.75; transition: opacity 0.15s, color 0.15s, transform 0.15s; user-select: none; }
+.wrapped-nav-zone:hover .wrapped-chev { opacity: 1; color: var(--accent); }
+.wrapped-nav-prev:hover .wrapped-chev { transform: translateX(-3px); }
+.wrapped-nav-next:hover .wrapped-chev { transform: translateX(3px); }
+.wrapped-hint { position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%); white-space: nowrap; font-size: var(--fs-small); color: var(--text-faint); opacity: 0; transition: opacity 0.4s; pointer-events: none; }
+.wrapped-hint.show { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .wrapped-chev, .wrapped-hint { transition: none; } .wrapped-nav-zone:hover .wrapped-chev { transform: none; } }
+
+.wrapped-slide {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    max-height: 82vh;
+    margin: 0 auto;
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    background:
+        radial-gradient(circle at 50% 28%, rgba(140, 162, 255, 0.26) 0%, transparent 55%),
+        linear-gradient(180deg, #0F1219 0%, #07080C 100%);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 26px 22px;
+    box-shadow: 0 40px 80px -20px var(--scrim);
+    pointer-events: none;
+}
+.wrapped-slide::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(var(--panel) 1px, transparent 1px); background-size: 14px 14px; mask-image: radial-gradient(circle at 50% 35%, black 0%, transparent 70%); }
+.wrapped-slide #wrapped-slide-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.wrapped-slide .progress-row { display: flex; gap: 5px; margin-bottom: 20px; }
+.wrapped-slide .progress-seg { flex: 1; height: 3px; border-radius: 2px; background: var(--lift-strong); }
+.wrapped-slide .progress-seg.done { background: var(--brass-dim); }
+.wrapped-slide .progress-seg.active { background: var(--accent); }
+.wrapped-slide .eyebrow { font-size: var(--fs-caption); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); display: flex; justify-content: space-between; align-items: baseline; font-weight: 500; }
+.wrapped-slide .eyebrow strong { color: var(--accent); font-weight: 650; }
+.wrapped-slide .headline { font-size: 22px; font-weight: 650; line-height: 1.25; text-wrap: balance; color: var(--text); margin: 18px 0 10px; letter-spacing: -0.02em; }
+.wrapped-slide .headline em { color: var(--accent); font-style: normal; }
+.wrapped-slide .hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 14px; min-height: 0; }
+.wrapped-slide .hero-number { font-weight: 700; font-size: 92px; line-height: 0.9; color: var(--accent); letter-spacing: -0.04em; text-shadow: 0 0 60px var(--brass-glow); white-space: nowrap; }
+.wrapped-slide .hero-number sup, .wrapped-slide .hero-number .unit { font-size: 38px; font-weight: 600; vertical-align: super; }
+.wrapped-slide .hero-caption { font-size: var(--fs-strong); color: var(--text-dim); max-width: 260px; }
+.wrapped-slide .foot { display: grid; gap: 10px; margin-top: 22px; }
+.wrapped-slide .foot-card { background: var(--panel); border: 1px solid var(--panel-border-soft); border-radius: var(--radius); padding: 12px 14px; }
+.wrapped-slide .foot-label { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 500; }
+.wrapped-slide .foot-value { font-size: var(--fs-strong); font-weight: 650; color: var(--text); margin-top: 4px; }
+.wrapped-slide .foot-value.teal { color: var(--teal); }
+.wrapped-slide .rhythm-caption { font-size: var(--fs-caption); color: var(--text-faint); text-align: center; margin-bottom: 10px; }
+.wrapped-slide .bar-row { flex: 1; display: flex; align-items: flex-end; gap: 6px; min-height: 0; padding: 0 4px; }
+.wrapped-slide .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+.wrapped-slide .bar-track { width: 100%; flex: 1; display: flex; align-items: flex-end; }
+.wrapped-slide .bar-fill { width: 100%; min-height: 3px; border-radius: 4px 4px 2px 2px; background: var(--brass-dim); transition: height 0.3s ease; }
+.wrapped-slide .bar-fill.is-peak { background: var(--accent); box-shadow: 0 0 20px var(--brass-glow); }
+.wrapped-slide .bar-fill.is-future { background: var(--panel); }
+.wrapped-slide .bar-label { font-size: var(--fs-micro); color: var(--text-faint); }
+.wrapped-slide .cat-list { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+.wrapped-slide .cat-row { display: flex; align-items: center; gap: 10px; }
+.wrapped-slide .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.wrapped-slide .cat-name { flex: 1; font-size: var(--fs-small); color: var(--text-dim); }
+.wrapped-slide .cat-pct { font-size: var(--fs-small); font-weight: 650; color: var(--text); }
+.wrapped-slide .ms-list { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; overflow-y: auto; }
+.wrapped-slide .ms-row { display: flex; align-items: center; gap: 12px; }
+.wrapped-slide .ms-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.wrapped-slide .ms-app { font-size: var(--fs-strong); font-weight: 600; color: var(--text); }
+.wrapped-slide .ms-tier { font-size: var(--fs-caption); color: var(--text-faint); margin-top: 2px; }
+.wrapped-slide .rank-list { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+.wrapped-slide .rank-row { display: flex; align-items: center; gap: 14px; }
+.wrapped-slide .rank-num { font-size: var(--fs-title); font-weight: 700; color: var(--accent); width: 32px; flex-shrink: 0; }
+.wrapped-slide .rank-name { font-size: var(--fs-strong); font-weight: 600; color: var(--text); }
+.wrapped-slide .rank-sub { font-size: var(--fs-caption); color: var(--text-faint); margin-top: 2px; }
+.wrapped-slide .archetype-hero .archetype-label { font-weight: 750; font-size: 34px; line-height: 1.15; color: var(--accent); text-shadow: 0 0 40px var(--brass-glow); text-wrap: balance; letter-spacing: -0.02em; }
+.wrapped-slide .archetype-hero.is-light .archetype-label { font-size: 24px; text-shadow: none; }
+
+/* ---------------------------------------------------------
+   Analytics: a written report
+   --------------------------------------------------------- */
+.an-body { display: flex; flex-direction: column; gap: 32px; max-width: 76ch; margin: 0 auto; }
+#view-analytics .view-head { max-width: 76ch; margin-left: auto; margin-right: auto; }
+
+.an-summary { display: flex; flex-direction: column; gap: 14px; padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.an-figure { display: flex; flex-direction: column; gap: 2px; }
+.an-figure-value { font-size: var(--fs-hero); font-weight: 700; letter-spacing: -0.03em; color: var(--accent); line-height: 1; }
+.an-figure-label { font-size: var(--fs-small); color: var(--text-faint); font-weight: 500; }
+.an-delta { font-size: var(--fs-small); color: var(--text-dim); margin-top: 4px; }
+.an-delta.up { color: var(--accent); }
+.an-delta.down { color: var(--good); }
+.an-headline { font-size: var(--fs-strong); line-height: 1.6; color: var(--text); margin: 0; }
+.an-learning { font-size: var(--fs-small); color: var(--text-dim); background: var(--wash-accent); border-radius: var(--radius-sm); padding: 12px 15px; margin: 0; }
 .an-empty { font-size: var(--fs-body); color: var(--text-faint); margin: 0; }
 
 .an-block { display: flex; flex-direction: column; gap: 14px; }
-.an-block-title {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    font-weight: 700;
-    margin: 0;
-}
+.an-block-title { font-size: var(--fs-strong); font-weight: 650; color: var(--text); margin: 0; letter-spacing: -0.01em; }
 
-/* ---- an insight ---- */
 .an-insights { display: flex; flex-direction: column; gap: 12px; }
-.an-insight {
-    background: var(--panel);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
-}
+.an-insight { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
 .an-insight-head { display: flex; align-items: center; gap: 9px; }
-.an-kind-mark { color: var(--brass); font-size: var(--fs-body); }
-.an-kind {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    font-weight: 700;
-}
-.an-trend {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    border-radius: var(--radius-pill);
-    padding: 3px 9px;
-}
-.an-trend-up { background: var(--wash-brass-strong); color: var(--brass); }
-.an-trend-down { background: var(--wash-teal); color: var(--teal); }
-.an-trend-new, .an-trend-gone { background: var(--lift); color: var(--text-dim); }
-
-.an-insight-title { font-size: var(--fs-title); font-weight: 500; color: var(--text); margin: 0; line-height: 1.35; }
+.an-kind-mark { color: var(--accent); font-size: var(--fs-body); }
+.an-kind { font-size: var(--fs-caption); color: var(--text-faint); font-weight: 600; text-transform: capitalize; }
+.an-trend { font-size: var(--fs-caption); font-weight: 600; border-radius: var(--radius-pill); padding: 2px 9px; }
+.an-trend-up { background: var(--wash-accent-strong); color: var(--accent); }
+.an-trend-down { background: var(--wash-good); color: var(--good); }
+.an-trend-new, .an-trend-gone { background: var(--surface-2); color: var(--text-dim); }
+.an-insight-title { font-size: var(--fs-title); font-weight: 600; letter-spacing: -0.015em; color: var(--text); margin: 0; line-height: 1.3; }
 .an-insight-body { font-size: var(--fs-body); color: var(--text-dim); line-height: 1.6; margin: 0; }
-
-/* The measurements the sentence above was built from. Listed, because an
-   observation the reader cannot check is just an assertion. */
 .an-evidence { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.an-evidence li {
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-    padding-left: 15px;
-    position: relative;
-}
-.an-evidence li::before {
-    content: ''; position: absolute; left: 0; top: 7px;
-    width: 5px; height: 5px; border-radius: 50%; background: var(--brass);
-}
+.an-evidence li { font-size: var(--fs-small); color: var(--text-faint); padding-left: 15px; position: relative; }
+.an-evidence li::before { content: ''; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.an-rec { font-size: var(--fs-body); color: var(--text); background: var(--wash-accent); border-radius: var(--radius-sm); padding: 12px 15px; margin: 2px 0 0 0; line-height: 1.55; }
+.an-rec-label { display: block; font-size: var(--fs-caption); color: var(--accent); margin-bottom: 4px; font-weight: 650; }
+.an-insight-foot { display: flex; justify-content: space-between; gap: 12px; font-size: var(--fs-caption); color: var(--text-faint); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; }
 
-.an-rec {
-    font-size: var(--fs-body);
-    color: var(--text);
-    background: var(--wash-brass);
-    border-radius: var(--radius-sm);
-    padding: 12px 15px;
-    margin: 2px 0 0 0;
-    line-height: 1.55;
-}
-.an-rec-label {
-    display: block;
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    color: var(--brass);
-    margin-bottom: 5px;
-    font-weight: 700;
-}
-
-.an-insight-foot {
-    display: flex; justify-content: space-between; gap: 12px;
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    border-top: 1px solid var(--panel-border-soft);
-    padding-top: 9px;
-    margin-top: 2px;
-}
-
-/* ---- the shape of a day ---- */
 .an-hours { display: flex; align-items: flex-end; gap: 3px; height: 110px; }
 .an-hour { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
-.an-hour-bar { width: 100%; background: var(--brass); border-radius: 3px 3px 0 0; min-height: 0; }
-.an-hour-label {
-    position: absolute; bottom: -18px; left: 0; right: 0; text-align: center;
-    font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-faint);
-}
+.an-hour-bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 0; }
+.an-hour-label { position: absolute; bottom: -18px; left: 0; right: 0; text-align: center; font-size: var(--fs-micro); color: var(--text-faint); }
 .an-hours + * { margin-top: 20px; }
 
-/* ---- what the time was made of ---- */
-.an-apps { display: flex; flex-direction: column; gap: 9px; }
+.an-apps { display: flex; flex-direction: column; gap: 10px; }
 .an-app { display: grid; grid-template-columns: 12ch 1fr 7ch 5ch; align-items: center; gap: 12px; }
 .an-app-name { font-size: var(--fs-body); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.an-app-track { height: 7px; background: var(--panel); border-radius: var(--radius-pill); overflow: hidden; }
-.an-app-fill { display: block; height: 100%; background: var(--brass); border-radius: var(--radius-pill); }
-.an-app-time { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-dim); text-align: right; }
-.an-app-change { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); text-align: right; }
-.an-app-change.up { color: var(--brass); }
-.an-app-change.down { color: var(--teal); }
-
-/* Categories are named in whole words -- "Media Production", "Communication" --
-   where applications are mostly one short one, so the shared 12ch name column
-   clipped them. Widened only here rather than for both: giving every
-   application row five more characters would leave the bars visibly short of
-   the space they had. */
+.an-app-track { height: 7px; background: var(--surface-2); border-radius: var(--radius-pill); overflow: hidden; }
+.an-app-fill { display: block; height: 100%; background: var(--accent); border-radius: var(--radius-pill); }
+.an-app-time { font-size: var(--fs-small); color: var(--text-dim); text-align: right; }
+.an-app-change { font-size: var(--fs-small); color: var(--text-faint); text-align: right; }
+.an-app-change.up { color: var(--accent); }
+.an-app-change.down { color: var(--good); }
 .an-apps.an-cats .an-app { grid-template-columns: 17ch 1fr 7ch 5ch; }
-
 .an-privacy { font-size: var(--fs-caption); color: var(--text-faint); margin: 0; }
 
-/* ---- when the history could not be read ----
-   Rose rather than the brass wash used for "still learning". The two states
-   read almost identically in a glance and are opposites: one is the page
-   working correctly on a short history, the other is the page unable to work
-   at all. Colour alone does not carry it -- both carry a word. */
-.an-broken {
-    background: var(--wash-rose);
-    border-radius: var(--radius);
-    padding: 20px 22px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-.an-broken-title {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    color: var(--rose);
-    font-weight: 700;
-    margin: 0;
-}
+.an-broken { background: var(--wash-afk); border-radius: var(--radius); padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; }
+.an-broken-title { font-size: var(--fs-small); color: var(--afk); font-weight: 650; margin: 0; }
 .an-broken-body { font-size: var(--fs-body); color: var(--text); line-height: 1.6; margin: 0; }
-.an-broken-detail {
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-    margin: 0;
-    word-break: break-word;
-}
+.an-broken-detail { font-size: var(--fs-caption); color: var(--text-faint); margin: 0; word-break: break-word; }
+.an-partial { font-size: var(--fs-small); color: var(--text-dim); background: var(--wash-afk); border-radius: var(--radius-sm); padding: 12px 15px; margin: 0; line-height: 1.55; }
+.an-partial-label { display: inline-block; font-size: var(--fs-caption); color: var(--afk); font-weight: 650; margin-right: 8px; }
+.an-also { font-size: var(--fs-caption); color: var(--text-faint); margin: 2px 0 0 0; }
+.an-source { font-size: var(--fs-caption); color: var(--text-faint); margin: 4px 0 0 0; line-height: 1.55; }
 
-/* Read, but not all of it. A band rather than a card: it qualifies everything
-   under it instead of sitting beside it as one more finding. */
-.an-partial {
-    font-size: var(--fs-small);
-    color: var(--text-dim);
-    background: var(--wash-rose);
-    border-radius: var(--radius-sm);
-    padding: 12px 15px;
-    margin: 0;
-    line-height: 1.55;
-}
-.an-partial-label {
-    display: inline-block;
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    color: var(--rose);
-    font-weight: 700;
-    margin-right: 8px;
-}
-
-/* ---- what was found and not printed ---- */
-.an-also {
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-    margin: 2px 0 0 0;
-}
-
-/* ---- where a section's numbers came from ---- */
-.an-source {
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-    margin: 4px 0 0 0;
-    line-height: 1.55;
-}
-
-/* ---- what the page can and cannot see ----
-   Two columns of equal weight on purpose. Setting the limitations smaller, or
-   behind a disclosure, would make them a disclaimer; they are half of what the
-   section says. */
-.an-coverage-cols {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 18px 26px;
-}
+.an-coverage-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px 26px; }
 .an-coverage-col { display: flex; flex-direction: column; gap: 8px; }
-.an-coverage-head {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    font-weight: 700;
-    margin: 0;
-}
-.an-coverage-col:first-child .an-coverage-head { color: var(--brass); }
+.an-coverage-head { font-size: var(--fs-small); font-weight: 650; margin: 0; }
+.an-coverage-col:first-child .an-coverage-head { color: var(--accent); }
 .an-coverage-col:last-child .an-coverage-head { color: var(--text-faint); }
-
 .an-coverage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.an-coverage-list li {
-    font-size: var(--fs-small);
-    color: var(--text-dim);
-    line-height: 1.5;
-    padding-left: 17px;
-    position: relative;
-}
-/* A tick and a dash, so the two lists are still distinguishable without
-   colour and still readable to a screen reader that ignores ::before. */
-.an-coverage-yes li::before {
-    content: '\2713';
-    position: absolute; left: 0; top: 0;
-    color: var(--brass);
-    font-size: var(--fs-caption);
-}
-.an-coverage-no li::before {
-    content: '\2014';
-    position: absolute; left: 0; top: 0;
-    color: var(--text-faint);
-    font-size: var(--fs-caption);
-}
+.an-coverage-list li { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.5; padding-left: 17px; position: relative; }
+.an-coverage-yes li::before { content: '\2713'; position: absolute; left: 0; top: 0; color: var(--accent); font-size: var(--fs-caption); }
+.an-coverage-no li::before { content: '\2014'; position: absolute; left: 0; top: 0; color: var(--text-faint); font-size: var(--fs-caption); }
 
-
-/* ---- asking about your own activity ---- */
 .an-ask-row { display: flex; gap: 9px; }
-.an-ask-input {
-    flex-grow: 1;
-    background: var(--panel);
-    border: none;
-    border-radius: var(--radius-pill);
-    padding: 12px 18px;
-    font-family: var(--font-body);
-    font-size: var(--fs-body);
-    color: var(--text);
-    outline: none;
-}
+.an-ask-input { flex-grow: 1; height: 42px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 0 14px; font-size: var(--fs-body); color: var(--text); outline: none; transition: border-color 0.12s, box-shadow 0.12s; }
 .an-ask-input::placeholder { color: var(--text-faint); }
-.an-ask-go {
-    background: var(--brass-fill);
-    color: var(--ink-on-fill);
-    border: none;
-    border-radius: var(--radius-pill);
-    padding: 12px 22px;
-    font-family: var(--font-body);
-    font-size: var(--fs-body);
-    font-weight: 700;
-    cursor: pointer;
-}
-/* Nobody knows what to ask a program about themselves, so the examples are the
-   interface and the text box is the shortcut. */
-.an-ask-chips { display: flex; flex-wrap: wrap; gap: 7px; }
-.an-chip {
-    background: var(--panel);
-    color: var(--text-dim);
-    border: none;
-    border-radius: var(--radius-pill);
-    padding: 7px 14px;
-    font-family: var(--font-body);
-    font-size: var(--fs-caption);
-    cursor: pointer;
-}
-.an-chip:hover { background: var(--lift); color: var(--text); }
+.an-ask-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--wash-accent-strong); }
+.an-ask-go { background: var(--accent-fill); color: var(--ink-on-fill); border: none; border-radius: var(--radius-sm); padding: 0 22px; font-size: var(--fs-body); font-weight: 600; cursor: pointer; transition: background 0.12s; }
+.an-ask-go:hover { background: var(--accent-hover); }
+.an-ask-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.an-chip { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border-strong); border-radius: var(--radius-pill); padding: 6px 14px; font-size: var(--fs-small); cursor: pointer; transition: background 0.12s, color 0.12s; }
+.an-chip:hover { background: var(--surface-2); color: var(--text); }
 .an-ask-answer:empty { display: none; }
-.an-ask-answer {
-    display: flex; flex-direction: column; gap: 9px;
-    background: var(--panel);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-}
+.an-ask-answer { display: flex; flex-direction: column; gap: 9px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 18px 20px; }
 .an-ask-text { font-size: var(--fs-strong); color: var(--text); line-height: 1.6; margin: 0; }
-.an-ask-basis {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    margin: 0;
-}
+.an-ask-basis { font-size: var(--fs-caption); color: var(--text-faint); margin: 0; }

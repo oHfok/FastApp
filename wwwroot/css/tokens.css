@@ -1,264 +1,202 @@
 /* ---------------------------------------------------------------------------
-   The design system's single source of truth.
+   FastApp design tokens -- the single source of truth.
 
-   Both halves of FastApp read this file: the web dashboard through base.css,
-   and the desktop app's WebView2 surface directly. They used to share nothing
-   but a rough sense of the palette -- the desktop side was Segoe UI with
-   fourteen font sizes and forty-eight spacing values, because there was no
-   system for it to follow. There is now, and it lives here.
+   Read by both halves of the product: the web dashboard (through base.css) and
+   the desktop palette (palette.css). Colours, type ramp, radii and elevation
+   live here and nowhere else, so the two surfaces cannot drift apart.
+
+   Clean and quiet: a cool grey canvas, white surfaces on thin borders, Inter,
+   and one blue accent. Colour is spent on data -- focus is blue, AFK is rose,
+   music is violet -- never on chrome. Light and dark are both designed. With no
+   stored choice the page follows Windows; the palette is told which to use by
+   its host, which stamps data-theme.
 
    Anything that belongs to the design rather than to one surface goes in this
    file. Anything that styles a particular component does not.
    --------------------------------------------------------------------------- */
 
 :root {
-    --bg: #0A0B10;
-    --bg-raised: #101219;
-    --panel: rgba(255, 255, 255, 0.035);
-    --panel-solid: #14161F;
-    --panel-border: rgba(255, 255, 255, 0.08);
-    --panel-border-soft: rgba(255, 255, 255, 0.05);
+    color-scheme: light;
 
-    --text: #F3F1EA;
-    --text-dim: #9C9FAE;
-    /* Was #5B5F71, which measured 3.11:1 against --bg -- below the 4.5:1 needed
-       for body text and below even the 3:1 large-text floor. It is the token
-       behind every caption, section label, hint and inactive toggle, so it
-       accounted for roughly 30 of the 40 text styles in the dashboard that
-       failed contrast. #757A90 measures 4.63:1: the smallest step that clears
-       AA while staying in the same blue-grey family and still reading as
-       clearly quieter than --text-dim (7.47:1).
+    /* --- Surfaces ---------------------------------------------------- */
+    --bg: #F5F6F8;              /* the canvas behind everything */
+    --surface: #FFFFFF;         /* cards, drawers, popovers */
+    --surface-2: #F1F3F6;       /* inset: tracks, inputs, hovered rows */
+    --surface-3: #E7EAEF;       /* pressed / stronger inset */
+    --border: #E4E7EC;
+    --border-strong: #CDD3DC;
 
-       #7C8194 rather than the bare minimum: much of this text sits on --panel
-       rather than directly on --bg, and that lighter surface costs roughly
-       0.4 of the ratio. Measured across every view, #757A90 left 9 styles
-       still failing and #7C8194 leaves 2 (neither of them this token);
-       going lighter again gains nothing. */
-    --text-faint: #7C8194;
+    /* --- Text -------------------------------------------------------- */
+    --text: #101828;
+    --text-dim: #475467;
+    --text-faint: #667085;
 
-    --brass: #E8A33D;
-    --brass-dim: #8A6321;
-    --brass-glow: rgba(232, 163, 61, 0.35);
+    /* --- Accent: focus ------------------------------------------------
+       --accent is the one you READ (links, values, active states);
+       --accent-fill is the one you SIT ON (primary buttons), always
+       under white ink. They differ only in dark mode. */
+    --accent: #3D5AFE;
+    --accent-fill: #3D5AFE;
+    --accent-hover: #2F49E0;
+    --ink-on-fill: #FFFFFF;
+    --wash-accent: rgba(61, 90, 254, 0.08);
+    --wash-accent-strong: rgba(61, 90, 254, 0.14);
 
-    --teal: #34D3C4;
-    --teal-dim: #1D766D;
+    /* --- Data colours -------------------------------------------------
+       Each reads as text on both the canvas and a card. */
+    --focus: var(--accent);
+    --afk: #D92D3A;
+    --music: #8B3FD9;
+    --good: #0A7F72;
+    --warn: #B45309;
+    --wash-afk: rgba(217, 45, 58, 0.08);
+    --wash-music: rgba(139, 63, 217, 0.09);
+    --wash-good: rgba(10, 127, 114, 0.10);
+    --wash-warn: rgba(180, 83, 9, 0.10);
 
-    --rose: #FF6B6B;
-    --rose-dim: #8C3A3A;
+    /* --- Elevation --------------------------------------------------- */
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+    --shadow-md: 0 6px 20px -4px rgba(16, 24, 40, 0.10), 0 2px 6px rgba(16, 24, 40, 0.05);
+    --shadow-lg: 0 24px 56px -12px rgba(16, 24, 40, 0.22);
+    --scrim: rgba(16, 24, 40, 0.42);
 
-    --violet: #8B7CFF;
-    --violet-dim: #4E4599;
+    /* --- Charts (read at render time by getChartTheme in utils.js) ---- */
+    --chart-grid: rgba(16, 24, 40, 0.07);
+    --chart-tooltip-bg: rgba(16, 24, 40, 0.95);
+    --chart-tooltip-title: #A9B8FF;
+    --chart-tooltip-text: #F2F4F7;
 
-    /* --- The accent, twice -------------------------------------------------
-       On a dark ground one brass does both jobs: it reads as text and it works
-       as a button. On a light ground it cannot -- #E8A33D measures 2:1 as text
-       on white -- so the two split. --brass is the accent that has to be READ
-       and changes with the theme; --brass-fill is the accent that gets SAT ON,
-       vivid in both themes, always under --ink-on-fill. */
-    --brass-fill: #E8A33D;
-    --teal-fill: #34D3C4;
-    --violet-fill: #8B7CFF;
-    --ink-on-fill: #1A1000;
+    /* --- Type --------------------------------------------------------- */
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display: var(--font-body);
+    --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
 
-    /* --- Washes -------------------------------------------------------------
-       Accent tints used as backgrounds, and the reason this file has them at
-       all: their alpha is not a constant across themes. A 16% brass wash on
-       near-black is a hint; the same wash on off-white darkens the ground
-       enough to drop the brass text sitting on it below AA. Measured rather
-       than guessed -- 0.11 is the most a light ground takes before
-       brass-on-brass fails, and rose needs a darker text to survive at all. */
-    --wash-brass: rgba(232, 163, 61, 0.09);
-    --wash-brass-strong: rgba(232, 163, 61, 0.16);
-    --wash-teal: rgba(52, 211, 196, 0.16);
-    --wash-rose: rgba(255, 107, 107, 0.10);
-    --wash-rose-soft: rgba(255, 107, 107, 0.08);
+    --fs-micro: 11px;     /* eyebrows, table headers */
+    --fs-caption: 12px;   /* captions, chips, meta */
+    --fs-small: 13px;     /* secondary text */
+    --fs-body: 14px;      /* default */
+    --fs-strong: 15px;    /* row titles, emphasised values */
+    --fs-stat: 18px;      /* compact numeric readouts */
+    --fs-title: 20px;     /* drawer and panel titles */
+    --fs-view: 24px;      /* page headings */
+    --fs-display: 30px;   /* stat-card values */
+    --fs-hero: 48px;      /* the hero figure */
 
-    /* Surface lifts and scrims. White over a dark ground, black over a light
-       one, which is why they cannot stay literals. */
-    --lift: rgba(255, 255, 255, 0.08);
-    --lift-strong: rgba(255, 255, 255, 0.12);
-    --scrim: rgba(0, 0, 0, 0.55);
-    --shadow-soft: rgba(0, 0, 0, 0.25);
+    /* --- Shape ------------------------------------------------------- */
+    --radius: 12px;       /* cards */
+    --radius-sm: 8px;     /* controls, rows, inner surfaces */
+    --radius-pill: 999px;
 
-    /* One face for everything that is not a figure. The design is set in Space
-       Grotesk -- squarer, more characterful, and it pairs with JetBrains Mono
-       rather than fighting it. Sora and Inter are gone: two faces doing one job,
-       and Inter is the most generic UI face there is. */
-    --font-display: 'Space Grotesk', system-ui, sans-serif;
-    --font-body: 'Space Grotesk', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-
-    /* --- Type ramp ---------------------------------------------------------
-       There was no scale here: 143 font-size literals typed at the point of
-       use, so the only thing keeping two similar elements in step was whoever
-       wrote the second one remembering the first. They drifted -- the 9-17px
-       band held ten distinct sizes including a stray 11.5 and 12.5, and 1px
-       apart carries no hierarchy, it just reads as unsettled.
-
-       Six text steps, each with a job. Pick by role, never by number; if a new
-       element does not fit one of these, that is a design question, not a
-       reason to type a literal. */
-    --fs-micro:   10px;   /* uppercase micro-labels above a value */
-    --fs-caption: 11px;   /* captions, chips, secondary meta */
-    --fs-small:   12px;   /* explanatory paragraphs */
-    --fs-body:    13px;   /* default: row text and inline values */
-    --fs-strong:  14px;   /* primary row identifiers, emphasised values */
-    --fs-stat:    16px;   /* compact numeric readouts */
-
-    /* Display steps. Wrapped keeps a handful of bespoke per-slide sizes on
-       purpose -- it is a showcase surface, not a list. */
-    --fs-title:   20px;   /* drawer and panel titles */
-    --fs-view:    24px;   /* page headings */
-    --fs-display: 26px;   /* stat-card values */
-    --fs-hero:    44px;   /* the hero stat */
-
-    /* --- Shape -------------------------------------------------------------
-       The dashboard used to be built from bordered rectangles: a panel with a
-       1px border and a 14px radius, repeated at every scale. The redesign drops
-       the borders entirely and leans on radius instead -- surfaces are soft and
-       generous, and anything that reads as a control or a row is a full pill.
-       One wash (--panel) carries every surface; there is no second panel colour
-       and no border, so depth comes from shape and spacing rather than outline. */
-    --radius: 20px;       /* cards and panels */
-    --radius-sm: 12px;    /* small surfaces nested inside a card */
-    --radius-pill: 100px; /* rows, toggles, bars, inputs -- anything interactive */
-
-    /* Chart.js reads these at render time (see getChartTheme() in utils.js) so
-       canvases re-theme along with everything else instead of staying fixed. */
-    --chart-grid: rgba(243, 241, 234, 0.06);
-    --chart-tooltip-bg: rgba(20, 22, 31, 0.95);
+    /* --- Legacy names ------------------------------------------------
+       JS-built markup and a few inline styles still say var(--brass) and
+       friends. They resolve to the new tokens so none of it has to be
+       touched; new code should use the names above. */
+    --brass: var(--accent);
+    --brass-dim: var(--border-strong);
+    --brass-fill: var(--accent-fill);
+    --brass-glow: var(--wash-accent-strong);
+    --teal: var(--good);
+    --teal-fill: var(--good);
+    --rose: var(--afk);
+    --rose-dim: var(--afk);
+    --violet: var(--music);
+    --violet-fill: var(--music);
+    --bg-raised: var(--surface-2);
+    --panel: var(--surface-2);
+    --panel-solid: var(--surface);
+    --panel-border: var(--border);
+    --panel-border-soft: var(--border);
+    --border-soft: var(--border);
+    --wash-brass: var(--wash-accent);
+    --wash-brass-strong: var(--wash-accent-strong);
+    --wash-teal: var(--wash-good);
+    --wash-rose: var(--wash-afk);
+    --wash-rose-soft: var(--wash-afk);
+    --lift: var(--surface-2);
+    --lift-strong: var(--surface-3);
+    --shadow-soft: rgba(16, 24, 40, 0.08);
 }
 
-/* ---------------------------------------------------------------------------
-   Light.
+/* Dark. Declared twice -- for an explicit choice, and for no choice on a
+   machine set to dark -- from one block of values so the two cannot drift. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0C0E13;
+    --surface: #14171E;
+    --surface-2: #1A1E27;
+    --surface-3: #232834;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.17);
 
-   FastApp was dark with no way out of it: WPF-UI pinned to Dark, nothing
-   reading the Windows theme, and all three dashboard themes dark. Someone
-   running Windows in Light got a permanently dark application and no setting
-   to change it, which reads as unfinished rather than as a decision.
+    --text: #EEF0F4;
+    --text-dim: #A8B0BE;
+    --text-faint: #8791A3;
 
-   The values live once, as --l-* below, and are mapped onto the real tokens
-   twice: for an explicit light choice, and for no choice at all on a machine
-   set to light. Written out twice instead, the two copies drifted within
-   minutes -- the selected row kept a wash the other copy had already been
-   corrected for, and measured 4.46:1 on the rendered page.
+    --accent: #7F97FF;
+    --accent-fill: #3D5AFE;
+    --accent-hover: #5974FF;
+    --wash-accent: rgba(127, 151, 255, 0.12);
+    --wash-accent-strong: rgba(127, 151, 255, 0.20);
 
-   Only tokens are mapped. Every component styles itself through them, so
-   nothing below this line needs a light-specific rule -- and a colour written
-   as a literal in a component is a colour this section cannot reach, which is
-   why the washes became tokens in the first place.
+    --afk: #FF7A82;
+    --music: #BE9BFF;
+    --good: #34D6C2;
+    --warn: #FBBF24;
+    --wash-afk: rgba(255, 122, 130, 0.12);
+    --wash-music: rgba(190, 155, 255, 0.13);
+    --wash-good: rgba(52, 214, 194, 0.13);
+    --wash-warn: rgba(251, 191, 36, 0.13);
 
-   The ground is warm rather than a pure white, biased slightly toward the
-   brass so the palette reads as chosen instead of defaulted. Every value was
-   measured in the pairing it actually appears in, including accent text on its
-   own wash, which is where a naive inversion fails.
-   --------------------------------------------------------------------------- */
-:root {
-    --l-bg: #F5F3EF;
-    --l-bg-raised: #FFFFFF;
-    --l-panel: rgba(22, 23, 29, 0.04);
-    --l-panel-solid: #FFFFFF;
-    --l-panel-border: rgba(22, 23, 29, 0.12);
-    --l-panel-border-soft: rgba(22, 23, 29, 0.07);
+    --shadow-sm: none;
+    --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 28px 64px -12px rgba(0, 0, 0, 0.7);
+    --scrim: rgba(3, 4, 7, 0.62);
 
-    --l-text: #16171D;
-    --l-text-dim: #4E5262;
-    --l-text-faint: #63687A;
-
-    /* Read, not sat on: #8A6321 clears AA on the ground (4.87:1), on a white
-       card (5.40:1) and on its own wash (4.61:1). --brass-fill stays vivid in
-       both themes for anything with dark ink on top of it. */
-    --l-brass: #8A6321;
-    --l-brass-dim: #B08A4A;
-    --l-brass-glow: rgba(138, 99, 33, 0.30);
-
-    --l-teal: #0F6B61;
-    --l-teal-dim: #7FC4BC;
-
-    /* Darker than the obvious #C43C3C, which fails on its own hover wash
-       (4.24:1). #A32929 clears it at 5.93:1. */
-    --l-rose: #A32929;
-    --l-rose-dim: #D89A9A;
-
-    --l-violet: #5B4FC7;
-    --l-violet-dim: #A9A2E0;
-
-    /* A narrow range: brass text on its own wash clears AA up to 0.11 and no
-       further, so the selected row sits at 0.07 and the pressed chip at 0.11,
-       rather than the 0.09/0.16 the dark theme can afford. */
-    --l-wash-brass: rgba(232, 163, 61, 0.07);
-    --l-wash-brass-strong: rgba(232, 163, 61, 0.11);
-    --l-wash-teal: rgba(52, 211, 196, 0.20);
-    --l-wash-rose: rgba(255, 107, 107, 0.10);
-    --l-wash-rose-soft: rgba(255, 107, 107, 0.08);
-
-    --l-lift: rgba(22, 23, 29, 0.07);
-    --l-lift-strong: rgba(22, 23, 29, 0.11);
-    --l-scrim: rgba(22, 23, 29, 0.35);
-    --l-shadow-soft: rgba(22, 23, 29, 0.10);
+    --chart-grid: rgba(255, 255, 255, 0.07);
+    --chart-tooltip-bg: rgba(31, 36, 48, 0.96);
+    --chart-tooltip-title: #A9B8FF;
+    --chart-tooltip-text: #EEF0F4;
+    --shadow-soft: rgba(0, 0, 0, 0.35);
 }
 
-/* An explicit choice, and no choice at all on a machine set to light. The
-   media rule is guarded so a stamped theme -- the dark default and the two
-   alternates included -- still beats the OS. */
-:root[data-theme="light"] {
-    --bg: var(--l-bg);
-    --bg-raised: var(--l-bg-raised);
-    --panel: var(--l-panel);
-    --panel-solid: var(--l-panel-solid);
-    --panel-border: var(--l-panel-border);
-    --panel-border-soft: var(--l-panel-border-soft);
-    --text: var(--l-text);
-    --text-dim: var(--l-text-dim);
-    --text-faint: var(--l-text-faint);
-    --brass: var(--l-brass);
-    --brass-dim: var(--l-brass-dim);
-    --brass-glow: var(--l-brass-glow);
-    --teal: var(--l-teal);
-    --teal-dim: var(--l-teal-dim);
-    --rose: var(--l-rose);
-    --rose-dim: var(--l-rose-dim);
-    --violet: var(--l-violet);
-    --violet-dim: var(--l-violet-dim);
-    --wash-brass: var(--l-wash-brass);
-    --wash-brass-strong: var(--l-wash-brass-strong);
-    --wash-teal: var(--l-wash-teal);
-    --wash-rose: var(--l-wash-rose);
-    --wash-rose-soft: var(--l-wash-rose-soft);
-    --lift: var(--l-lift);
-    --lift-strong: var(--l-lift-strong);
-    --scrim: var(--l-scrim);
-    --shadow-soft: var(--l-shadow-soft);
-}
-
-@media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
-        --bg: var(--l-bg);
-        --bg-raised: var(--l-bg-raised);
-        --panel: var(--l-panel);
-        --panel-solid: var(--l-panel-solid);
-        --panel-border: var(--l-panel-border);
-        --panel-border-soft: var(--l-panel-border-soft);
-        --text: var(--l-text);
-        --text-dim: var(--l-text-dim);
-        --text-faint: var(--l-text-faint);
-        --brass: var(--l-brass);
-        --brass-dim: var(--l-brass-dim);
-        --brass-glow: var(--l-brass-glow);
-        --teal: var(--l-teal);
-        --teal-dim: var(--l-teal-dim);
-        --rose: var(--l-rose);
-        --rose-dim: var(--l-rose-dim);
-        --violet: var(--l-violet);
-        --violet-dim: var(--l-violet-dim);
-        --wash-brass: var(--l-wash-brass);
-        --wash-brass-strong: var(--l-wash-brass-strong);
-        --wash-teal: var(--l-wash-teal);
-        --wash-rose: var(--l-wash-rose);
-        --wash-rose-soft: var(--l-wash-rose-soft);
-        --lift: var(--l-lift);
-        --lift-strong: var(--l-lift-strong);
-        --scrim: var(--l-scrim);
-        --shadow-soft: var(--l-shadow-soft);
+        color-scheme: dark;
+        --bg: #0C0E13;
+        --surface: #14171E;
+        --surface-2: #1A1E27;
+        --surface-3: #232834;
+        --border: rgba(255, 255, 255, 0.08);
+        --border-strong: rgba(255, 255, 255, 0.17);
+
+        --text: #EEF0F4;
+        --text-dim: #A8B0BE;
+        --text-faint: #8791A3;
+
+        --accent: #7F97FF;
+        --accent-fill: #3D5AFE;
+        --accent-hover: #5974FF;
+        --wash-accent: rgba(127, 151, 255, 0.12);
+        --wash-accent-strong: rgba(127, 151, 255, 0.20);
+
+        --afk: #FF7A82;
+        --music: #BE9BFF;
+        --good: #34D6C2;
+        --warn: #FBBF24;
+        --wash-afk: rgba(255, 122, 130, 0.12);
+        --wash-music: rgba(190, 155, 255, 0.13);
+        --wash-good: rgba(52, 214, 194, 0.13);
+        --wash-warn: rgba(251, 191, 36, 0.13);
+
+        --shadow-sm: none;
+        --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.55);
+        --shadow-lg: 0 28px 64px -12px rgba(0, 0, 0, 0.7);
+        --scrim: rgba(3, 4, 7, 0.62);
+
+        --chart-grid: rgba(255, 255, 255, 0.07);
+        --chart-tooltip-bg: rgba(31, 36, 48, 0.96);
+        --chart-tooltip-title: #A9B8FF;
+        --chart-tooltip-text: #EEF0F4;
+        --shadow-soft: rgba(0, 0, 0, 0.35);
     }
 }

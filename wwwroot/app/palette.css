@@ -1,6 +1,8 @@
 /* ---------------------------------------------------------------------------
-   The desktop palette. Built on the same tokens as the dashboard -- this file
-   only positions things; every colour, size and radius comes from tokens.css.
+   The desktop palette. Built on the same tokens as the dashboard (tokens.css)
+   -- this file only positions things; every colour, size and radius comes from
+   there, so the two surfaces share one look: Inter, a white (or near-black)
+   surface, thin borders, rounded rectangles, one blue accent.
 
    The window is frameless; its rounded corners come from DWM on the WPF side
    rather than from this file, because the transparency WPF would need to round
@@ -13,14 +15,12 @@
    so without it every padded input with width:100% overflowed its card. */
 *, *::before, *::after { box-sizing: border-box; }
 
-/* Any explicit display beats the hidden attribute, and both views set one.
-   Without this the palette stayed on screen underneath the detail view. */
+/* Any explicit display beats the hidden attribute, and both views set one. */
 [hidden] { display: none !important; }
 
-/* Every control that behaves like a button IS a button now, rather than a
-   span with a click handler: that is what gives it a tab stop, Enter and
-   Space, and a role a screen reader can announce. The reset is so switching
-   the tag changed nothing visually -- a button does not inherit type. */
+/* Every control that behaves like a button IS a button, which is what gives it
+   a tab stop, Enter and Space, and a role a screen reader can announce. The
+   reset is so switching the tag changed nothing visually. */
 button {
     font: inherit;
     color: inherit;
@@ -31,17 +31,15 @@ button {
     text-align: inherit;
 }
 
-/* Focus has to be visible now that these things can hold it. Ported from the
-   dashboard's base.css, which had this and the palette did not.
-   :focus-visible rather than :focus, so the ring appears for the keyboard
-   without drawing a box around every mouse click. */
+/* Keyboard focus. :focus-visible so the ring appears for the keyboard without
+   drawing a box around every mouse click. */
 :focus-visible {
-    outline: 2px solid var(--brass);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: var(--radius-sm);
 }
-/* Rows and pills sit flush against their neighbours, so an outward ring is
-   clipped by whatever is next; inset it and follow the pill. */
+/* Rows and chips sit flush against their neighbours, so an outward ring is
+   clipped by whatever is next; inset it. */
 .row:focus-visible,
 .row-run:focus-visible,
 .row-add:focus-visible,
@@ -51,7 +49,7 @@ button {
 .attention-action:focus-visible,
 .run-btn:focus-visible {
     outline-offset: -2px;
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-sm);
 }
 
 html, body {
@@ -69,58 +67,63 @@ body {
     font-family: var(--font-body);
     color: var(--text);
     font-size: var(--fs-body);
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
 }
 
 .palette {
     height: 100%;
-    background: var(--bg);
+    background: var(--surface);
     border-radius: var(--radius);
-    padding: 22px 24px 0 24px;
+    padding: 20px 22px 0 22px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     overflow: hidden;
 }
 
 /* ---------- Chrome ---------- */
-.chrome { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.chrome-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brass); flex-shrink: 0; }
-.chrome-name { font-size: var(--fs-strong); font-weight: 700; letter-spacing: -0.01em; }
+.chrome { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+/* The brand mark: an accent tile with the F. */
+.chrome-dot {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%233D5AFE'/%3E%3Cpath d='M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z' fill='white'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.chrome-name { font-size: var(--fs-strong); font-weight: 650; letter-spacing: -0.01em; }
 .chrome-spacer { flex-grow: 1; }
-.chrome-sep { width: 1px; height: 14px; background: var(--panel-border); }
+.chrome-sep { width: 1px; height: 16px; background: var(--border); }
 
-.status { display: flex; align-items: center; gap: 8px; }
-.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
-/* Paused is a state to notice, not an error: brass rather than rose, and the
+.status { display: flex; align-items: center; gap: 7px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex-shrink: 0; }
+/* Paused is a state to notice, not an error: amber rather than rose, and the
    dot stops reading as "live". */
-.status-dot.paused { background: var(--brass); box-shadow: inset 0 0 0 2px var(--bg); }
+.status-dot.paused { background: var(--warn); }
 
+/* Small captions, in ordinary sentence case. */
 .label {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
+    font-size: var(--fs-caption);
     color: var(--text-faint);
-    font-weight: 700;
+    font-weight: 500;
 }
 
 .figure { display: flex; align-items: baseline; gap: 7px; }
-.figure-value {
-    font-family: var(--font-mono);
-    font-size: var(--fs-stat);
-    font-weight: 700;
-    color: var(--brass);
-}
+.figure-value { font-size: var(--fs-stat); font-weight: 650; letter-spacing: -0.015em; color: var(--accent); }
 
 /* ---------- The input ---------- */
 .search {
     display: flex;
     align-items: center;
-    gap: 14px;
-    background: var(--panel);
-    border-radius: var(--radius-pill);
-    padding: 0 24px;
-    height: 60px;
+    gap: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 18px;
+    height: 54px;
     flex-shrink: 0;
+    transition: border-color 0.12s, box-shadow 0.12s;
 }
 .search input {
     flex-grow: 1;
@@ -128,33 +131,30 @@ body {
     border: none;
     outline: none;
     font-family: var(--font-body);
-    font-size: var(--fs-title);
+    font-size: var(--fs-stat);
     letter-spacing: -0.01em;
     color: var(--text);
-    caret-color: var(--brass);
+    caret-color: var(--accent);
     min-width: 0;
 }
 .search input::placeholder { color: var(--text-faint); }
 
-/* The input suppresses its own outline (above), which was fine while it was
-   the only focusable thing in the view. Now that Tab traverses, coming back to
-   it has to show something, so the ring goes on the pill instead of the bare
-   input inside it. */
-.search:has(input:focus-visible) {
-    outline: 2px solid var(--brass);
-    outline-offset: 2px;
+/* The input suppresses its own outline, so the ring goes on the field instead. */
+.search:has(input:focus) {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--wash-accent-strong);
 }
 .search svg { flex-shrink: 0; }
 
 .kbd:empty { display: none; }
-
 .kbd {
-    font-family: var(--font-mono);
     font-size: var(--fs-caption);
+    font-weight: 500;
     color: var(--text-faint);
-    background: var(--panel);
-    border-radius: var(--radius-pill);
-    padding: 5px 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 8px;
     white-space: nowrap;
 }
 
@@ -162,70 +162,63 @@ body {
 .results {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     flex-grow: 1;
     min-height: 0;
     overflow-y: auto;
 }
 .results::-webkit-scrollbar { width: 0; }
 
-.group { display: flex; flex-direction: column; gap: 8px; }
-.group-rows { display: flex; flex-direction: column; gap: 3px; }
+.group { display: flex; flex-direction: column; gap: 6px; }
+.group-rows { display: flex; flex-direction: column; gap: 2px; }
 
 .row {
     display: flex;
     align-items: center;
-    gap: 14px;
-    border-radius: var(--radius-pill);
-    padding: 8px 16px;
+    gap: 12px;
+    border-radius: 10px;
+    padding: 7px 12px;
     cursor: pointer;
 }
-.row.active { background: var(--wash-brass); }
-.row.active .row-name { color: var(--brass); font-weight: 700; }
-.row.active .row-figure { color: var(--brass); }
+.row.active { background: var(--wash-accent); }
+.row.active .row-name { color: var(--accent); font-weight: 600; }
+.row.active .row-figure { color: var(--accent); }
 
-/* Running, so the button focuses rather than starts. Same teal the button
-   uses, said once more where the eye lands first. The ring alone read as the
-   quietest thing on a row competing with a hotkey chip, a limit chip and a
-   time figure -- the corner dot is the same "online" convention chat apps
-   use, and lands before the eye has to parse the row's density. */
-.avatar.live { box-shadow: 0 0 0 1.5px var(--teal); }
+/* Running, so the button focuses rather than starts: a ring and a corner dot,
+   the same "online" convention chat apps use. */
+.avatar.live { box-shadow: 0 0 0 1.5px var(--good); }
 .avatar.live::after {
     content: "";
     position: absolute;
-    right: -1px;
-    bottom: -1px;
-    width: 9px;
-    height: 9px;
+    right: -3px;
+    bottom: -3px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    background: var(--teal);
-    border: 2px solid var(--bg);
-    box-shadow: 0 0 4px rgba(52, 211, 196, 0.55);
+    background: var(--good);
+    border: 2px solid var(--surface);
 }
 
 .avatar {
     position: relative;
-    width: 32px; height: 32px;
-    border-radius: 50%;
+    width: 34px; height: 34px;
+    border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     font-size: var(--fs-body);
-    font-weight: 700;
+    font-weight: 650;
     flex-shrink: 0;
     color: var(--text);
 }
 .row-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .row-name { font-size: var(--fs-strong); font-weight: 500; }
-.row-sub { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); }
+.row-sub { font-size: var(--fs-caption); color: var(--text-faint); }
 .row-spacer { flex-grow: 1; }
 
 /* ---------- The columns ----------
-   Fixed positions rather than groups. Grouping the list by what each app is
-   configured FOR only works while nothing is configured for two things at
-   once, and an app can perfectly well have a hotkey, launch at login and carry
-   a daily limit. Columns hold every combination, and a column nobody uses is
-   not rendered at all -- so a machine with no limits set never sees a LIMIT
-   column taking up room. */
-.head-row { display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+   Fixed positions rather than groups: an app can perfectly well have a hotkey,
+   launch at login and carry a daily limit. Columns hold every combination, and
+   a column nobody uses is not rendered at all. */
+.head-row { display: flex; align-items: center; gap: 12px; padding: 0 12px; }
 .head-spacer { flex-grow: 1; }
 .head-end { width: 30px; flex-shrink: 0; }
 
@@ -233,60 +226,52 @@ body {
 .col-startup { width: 84px; flex-shrink: 0; }
 .col-limit { width: 104px; flex-shrink: 0; }
 
-.uses { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-faint); white-space: nowrap; }
-/* A binding barely used is worth noticing, not scolding: the same faint size,
-   a different hue. */
-.uses.cold { color: var(--rose); }
+.uses { font-size: var(--fs-caption); color: var(--text-faint); white-space: nowrap; }
+/* A binding barely used is worth noticing, not scolding. */
+.uses.cold { color: var(--afk); }
 
-.limit { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--teal); white-space: nowrap; }
-.limit.low { color: var(--brass); }
-.limit.out { color: var(--rose); }
+.limit { font-size: var(--fs-caption); font-weight: 500; color: var(--good); white-space: nowrap; }
+.limit.low { color: var(--warn); }
+.limit.out { color: var(--afk); }
 
+/* A keycap: the shortcut as it is pressed. */
 .row-chip {
-    font-family: var(--font-mono);
     font-size: var(--fs-caption);
+    font-weight: 500;
     color: var(--text-dim);
-    background: var(--panel);
-    border-radius: var(--radius-pill);
-    padding: 5px 11px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 8px;
     white-space: nowrap;
 }
 .row-figure {
-    font-family: var(--font-mono);
     font-size: var(--fs-body);
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-dim);
-    /* Wide enough for "233h 19m" on one line: wrapping a figure across two
-       rows makes it unreadable and shoves the row taller than its neighbours. */
+    /* Wide enough for "233h 19m" on one line. */
     min-width: 78px;
     text-align: right;
     white-space: nowrap;
 }
 
 /* The one thing on a row that runs the app. Present on every row rather than
-   revealed on hover, because an affordance you have to discover is no use to
-   someone who does not yet know the row stopped launching things -- but held
-   back at half strength until the row is the one in play, so a long list still
-   reads as names rather than as a column of buttons. */
+   revealed on hover, but held back until the row is the one in play, so a long
+   list still reads as names rather than a column of buttons. */
 .row-run {
     width: 30px; height: 30px;
-    border-radius: 50%;
-    background: var(--panel);
+    border-radius: 8px;
+    background: var(--surface-2);
     color: var(--text-faint);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     cursor: pointer;
-    opacity: 0.45;
+    opacity: 0.5;
 }
 .row.active .row-run { opacity: 1; }
-.row-run:hover {
-    opacity: 1;
-    color: var(--brass);
-    background: var(--wash-brass-strong);
-}
-/* Already running, so this focuses rather than starts. */
-.row-run.running { color: var(--teal); }
-.row-run.running:hover { color: var(--teal); background: var(--wash-teal); }
+.row-run:hover { opacity: 1; color: var(--accent); background: var(--wash-accent-strong); }
+.row-run.running { color: var(--good); }
+.row-run.running:hover { color: var(--good); background: var(--wash-good); }
 
 .empty {
     display: flex; flex-direction: column; gap: 6px;
@@ -299,18 +284,20 @@ body {
 .footer {
     display: flex;
     align-items: center;
-    gap: 20px;
-    padding: 14px 4px 16px 4px;
+    gap: 18px;
+    padding: 12px 2px 14px 2px;
+    border-top: 1px solid var(--border);
     flex-shrink: 0;
 }
 .hint { display: flex; align-items: center; gap: 7px; }
 .hint-key {
-    font-family: var(--font-mono);
     font-size: var(--fs-caption);
-    color: var(--text);
-    background: var(--panel);
-    border-radius: var(--radius-pill);
-    padding: 4px 9px;
+    font-weight: 500;
+    color: var(--text-dim);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 7px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -323,8 +310,8 @@ body {
 
 .detail {
     height: 100%;
-    background: var(--bg);
-    padding: 22px 24px;
+    background: var(--surface);
+    padding: 20px 22px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -335,24 +322,25 @@ body {
 .detail-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .detail-name {
     font-size: var(--fs-title);
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    font-weight: 650;
+    letter-spacing: -0.015em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.avatar-lg { width: 40px; height: 40px; font-size: var(--fs-stat); }
+.avatar-lg { width: 42px; height: 42px; border-radius: 12px; font-size: var(--fs-stat); }
 
 .icon-btn {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: var(--panel);
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
     color: var(--text-dim);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     cursor: pointer;
 }
-.icon-btn:hover { color: var(--text); }
+.icon-btn:hover { color: var(--text); background: var(--surface-2); }
 
 /* The detail view's counterpart to .row-run. Labelled rather than a bare
    glyph, because here there is room and no ambiguity about which row it
@@ -361,32 +349,28 @@ body {
     display: flex;
     align-items: center;
     gap: 9px;
-    border-radius: var(--radius-pill);
-    padding: 9px 16px;
-    background: var(--panel);
+    border-radius: 8px;
+    padding: 8px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
     color: var(--text-dim);
     cursor: pointer;
     flex-shrink: 0;
 }
-.run-btn:hover { color: var(--brass); background: var(--wash-brass-strong); }
-.run-btn.running { color: var(--teal); }
-.run-btn.running:hover { color: var(--teal); background: var(--wash-teal); }
+.run-btn:hover { color: var(--accent); background: var(--wash-accent); }
+.run-btn.running { color: var(--good); }
+.run-btn.running:hover { color: var(--good); background: var(--wash-good); }
 .run-btn .label { color: inherit; }
 .run-btn-icon { display: flex; }
 
 .stat { display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
-.stat-value {
-    font-family: var(--font-mono);
-    font-size: var(--fs-display);
-    font-weight: 700;
-    color: var(--brass);
-}
+.stat-value { font-size: var(--fs-display); font-weight: 650; letter-spacing: -0.02em; color: var(--accent); }
 .stat-muted { color: var(--text-dim); }
 
 .detail-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 14px;
+    gap: 12px;
     flex-grow: 1;
     min-height: 0;
     overflow-y: auto;
@@ -395,9 +379,10 @@ body {
 .detail-grid::-webkit-scrollbar { width: 0; }
 
 .card {
-    background: var(--panel);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 18px 20px;
+    padding: 16px 18px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -407,28 +392,27 @@ body {
 .field-label { font-size: var(--fs-small); color: var(--text-faint); }
 
 .field {
-    background: var(--bg-raised);
-    border: none;
-    border-radius: var(--radius-pill);
-    padding: 11px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
     font-family: var(--font-body);
     font-size: var(--fs-body);
     color: var(--text);
     outline: none;
     width: 100%;
     min-width: 0;
+    transition: border-color 0.12s, box-shadow 0.12s;
 }
 .field::placeholder { color: var(--text-faint); }
-.field:focus { box-shadow: inset 0 0 0 1.5px var(--brass-dim); }
+.field:hover { border-color: var(--text-faint); }
+.field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--wash-accent-strong); }
 
-.field-button {
-    font-family: var(--font-mono);
-    text-align: left;
-    cursor: pointer;
-}
+.field-button { text-align: left; cursor: pointer; font-weight: 500; }
 .field-button.capturing {
-    color: var(--brass);
-    box-shadow: inset 0 0 0 1.5px var(--brass);
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--wash-accent-strong);
 }
 
 .field-row { display: flex; align-items: center; gap: 9px; }
@@ -436,6 +420,7 @@ body {
 .field-split > span { display: flex; flex-direction: column; gap: 7px; flex-grow: 1; min-width: 0; }
 .field-narrow { flex-grow: 0 !important; width: 120px; flex-shrink: 0; }
 
+/* Paths and code are the one place a monospace earns its keep. */
 .path {
     font-family: var(--font-mono);
     font-size: var(--fs-caption);
@@ -452,107 +437,78 @@ body {
 .opt-text { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0; }
 .hint-sub { font-size: var(--fs-caption); color: var(--text-faint); }
 
-/* Today's minutes against whatever is in the field above -- live as it's
-   typed, not just at the moment the panel opened. Same fill/track pairing
-   the dashboard's own compare-bar uses, so the two surfaces agree on what
-   "how much of this is used" looks like. */
-.limit-progress-track {
-    height: 6px;
-    border-radius: var(--radius-pill);
-    background: var(--bg-raised);
-    overflow: hidden;
-}
+/* Today's minutes against whatever is in the field above -- live as it is
+   typed. Same track and fill the dashboard's limit bars use. */
+.limit-progress-track { height: 6px; border-radius: var(--radius-pill); background: var(--surface-3); overflow: hidden; }
 .limit-progress-fill {
     height: 100%;
     border-radius: var(--radius-pill);
-    background: var(--brass);
+    background: var(--accent);
     width: 0%;
     transition: width 0.25s ease, background 0.25s ease;
 }
-.limit-progress-fill.over { background: var(--rose); }
-.limit-progress-caption {
-    display: block;
-    margin-top: 6px;
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-}
-.limit-progress-caption.over { color: var(--rose); }
+.limit-progress-fill.over { background: var(--afk); }
+.limit-progress-caption { display: block; margin-top: 6px; font-size: var(--fs-caption); color: var(--text-faint); }
+.limit-progress-caption.over { color: var(--afk); }
 
-/* The PIN prompt that gates saving a changed limit. Framed as its own
-   bounded unit -- brass-tinted like the card's "PIN LOCKED" badge, so the
-   two read as the same idea (this is locked; here is the lock) -- rather
-   than a bare password field and a button sitting loose on the card floor,
-   which is what made it read as out of place, or like an error state, when
-   it was neither. */
+/* The PIN prompt that gates saving a changed limit: its own bounded unit, in
+   the same amber as the card's "PIN locked" badge, so the two read as one idea
+   -- this is locked; here is the lock. */
 .limit-confirm {
-    background: var(--wash-brass);
-    border: 1px solid var(--brass-dim);
-    border-radius: 14px;
+    background: var(--wash-warn);
+    border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+    border-radius: 10px;
     padding: 12px 14px;
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
-.limit-confirm-head {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: var(--brass);
-    font-size: var(--fs-small);
-    font-weight: 600;
-}
+.limit-confirm-head { display: flex; align-items: center; gap: 7px; color: var(--warn); font-size: var(--fs-small); font-weight: 600; }
 .limit-confirm .x-message { min-height: 0; }
 .limit-confirm .x-message:empty { display: none; }
 
 .toggle {
-    width: 36px; height: 20px;
+    width: 38px; height: 22px;
     border-radius: var(--radius-pill);
-    background: var(--lift);
+    background: var(--surface-3);
     border: none;
     padding: 0 3px;
     display: flex; align-items: center; justify-content: flex-start;
     flex-shrink: 0;
     cursor: pointer;
+    transition: background 0.15s;
 }
-.toggle > span {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: var(--text-faint);
-    display: block;
-}
-.toggle[aria-checked="true"] { background: var(--brass-fill); justify-content: flex-end; }
-.toggle[aria-checked="true"] > span { background: var(--ink-on-fill); }
+.toggle > span { width: 16px; height: 16px; border-radius: 50%; background: #FFFFFF; display: block; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.3); }
+.toggle[aria-checked="true"] { background: var(--accent-fill); justify-content: flex-end; }
 .toggle:disabled { opacity: 0.5; cursor: default; }
 
 .btn {
-    background: var(--panel);
-    border: none;
-    border-radius: var(--radius-pill);
-    padding: 11px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 9px 16px;
     font-family: var(--font-body);
     font-size: var(--fs-small);
-    color: var(--text-dim);
+    font-weight: 600;
+    color: var(--text);
     cursor: pointer;
     white-space: nowrap;
+    transition: background 0.12s;
 }
-.btn:hover { color: var(--text); background: var(--bg-raised); }
-.btn-danger { color: var(--rose); background: none; }
-.btn-danger:hover { color: var(--rose); background: var(--wash-rose); }
-/* Armed by a first click, waiting on the second one that actually removes
-   the app -- the wash stays on (not just on :hover) so the button reads as
-   "hot" even after the pointer moves off it toward the confirming click. */
-.btn-danger.confirming { background: var(--wash-rose); font-weight: 700; }
+.btn:hover { background: var(--surface-2); }
+.btn-danger { color: var(--afk); background: none; border-color: transparent; }
+.btn-danger:hover { color: var(--afk); background: var(--wash-afk); }
+/* Armed by a first click, waiting on the second one that actually removes the
+   app -- the wash stays on so the button reads as "hot" after the pointer moves. */
+.btn-danger.confirming { background: var(--wash-afk); border-color: color-mix(in srgb, var(--afk) 35%, transparent); }
 
-.locked { display: flex; align-items: center; gap: 7px; color: var(--brass); }
-.label-brass { color: var(--brass); }
+.locked { display: flex; align-items: center; gap: 7px; color: var(--warn); }
+.label-brass { color: var(--warn); }
 
 .detail-foot { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 
-/* The card is not disabled; two of its controls are. Dimming the whole thing
-   at 0.55 also faded the PIN LOCKED badge, which is the line that explains why
-   the field is dead, and the link to the one place the limit can actually be
-   changed -- the only thing left in the card worth clicking. So the dimming
-   follows the lock: .field-split is exactly the pair the PIN holds shut. */
+/* The card is not disabled; two of its controls are. The dimming follows the
+   lock: .field-split is exactly the pair the PIN holds shut. */
 .card.disabled .field-split { opacity: 0.55; }
 .card.disabled .field,
 .card.disabled .toggle { pointer-events: none; }
@@ -564,11 +520,11 @@ body {
 
 .manage {
     height: 100%;
-    background: var(--bg);
-    padding: 22px 24px;
+    background: var(--surface);
+    padding: 20px 22px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     overflow: hidden;
 }
 
@@ -581,86 +537,45 @@ body {
     gap: 14px;
     align-items: center;
 }
-.m-cols { padding: 0 16px; flex-shrink: 0; }
+.m-cols { padding: 0 12px; flex-shrink: 0; }
 .m-right { text-align: right; }
 /* The AUTO column is a centred dot, so its heading is centred too. */
 .m-cols > span:nth-child(5) { text-align: center; }
 
-.m-list {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex-grow: 1;
-    min-height: 0;
-    overflow-y: auto;
-}
+.m-list { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-height: 0; overflow-y: auto; }
 .m-list::-webkit-scrollbar { width: 0; }
 
-.m-row {
-    border-radius: var(--radius-pill);
-    padding: 9px 16px;
-    cursor: pointer;
-}
-.m-row.active { background: var(--wash-brass); }
-.m-row.active .m-name { color: var(--brass); font-weight: 700; }
+.m-row { border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+.m-row.active { background: var(--wash-accent); }
+.m-row.active .m-name { color: var(--accent); font-weight: 600; }
 
-.m-name {
-    font-size: var(--fs-strong);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.m-meta {
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    color: var(--text-faint);
-}
-.m-figure {
-    font-family: var(--font-mono);
-    font-size: var(--fs-body);
-    font-weight: 700;
-    color: var(--text-dim);
-    text-align: right;
-    white-space: nowrap;
-}
-.m-row.active .m-figure { color: var(--brass); }
+.m-name { font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-meta { font-size: var(--fs-caption); color: var(--text-faint); }
+.m-figure { font-size: var(--fs-body); font-weight: 600; color: var(--text-dim); text-align: right; white-space: nowrap; }
+.m-row.active .m-figure { color: var(--accent); }
 
-.m-dot {
-    width: 9px; height: 9px;
-    border-radius: 50%;
-    background: var(--brass);
-    margin: 0 auto;
-}
-.m-dot.off { background: var(--lift-strong); }
+.m-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin: 0 auto; }
+.m-dot.off { background: var(--surface-3); }
 
-.btn-primary {
-    background: var(--brass-fill);
-    color: var(--ink-on-fill);
-    font-weight: 700;
-}
-.btn-primary:hover { background: var(--brass-fill); filter: brightness(1.08); color: var(--ink-on-fill); }
+.btn-primary { background: var(--accent-fill); color: var(--ink-on-fill); border-color: transparent; }
+.btn-primary:hover { background: var(--accent-hover); color: var(--ink-on-fill); }
 
-/* ---------- Action type ---------- */
-.pillgroup {
-    display: flex;
-    gap: 3px;
-    padding: 4px;
-    background: var(--bg-raised);
-    border-radius: var(--radius-pill);
-}
+/* ---------- Action type: a segmented control ---------- */
+.pillgroup { display: flex; gap: 2px; padding: 3px; background: var(--surface-3); border-radius: 10px; }
 .pill {
     flex-grow: 1;
     border: none;
     background: none;
-    border-radius: var(--radius-pill);
-    padding: 9px 12px;
+    border-radius: 7px;
+    padding: 7px 12px;
     font-family: var(--font-body);
     font-size: var(--fs-small);
+    font-weight: 500;
     color: var(--text-dim);
     cursor: pointer;
     white-space: nowrap;
 }
-.pill[aria-pressed="true"] { background: var(--brass-fill); color: var(--ink-on-fill); font-weight: 700; }
+.pill[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.14), 0 0 0 1px var(--border); }
 
 .stack { display: flex; flex-direction: column; gap: 7px; }
 
@@ -671,43 +586,24 @@ body {
 
 .settings {
     height: 100%;
-    background: var(--bg);
-    padding: 22px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    overflow: hidden;
-}
-
-/* The scroller. One column now, not a two-column masonry: the two-column
-   version flowed reading-order down then across, so Appearance ended up
-   visually below Notifications-on-the-right, and the columns ended at
-   wildly different heights because a masonry packs by height -- the exact
-   fault the version before it set out to fix. */
-.s-grid {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    min-height: 0;
-    overflow-y: auto;
-}
-.s-grid::-webkit-scrollbar { width: 0; }
-
-.s-list {
+    background: var(--surface);
+    padding: 20px 22px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-width: 540px;
-    width: 100%;
-    margin: 0 auto;
-    padding-bottom: 4px;
+    overflow: hidden;
 }
 
-/* One section, one concern. The panel fill does the grouping; the heading
-   says what it groups; nothing else needs a distinct text style to carry
-   the structure. */
+/* The scroller: one column. */
+.s-grid { display: flex; flex-direction: column; flex-grow: 1; min-height: 0; overflow-y: auto; }
+.s-grid::-webkit-scrollbar { width: 0; }
+
+.s-list { display: flex; flex-direction: column; gap: 12px; max-width: 540px; width: 100%; margin: 0 auto; padding-bottom: 4px; }
+
+/* One section, one concern. */
 .s-sec {
-    background: var(--panel);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 16px 18px;
     display: flex;
@@ -715,148 +611,69 @@ body {
     gap: 11px;
 }
 
-/* The heading is the loudest thing on the section again. It was 10px grey
-   mono caps -- quieter than the toggle labels sitting inside it -- so the
-   thing you navigate by was the thing you could least see. */
-.s-sec-title {
-    font-size: var(--fs-strong);
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: -0.01em;
-    margin: 0;
-}
+.s-sec-title { font-size: var(--fs-strong); font-weight: 650; color: var(--text); letter-spacing: -0.01em; margin: 0; }
 .s-sec-title-row { display: flex; align-items: center; gap: 10px; }
 .s-sec-title-row > span:first-child { flex-grow: 1; }
 
-/* One row everywhere: name and hint on the left, one control on the right,
-   same padding and baseline. */
+/* One row everywhere: name and hint on the left, one control on the right. */
 .s-row { display: flex; align-items: center; gap: 14px; min-height: 24px; }
 .s-row-text { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0; }
 .s-row-name { font-size: var(--fs-body); color: var(--text); }
 .s-row-hint { font-size: var(--fs-caption); color: var(--text-faint); }
 
-/* Detail that belongs to the row above it -- the quiet-hours times, the
-   shortcut capture -- indented a hair so it reads as under the row. */
-.s-sub {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding-left: 2px;
-    margin-top: -2px;
-}
+.s-sub { display: flex; flex-direction: column; gap: 8px; padding-left: 2px; margin-top: -2px; }
 .s-sub.field-row { flex-direction: row; align-items: center; }
 
-/* Folded shut: the PIN form and the rollback picker, the two things nobody
-   opens on an ordinary visit. <details>/<summary>, so it is keyboard-
-   operable, needs no script, and stays where the user left it. */
+/* Folded shut: the PIN form and the rollback picker. <details>/<summary>, so it
+   is keyboard-operable and needs no script. */
 .s-fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
 .s-fold > summary::-webkit-details-marker { display: none; }
 .s-fold > summary > span:first-child { flex-grow: 1; }
 .s-fold-chev { color: var(--text-faint); transition: transform 0.15s ease; flex-shrink: 0; }
 .s-fold[open] > summary .s-fold-chev { transform: rotate(180deg); }
-.s-fold-body {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding-top: 12px;
-    margin-top: 11px;
-    border-top: 1px solid var(--panel-border-soft);
-}
+.s-fold-body { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; margin-top: 11px; border-top: 1px solid var(--border); }
 
-/* Reinstall lives inside About as a fold within a section -- one weight
-   below a section heading, since it is a sub-concern of "which version". */
 .s-fold-inline { margin-top: 2px; }
-.s-fold-inline-title {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    font-weight: 700;
-}
+.s-fold-inline-title { font-size: var(--fs-small); color: var(--text-dim); font-weight: 600; }
 
-/* Facts about the installation, not settings: last, and its rows a shade
-   quieter than a real setting's. */
+/* Facts about the installation, not settings: last, and a shade quieter. */
 .s-about .s-row-name { color: var(--text-dim); }
 
 .banner {
     display: flex;
     align-items: center;
     gap: 16px;
-    background: var(--wash-brass);
+    background: var(--wash-accent);
+    border: 1px solid var(--wash-accent-strong);
     border-radius: var(--radius);
-    padding: 16px 20px;
-    color: var(--brass);
+    padding: 14px 18px;
+    color: var(--accent);
     flex-shrink: 0;
 }
 .banner-text { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0; }
-.banner-title { font-size: var(--fs-strong); font-weight: 700; color: var(--text); }
+.banner-title { font-size: var(--fs-strong); font-weight: 650; color: var(--text); }
 
-.field-time { width: 96px; flex-grow: 0; text-align: center; font-family: var(--font-mono); }
+.field-time { width: 96px; flex-grow: 0; text-align: center; }
+/* Small numeric fields at the end of an .s-row where a toggle would otherwise be. */
+.field-mins { width: 84px; flex-grow: 0; flex-shrink: 0; text-align: center; padding-right: 10px; }
 
-/* Small numeric fields that sit at the end of an .s-row where a toggle would
-   otherwise be. Keeps the spin buttons — they make the step discoverable. */
-.field-mins { width: 84px; flex-grow: 0; flex-shrink: 0; text-align: center; font-family: var(--font-mono); padding-right: 10px; }
+.s-notes { display: flex; flex-direction: column; gap: 7px; max-width: 70ch; }
 
-.s-notes {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    /* Prose wants 45-75 characters a line; the section is ~500px wide, so
-       this only bites when a note runs unusually long. */
-    max-width: 70ch;
-}
-
-/* A heading reads as a heading again. The host stripped the #s before the page
-   ever saw them, so a release with four sections arrived as one column of
-   paragraphs at one weight, with nothing to skim by. */
-.s-note-head {
-    font-size: var(--fs-body);
-    font-weight: 700;
-    color: var(--text);
-    /* More above than below, so a heading belongs to what follows it rather
-       than floating between two blocks. */
-    margin: 10px 0 1px 0;
-}
+.s-note-head { font-size: var(--fs-body); font-weight: 650; color: var(--text); margin: 10px 0 1px 0; }
 .s-note-head:first-child { margin-top: 0; }
 
 .s-note { display: flex; gap: 10px; }
-.s-note-dot {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: var(--brass);
-    /* Centred on the first line rather than on the block: a bullet whose text
-       wraps to three lines had its dot floating near the top of the paragraph. */
-    margin-top: 7px;
-    flex-shrink: 0;
-}
-.s-note-text {
-    font-size: var(--fs-small);
-    color: var(--text-dim);
-    /* These are sentences, not table cells. At 1.2 they set as a slab. */
-    line-height: 1.55;
-}
-
-/* The first line is the release in one sentence, so it is the one line here
-   worth full --text. */
+.s-note-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 8px; flex-shrink: 0; }
+.s-note-text { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.55; }
 .s-note-lead { font-size: var(--fs-body); color: var(--text); }
-
-.s-note-text strong, .s-note-head strong { color: var(--text); font-weight: 700; }
+.s-note-text strong, .s-note-head strong { color: var(--text); font-weight: 650; }
 .s-note-text em { font-style: italic; }
-.s-note-text code {
-    font-family: var(--font-mono);
-    font-size: var(--fs-caption);
-    color: var(--brass);
-}
+.s-note-text code { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--accent); }
 
-.warn { font-size: var(--fs-caption); color: var(--rose); }
+.warn { font-size: var(--fs-caption); color: var(--afk); }
 
-select.field {
-    appearance: none;
-    cursor: pointer;
-    flex-grow: 1;
-}
-select.field option { background: var(--panel-solid); color: var(--text); }
+select.field { appearance: none; cursor: pointer; flex-grow: 1; }
+select.field option { background: var(--surface); color: var(--text); }
 
 
 /* ---------------------------------------------------------------------------
@@ -865,46 +682,33 @@ select.field option { background: var(--panel-solid); color: var(--text); }
 
 .scanner {
     height: 100%;
-    background: var(--bg);
-    padding: 22px 24px;
+    background: var(--surface);
+    padding: 20px 22px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     overflow: hidden;
 }
 
-.search-compact { height: 46px; padding: 0 20px; }
+.search-compact { height: 44px; padding: 0 16px; }
 .search-compact input { font-size: var(--fs-strong); }
 
-.sc-list {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex-grow: 1;
-    min-height: 0;
-    overflow-y: auto;
-}
+.sc-list { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-height: 0; overflow-y: auto; }
 .sc-list::-webkit-scrollbar { width: 0; }
 
-.sc-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    border-radius: var(--radius-pill);
-    padding: 9px 16px;
-    cursor: pointer;
-}
-.sc-row.active { background: var(--wash-brass); }
-.sc-row.picked .sc-name { color: var(--brass); font-weight: 700; }
+.sc-row { display: flex; align-items: center; gap: 12px; border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+.sc-row.active { background: var(--wash-accent); }
+.sc-row.picked .sc-name { color: var(--accent); font-weight: 600; }
 
 .sc-tick {
     width: 20px; height: 20px;
-    border-radius: 50%;
-    background: var(--lift);
+    border-radius: 6px;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
 }
-.sc-row.picked .sc-tick { background: var(--brass-fill); color: var(--ink-on-fill); }
+.sc-row.picked .sc-tick { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--ink-on-fill); }
 
 .sc-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .sc-name { font-size: var(--fs-strong); }
@@ -918,23 +722,15 @@ select.field option { background: var(--panel-solid); color: var(--text); }
     direction: rtl;
     text-align: left;
 }
-.sc-source {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    font-weight: 700;
-    color: var(--text-faint);
-    flex-shrink: 0;
-}
-.sc-source.store { color: var(--violet); }
+/* Where an app came from: a small tag. */
+.sc-source { font-size: var(--fs-micro); letter-spacing: 0.05em; font-weight: 650; color: var(--text-faint); flex-shrink: 0; }
+.sc-source.store { color: var(--music); }
 
 /* ---------- Extend time ---------- */
-/* Same frame as the detail and scanner views: a padded column between a head
-   and a foot. */
 .extend {
     height: 100%;
-    background: var(--bg);
-    padding: 22px 24px;
+    background: var(--surface);
+    padding: 20px 22px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -942,187 +738,153 @@ select.field option { background: var(--panel-solid); color: var(--text); }
 }
 
 /* One column, because the form is a sentence: which app, how much, prove it is
-   you. Side by side would invite filling it in out of order. */
+   you. */
 .extend-grid { grid-template-columns: 1fr; align-content: start; }
 .extend-grid .card { gap: 9px; }
 
 .x-minutes { display: flex; gap: 8px; }
 .x-minute {
     flex: 1;
-    padding: 10px 0;
-    border-radius: var(--radius-pill);
-    background: var(--panel);
+    padding: 9px 0;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
     color: var(--text-dim);
-    font-family: var(--font-mono);
     font-size: var(--fs-body);
+    font-weight: 500;
     text-align: center;
     cursor: pointer;
 }
-.x-minute:hover { color: var(--text); }
-.x-minute.picked {
-    background: var(--wash-brass-strong);
-    color: var(--brass);
-    font-weight: 700;
-}
+.x-minute:hover { color: var(--text); background: var(--surface-2); }
+.x-minute.picked { background: var(--wash-accent-strong); border-color: var(--accent); color: var(--accent); font-weight: 650; }
 
 /* Holds its line whether or not there is anything to say, so confirming or
    failing never shifts the button out from under the pointer. */
 .x-message { min-height: 17px; }
-.x-message.bad { color: var(--rose); }
-.x-message.good { color: var(--teal); }
+.x-message.bad { color: var(--afk); }
+.x-message.good { color: var(--good); }
 
 /* ---------- Facets ---------- */
-.facets { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.facets { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .facet {
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro);
-    letter-spacing: 0.17em;
-    font-weight: 700;
+    font-size: var(--fs-caption);
+    font-weight: 600;
     color: var(--text-faint);
-    background: var(--panel);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
     border-radius: var(--radius-pill);
-    padding: 6px 13px;
+    padding: 4px 12px;
     cursor: pointer;
 }
 .facet:hover { color: var(--text-dim); }
-.facet.on { background: var(--wash-brass-strong); color: var(--brass); }
+.facet.on { background: var(--wash-accent-strong); border-color: transparent; color: var(--accent); }
 
 /* ---------- Attention ----------
    Drawn only when something is actually wrong, so a healthy machine loses no
-   space to it. Both states below were already detected and only visible if you
-   went looking in Settings. */
+   space to it. */
 .attention-stack { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
 .attention-stack:empty { display: none; }
-.attention {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 11px 16px;
-    border-radius: var(--radius-pill);
-    font-size: var(--fs-body);
-}
-.attention.warn { background: var(--wash-rose-soft); }
-.attention.warn svg { color: var(--rose); flex-shrink: 0; }
-.attention.info { background: var(--wash-brass); }
-.attention.info svg { color: var(--brass); flex-shrink: 0; }
+.attention { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; font-size: var(--fs-body); }
+.attention.warn { background: var(--wash-afk); }
+.attention.warn svg { color: var(--afk); flex-shrink: 0; }
+.attention.info { background: var(--wash-accent); }
+.attention.info svg { color: var(--accent); flex-shrink: 0; }
 .attention-action {
-    font-family: var(--font-mono);
     font-size: var(--fs-caption);
+    font-weight: 600;
     color: var(--text);
-    background: var(--panel);
-    border-radius: var(--radius-pill);
-    padding: 5px 13px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 4px 12px;
     cursor: pointer;
     white-space: nowrap;
 }
-.attention-action:hover { background: var(--bg-raised); }
+.attention-action:hover { background: var(--surface-2); }
 
-/* ---------- Nothing added yet ----------
-   The old empty state said "Nothing to show yet" and stopped there, which is
-   no help at all on a machine that is already tracking everything you open. */
-.blank { display: flex; flex-direction: column; gap: 10px; align-items: center;
-         justify-content: center; flex-grow: 1; text-align: center; }
-.blank-title { font-size: var(--fs-title); font-weight: 500; color: var(--text); }
+/* ---------- Nothing added yet ---------- */
+.blank { display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; flex-grow: 1; text-align: center; }
+.blank-title { font-size: var(--fs-title); font-weight: 600; letter-spacing: -0.015em; color: var(--text); }
 .blank-body { font-size: var(--fs-body); color: var(--text-faint); max-width: 420px; line-height: 1.5; }
 .blank-actions { display: flex; gap: 9px; margin-top: 6px; }
 
 /* ---------- Command bar ----------
-   The commands used to be five full rows on the idle screen, taking more of it
-   than the apps they sat under. They are one line now, and still turn back
-   into proper rows the moment you type. */
-/* Six chips of one weight, in --text-dim, on the window's own background, over
-   two wrapped rows. Nothing in that says which of them matters, and sitting
-   directly on the ground with no surface of their own is what made the row read
-   as decoration below the list rather than the controls of the application.
-
-   It is a toolbar now: one surface, the way the search field above it is one
-   surface, holding the named actions on the left and setup on the right. Full
-   --text rather than --text-dim, because these are not captions. */
+   A toolbar: one surface holding the named actions on the left and setup on the
+   right, and still turning back into proper rows the moment you type. */
 .command-bar {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: var(--panel);
-    border-radius: var(--radius-pill);
-    padding: 6px 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 5px 6px;
     flex-shrink: 0;
 }
 .command-bar:empty { display: none; }
-.command-group { display: flex; align-items: center; gap: 4px; }
+.command-group { display: flex; align-items: center; gap: 3px; }
 
 .command-chip {
     display: flex;
     align-items: center;
-    gap: 9px;
-    font-size: var(--fs-body);
-    /* Pinned rather than left to the font, so a chip and an icon button are the
-       same height and the row sits on one baseline. */
+    gap: 8px;
+    font-size: var(--fs-small);
+    font-weight: 500;
+    /* Pinned, so a chip and an icon button are the same height and the row sits
+       on one baseline. */
     line-height: 18px;
     color: var(--text);
-    border-radius: var(--radius-pill);
-    padding: 8px 14px;
+    border-radius: 8px;
+    padding: 7px 12px;
     cursor: pointer;
     white-space: nowrap;
 }
 .command-chip svg { color: var(--text-faint); flex-shrink: 0; }
-.command-chip:hover { background: var(--lift); }
+.command-chip:hover { background: var(--surface-3); }
 .command-chip:hover svg { color: var(--text); }
 
-/* One step up again for the command this window exists for. Brass would say
-   "focused" and teal would say "running", so the emphasis is a surface: over
-   the bar's own tint, --panel-solid is the one value that reads as raised in
-   both themes. */
-.command-chip.lead {
-    background: var(--panel-solid);
-    box-shadow: inset 0 0 0 1px var(--panel-border);
-    font-weight: 600;
-}
-.command-chip.lead svg { color: var(--text); }
-.command-chip.lead:hover { box-shadow: inset 0 0 0 1px var(--lift-strong); }
+/* The command this window exists for, lifted onto a surface of its own. */
+.command-chip.lead { background: var(--surface); box-shadow: 0 0 0 1px var(--border-strong); font-weight: 600; }
+.command-chip.lead svg { color: var(--accent); }
+.command-chip.lead:hover { background: var(--surface); box-shadow: 0 0 0 1px var(--text-faint); }
 
-/* Only ever on Resume, so this is the strip carrying a state rather than
-   colouring a button: the same brass the status dot turns when the clock is
-   stopped.
-
-   The tint and the glyph carry it; the words stay --text. Brass words on a
-   brass wash measured 4.32:1 in the light theme -- under AA, and this is the
-   one control you want readable when the clock has stopped. */
-.command-chip.paused { background: var(--wash-brass-strong); }
+/* Only ever on Resume: the strip carries a state (the clock is stopped) rather
+   than colouring a button. The tint and the glyph carry it; the words stay
+   --text so they remain readable. */
+.command-chip.paused { background: var(--wash-warn); }
 .command-chip.paused svg,
-.command-chip.paused:hover svg { color: var(--brass); }
-.command-chip.paused:hover { background: var(--wash-brass-strong); box-shadow: inset 0 0 0 1px var(--brass-dim); }
+.command-chip.paused:hover svg { color: var(--warn); }
+.command-chip.paused:hover { background: var(--wash-warn); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 40%, transparent); }
 
-/* Scan, Settings and the dashboard: still one press away, no longer competing
-   with the three actions for the same reading. */
+/* Scan, Settings and the dashboard: one press away, no longer competing with
+   the three actions for the same reading. */
 .command-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-pill);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     color: var(--text-faint);
     cursor: pointer;
     flex-shrink: 0;
 }
-.command-icon:hover { background: var(--lift); color: var(--text); }
+.command-icon:hover { background: var(--surface-3); color: var(--text); }
 
 /* ---------- Adding something you already use ---------- */
 .row-add {
     display: flex;
     align-items: center;
-    font-family: var(--font-mono);
     font-size: var(--fs-caption);
-    letter-spacing: 0.17em;
-    font-weight: 700;
-    color: var(--brass);
-    background: var(--wash-brass-strong);
-    border-radius: var(--radius-pill);
-    padding: 7px 15px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--wash-accent-strong);
+    border-radius: 8px;
+    padding: 6px 12px;
     cursor: pointer;
     flex-shrink: 0;
 }
-.row-add:hover { background: var(--brass-fill); color: var(--ink-on-fill); }
+.row-add:hover { background: var(--accent-fill); color: var(--ink-on-fill); }
 
 /* Adding from a search result removes the row it came from, which without a
    word looks like the click missed. */
@@ -1132,11 +894,13 @@ select.field option { background: var(--panel-solid); color: var(--text); }
     /* Clear of the footer: sitting on top of the key hints read as a glitch. */
     bottom: 72px;
     transform: translate(-50%, 14px);
-    background: var(--panel-solid);
-    color: var(--text);
-    font-size: var(--fs-body);
-    border-radius: var(--radius-pill);
-    padding: 11px 20px;
+    background: var(--chart-tooltip-bg);
+    color: var(--chart-tooltip-text);
+    font-size: var(--fs-small);
+    font-weight: 500;
+    border-radius: 10px;
+    padding: 10px 18px;
+    box-shadow: var(--shadow-md);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.16s ease, transform 0.16s ease;
@@ -1145,8 +909,7 @@ select.field option { background: var(--panel-solid); color: var(--text); }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
 /* A way out to the dashboard. The desktop window owns configuration and the
-   dashboard owns history, so the places where you want the other one are worth
-   marking rather than leaving you to go and find it. */
+   dashboard owns history. */
 .out-link {
     display: inline-flex;
     align-items: center;
@@ -1156,4 +919,4 @@ select.field option { background: var(--panel-solid); color: var(--text); }
     cursor: pointer;
     white-space: nowrap;
 }
-.out-link:hover { color: var(--brass); }
+.out-link:hover { color: var(--accent); }

@@ -236,7 +236,7 @@ namespace FastApp
         /// The window behind the page, and the colour the WebView2 paints
         /// before the page has drawn anything.
         ///
-        /// Both were the literal #0A0B10, so on a light desktop the palette
+        /// Both were once a literal near-black, so on a light desktop the palette
         /// flashed a black rectangle on every summon and kept a black edge
         /// around a light page. The page itself follows the OS on its own,
         /// through prefers-color-scheme; this is the frame it sits in.
@@ -244,8 +244,8 @@ namespace FastApp
         private void ApplyWindowTheme()
         {
             var ground = Services.SystemTheme.IsLight
-                ? System.Windows.Media.Color.FromRgb(0xF5, 0xF3, 0xEF)
-                : System.Windows.Media.Color.FromRgb(0x0A, 0x0B, 0x10);
+                ? System.Windows.Media.Color.FromRgb(0xFF, 0xFF, 0xFF)   // --surface, light
+                : System.Windows.Media.Color.FromRgb(0x14, 0x17, 0x1E);  // --surface, dark
 
             Background = new System.Windows.Media.SolidColorBrush(ground);
 
