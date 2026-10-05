@@ -30,20 +30,24 @@ namespace FastApp.Services
         public static void RecordActivated(string appName, bool viaSearch, DateTime when) =>
             Record("Activated", appName, viaSearch, when);
 
-        private static void Record(string eventType, string appName, bool? viaSearch, DateTime when)
-        {
-            try
+        // On the pool: this is called from the UI thread at the moment the palette
+        // is summoned, and a database write there is a visible hitch for a row
+        // nobody is waiting on.
+        private static void Record(string eventType, string appName, bool? viaSearch, DateTime when) =>
+            _ = System.Threading.Tasks.Task.Run(() =>
             {
-                using var db = new AppDbContext();
-                db.Database.ExecuteSqlRaw(
-                    "INSERT INTO PaletteEvents (Date, EventType, AppName, ViaSearch, Timestamp) VALUES ({0}, {1}, {2}, {3}, {4});",
-                    when.ToString("yyyy-MM-dd"), eventType, (object)appName ?? DBNull.Value,
-                    viaSearch.HasValue ? (viaSearch.Value ? 1 : 0) : (object)DBNull.Value, when.ToString("o"));
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"PaletteEventStore.Record failed: {ex.Message}");
-            }
-        }
+                try
+                {
+                    using var db = new AppDbContext();
+                    db.Database.ExecuteSqlRaw(
+                        "INSERT INTO PaletteEvents (Date, EventType, AppName, ViaSearch, Timestamp) VALUES ({0}, {1}, {2}, {3}, {4});",
+                        when.ToString("yyyy-MM-dd"), eventType, (object)appName ?? DBNull.Value,
+                        viaSearch.HasValue ? (viaSearch.Value ? 1 : 0) : (object)DBNull.Value, when.ToString("o"));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"PaletteEventStore.Record failed: {ex.Message}");
+                }
+            });
     }
 }

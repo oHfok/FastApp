@@ -81,6 +81,24 @@ namespace FastApp
         {
             InitializeComponent();
             Loaded += async (_, _) => await InitialiseAsync();
+            IsVisibleChanged += (_, e) => TrimWebMemory((bool)e.NewValue);
+        }
+
+        /// <summary>
+        /// While the palette is hidden it is a browser nobody is looking at, so
+        /// ask WebView2 to give back what it can; back to normal the moment it is
+        /// shown. The page is tiny, so there is nothing to wait for on the way back.
+        /// </summary>
+        private void TrimWebMemory(bool visible)
+        {
+            try
+            {
+                if (Web.CoreWebView2 == null) return;
+                Web.CoreWebView2.MemoryUsageTargetLevel = visible
+                    ? CoreWebView2MemoryUsageTargetLevel.Normal
+                    : CoreWebView2MemoryUsageTargetLevel.Low;
+            }
+            catch { /* a memory hint is not worth an exception */ }
         }
 
         /// <summary>
@@ -1563,19 +1581,54 @@ namespace FastApp
             return last;
         }
 
-        private void PushState()
+        // Bumped on every push, so a result that finishes after a newer push has
+        // started is dropped instead of overwriting fresher data.
+        private int _pushVersion;
+
+        /// <summary>
+        /// Send the palette its whole state.
+        ///
+        /// The reads (today's usage, last-used times, the process table, the
+        /// category map, the apps you use but have not added) all hit the
+        /// database or the OS, and none of them need the UI thread. They used to
+        /// run right here, on it: a 60-100 ms freeze on every summon, and since
+        /// the global keyboard hook shares this thread, a hitch in typing
+        /// everywhere else for the same 60-100 ms. They now run on the pool and
+        /// only the finished payload is built and posted back on this thread.
+        /// </summary>
+        private void PushState() => _ = PushStateAsync();
+
+        private async Task PushStateAsync()
         {
             if (Web.CoreWebView2 == null) return;
 
-            var (today, focusTotal) = TodayUsage.Read();
-            var lastUsed = ReadLastUsed();
+            int version = ++_pushVersion;
+            var managedNames = _viewModel.ManagedApps.Select(a => a.Name).ToList();
 
-            // One pass over the process table for the whole list, rather than
-            // one per row. This used to be hardcoded false, which meant the
-            // palette never once offered to focus an app it could see was
-            // already open -- it only ever offered to launch it again.
-            var windowOwners = RunningApps.WindowOwners();
-            var categories = CategoryMap.Build();
+            try
+            {
+            var data = await Task.Run(() => new
+            {
+                Usage = TodayUsage.Read(),
+                LastUsed = ReadLastUsed(),
+                // One pass over the process table for the whole list, rather than
+                // one per row. This used to be hardcoded false, which meant the
+                // palette never once offered to focus an app it could see was
+                // already open -- it only ever offered to launch it again.
+                WindowOwners = RunningApps.WindowOwners(),
+                Categories = CategoryMap.Build(),
+                Trackable = TrackedApps.Unmanaged(managedNames)
+                    .Select(c => new { name = c.Name, minutes = c.Minutes })
+                    .ToList()
+            });
+
+            // A newer push has started (or the window is gone); its answer wins.
+            if (version != _pushVersion || Web.CoreWebView2 == null) return;
+
+            var (today, focusTotal) = data.Usage;
+            var lastUsed = data.LastUsed;
+            var windowOwners = data.WindowOwners;
+            var categories = data.Categories;
 
             // Where each auto-launching app falls in the launch sequence. Its
             // position, not its OrderIndex: OrderIndex spans every managed app,
@@ -1638,10 +1691,7 @@ namespace FastApp
             // names, it changes about as often as you use a new program, and a
             // round trip per character would make the search feel worse than
             // not having it.
-            var trackable = TrackedApps
-                .Unmanaged(_viewModel.ManagedApps.Select(a => a.Name))
-                .Select(c => new { name = c.Name, minutes = c.Minutes })
-                .ToList();
+            var trackable = data.Trackable;
 
             var payload = new
             {
@@ -1673,6 +1723,13 @@ namespace FastApp
             // stamped by the first push it ever receives rather than staying on
             // the CSS default until something else changes.
             PushTheme();
+            }
+            catch (Exception ex)
+            {
+                // A failed refresh leaves the palette showing the last state it
+                // had, which is far better than an exception on a fire-and-forget task.
+                System.Diagnostics.Debug.WriteLine($"PushState failed: {ex.Message}");
+            }
         }
 
         /// <summary>

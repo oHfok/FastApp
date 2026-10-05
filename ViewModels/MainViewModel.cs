@@ -1776,7 +1776,11 @@ namespace FastApp.ViewModels
 
             void RestartAndExit()
             {
-                var restartArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
+                // --restarted: this relaunch can reach the single-instance check
+                // before this process has exited, so it must wait for it.
+                var restartArgs = Environment.GetCommandLineArgs().Skip(1)
+                    .Where(a => a != Program.RestartedArg)
+                    .Append(Program.RestartedArg).ToArray();
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = Environment.ProcessPath,
@@ -2127,8 +2131,12 @@ namespace FastApp.ViewModels
                 {
                 var allProcessNames = allProcesses.Select(p => p.ProcessName.ToLower()).ToHashSet();
 
+                // One window pass for the whole machine instead of asking each of
+                // ~380 processes for MainWindowHandle, which re-enumerates every
+                // window per process (~55 ms of this tick on its own).
+                var mainWindows = Services.RunningApps.MainWindows();
                 var visibleProcessNames = allProcesses
-                    .Where(p => p.MainWindowHandle != IntPtr.Zero && !string.IsNullOrEmpty(p.MainWindowTitle))
+                    .Where(p => mainWindows.TryGetValue(p.Id, out var titled) && titled)
                     .Select(p => p.ProcessName.ToLower())
                     .ToHashSet();
 

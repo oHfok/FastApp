@@ -54,11 +54,19 @@ namespace FastApp
             // this check before that's happened — a single failed attempt
             // here isn't proof another real instance is running.
             // ==========================================================
+            //
+            // Only a self-restart (the backup restore) can race the old process's
+            // exit, and it says so with --restarted. Everything else is either
+            // the first instance or a genuine second launch -- which used to sit
+            // through all ten 200 ms retries (a flat 2 seconds) before poking the
+            // running instance, so clicking the shortcut while FastApp was in the
+            // tray took two seconds to show anything.
             Mutex singleInstanceMutex = null;
             bool isNewInstance = false;
-            for (int attempt = 0; attempt < 10 && !isNewInstance; attempt++)
+            int attempts = args.Contains(RestartedArg) ? 10 : 2;
+            for (int attempt = 0; attempt < attempts && !isNewInstance; attempt++)
             {
-                if (attempt > 0) Thread.Sleep(200);
+                if (attempt > 0) Thread.Sleep(attempts == 10 ? 200 : 100);
                 singleInstanceMutex?.Dispose();
                 singleInstanceMutex = new Mutex(initiallyOwned: true, name: "FastApp_SingleInstance_Mutex", createdNew: out isNewInstance);
             }
@@ -102,6 +110,9 @@ namespace FastApp
             // Keep the mutex alive for the entire lifetime of the app.
             GC.KeepAlive(singleInstanceMutex);
         }
+
+        /// <summary>Passed to the relaunched process by a self-restart, so it waits out the old one's exit.</summary>
+        public const string RestartedArg = "--restarted";
 
         private const string ShowWindowEventName = "FastApp_ShowWindow_Event";
 

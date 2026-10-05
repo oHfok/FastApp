@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace FastApp.Services
 {
@@ -42,6 +43,42 @@ namespace FastApp.Services
             }
         }
 
+        private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
+        [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+        [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
+        [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr hwnd, uint command);
+        [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+        [DllImport("user32.dll")] private static extern int GetWindowTextLength(IntPtr hwnd);
+
+        private const uint GW_OWNER = 4;
+
+        /// <summary>
+        /// Which processes own a main window, in one pass over every window on the
+        /// machine: process id -> whether that window has a title.
+        ///
+        /// "Main window" means what Process.MainWindowHandle means -- the first
+        /// visible top-level window that has no owner. That property, though,
+        /// enumerates every window on the system FOR EACH PROCESS it is asked
+        /// about, so asking it of ~380 processes meant ~380 full window passes
+        /// (about 55 ms) on every 5-second tracker tick and on every palette
+        /// summon. One pass gives the same answer for all of them.
+        /// </summary>
+        public static Dictionary<int, bool> MainWindows()
+        {
+            var found = new Dictionary<int, bool>();
+            EnumWindows((hwnd, _) =>
+            {
+                if (!IsWindowVisible(hwnd) || GetWindow(hwnd, GW_OWNER) != IntPtr.Zero) return true;
+
+                GetWindowThreadProcessId(hwnd, out uint pid);
+                // The first qualifying window per process is its main window.
+                if (!found.ContainsKey((int)pid)) found[(int)pid] = GetWindowTextLength(hwnd) > 0;
+                return true;
+            }, IntPtr.Zero);
+            return found;
+        }
+
         /// <summary>
         /// Process names, without extension, that currently own a window.
         ///
@@ -60,15 +97,17 @@ namespace FastApp.Services
 
             try
             {
+                var windows = MainWindows();
                 foreach (var process in all)
                 {
                     try
                     {
-                        if (process.MainWindowHandle != IntPtr.Zero) names.Add(process.ProcessName);
+                        if (windows.ContainsKey(process.Id)) names.Add(process.ProcessName);
                     }
                     catch
                     {
-                        // Same as above: unreadable means not focusable.
+                        // A process can exit between being listed and being asked about;
+                        // unreadable means not focusable.
                     }
                 }
             }
