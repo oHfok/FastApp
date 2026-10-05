@@ -630,7 +630,16 @@ namespace FastApp.Services
                 await next();
             });
 
-            app.UseStaticFiles();
+            // no-cache means "keep it, but ask before using it": the browser revalidates
+            // each file against its ETag on every load (a 304 on localhost). Without a
+            // Cache-Control header browsers guess how long a file stays fresh from its
+            // Last-Modified date, so after an update an old cached dashboard.html was
+            // paired with new CSS and scripts -- a half-old, half-new, broken-looking
+            // page until the next manual refresh.
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache"
+            });
 
             // A second static-file mount served a "Nova" dashboard from wwwroot2 at
             // /nova. That folder does not exist in the repo and is not packaged, so
