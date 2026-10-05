@@ -51,6 +51,9 @@ async function openDrilldown(appName, tab) {
     // opens, rather than staying on whatever the previous app was left on.
     document.querySelectorAll('#dd-trend-toggle button').forEach(b => b.classList.toggle('active', b.dataset.granularity === 'day'));
     loadUsageTrend(appName, 'day');
+    sitesDays = 30;
+    document.querySelectorAll('#dd-sites-toggle button').forEach(b => b.classList.toggle('active', b.dataset.days === '30'));
+    loadAppSites(appName);
 
     // Header shows the tidied name; the raw process name stays in the tooltip
     // so it is never actually hidden from the user.
@@ -412,6 +415,70 @@ async function toggleCompareChart(period, appName, rowEl) {
     } catch (err) {
         console.error('Failed to load period breakdown', err);
         wrap.innerHTML = `<div class="empty-state" style="border:none;background:none;padding:10px 0;">Couldn't load comparison.</div>`;
+    }
+}
+
+// --- Top Sites (browsers, opt-in) -------------------------------------------
+// Which websites a browser's time went to, read from window titles by the desktop
+// app. Only drawn for browsers, and only once title capture has been switched on
+// -- otherwise the card says how to turn it on, or stays out of the way entirely.
+let sitesDays = 30;
+
+function setSitesDays(days, btnEl) {
+    sitesDays = days;
+    document.querySelectorAll('#dd-sites-toggle button').forEach(b => b.classList.toggle('active', b === btnEl));
+    if (currentDrilldownAppName) loadAppSites(currentDrilldownAppName);
+}
+
+function openPrivacySettings() {
+    closeDrilldown();
+    openSettings();
+    setSettingsTab('privacy', document.querySelector('#settings-tab-toggle button[data-tab="privacy"]'));
+}
+
+async function loadAppSites(appName) {
+    const section = document.getElementById('dd-sites-section');
+    const body = document.getElementById('dd-sites-body');
+    if (!section || !body) return;
+    try {
+        const data = await apiFetch(`/api/app-sites?appName=${encodeURIComponent(appName)}&days=${sitesDays}`,
+                                    { signal: abortableSignal('app-sites') });
+        if (appName !== currentDrilldownAppName) return;   // another app was opened meanwhile
+
+        section.hidden = !data.isBrowser;
+        if (!data.isBrowser) return;
+
+        if (!data.enabled) {
+            body.innerHTML = `
+                <p class="dd-hint">See which websites this browser's time went to. It works from window titles
+                (never web addresses), stays on this PC, and is off until you turn on title capture.</p>
+                <button type="button" class="btn" onclick="openPrivacySettings()">Turn on in Settings</button>`;
+            return;
+        }
+
+        const sites = data.sites || [];
+        const notes = [];
+        if (data.untitledMinutes >= 1) notes.push(`${formatTime(data.untitledMinutes)} was recorded before title capture was on.`);
+        if (data.privateMinutes >= 1) notes.push(`${formatTime(data.privateMinutes)} in private windows is not listed.`);
+        const noteHtml = notes.length ? `<div class="dd-sites-note">${notes.map(escapeHtml).join(' ')}</div>` : '';
+
+        if (sites.length === 0) {
+            body.innerHTML = `<div class="dd-hint" style="margin:0;">No titled browsing in the last ${data.days} days yet. Titles are recorded from the moment capture is switched on.</div>${noteHtml}`;
+            return;
+        }
+
+        const max = Math.max(...sites.map(s => s.minutes), 1);
+        body.innerHTML = `<div class="dd-sites-list">${sites.slice(0, 12).map(s => `
+            <div class="dd-site-row">
+                <div class="dd-site-name${s.site === 'Other pages' || s.site === 'New tab' ? ' is-other' : ''}" title="${escapeHtml(s.site)}">${escapeHtml(s.site)}</div>
+                <div class="lb-bar"><div class="lb-bar-fill" style="width:${(s.minutes / max) * 100}%"></div></div>
+                <div class="dd-site-time">${formatTime(s.minutes)}</div>
+            </div>`).join('')}</div>
+            <div class="dd-sites-note">Worked out from window titles, so it is a best guess, not an exact web address.</div>${noteHtml}`;
+    } catch (err) {
+        if (isAbort(err)) return;
+        console.error('Failed to load top sites', err);
+        section.hidden = true;
     }
 }
 

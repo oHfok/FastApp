@@ -461,6 +461,79 @@ namespace FastApp.Services
             catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
         });
 
+        // ---- /api/app-sites?appName=&days= ----------------------------------------
+        // Which websites a browser's time went to, worked out from window titles.
+        //
+        // Strictly opt-in: titles are only recorded while the CaptureWindowTitles
+        // setting is on, so with it off this answers "not enabled" and nothing
+        // else. Private/incognito windows are left out of the list entirely and
+        // only counted. Computed here, from the local database, and never stored.
+        app.MapGet("/api/app-sites", async (string appName, int? days, HttpContext context) =>
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(appName)) { context.Response.StatusCode = 400; return; }
+                using var db = new AppDbContext();
+
+                var category = (await GetAppCategoriesSafely(db)).GetValueOrDefault(appName, "Other");
+                bool isBrowser = SiteFromTitle.BrowserProcesses.Contains(appName) || category == "Browsing";
+                bool enabled = GetCaptureWindowTitles(db);
+
+                if (!isBrowser || !enabled)
+                {
+                    await context.Response.WriteAsJsonAsync(new { IsBrowser = isBrowser, Enabled = enabled, Sites = Array.Empty<object>() });
+                    return;
+                }
+
+                int window = Math.Clamp(days ?? 30, 1, 365);
+                DateTime since = DateTime.Today.AddDays(-(window - 1));
+
+                var sessions = await db.SessionLogs.AsNoTracking()
+                    .Where(s => s.AppName == appName && s.StartTime >= since)
+                    .Select(s => new { s.WindowTitle, s.StartTime, s.EndTime })
+                    .ToListAsync();
+
+                var minutesBySite = new Dictionary<string, (string Label, double Minutes, int Visits)>(StringComparer.OrdinalIgnoreCase);
+                double privateMinutes = 0, untitledMinutes = 0;
+
+                foreach (var s in sessions)
+                {
+                    double minutes = Math.Max(0, (s.EndTime - s.StartTime).TotalMinutes);
+                    if (string.IsNullOrWhiteSpace(s.WindowTitle)) { untitledMinutes += minutes; continue; }
+                    if (SiteFromTitle.IsPrivate(s.WindowTitle)) { privateMinutes += minutes; continue; }
+
+                    string site = SiteFromTitle.Extract(s.WindowTitle) ?? "Other pages";
+                    minutesBySite.TryGetValue(site, out var running);
+                    minutesBySite[site] = (running.Label ?? site, running.Minutes + minutes, running.Visits + 1);
+                }
+
+                double total = minutesBySite.Values.Sum(v => v.Minutes);
+                var sites = minutesBySite.Values
+                    .OrderByDescending(v => v.Minutes)
+                    .Take(30)
+                    .Select(v => new
+                    {
+                        Site = v.Label,
+                        Minutes = Math.Round(v.Minutes, 1),
+                        Visits = v.Visits,
+                        Share = total > 0 ? Math.Round(v.Minutes / total * 100, 1) : 0
+                    })
+                    .ToList();
+
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    IsBrowser = true,
+                    Enabled = true,
+                    Days = window,
+                    Sites = sites,
+                    TotalMinutes = Math.Round(total, 1),
+                    PrivateMinutes = Math.Round(privateMinutes, 1),
+                    UntitledMinutes = Math.Round(untitledMinutes, 1)
+                });
+            }
+            catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
+        });
+
         }
     }
 }

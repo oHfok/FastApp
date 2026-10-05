@@ -435,6 +435,8 @@ async function renderActivityBody(scope, dateStr, ov, signal) {
                         <div class="timeline-track" id="ov-timeline-track"></div>
                         <div class="timeline-subrows" id="ov-timeline-subrows"></div>
                     </div>
+                    <div class="timeline-hint">Click a block, or drag across the timeline, to see what happened in that stretch.</div>
+                    <div class="tl-range" id="ov-tl-range" hidden></div>
                 </div>`;
         }
         await renderDayTimeline(dateStr, signal);
@@ -460,6 +462,7 @@ async function renderDayTimeline(dateStr, signal) {
         if (subrows) subrows.innerHTML = timelineSubRowsHtml(sessions, afk, music);
         const ticks = document.getElementById('ov-timeline-ticks');
         if (ticks && (sessions.length || afk.length || music.length)) ticks.innerHTML = timelineTicksHtml(timelineWindow(sessions, afk, music));
+        timelineDrilldown(track, document.getElementById('ov-tl-range'), { sessions, afk, music }, dateStr);
     } catch (err) { if (!isAbort(err)) console.error(err); }
 }
 

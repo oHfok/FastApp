@@ -759,6 +759,52 @@
 .view-head > .layout-edit-toggle:not(.ov-controls + *) { margin-left: auto; }
 @media (prefers-reduced-motion: reduce) { .layout-dragging { opacity: 1; } }
 
+
+/* ---------------------------------------------------------
+   Timeline drill-down, and the browser Top Sites card
+   --------------------------------------------------------- */
+.timeline-track { cursor: crosshair; touch-action: none; user-select: none; }
+.timeline-seg { cursor: pointer; }
+.tl-selection {
+    position: absolute;
+    top: 0; bottom: 0;
+    background: var(--wash-accent-strong);
+    border-left: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+    pointer-events: none;
+    z-index: 3;
+}
+.timeline-hint { margin-top: 12px; font-size: var(--fs-caption); color: var(--text-faint); }
+
+.tl-range { margin-top: 16px; padding: 18px 20px; background: var(--surface-2); border-radius: var(--radius-sm); }
+.tl-range-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.tl-range-title { font-size: var(--fs-strong); font-weight: 650; letter-spacing: -0.01em; }
+.tl-range-len { color: var(--text-faint); font-weight: 500; margin-left: 6px; }
+.tl-range-sub { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 4px; font-size: var(--fs-small); color: var(--text-dim); }
+.tl-afk { color: var(--afk); }
+.tl-music { color: var(--music); }
+.tl-range-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 28px; }
+@media (max-width: 820px) { .tl-range-body { grid-template-columns: 1fr; gap: 20px; } }
+
+.tl-feed { display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; margin: 0 -6px; padding-right: 4px; }
+.tl-feed-row { display: grid; grid-template-columns: 92px 8px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 7px 6px; border-radius: var(--radius-sm); }
+.tl-feed-row:hover { background: var(--surface-3); }
+.tl-feed-time { font-size: var(--fs-caption); color: var(--text-faint); padding-top: 2px; }
+.tl-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; }
+.tl-feed-name { font-size: var(--fs-body); font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-feed-name.app-link { cursor: pointer; }
+.tl-feed-title { font-size: var(--fs-caption); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.tl-feed-dur { font-size: var(--fs-small); font-weight: 600; color: var(--text-dim); padding-top: 1px; }
+.tl-feed-row.is-away .tl-feed-name { color: var(--afk); font-weight: 500; }
+.tl-feed-more { padding: 8px 6px; font-size: var(--fs-caption); color: var(--text-faint); }
+
+.dd-sites-list { display: flex; flex-direction: column; gap: 2px; }
+.dd-site-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 54px; gap: 12px; align-items: center; padding: 6px 0; }
+.dd-site-name { font-size: var(--fs-body); font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-site-name.is-other { color: var(--text-faint); font-weight: 500; }
+.dd-site-time { font-size: var(--fs-small); font-weight: 600; color: var(--text-dim); text-align: right; }
+.dd-sites-note { margin-top: 12px; font-size: var(--fs-caption); color: var(--text-faint); line-height: 1.55; }
+
 /* ---------------------------------------------------------
    Wrapped (top bar entry, panel, story)
    --------------------------------------------------------- */

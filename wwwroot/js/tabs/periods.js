@@ -169,6 +169,8 @@ function periodHeatmapHtml(days, periodType, daySessions, dayAfkIntervals, dayMu
                     <div class="timeline-track">${timelineSegmentsHtml(daySessions, dayAfkIntervals, dayMusicIntervals)}</div>
                     <div class="timeline-subrows">${timelineSubRowsHtml(daySessions, dayAfkIntervals, dayMusicIntervals)}</div>
                 </div>
+                <div class="timeline-hint">Click a block, or drag across the timeline, to see what happened in that stretch.</div>
+                <div class="tl-range" id="pd-tl-range" hidden></div>
             </div>`;
     }
     if (!days || days.length === 0) return `<div class="empty-state" style="padding:28px 16px;">No activity recorded yet.</div>`;
@@ -580,7 +582,10 @@ function renderPeriodDetail(d, isNewDay) {
     // inline block labels. Has to run after the innerHTML above: the labels are
     // decided on measured pixel width, which does not exist until layout.
     if (periodType === 'day') {
-        labelWideTimelineSegments(document.querySelector('#period-detail-body .timeline-track'));
+        const track = document.querySelector('#period-detail-body .timeline-track');
+        labelWideTimelineSegments(track);
+        timelineDrilldown(track, document.getElementById('pd-tl-range'),
+            { sessions: daySessions, afk: dayAfkIntervals, music: dayMusicIntervals }, `period:${label}`);
     }
 }
 

@@ -490,7 +490,9 @@ namespace FastApp.Services
                     Start = s.StartTime.ToString("HH:mm"),
                     End = s.EndTime.ToString("HH:mm"),
                     DurationMinutes = (s.EndTime - s.StartTime).TotalMinutes,
-                    StartMinutes = s.StartTime.TimeOfDay.TotalMinutes
+                    StartMinutes = s.StartTime.TimeOfDay.TotalMinutes,
+                    // null unless CaptureWindowTitles was on when this session was recorded
+                    WindowTitle = s.WindowTitle
                 }).OrderBy(s => s.StartMinutes).ToList();
 
                 // AFK stretches for the same day, in the same shape as the

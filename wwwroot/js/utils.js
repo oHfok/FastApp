@@ -585,7 +585,7 @@ function timelineSegmentsHtml(sessions, afkIntervals, musicIntervals) {
         return `<div class="timeline-seg" style="left:${left}%;width:${width}%;background:${timelineSegColor(name, cat)}"
                     data-name="${escapeHtml(name)}" data-range="${escapeHtml(startStr + ' – ' + endStr)}"
                     data-dur="${escapeHtml(formatTime(dur))}" data-title="${title ? escapeHtml(title) : ''}"
-                    data-open-app="${escapeHtml(name)}" role="button" tabindex="0"
+                    data-s="${startMins}" data-e="${startMins + dur}" role="button" tabindex="0"
                     aria-label="${escapeHtml(`${name}, ${startStr} to ${endStr}, ${formatTime(dur)}`)}"
                     onmousemove="showSessionTooltip(event, this)" onmouseleave="hideTooltip()"></div>`;
     }).join('');
@@ -663,6 +663,208 @@ function labelWideTimelineSegments(trackEl) {
         label.classList.add(timelineLabelInk(getComputedStyle(seg).backgroundColor));
         seg.appendChild(label);
     });
+}
+
+
+// --- Timeline drill-down -----------------------------------------------------
+// Click a block, or drag across the ribbon, to see exactly what happened in that
+// stretch: what ran and in what order, for how long, and how much of it was
+// spent away or with music playing.
+//
+// Everything is worked out from the day's data the ribbon was already drawn
+// from -- no extra request -- so a selection also follows the live refresh.
+const timelineSelections = new Map();   // key (e.g. the date) -> { a, b }, minutes of the day
+
+function timelineHhmm(min) {
+    const m = Math.round(min);
+    return `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
+}
+function timelineDur(mins) { return mins > 0 && mins < 1 ? '<1m' : formatTime(mins); }
+
+// The panel for one stretch [a, b] of the day. Titles and names can be set by
+// any web page, so every value goes through escapeHtml.
+function timelineRangeHtml(data, a, b) {
+    const clip = (start, dur) => {
+        const s = Math.max(start, a), e = Math.min(start + dur, b);
+        return e > s ? { s, e, d: e - s } : null;
+    };
+
+    const items = [];
+    const byApp = new Map();
+    let focus = 0, away = 0, music = 0;
+
+    (data.sessions || []).forEach(s => {
+        const c = clip(s.startMinutes ?? 0, s.durationMinutes ?? 0);
+        if (!c) return;
+        focus += c.d;
+        const cur = byApp.get(s.appName) || { d: 0, cat: s.category };
+        cur.d += c.d;
+        byApp.set(s.appName, cur);
+        items.push({ kind: 'app', name: s.appName, cat: s.category, title: s.windowTitle, ...c });
+    });
+    (data.afk || []).forEach(iv => {
+        const c = clip(iv.startMinutes ?? 0, iv.durationMinutes ?? 0);
+        if (c) { away += c.d; items.push({ kind: 'away', ...c }); }
+    });
+    (data.music || []).forEach(iv => {
+        const c = clip(iv.startMinutes ?? 0, iv.durationMinutes ?? 0);
+        if (c) music += c.d;
+    });
+    items.sort((x, y) => x.s - y.s);
+
+    // The tracker closes a session whenever the foreground or the window title
+    // changes, so one sitting can be a dozen rows. Consecutive runs of the same
+    // app and title (with under a minute between them) read as one stretch.
+    const merged = [];
+    items.forEach(it => {
+        const prev = merged[merged.length - 1];
+        if (prev && prev.kind === 'app' && it.kind === 'app' && prev.name === it.name
+            && (prev.title || '') === (it.title || '') && it.s - prev.e <= 1) {
+            prev.e = Math.max(prev.e, it.e);
+            prev.d += it.d;
+        } else merged.push({ ...it });
+    });
+
+    const apps = [...byApp.entries()].sort((x, y) => y[1].d - x[1].d).slice(0, 8);
+    const appMax = Math.max(...apps.map(([, v]) => v.d), 1);
+    const appRows = apps.map(([name, v], i) => `
+        <div class="lb-row app-link" data-open-app="${escapeHtml(name)}" role="button" tabindex="0">
+            <div class="lb-rank">${i + 1}</div>
+            <div class="lb-name" title="${escapeHtml(name)}">${escapeHtml(displayAppName(name))}</div>
+            <div class="lb-bar"><div class="lb-bar-fill" style="width:${(v.d / appMax) * 100}%;background:${timelineSegColor(name, v.cat)}"></div></div>
+            <div class="lb-time">${timelineDur(v.d)}</div>
+        </div>`).join('');
+
+    const MAX_FEED = 60;
+    const feed = merged.slice(0, MAX_FEED).map(it => it.kind === 'away'
+        ? `<div class="tl-feed-row is-away">
+               <span class="tl-feed-time">${timelineHhmm(it.s)}\u2013${timelineHhmm(it.e)}</span>
+               <span class="tl-dot" style="background:var(--afk)"></span>
+               <div class="tl-feed-main"><div class="tl-feed-name">Away from the keyboard</div></div>
+               <span class="tl-feed-dur">${timelineDur(it.d)}</span>
+           </div>`
+        : `<div class="tl-feed-row">
+               <span class="tl-feed-time">${timelineHhmm(it.s)}\u2013${timelineHhmm(it.e)}</span>
+               <span class="tl-dot" style="background:${timelineSegColor(it.name, it.cat)}"></span>
+               <div class="tl-feed-main">
+                   <div class="tl-feed-name app-link" data-open-app="${escapeHtml(it.name)}" role="button" tabindex="0">${escapeHtml(displayAppName(it.name))}</div>
+                   ${it.title ? `<div class="tl-feed-title" title="${escapeHtml(it.title)}">${escapeHtml(it.title)}</div>` : ''}
+               </div>
+               <span class="tl-feed-dur">${timelineDur(it.d)}</span>
+           </div>`).join('');
+    const more = merged.length > MAX_FEED ? `<div class="tl-feed-more">and ${merged.length - MAX_FEED} more</div>` : '';
+
+    const empty = items.length === 0;
+    return `
+        <div class="tl-range-head">
+            <div>
+                <div class="tl-range-title">${timelineHhmm(a)} \u2013 ${timelineHhmm(b)} <span class="tl-range-len">${timelineDur(b - a)}</span></div>
+                <div class="tl-range-sub">
+                    <span>${timelineDur(focus)} focused</span>
+                    ${away > 0 ? `<span class="tl-afk">${timelineDur(away)} away</span>` : ''}
+                    ${music > 0 ? `<span class="tl-music">${timelineDur(music)} music</span>` : ''}
+                </div>
+            </div>
+            <button type="button" class="btn btn-ghost" data-tl-clear>Clear</button>
+        </div>
+        ${empty ? `<div class="empty-state" style="border:none;background:none;padding:18px 0;">Nothing was recorded in this stretch.</div>` : `
+        <div class="tl-range-body">
+            <div><div class="card-label" style="margin-bottom:8px;">By app</div><div class="lb-list">${appRows}</div></div>
+            <div><div class="card-label" style="margin-bottom:8px;">In order</div><div class="tl-feed">${feed}${more}</div></div>
+        </div>`}`;
+}
+
+// Draw (or clear) the highlight on the ribbon and fill (or hide) the panel under it.
+function applyTimelineSelection(trackEl, panelEl) {
+    const tl = trackEl._tl;
+    if (!tl) return;
+    trackEl.querySelectorAll('.tl-selection').forEach(el => el.remove());
+
+    const sel = timelineSelections.get(tl.key);
+    if (!sel) {
+        if (panelEl) { panelEl.hidden = true; panelEl._last = ''; }
+        return;
+    }
+
+    const win = timelineWindow(tl.data.sessions, tl.data.afk, tl.data.music);
+    const span = Math.max(1, win.endMin - win.startMin);
+    const left = Math.max(0, ((sel.a - win.startMin) / span) * 100);
+    const right = Math.min(100, ((sel.b - win.startMin) / span) * 100);
+    const box = document.createElement('div');
+    box.className = 'tl-selection';
+    box.style.left = `${left}%`;
+    box.style.width = `${Math.max(0.3, right - left)}%`;
+    trackEl.appendChild(box);
+
+    if (panelEl) {
+        const html = timelineRangeHtml(tl.data, sel.a, sel.b);
+        // Only rewritten when it changed, so the live refresh does not reset the
+        // panel's scroll position or flicker it.
+        if (panelEl._last !== html) { panelEl.innerHTML = html; panelEl._last = html; }
+        panelEl.hidden = false;
+    }
+}
+
+// Wire a ribbon for drill-down. Safe to call on every refresh: the pointer
+// handlers are attached once and always read the latest data from trackEl._tl.
+function timelineDrilldown(trackEl, panelEl, data, key) {
+    if (!trackEl) return;
+    trackEl._tl = { data, key };
+
+    if (!trackEl.dataset.tlBound) {
+        trackEl.dataset.tlBound = '1';
+        let startX = null, dragging = false;
+
+        const minuteAt = (clientX) => {
+            const tl = trackEl._tl;
+            const win = timelineWindow(tl.data.sessions, tl.data.afk, tl.data.music);
+            const rect = trackEl.getBoundingClientRect();
+            const frac = Math.min(1, Math.max(0, (clientX - rect.left) / Math.max(1, rect.width)));
+            return Math.round(win.startMin + frac * (win.endMin - win.startMin));
+        };
+        const select = (a, b) => {
+            if (b - a < 1) b = a + 1;
+            timelineSelections.set(trackEl._tl.key, { a, b });
+            applyTimelineSelection(trackEl, panelEl);
+        };
+
+        trackEl.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            startX = e.clientX; dragging = false;
+            try { trackEl.setPointerCapture(e.pointerId); } catch { /* not every pointer can be captured; dragging still works */ }
+        });
+        trackEl.addEventListener('pointermove', (e) => {
+            if (startX === null) return;
+            if (!dragging && Math.abs(e.clientX - startX) < 5) return;
+            dragging = true;
+            hideTooltip();
+            const m1 = minuteAt(startX), m2 = minuteAt(e.clientX);
+            select(Math.min(m1, m2), Math.max(m1, m2));
+        });
+        trackEl.addEventListener('pointerup', (e) => {
+            if (startX === null) return;
+            const wasDrag = dragging;
+            startX = null; dragging = false;
+            if (wasDrag) return;
+            // A click: a block selects exactly its own stretch, empty space clears.
+            const seg = e.target.closest('.timeline-seg');
+            if (seg) select(+seg.dataset.s, +seg.dataset.e);
+            else { timelineSelections.delete(trackEl._tl.key); applyTimelineSelection(trackEl, panelEl); }
+        });
+        trackEl.addEventListener('pointercancel', () => { startX = null; dragging = false; });
+        trackEl.addEventListener('keydown', (e) => {
+            const seg = e.target.closest && e.target.closest('.timeline-seg');
+            if (seg && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); select(+seg.dataset.s, +seg.dataset.e); }
+        });
+
+        if (panelEl) panelEl.addEventListener('click', (e) => {
+            if (!e.target.closest('[data-tl-clear]')) return;
+            timelineSelections.delete(trackEl._tl.key);
+            applyTimelineSelection(trackEl, panelEl);
+        });
+    }
+
+    applyTimelineSelection(trackEl, panelEl);
 }
 
 // WCAG relative luminance of an "r, g, b" string.

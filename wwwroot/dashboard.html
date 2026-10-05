@@ -814,6 +814,19 @@
             <div class="dd-trend-numbers" id="dd-trend-numbers"></div>
         </div>
 
+        <!-- Browsers only, and only with window-title capture switched on: the
+             page decides after asking /api/app-sites, so for any other app this
+             stays hidden. -->
+        <div class="dd-section" id="dd-sites-section" data-card="dd-sites" data-card-name="Top Sites" hidden>
+            <div class="dd-section-label">Top Sites</div>
+            <div class="segmented" id="dd-sites-toggle" style="margin-bottom:14px;">
+                <button data-days="7" onclick="setSitesDays(7, this)">7 days</button>
+                <button class="active" data-days="30" onclick="setSitesDays(30, this)">30 days</button>
+                <button data-days="90" onclick="setSitesDays(90, this)">90 days</button>
+            </div>
+            <div id="dd-sites-body"></div>
+        </div>
+
         <div class="dd-section" data-card="dd-lifetime" data-card-name="Lifetime Totals">
             <div class="dd-section-label">Lifetime Totals</div>
             <div class="dd-stat-grid">
