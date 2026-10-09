@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 
 namespace FastApp.Services
 {
@@ -50,10 +51,20 @@ namespace FastApp.Services
 
             if (!File.Exists(app.ExecutablePath))
             {
-                error = IsPackagedPath(app.ExecutablePath)
-                    ? $"{app.Name} has been updated and moved. Re-run Scan PC For Applications to relink it."
-                    : $"Not found at {app.ExecutablePath}";
-                return false;
+                // The app updated itself into a new folder (Discord, GitHub Desktop and
+                // every other Squirrel app) or was moved. Find where it lives now and
+                // remember it, so this heals once rather than on every launch.
+                string current = FindCurrentVersionedPath(app.ExecutablePath)
+                    ?? RememberedPath(app.ExecutablePath);
+                if (current != null)
+                    app.ExecutablePath = current;   // saved through the normal property-changed path
+                else
+                {
+                    error = IsPackagedPath(app.ExecutablePath)
+                        ? $"{app.Name} has been updated and moved. Re-run Scan PC For Applications to relink it."
+                        : $"Not found at {app.ExecutablePath}";
+                    return false;
+                }
             }
 
             try
@@ -75,6 +86,62 @@ namespace FastApp.Services
                 error = ex.Message;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Squirrel-style installers keep each version in "rootpp-version\..." and delete
+        /// the old folder on update, so a stored "...\Discordpp-1.0.9260\Discord.exe" stops
+        /// existing the day Discord updates. Returns the same file inside the newest surviving
+        /// app-* folder; failing that, the launcher stub the installer leaves in the root,
+        /// which starts the current version itself. Null when the path is not of that shape
+        /// or nothing suitable exists.
+        /// </summary>
+        internal static string FindCurrentVersionedPath(string path)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(path)) return null;
+
+                var parts = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                int at = Array.FindIndex(parts, x => ParseVersion(x) != null);
+                if (at <= 0 || at >= parts.Length - 1) return null;
+
+                string root = string.Join(Path.DirectorySeparatorChar, parts, 0, at);
+                string relative = string.Join(Path.DirectorySeparatorChar, parts, at + 1, parts.Length - at - 1);
+                if (!Directory.Exists(root)) return null;
+
+                var best = Directory.EnumerateDirectories(root, "app-*")
+                    .Select(d => (dir: d, version: ParseVersion(Path.GetFileName(d))))
+                    .Where(x => x.version != null && File.Exists(Path.Combine(x.dir, relative)))
+                    .OrderByDescending(x => x.version)
+                    .Select(x => Path.Combine(x.dir, relative))
+                    .FirstOrDefault();
+                if (best != null) return best;
+
+                string stub = Path.Combine(root, Path.GetFileName(path));
+                return File.Exists(stub) ? stub : null;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>"app-1.0.9260" gives 1.0.9260; null for any other name.</summary>
+        private static Version ParseVersion(string folder)
+        {
+            if (folder == null || !folder.StartsWith("app-", StringComparison.OrdinalIgnoreCase)) return null;
+            string v = folder.Substring(4);
+            if (v.Length == 0 || !char.IsDigit(v[0])) return null;
+            if (!v.Contains('.')) v += ".0";
+            return Version.TryParse(v, out var parsed) ? parsed : null;
+        }
+
+        /// <summary>
+        /// Where the tracker last saw a process of this name running, if that file is still
+        /// there -- covers an app that was simply moved or reinstalled elsewhere.
+        /// </summary>
+        private static string RememberedPath(string missingPath)
+        {
+            string known = ExecutablePathStore.Get(Path.GetFileNameWithoutExtension(missingPath));
+            return known != null && File.Exists(known) ? known : null;
         }
 
         /// <summary>
