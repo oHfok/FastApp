@@ -77,6 +77,41 @@ namespace FastApp.Services
             catch { }
         }
 
+        // ---------------------------------------------------------------- before the recorder is on
+
+        // The recorder cannot start until the database is open (its on/off switch lives
+        // there), but at Windows login most of the time is lost BEFORE that point. These
+        // marks are kept in memory, touching nothing, and written out when it starts.
+        private static readonly List<(string name, double ms)> Early = new();
+        private static DateTime _processStart;
+
+        /// <summary>
+        /// A point on the start-up timeline reached before the recorder exists. Costs a
+        /// clock read; never touches the disk or the database.
+        /// </summary>
+        public static void EarlyMark(string name)
+        {
+            try
+            {
+                lock (Early)
+                {
+                    if (_processStart == default)
+                        using (var p = Process.GetCurrentProcess()) _processStart = p.StartTime;
+                    if (Early.Count < 32) Early.Add((name, (DateTime.Now - _processStart).TotalMilliseconds));
+                }
+            }
+            catch { }
+        }
+
+        private static void FlushEarlyMarks()
+        {
+            lock (Early)
+            {
+                foreach (var (name, ms) in Early) Write("milestone", Inv($"{name} +{ms:0}ms"));
+                Early.Clear();
+            }
+        }
+
         /// <summary>A named point on the startup timeline: ms since the process began.</summary>
         public static void Milestone(string name)
         {
@@ -140,6 +175,8 @@ namespace FastApp.Services
                         Inv($"version={Version()} os={Environment.OSVersion.Version} cores={Environment.ProcessorCount} ") +
                         Inv($"ram={mem.TotalAvailableMemoryBytes / (1024 * 1024)}MB runtime={Environment.Version} ") +
                         $"gc={(System.Runtime.GCSettings.IsServerGC ? "server" : "workstation")}");
+
+                    FlushEarlyMarks();
 
                     _lastSample = DateTime.UtcNow;
                     // Baselines, so the first minute's CPU figures are deltas too.

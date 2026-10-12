@@ -49,11 +49,17 @@ namespace FastApp
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            Services.PerfLog.EarlyMark("startup.entry");
+
             // Before anything renders, so the first window is already the right
             // colour rather than repainting on its first frame.
             Services.SystemTheme.Start();
             ApplySystemTheme();
             Services.SystemTheme.Changed += ApplySystemTheme;
+
+            Services.PerfLog.EarlyMark("startup.theme-applied");
+            _ = Services.DbEncryption.State;   // opens (and the first time, encrypts) the database
+            Services.PerfLog.EarlyMark("startup.database-unlocked");
 
             // The data here may be locked with another PC's key (a moved folder, a reset
             // Windows account). Only the user can settle that, and nothing may read the

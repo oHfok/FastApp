@@ -235,15 +235,21 @@ namespace FastApp
         // dispatcher.
         private void OnSessionEnding(object sender, SessionEndingCancelEventArgs e)
         {
+            // Recorded so a report can tell "Windows shut down" from "FastApp crashed":
+            // the process is ended without the normal exit path, so nothing else says it.
+            long started = Services.PerfLog.Stamp();
+            bool saved = false;
             try
             {
                 // RequestShutdownFlushAsync is itself bounded to ~3s; this outer
                 // bound is a backstop so a wedged flush can never be the reason
                 // Windows shutdown appears to hang.
-                Task.Run(() => _viewModel.RequestShutdownFlushAsync())
-                    .Wait(TimeSpan.FromSeconds(5));
+                var flush = Task.Run(() => _viewModel.RequestShutdownFlushAsync());
+                saved = flush.Wait(TimeSpan.FromSeconds(5)) && flush.IsCompletedSuccessfully;
             }
             catch { /* best-effort — never block the OS shutting down */ }
+            Services.PerfLog.Event("session-end",
+                $"windows shutdown or sign-out; tracking {(saved ? "saved" : "NOT confirmed saved")} in {System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds:0}ms");
 
             // The flush above stops the tracker, but this event fires while the
             // shutdown can still be called off (any app may veto it). If we're

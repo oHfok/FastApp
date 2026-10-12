@@ -708,7 +708,7 @@ function renderSessions(list) {
     if (!list.length) { el.innerHTML = '<div class="empty">No launches recorded yet.</div>'; return; }
     el.innerHTML = list.slice(0, 12).map(s => {
         const chip = s.state === 'running' ? '<span class="chip good">running</span>' : s.state === 'ended'
-            ? `<span class="chip info">${/off/.test(s.endText) ? 'recording turned off' : 'clean exit'} ${fmtStamp(s.endedAt)}</span>` : '<span class="chip bad">ended unexpectedly</span>';
+            ? `<span class="chip ${/NOT confirmed/.test(s.endText) ? 'warn' : 'info'}">${/turned off/.test(s.endText) ? 'recording turned off' : /shutdown/.test(s.endText) ? (/NOT confirmed/.test(s.endText) ? 'Windows shutdown, save not confirmed' : 'Windows shutdown, tracking saved') : 'clean exit'} ${fmtStamp(s.endedAt)}</span>` : '<span class="chip bad">ended unexpectedly</span>';
         const i = s.info || {};
         const meta = [i.version && 'v' + i.version, i.os && 'Windows ' + i.os, i.cores && i.cores + ' cores', i.ram].filter(Boolean).join(' · ');
         const miles = s.miles.sort((a, b) => a.t - b.t).map(m => `<span class="mile">${esc(m.name)} +${fmtMs(m.ms)}</span>`).join('');

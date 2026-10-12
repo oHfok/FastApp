@@ -19,7 +19,9 @@ namespace FastApp
             // install/update/uninstall hooks, then exits the process itself.
             // On a normal launch (no such args) this just returns immediately.
             // ==========================================================
+            PerfLog.EarlyMark("main.entry");
             VelopackApp.Build().Run();
+            PerfLog.EarlyMark("main.update-hook-done");
 
             // ==========================================================
             // MUST BE FIRST: handle the brief, elevated, UI-less relaunch
@@ -90,6 +92,8 @@ namespace FastApp
                 return;
             }
 
+            PerfLog.EarlyMark("main.single-instance-checked");
+
             // Owned by this (the only) instance: later launches set it to ask for
             // the window. Created before App so a launch racing ours still finds it.
             using var showWindowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowWindowEventName);
@@ -105,6 +109,7 @@ namespace FastApp
 
             App app = new App();
             app.InitializeComponent();
+            PerfLog.EarlyMark("main.app-created");
             app.Run();
 
             // Keep the mutex alive for the entire lifetime of the app.

@@ -98,4 +98,15 @@ public class PerfLogTests
         }
         finally { PerfLog.MemoryGrowthMb = old; }
     }
+
+    [Fact]
+    public void MarksMadeBeforeTheRecorderStartsAreWrittenOnceItDoes()
+    {
+        PerfLog.SetEnabled(false, persist: false);
+        PerfLog.EarlyMark("test.before-recorder");
+        Assert.DoesNotContain("test.before-recorder", PerfLog.BuildReport());   // nothing touches the disk yet
+
+        PerfLog.SetEnabled(true, persist: false);
+        Assert.Matches(@" milestone test\.before-recorder \+\d+ms", PerfLog.BuildReport());
+    }
 }
