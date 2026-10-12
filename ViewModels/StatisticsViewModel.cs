@@ -418,7 +418,7 @@ namespace FastApp.ViewModels
                 Process.Start(new ProcessStartInfo
                 {
                     // FIXED: Now points directly to the dashboard file
-                    FileName = "http://127.0.0.1:5050/dashboard.html",
+                    FileName = Services.DashboardAccess.LaunchUrl(),
                     UseShellExecute = true
                 });
             }

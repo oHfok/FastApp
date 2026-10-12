@@ -23,6 +23,36 @@ namespace FastApp.Services
         private static void MapSettingsEndpoints(WebApplication app)
         {
         // The performance recorder's report, as a download, for sending when something felt slow.
+        // Read-only access for the user's other apps. Off until switched on here. These
+        // three are reachable from the dashboard only -- the token cannot manage itself.
+        static object ApiAccessState() => new
+        {
+            Enabled = DashboardAccess.ApiToken != null,
+            Token = DashboardAccess.ApiToken,
+            TokenFile = DashboardAccess.ApiTokenPath
+        };
+        app.MapGet("/api/settings/api-access", async (HttpContext context) => await context.Response.WriteAsJsonAsync(ApiAccessState()));
+        app.MapPost("/api/settings/api-access", async (HttpContext context) =>
+        {
+            using var reader = new StreamReader(context.Request.Body);
+            if ((await reader.ReadToEndAsync()).Trim().ToLower() == "true") DashboardAccess.EnableApiToken();
+            else DashboardAccess.DisableApiToken();
+            await context.Response.WriteAsJsonAsync(ApiAccessState());
+        });
+        app.MapPost("/api/settings/api-access/regenerate", async (HttpContext context) =>
+        {
+            DashboardAccess.EnableApiToken(regenerate: true);
+            await context.Response.WriteAsJsonAsync(ApiAccessState());
+        });
+
+        // What the daily automatic backup has on disk, for the Backup section.
+        app.MapGet("/api/backup/auto", async (HttpContext context) => await context.Response.WriteAsJsonAsync(new
+        {
+            Folder = AutoBackup.Folder,
+            Keep = AutoBackup.Keep,
+            Backups = AutoBackup.Existing().Select(f => new { f.Name, SizeKb = f.Length / 1024, Date = f.LastWriteTime })
+        }));
+
         // Feeds the unlinked /debug.html page: only what is newer than `since`, so a poll is tiny.
         app.MapGet("/api/diagnostics/log", async (string since, HttpContext context) =>
         {

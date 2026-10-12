@@ -219,7 +219,7 @@ namespace FastApp.Services
                 // throws Win32Exception here.
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = DashboardServerService.DashboardUrl,
+                    FileName = DashboardAccess.LaunchUrl(),
                     UseShellExecute = true
                 });
             }

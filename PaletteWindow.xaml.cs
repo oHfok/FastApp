@@ -1460,7 +1460,7 @@ namespace FastApp
 
                 case "open-dashboard":
                     HidePalette();
-                    OpenExternally(DashboardServerService.DashboardUrl);
+                    OpenExternally(DashboardAccess.LaunchUrl());
                     return;
                 default:
                     return;
@@ -1949,7 +1949,7 @@ namespace FastApp
                 return;
             }
 
-            OpenExternally(DashboardServerService.DashboardUrl + (query ?? string.Empty));
+            OpenExternally(DashboardAccess.LaunchUrl(query));
         }
 
         private static void OpenExternally(string url)

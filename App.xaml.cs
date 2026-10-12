@@ -128,6 +128,7 @@ namespace FastApp
             //    view model and the palette; it is never shown itself.
             var mainWindow = new MainWindow();
             Services.PerfLog.Milestone("startup.main-window-created");
+            Services.AutoBackup.Start();
 
             // 3. The host window is never shown -- it has no interface any more.
             //    Opening FastApp by hand means opening the palette; launching at

@@ -193,6 +193,69 @@ async function savePerfLoggingSetting() {
     setTimeout(() => { status.style.display = 'none'; }, 2500);
 }
 
+function renderApiAccess(data) {
+    document.getElementById('api-access-toggle').checked = !!data.enabled;
+    document.getElementById('api-access-details').style.display = data.enabled ? 'block' : 'none';
+    document.getElementById('api-token-field').value = data.token || '';
+    document.getElementById('api-token-file').textContent = data.tokenFile || '';
+}
+
+function flashApiStatus(text) {
+    const status = document.getElementById('api-access-status');
+    status.textContent = text;
+    status.style.display = 'block';
+    setTimeout(() => { status.style.display = 'none'; }, 2500);
+}
+
+async function loadApiAccess() {
+    try { renderApiAccess(await (await fetch('/api/settings/api-access')).json()); }
+    catch (err) { console.error(err); }
+}
+
+async function saveApiAccess() {
+    const enabled = document.getElementById('api-access-toggle').checked;
+    try {
+        const res = await fetch('/api/settings/api-access', { method: 'POST', body: String(enabled) });
+        renderApiAccess(await res.json());
+        flashApiStatus(enabled ? 'On. Give the token to your app.' : 'Off. The token no longer works.');
+    } catch (err) { console.error(err); loadApiAccess(); }
+}
+
+async function regenerateApiToken() {
+    if (!confirm('Replace the token? Any app using the current one will stop working until you give it the new one.')) return;
+    try {
+        renderApiAccess(await (await fetch('/api/settings/api-access/regenerate', { method: 'POST' })).json());
+        flashApiStatus('New token issued.');
+    } catch (err) { console.error(err); }
+}
+
+function toggleApiTokenVisible() {
+    const field = document.getElementById('api-token-field');
+    const showing = field.type === 'text';
+    field.type = showing ? 'password' : 'text';
+    document.getElementById('api-token-show').textContent = showing ? 'Show' : 'Hide';
+}
+
+async function copyApiToken() {
+    const button = document.getElementById('api-token-copy');
+    try {
+        await navigator.clipboard.writeText(document.getElementById('api-token-field').value);
+        button.textContent = 'Copied';
+    } catch (err) { button.textContent = 'Copy failed'; }
+    setTimeout(() => { button.textContent = 'Copy'; }, 1800);
+}
+
+async function loadAutoBackups() {
+    const line = document.getElementById('auto-backup-status');
+    try {
+        const data = await (await fetch('/api/backup/auto')).json();
+        const newest = data.backups && data.backups[0];
+        line.textContent = newest
+            ? `FastApp also keeps a checked copy from each of the last ${data.keep} days. Latest: ${new Date(newest.date).toLocaleString()} (${data.backups.length} kept) in ${data.folder}`
+            : `FastApp also keeps a checked copy from each of the last ${data.keep} days in ${data.folder}. The first one is made a few minutes after FastApp starts.`;
+    } catch (err) { console.error(err); }
+}
+
 async function loadDbStats() {
     try {
         const res = await fetch('/api/db-stats');
@@ -306,6 +369,8 @@ Dashboard.tabs.settings = {
         loadRetentionSetting();
         loadPinSetting();
         loadDbStats();
+        loadApiAccess();
+        loadAutoBackups();
     }
 };
 

@@ -19,7 +19,6 @@ namespace FastApp.Services
     // the Wrapped builder that two of those groups depend on.
     public static partial class DashboardServerService
     {
-        public const string DashboardUrl = "http://127.0.0.1:5050/dashboard.html";
 
         // Live state of the embedded web server, so the UI can report what is
         // actually true instead of a hardcoded "it's running" string. Set to
@@ -633,6 +632,15 @@ namespace FastApp.Services
                 if (context.Request.Path.StartsWithSegments("/api"))
                     Services.PerfLog.Done($"http {method} {context.Request.Path}", perfReq, 400);
             });
+
+            // ==========================================================
+            // ACCESS. Being on this PC is no longer enough to read the data.
+            // A request gets through with the session cookie of a browser FastApp
+            // opened, or -- for reading only -- the API token the user issued to
+            // their other apps. The rule itself lives in DashboardAccess.Decide.
+            // Before UseStaticFiles on purpose: the pages are locked too.
+            // ==========================================================
+            app.Use((context, next) => DashboardAccess.Guard(context, next));
 
             // no-cache means "keep it, but ask before using it": the browser revalidates
             // each file against its ETag on every load (a 304 on localhost). Without a

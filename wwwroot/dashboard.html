@@ -678,6 +678,7 @@
             worth keeping a copy of that somewhere else too.
         </p>
         <a class="btn btn-brass" href="/api/backup" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">Download Backup</a>
+        <p class="dd-hint" id="auto-backup-status">FastApp also keeps a checked copy from each of the last 7 days.</p>
 
         <p class="dd-hint">
             Restoring <strong style="color:var(--rose);">replaces everything currently tracked</strong> with the backup
@@ -720,6 +721,34 @@
             <span>Capture window titles in the Activity feed</span>
         </label>
         <div class="retention-status" id="window-titles-status">Saved.</div>
+    </div>
+
+    <div class="dd-section">
+        <div class="dd-section-label">Access From Other Apps</div>
+        <p class="dd-hint">
+            The dashboard only opens in a browser FastApp started. If another app of yours needs the data, switch this
+            on and give it the token below. A token can <strong>only read</strong>: it cannot change or delete anything,
+            and it cannot download the whole database.
+        </p>
+        <label class="dd-toggle-label">
+            <input type="checkbox" id="api-access-toggle" onchange="saveApiAccess()">
+            <span>Let my other apps read FastApp data</span>
+        </label>
+        <div id="api-access-details" style="display:none;">
+            <div class="retention-row" style="margin-top:10px;">
+                <input class="field" id="api-token-field" type="password" readonly style="flex:1;font-family:var(--font-mono);" aria-label="API token">
+                <button class="btn" type="button" onclick="toggleApiTokenVisible()" id="api-token-show">Show</button>
+                <button class="btn" type="button" onclick="copyApiToken()" id="api-token-copy">Copy</button>
+            </div>
+            <p class="dd-hint" style="margin-top:8px;">
+                Send it as the header <code>Authorization: Bearer &lt;token&gt;</code> on <code>GET http://127.0.0.1:5050/api/&hellip;</code>.
+                An app running under your Windows account can also read it from <code id="api-token-file"></code>
+                (encrypted for your account).
+            </p>
+            <button class="btn" type="button" onclick="regenerateApiToken()">Replace token</button>
+            <span class="dd-hint" style="margin-left:8px;">The old one stops working immediately.</span>
+        </div>
+        <div class="retention-status" id="api-access-status">Saved.</div>
     </div>
 
     <div class="dd-section">
