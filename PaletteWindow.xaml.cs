@@ -82,6 +82,7 @@ namespace FastApp
             InitializeComponent();
             Loaded += async (_, _) => await InitialiseAsync();
             IsVisibleChanged += (_, e) => TrimWebMemory((bool)e.NewValue);
+            IsVisibleChanged += (_, e) => Services.PerfLog.PaletteVisible = (bool)e.NewValue;
         }
 
         /// <summary>

@@ -1882,6 +1882,7 @@ namespace FastApp.ViewModels
             var exePathsKnown = new HashSet<string>(
                 Services.ExecutablePathStore.All().Keys, StringComparer.OrdinalIgnoreCase);
             const int ExePathRefreshTicks = 720; // 720 * 5s = 1 hour
+            const int MaxExePathReadsPerTick = 12;
             int exePathTickCounter = 0;
 
             // Daily-limit enforcement: HasNotifiedToday is in-memory only (never
@@ -2162,12 +2163,20 @@ namespace FastApp.ViewModels
                     exePathsKnown.Clear();
                 }
                 var exePathsFound = new List<KeyValuePair<string, string>>();
+                // Reading MainModule costs several milliseconds per process. The hourly
+                // refresh above forgets every name at once, and re-reading all ~380 in one
+                // tick stalled the tracker for 2.5 seconds, every hour, for as long as the
+                // app ran. A handful per tick spreads the same work over a couple of
+                // minutes; the names left over are simply still unknown next tick.
+                int exePathReads = 0;
                 foreach (var proc in allProcesses)
                 {
+                    if (exePathReads >= MaxExePathReadsPerTick) break;
                     string pn;
                     try { pn = proc.ProcessName; }
                     catch { continue; }
                     if (string.IsNullOrEmpty(pn) || exePathsKnown.Contains(pn)) continue;
+                    exePathReads++;
 
                     string modulePath = null;
                     try { modulePath = proc.MainModule?.FileName; }

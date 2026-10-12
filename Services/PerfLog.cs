@@ -229,7 +229,7 @@ namespace FastApp.Services
                     Inv($"cpu={procCpu:0.0}% core={procCore:0.#}% sysCpu={sysCpu} sysMem={(mem.TotalAvailableMemoryBytes > 0 ? mem.MemoryLoadBytes * 100 / mem.TotalAvailableMemoryBytes : 0)}% ") +
                     Inv($"gc0={g0 - _lastGc0} gc1={g1 - _lastGc1} gc2={g2 - _lastGc2} gcPause={(pause - _lastPause).TotalMilliseconds:0}ms ") +
                     Inv($"pool={ThreadPool.ThreadCount}/{ThreadPool.PendingWorkItemCount} ") +
-                    HeapBreakdown() + WebViewText(wall);
+                    HeapBreakdown() + WebViewText(wall) + NativeBreakdown() + " state=" + StateNow();
                 _lastGc0 = g0; _lastGc1 = g1; _lastGc2 = g2; _lastPause = pause;
                 Write("sample", line);
                 CheckMemoryGrowth(p);
@@ -344,10 +344,10 @@ namespace FastApp.Services
         // the busiest threads and the busiest timed operations at the moment, written once
         // when a condition is first met, then not again for a while.
         private static readonly TimeSpan WatchEvery = TimeSpan.FromSeconds(10);
-        internal static double HotCoreCpu = 20;                        // % of one core; FastApp idles around 1%
+        internal static double HotCoreCpu = 12;                        // % of one core; FastApp idles around 1%
         internal static int HotWindows = 3;                            // sustained for 30 s
         internal static double MemoryGrowthMb = 100;                   // private-bytes growth over the last hour
-        private static readonly TimeSpan CpuCooldown = TimeSpan.FromMinutes(5), MemCooldown = TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan CpuCooldown = TimeSpan.FromMinutes(10), MemCooldown = TimeSpan.FromMinutes(30);
 
         private static DateTime _watchAt, _baseAt, _cpuQuietUntil, _memQuietUntil;
         private static TimeSpan _watchCpu;
@@ -378,17 +378,120 @@ namespace FastApp.Services
                     _cpuQuietUntil = now + CpuCooldown;
                     double span = (now - _baseAt).TotalSeconds;
                     var after = ThreadTimes(p);
+                    var modules = LoadedModules(p);
                     var top = after
                         .Select(kv => (id: kv.Key, secs: (kv.Value - (_threadBase.TryGetValue(kv.Key, out var b) ? b : TimeSpan.Zero)).TotalSeconds))
-                        .OrderByDescending(x => x.secs).Take(4).Where(x => x.secs > 0.05)
-                        .Select(x => Inv($"{(x.id == _uiThreadId ? "UI thread" : "worker")}#{x.id} {x.secs / span * 100:0}%"));
-                    Write("anomaly", Inv($"cpu core={core:0}% sustained={(HotWindows * WatchEvery.TotalSeconds):0}s pool={ThreadPool.ThreadCount}/{ThreadPool.PendingWorkItemCount}")
+                        .OrderByDescending(x => x.secs).Take(6).Where(x => x.secs > 0.05)
+                        .Select(x => Inv($"{(x.id == _uiThreadId ? "UI thread" : DescribeThread(x.id, modules))}#{x.id} {x.secs / span * 100:0}%"));
+                    Write("anomaly", Inv($"cpu core={core:0}% sustained={(HotWindows * WatchEvery.TotalSeconds):0}s pool={ThreadPool.ThreadCount}/{ThreadPool.PendingWorkItemCount} state={StateNow()}")
                         + " | threads: " + string.Join(", ", top) + Inv($" (% of one core over {span:0}s)")
                         + " | ops: " + BusyOps());
                 }
             }
             catch { }
         }
+
+        // ---------------------------------------------------------------- who a thread is
+
+        /// <summary>
+        /// "name@module" for a thread: the name the runtime (or whoever created it) gave
+        /// it, and the DLL its code starts in. Together they tell a .NET thread-pool
+        /// worker from the WPF render thread from the garbage collector from a WebView2
+        /// or audio thread -- which a bare thread id never could.
+        /// </summary>
+        private static string DescribeThread(int threadId, List<(long start, long end, string name)> modules)
+        {
+            string name = null, module = null;
+            IntPtr handle = OpenThread(ThreadQueryInformation, false, (uint)threadId);
+            if (handle == IntPtr.Zero) return "unknown";
+            try
+            {
+                if (GetThreadDescription(handle, out IntPtr text) >= 0 && text != IntPtr.Zero)
+                {
+                    name = Marshal.PtrToStringUni(text);
+                    LocalFree(text);
+                }
+                if (NtQueryInformationThread(handle, ThreadQuerySetWin32StartAddress, out IntPtr start, IntPtr.Size, IntPtr.Zero) == 0)
+                {
+                    long address = start.ToInt64();
+                    module = modules.FirstOrDefault(m => address >= m.start && address < m.end).name;
+                }
+            }
+            catch { }
+            finally { CloseHandle(handle); }
+
+            return (string.IsNullOrWhiteSpace(name) ? "unnamed" : name) + "@" + (module ?? "?");
+        }
+
+        private static List<(long start, long end, string name)> LoadedModules(Process p)
+        {
+            var list = new List<(long, long, string)>();
+            try
+            {
+                foreach (ProcessModule m in p.Modules)
+                {
+                    try { list.Add((m.BaseAddress.ToInt64(), m.BaseAddress.ToInt64() + m.ModuleMemorySize, m.ModuleName)); }
+                    catch { }
+                    finally { m.Dispose(); }
+                }
+            }
+            catch { }
+            return list;
+        }
+
+        private const uint ThreadQueryInformation = 0x0040;
+        private const int ThreadQuerySetWin32StartAddress = 9;
+
+        [DllImport("kernel32.dll")] private static extern IntPtr OpenThread(uint access, bool inherit, uint threadId);
+        [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr handle);
+        [DllImport("kernel32.dll")] private static extern int GetThreadDescription(IntPtr thread, out IntPtr description);
+        [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);
+        [DllImport("ntdll.dll")] private static extern int NtQueryInformationThread(IntPtr thread, int infoClass, out IntPtr value, int length, IntPtr returned);
+
+        // ---------------------------------------------------------------- what the app was doing
+
+        /// <summary>Set by the palette and the AFK bar as they show and hide.</summary>
+        public static volatile bool PaletteVisible, AfkBarVisible;
+
+        /// <summary>
+        /// The few on/off facts that could explain a busy or growing process: away,
+        /// music playing, palette on screen, AFK bar on screen. "idle" when none.
+        /// Nothing about which apps or what music.
+        /// </summary>
+        private static string StateNow()
+        {
+            var on = new List<string>(4);
+            try
+            {
+                if (AfkIntervalStore.CurrentOpenStart != null) on.Add("away");
+                if (MusicIntervalStore.CurrentOpenStart != null) on.Add("music");
+            }
+            catch { }
+            if (PaletteVisible) on.Add("palette");
+            if (AfkBarVisible) on.Add("afkbar");
+            return on.Count == 0 ? "idle" : string.Join("+", on);
+        }
+
+        /// <summary>
+        /// Memory and objects that live outside .NET, where a leak the managed heap does
+        /// not show has to be: GDI and USER objects (windows, icons, bitmaps -- not counted
+        /// in the handle total), SQLite's own allocations, and what the runtime has
+        /// committed as opposed to what is in use.
+        /// </summary>
+        private static string NativeBreakdown()
+        {
+            try
+            {
+                using var me = Process.GetCurrentProcess();
+                IntPtr self = me.Handle;
+                long sqlite = 0;
+                try { sqlite = SQLitePCL.raw.sqlite3_memory_used(); } catch { }
+                return Inv($" gdi={GetGuiResources(self, 0)} user={GetGuiResources(self, 1)} sqlite={sqlite / 1048576.0:0.#}MB commit={GC.GetGCMemoryInfo().TotalCommittedBytes / 1048576.0:0}MB");
+            }
+            catch { return string.Empty; }
+        }
+
+        [DllImport("user32.dll")] private static extern int GetGuiResources(IntPtr process, int flags);
 
         private static Dictionary<int, TimeSpan> ThreadTimes(Process p)
         {
@@ -426,7 +529,7 @@ namespace FastApp.Services
 
             _memQuietUntil = now.T + MemCooldown;
             double mins = (now.T - old.T).TotalMinutes;
-            Write("anomaly", Inv($"memory priv={now.Priv:0}MB growth={grew:0}MB over={mins:0}min")
+            Write("anomaly", Inv($"memory priv={now.Priv:0}MB growth={grew:0}MB over={mins:0}min state={StateNow()}")
                 + Inv($" | change since {mins:0} min ago: private {Delta(now.Priv - old.Priv)}MB, managed heap {Delta(now.Heap - old.Heap)}MB, gen2 {Delta(now.Sz2 - old.Sz2)}MB, LOH {Delta(now.Loh - old.Loh)}MB, pinned {Delta(now.Poh - old.Poh)}MB, ")
                 + Inv($"WebView2 {Delta(now.Wv - old.Wv)}MB, handles {Delta(now.Handles - old.Handles)}, threads {Delta(now.Threads - old.Threads)}")
                 + " | ops: " + BusyOps());

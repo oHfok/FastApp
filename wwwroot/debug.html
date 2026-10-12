@@ -165,7 +165,7 @@
         </div>
         <div class="card">
             <h2>Memory</h2>
-            <div class="hint">Working set, private bytes, managed heap, and FastApp&rsquo;s WebView2 processes. A line that only climbs is a leak.</div>
+            <div class="hint">Working set, private bytes, what .NET has committed and uses, SQLite&rsquo;s own memory, and FastApp&rsquo;s WebView2 processes. A line that only climbs is a leak; private bytes climbing while the others stay flat is native memory.</div>
             <div class="chartbox"><canvas id="c-mem"></canvas></div>
         </div>
         <div class="card">
@@ -184,8 +184,8 @@
             <div class="chartbox"><canvas id="c-gc"></canvas></div>
         </div>
         <div class="card">
-            <h2>Threads &amp; handles</h2>
-            <div class="hint">Both should settle. A steady rise means something is not being released.</div>
+            <h2>Threads, handles &amp; window objects</h2>
+            <div class="hint">Threads (left); handles, GDI objects and USER objects (right). All should settle. A steady rise means something is not being released.</div>
             <div class="chartbox"><canvas id="c-res"></canvas></div>
         </div>
         <div class="card">
@@ -273,6 +273,7 @@ function ingest(line) {
             cpu: num(o.cpu), core: num(o.core), sysCpu: num(o.sysCpu), sysMem: num(o.sysMem),
             sz0: num(o.sz0), sz1: num(o.sz1), sz2: num(o.sz2), loh: num(o.loh), poh: num(o.poh), alloc: num(o.alloc),
             wv: num(o.wv), wvWs: num(o.wvWs), wvPriv: num(o.wvPriv), wvCore: num(o.wvCore),
+            gdi: num(o.gdi), user: num(o.user), sqlite: num(o.sqlite), commit: num(o.commit), state: o.state || '',
             gc0: num(o.gc0), gc1: num(o.gc1), gc2: num(o.gc2), gcPause: num(o.gcPause),
             poolThreads: num(pool[0]), poolPending: num(pool[1])
         });
@@ -507,6 +508,24 @@ function renderFindings(c) {
                     : ` The managed heap is only ${heapS >= 0 ? '+' : ''}${heapS.toFixed(0)} MB/h of ${privS.toFixed(0)} MB/h private growth, so it is <b>native memory</b> (SQLite, interop, unmanaged handles), not .NET objects.`;
             add(memS > 100 ? 'bad' : 'warn', `Memory is growing by about <b>${memS.toFixed(0)} MB per hour</b>. If it keeps going without levelling off, something is leaking.${kind}`);
         }
+        const gdiS = slopePerHour(series(samples, s => s.gdi)), userS = slopePerHour(series(samples, s => s.user)), sqlS = slopePerHour(series(samples, s => s.sqlite));
+        if (gdiS != null && gdiS > 20) add('warn', `GDI objects (bitmaps, icons, fonts) are growing by about <b>${gdiS.toFixed(0)} per hour</b>. Something drawn or loaded is not being released.`);
+        if (userS != null && userS > 10) add('warn', `USER objects (windows, menus, cursors) are growing by about <b>${userS.toFixed(0)} per hour</b>.`);
+        if (sqlS != null && sqlS > 1) add('warn', `SQLite&rsquo;s own memory is growing by about <b>${sqlS.toFixed(1)} MB per hour</b>, which points at database connections or caches piling up.`);
+
+        // CPU by what the app was doing: is it higher while away, with music on, with the palette open?
+        const byState = new Map();
+        for (const s of samples) if (s.state && isFinite(s.core)) for (const part of s.state.split('+')) {
+            const e = byState.get(part) || { n: 0, sum: 0 }; e.n++; e.sum += s.core; byState.set(part, e);
+        }
+        const idleCpu = byState.get('idle');
+        if (idleCpu && idleCpu.n >= 10) for (const [name, e] of byState) {
+            if (name === 'idle' || e.n < 10) continue;
+            const a = e.sum / e.n, base = idleCpu.sum / idleCpu.n;
+            if (a >= 8 && a >= base * 2.5)
+                add('warn', `FastApp uses <b>${a.toFixed(1)}% of a core</b> on average while <b>${esc({ away: 'you are away', music: 'music is playing', palette: 'the palette is open', afkbar: 'the away bar is showing' }[name] || name)}</b>, against ${base.toFixed(1)}% otherwise.`);
+        }
+
         const wvS = slopePerHour(series(samples, s => s.wvPriv));
         if (wvS != null && wvS > 30) add('warn', `FastApp&rsquo;s WebView2 processes (the palette) are growing by about <b>${wvS.toFixed(0)} MB per hour</b>. That is the web page inside the palette, not the main app.`);
         const allocAvg = avg(samples.map(s => s.alloc));
@@ -589,7 +608,7 @@ function buildCharts() {
     charts = {
         ui: mk('c-ui', [ds('Worst wait per minute', c.accent, { fill: true, backgroundColor: css('--wash-accent'), stepped: true }), dots('Freeze', c.afk)],
             { x: xScale(b), y: yScale({ title: { display: true, text: 'ms', color: c.dim } }) }, v => fmtMs(v)),
-        mem: mk('c-mem', [ds('Working set', c.accent), ds('Private', c.music), ds('Managed heap', c.good), ds('WebView2 (private)', c.dim, { borderDash: [5, 4] })],
+        mem: mk('c-mem', [ds('Working set', c.accent), ds('Private', c.music), ds('Managed heap', c.good), ds('WebView2 (private)', c.dim, { borderDash: [5, 4] }), ds('.NET committed', c.warn, { borderDash: [2, 3] }), ds('SQLite', c.afk)],
             { x: xScale(b), y: yScale({ title: { display: true, text: 'MB', color: c.dim } }) }, v => Math.round(v) + ' MB'),
         cpu: mk('c-cpu', [ds('FastApp (% of a core)', c.accent, { yAxisID: 'y' }), ds('WebView2 (% of a core)', c.good, { yAxisID: 'y' }), ds('Machine CPU %', c.warn, { yAxisID: 'y1' }), ds('Machine memory %', c.music, { yAxisID: 'y1', borderDash: [5, 4] })],
             { x: xScale(b), y: yScale({ position: 'left', title: { display: true, text: '% of one core', color: c.dim } }), y1: yScale({ position: 'right', max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: 'Machine %', color: c.dim } }) }, v => v.toFixed(1) + '%'),
@@ -597,8 +616,8 @@ function buildCharts() {
             { x: xScale(b), y: yScale({ position: 'left', title: { display: true, text: 'MB', color: c.dim } }), y1: yScale({ position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'MB / min', color: c.dim } }) }, v => v.toFixed(1) + ' MB'),
         gc: mk('c-gc', [ds('Pause per minute', c.afk, { yAxisID: 'y', stepped: true }), ds('Full collections', c.music, { yAxisID: 'y1', stepped: true })],
             { x: xScale(b), y: yScale({ position: 'left', title: { display: true, text: 'ms', color: c.dim } }), y1: yScale({ position: 'right', grid: { drawOnChartArea: false }, ticks: { precision: 0, color: css('--text-dim') }, title: { display: true, text: 'count', color: c.dim } }) }, (v, d) => d.yAxisID === 'y' ? fmtMs(v) : String(v)),
-        res: mk('c-res', [ds('Threads', c.accent, { yAxisID: 'y' }), ds('Handles', c.warn, { yAxisID: 'y1' })],
-            { x: xScale(b), y: yScale({ position: 'left', beginAtZero: false, title: { display: true, text: 'threads', color: c.dim } }), y1: yScale({ position: 'right', beginAtZero: false, grid: { drawOnChartArea: false }, title: { display: true, text: 'handles', color: c.dim } }) }, v => Math.round(v)),
+        res: mk('c-res', [ds('Threads', c.accent, { yAxisID: 'y' }), ds('Handles', c.warn, { yAxisID: 'y1' }), ds('GDI objects', c.music, { yAxisID: 'y1' }), ds('USER objects', c.good, { yAxisID: 'y1' })],
+            { x: xScale(b), y: yScale({ position: 'left', beginAtZero: false, title: { display: true, text: 'threads', color: c.dim } }), y1: yScale({ position: 'right', beginAtZero: false, grid: { drawOnChartArea: false }, title: { display: true, text: 'handles / objects', color: c.dim } }) }, v => Math.round(v)),
         op: mk('c-op', [ds('Average', c.accent), ds('Worst', c.warn), dots('Slow occurrence', c.afk)],
             { x: xScale(b), y: yScale({ title: { display: true, text: 'ms', color: c.dim } }) }, v => fmtMs(v))
     };
@@ -624,11 +643,11 @@ function renderCharts(b, samples, slows, opsRows) {
         chart.update('none');
     };
     set(charts.ui, [pts(opsRows.filter(o => o.name === 'ui.latency'), o => o.max), pts(slows.filter(s => s.name === 'ui.latency'), s => s.ms)]);
-    set(charts.mem, [pts(samples, s => s.ws), pts(samples, s => s.priv), pts(samples, s => s.heap), pts(samples, s => s.wv ? s.wvPriv : NaN)]);
+    set(charts.mem, [pts(samples, s => s.ws), pts(samples, s => s.priv), pts(samples, s => s.heap), pts(samples, s => s.wv ? s.wvPriv : NaN), pts(samples, s => s.commit), pts(samples, s => s.sqlite)]);
     set(charts.cpu, [pts(samples, s => s.core), pts(samples, s => s.wv ? s.wvCore : NaN), pts(samples, s => s.sysCpu), pts(samples, s => s.sysMem)]);
     set(charts.heap, [pts(samples, s => s.sz2), pts(samples, s => s.loh), pts(samples, s => s.poh), pts(samples, s => s.sz0 + s.sz1), pts(samples, s => s.alloc)]);
     set(charts.gc, [pts(samples, s => s.gcPause), pts(samples, s => s.gc2)]);
-    set(charts.res, [pts(samples, s => s.threads), pts(samples, s => s.handles)]);
+    set(charts.res, [pts(samples, s => s.threads), pts(samples, s => s.handles), pts(samples, s => s.gdi), pts(samples, s => s.user)]);
 
     // operation picker: keep the choice, fall back to the first op that exists
     const names = [...new Set([...S.ops.map(o => o.name), ...S.slows.map(s => s.name)])].sort();
@@ -658,7 +677,8 @@ function renderAnoms(list) {
         const rows = a.type === 'cpu'
             ? `<div class="meta"><b>Busiest threads:</b> ${esc(a.threads || 'none above noise')}</div>`
             : `<div class="meta">${esc(a.change)}</div>`;
-        return `<div class="session"><div class="row"><span class="when">${fmtStamp(a.t)}</span><span class="chip bad">${a.type === 'cpu' ? 'CPU' : 'memory'}</span><span>${head}</span></div>` +
+        const doing = a.info.state ? `<div class="meta"><b>At the time:</b> ${esc(a.info.state.split('+').join(', '))}</div>` : '';
+        return `<div class="session"><div class="row"><span class="when">${fmtStamp(a.t)}</span><span class="chip bad">${a.type === 'cpu' ? 'CPU' : 'memory'}</span><span>${head}</span></div>${doing}` +
             `${rows}<div class="meta"><b>Timed operations at the time:</b> ${esc(a.ops || 'none')}</div></div>`;
     });
     el.innerHTML = items.join('');

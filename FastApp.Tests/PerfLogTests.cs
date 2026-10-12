@@ -38,6 +38,7 @@ public class PerfLogTests
 
         string report = PerfLog.BuildReport();
         Assert.Contains(" sample ws=", report);
+        Assert.Matches(@" gdi=\d+ user=\d+ sqlite=[\d.]+MB commit=\d+MB state=\w+", report);
         Assert.Contains(" ops test.summarised-op n=1", report);
         Assert.Contains("FastApp diagnostics report", report);
     }
@@ -74,7 +75,9 @@ public class PerfLogTests
             string report = PerfLog.BuildReport();
             Assert.Contains(" anomaly cpu core=", report);
             Assert.Contains("| threads: ", report);
-            Assert.Contains("worker#", report);           // the test thread is not the UI thread
+            // The busy thread is identified by name and by the DLL it started in.
+            Assert.Matches(@"threads: [^|]*@[\w.]+\.dll#\d+ \d+%", report);
+            Assert.Contains(" state=", report);
             Assert.Contains("test.busy-op", report);
         }
         finally { PerfLog.HotCoreCpu = oldCpu; PerfLog.HotWindows = oldWin; }

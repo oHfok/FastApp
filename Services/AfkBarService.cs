@@ -29,6 +29,7 @@ namespace FastApp.Services
         /// </summary>
         public static void SetVisible(bool afk)
         {
+            PerfLog.AfkBarVisible = afk && Enabled;
             bool want = Enabled && afk;
             if (want == _visible) return;
 
