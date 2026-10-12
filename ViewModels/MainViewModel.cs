@@ -274,6 +274,9 @@ namespace FastApp.ViewModels
                 foreach (var r in releases)
                 {
                     if (!r.IsInstallable || r.Version == current) continue;
+                    // A version from before encryption cannot open an encrypted database;
+                    // it would see it as damaged. Not offered rather than offered and broken.
+                    if (!Services.DbEncryption.CanBeOpenedBy(r.Version)) continue;
                     RollbackVersions.Add(r.Version);
                 }
                 HasRollbackVersions = RollbackVersions.Count > 0;
@@ -1804,6 +1807,9 @@ namespace FastApp.ViewModels
                 if (File.Exists(dbPath + "-shm")) File.Delete(dbPath + "-shm");
                 File.Copy(stagingFilePath, dbPath, overwrite: true);
                 try { File.Delete(stagingFilePath); } catch { /* best-effort cleanup of the staging copy */ }
+
+                // A backup from another PC brings its own key; from here on it is this PC's.
+                Services.DbEncryption.CommitRestoredKey();
 
                 RestartAndExit();
             }

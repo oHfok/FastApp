@@ -245,10 +245,36 @@ async function copyApiToken() {
     setTimeout(() => { button.textContent = 'Copy'; }, 1800);
 }
 
+async function toggleRecoveryKey() {
+    const field = document.getElementById('recovery-key-field');
+    const show = document.getElementById('recovery-key-show');
+    const copy = document.getElementById('recovery-key-copy');
+    if (field.value) {
+        field.value = ''; show.textContent = 'Show'; copy.style.display = 'none';
+        return;
+    }
+    try {
+        const data = await (await fetch('/api/settings/recovery-key', { method: 'POST' })).json();
+        field.value = data.key || '';
+        show.textContent = 'Hide';
+        copy.style.display = data.key ? '' : 'none';
+    } catch (err) { console.error(err); }
+}
+
+async function copyRecoveryKey() {
+    const button = document.getElementById('recovery-key-copy');
+    try {
+        await navigator.clipboard.writeText(document.getElementById('recovery-key-field').value);
+        button.textContent = 'Copied';
+    } catch (err) { button.textContent = 'Copy failed'; }
+    setTimeout(() => { button.textContent = 'Copy'; }, 1800);
+}
+
 async function loadAutoBackups() {
     const line = document.getElementById('auto-backup-status');
     try {
         const data = await (await fetch('/api/backup/auto')).json();
+        document.getElementById('recovery-key-block').style.display = data.encrypted ? 'block' : 'none';
         const newest = data.backups && data.backups[0];
         line.textContent = newest
             ? `FastApp also keeps a checked copy from each of the last ${data.keep} days. Latest: ${new Date(newest.date).toLocaleString()} (${data.backups.length} kept) in ${data.folder}`
@@ -289,7 +315,7 @@ function handleRestoreFileSelected(inputEl) {
     restoreBackupFile(file);
 }
 
-async function restoreBackupFile(file) {
+async function restoreBackupFile(file, recoveryKey) {
     const status = document.getElementById('restore-status');
     status.style.display = 'block';
     status.style.color = 'var(--text-dim)';
@@ -298,8 +324,21 @@ async function restoreBackupFile(file) {
     try {
         const formData = new FormData();
         formData.append('file', file);
+        if (recoveryKey) formData.append('recoveryKey', recoveryKey);
         const res = await fetch('/api/restore', { method: 'POST', body: formData });
         const data = await res.json();
+
+        // A backup made on another PC is locked with that PC's recovery key.
+        if (data.needsKey) {
+            const typed = prompt(
+                (recoveryKey ? 'That key did not open this backup.\n\n' : '') +
+                'This backup is encrypted with a different recovery key (for example, it was made on another PC).\n\n' +
+                'Enter the recovery key that goes with it:');
+            if (typed && typed.trim()) return restoreBackupFile(file, typed.trim());
+            status.style.color = 'var(--rose)';
+            status.textContent = 'Restore cancelled: this backup needs its recovery key.';
+            return;
+        }
 
         if (!res.ok || data.error) {
             status.style.color = 'var(--rose)';

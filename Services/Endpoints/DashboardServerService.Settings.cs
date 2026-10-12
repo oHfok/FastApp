@@ -45,11 +45,20 @@ namespace FastApp.Services
             await context.Response.WriteAsJsonAsync(ApiAccessState());
         });
 
+        // The recovery key, on request. A POST and off-limits to the API token: it is
+        // the one value that opens every copy of the data.
+        app.MapPost("/api/settings/recovery-key", async (HttpContext context) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            await context.Response.WriteAsJsonAsync(new { Key = DbEncryption.RecoveryKey });
+        });
+
         // What the daily automatic backup has on disk, for the Backup section.
         app.MapGet("/api/backup/auto", async (HttpContext context) => await context.Response.WriteAsJsonAsync(new
         {
             Folder = AutoBackup.Folder,
             Keep = AutoBackup.Keep,
+            Encrypted = DbEncryption.State == DbEncryption.DbState.Encrypted,
             Backups = AutoBackup.Existing().Select(f => new { f.Name, SizeKb = f.Length / 1024, Date = f.LastWriteTime })
         }));
 

@@ -675,10 +675,24 @@
         <div class="dd-section-label">Backup &amp; Restore</div>
         <p class="dd-hint">
             Download a complete copy of your tracked history as a single file. Everything lives in one file on this PC —
-            worth keeping a copy of that somewhere else too.
+            worth keeping a copy of that somewhere else too. Backups are encrypted: to open one on another PC you need
+            your recovery key.
         </p>
         <a class="btn btn-brass" href="/api/backup" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">Download Backup</a>
         <p class="dd-hint" id="auto-backup-status">FastApp also keeps a checked copy from each of the last 7 days.</p>
+
+        <div id="recovery-key-block" style="display:none;margin-bottom:14px;">
+            <p class="dd-hint">
+                <strong>Recovery key.</strong> Your data and backups are encrypted. Windows holds the key for this account;
+                the recovery key is your own copy, and the only way to open them on a new PC or after reinstalling Windows.
+                Keep it somewhere other than this PC.
+            </p>
+            <div class="retention-row">
+                <input class="field" id="recovery-key-field" type="text" readonly placeholder="Hidden" style="flex:1;font-family:var(--font-mono);font-size:12px;" aria-label="Recovery key">
+                <button class="btn" type="button" id="recovery-key-show" onclick="toggleRecoveryKey()">Show</button>
+                <button class="btn" type="button" id="recovery-key-copy" onclick="copyRecoveryKey()" style="display:none;">Copy</button>
+            </div>
+        </div>
 
         <p class="dd-hint">
             Restoring <strong style="color:var(--rose);">replaces everything currently tracked</strong> with the backup

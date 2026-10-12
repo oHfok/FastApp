@@ -121,22 +121,30 @@ namespace FastApp.Services
                     await file.CopyToAsync(stream);
                 }
 
-                // 1. SQLite file header check ("SQLite format 3\0").
-                byte[] header = new byte[16];
-                using (var fs = File.OpenRead(stagingPath))
+                // 1. Which key opens it? An old backup is not encrypted at all. A newer one
+                // is: with this PC's key, or -- if it was made on another PC -- with the key
+                // behind the recovery key the user typed. An encrypted file gives nothing
+                // away about what it is, so "wrong key" and "not a backup" look the same.
+                string stagedKey = null;
+                if (!DbEncryption.IsPlain(stagingPath))
                 {
-                    int read = await fs.ReadAsync(header, 0, 16);
-                    if (read < 16 || System.Text.Encoding.ASCII.GetString(header, 0, 15) != "SQLite format 3")
+                    stagedKey = DbEncryption.KeyThatOpens(stagingPath, context.Request.Form["recoveryKey"]);
+                    if (stagedKey == null)
                     {
                         context.Response.StatusCode = 400;
-                        await context.Response.WriteAsJsonAsync(new { error = "That doesn't look like a SQLite database file." });
+                        await context.Response.WriteAsJsonAsync(new
+                        {
+                            needsKey = true,
+                            error = "This file is locked with a different recovery key, or it is not a FastApp backup. If it came from another PC, enter that PC's recovery key."
+                        });
                         return;
                     }
                 }
 
                 // 2. Structural integrity + 3. it's actually a FastApp backup,
                 // not just any SQLite file someone picked by accident.
-                using (var conn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={stagingPath}"))
+                using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+                       { DataSource = stagingPath, Password = stagedKey ?? string.Empty, Pooling = false }.ToString()))
                 {
                     conn.Open();
 
@@ -167,6 +175,10 @@ namespace FastApp.Services
                 // SqliteConnection is closed by the using block above before the file
                 // gets handed off — otherwise the restore's own File.Copy could race
                 // against this validation connection still holding it open.
+
+                // 4. Bring it under one key: an unencrypted backup is encrypted now; a backup
+                // from another PC keeps its key, which this PC adopts at the swap.
+                DbEncryption.StageForRestore(stagingPath, stagedKey);
 
                 // Respond success BEFORE triggering the actual restore: the browser
                 // needs to receive this while the process is still alive to send it.

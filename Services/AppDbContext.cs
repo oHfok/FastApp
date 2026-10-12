@@ -85,9 +85,25 @@ namespace FastApp.Services
             // touch our data.
             string dbPath = GetDbPath();
 
-            // One-time self-heal for anyone whose data still sits at the old,
-            // collision-prone path from before this fix -- copies it over the
-            // first time this runs and never touches it again afterward.
+            // Encrypted at rest. DbEncryption decides the password (and, the first
+            // time, encrypts the existing file); null means "no key", which is only
+            // the case if encryption could not be set up on this machine.
+            optionsBuilder.UseSqlite(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+            {
+                DataSource = dbPath,
+                Password = DbEncryption.Password ?? string.Empty
+            }.ToString());
+        }
+
+        /// <summary>
+        /// One-time self-heal for anyone whose data still sits at the old,
+        /// collision-prone path from before this fix -- copies it over the first
+        /// time this runs and never touches it again afterward. Called by
+        /// DbEncryption before it looks at the file, so an adopted database is
+        /// encrypted like any other.
+        /// </summary>
+        internal static void AdoptLegacyDatabase(string dbPath)
+        {
             if (!File.Exists(dbPath) && Environment.GetEnvironmentVariable("FASTAPP_DATA_DIR") == null)
             {
                 string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -115,8 +131,6 @@ namespace FastApp.Services
                     }
                 }
             }
-
-            optionsBuilder.UseSqlite($"Data Source={dbPath}");
         }
 
         public class HiddenApp

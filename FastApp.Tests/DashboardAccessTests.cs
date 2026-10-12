@@ -49,7 +49,7 @@ public class DashboardAccessTests
     }
 
     [Fact]
-    public async Task OpeningFromFastAppUnlocksThatBrowserAndTheLinkWorksOnce()
+    public async Task OpeningFromFastAppUnlocksThatBrowserAndTheLinkExpires()
     {
         string launch = PathOf(DashboardAccess.LaunchUrl("?app=Discord"));
 
@@ -63,10 +63,16 @@ public class DashboardAccessTests
         Assert.True((await Send("GET", "/dashboard.html", cookie: DashboardAccess.SessionSecret)).Served);
         Assert.True((await Send("POST", "/api/hide", cookie: DashboardAccess.SessionSecret)).Served);
 
-        // The same link pasted into another browser (no cookie) is spent.
-        var replay = await Send("GET", launch);
-        Assert.Equal(401, replay.Status);
-        Assert.DoesNotContain(DashboardAccess.CookieName, replay.SetCookie);
+        // A browser or security tool that requests the address twice still gets in...
+        Assert.Equal(302, (await Send("GET", launch)).Status);
+
+        // ...but a minute later the same link, in a browser with no cookie, is dead.
+        DashboardAccess.ExpireLaunchTokensForTests();
+        var late = await Send("GET", launch);
+        Assert.Equal(401, late.Status);
+        Assert.DoesNotContain(DashboardAccess.CookieName, late.SetCookie);
+        // A browser that is already unlocked just carries on.
+        Assert.Equal(302, (await Send("GET", launch, cookie: DashboardAccess.SessionSecret)).Status);
     }
 
     [Fact]

@@ -49,14 +49,29 @@ namespace FastApp
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            Services.PerfLog.Start();
-            Services.PerfLog.Milestone("startup.begin");
-
             // Before anything renders, so the first window is already the right
             // colour rather than repainting on its first frame.
             Services.SystemTheme.Start();
             ApplySystemTheme();
             Services.SystemTheme.Changed += ApplySystemTheme;
+
+            // The data here may be locked with another PC's key (a moved folder, a reset
+            // Windows account). Only the user can settle that, and nothing may read the
+            // database until they have -- so it is asked here, first.
+            if (Services.DbEncryption.State == Services.DbEncryption.DbState.NeedsRecoveryKey)
+            {
+                var answer = RecoveryKeyWindow.AskForKey(Services.SystemTheme.IsLight);
+                if (answer == RecoveryKeyWindow.Answer.StartFresh) Services.DbEncryption.StartFresh();
+                else if (answer != RecoveryKeyWindow.Answer.Unlocked)
+                {
+                    Shutdown();
+                    Environment.Exit(0);
+                    return;
+                }
+            }
+
+            Services.PerfLog.Start();
+            Services.PerfLog.Milestone("startup.begin");
 
             // 1. Global Error Traps: catch silent crashes before the app closes,
             // and say something a person can actually use. This used to be
@@ -129,6 +144,17 @@ namespace FastApp
             var mainWindow = new MainWindow();
             Services.PerfLog.Milestone("startup.main-window-created");
             Services.AutoBackup.Start();
+
+            // Hand over the recovery key, once. Asked again on the next launch if the
+            // window is closed without confirming it was saved.
+            if (Services.DbEncryption.State == Services.DbEncryption.DbState.Encrypted && !Services.DbEncryption.RecoveryKeyShown)
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (RecoveryKeyWindow.ShowKey(Services.DbEncryption.RecoveryKey, Services.SystemTheme.IsLight))
+                        Services.DbEncryption.MarkRecoveryKeyShown();
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            }
 
             // 3. The host window is never shown -- it has no interface any more.
             //    Opening FastApp by hand means opening the palette; launching at

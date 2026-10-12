@@ -72,6 +72,8 @@ namespace FastApp.Services
                         try { File.Delete(old.FullName); } catch { }
 
                     PerfLog.Done("backup.auto", started, 5000);
+                    // A verified encrypted copy now exists, so the unencrypted ones can go.
+                    DbEncryption.CleanUpUnencryptedCopies();
                     return final;
                 }
                 catch (Exception ex)
@@ -99,7 +101,7 @@ namespace FastApp.Services
         {
             // Pooling off, so the file handle is released and the copy can be renamed.
             using var connection = new SqliteConnection(
-                new SqliteConnectionStringBuilder { DataSource = path, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
+                new SqliteConnectionStringBuilder { DataSource = path, Password = DbEncryption.Password ?? string.Empty, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = "PRAGMA quick_check;";

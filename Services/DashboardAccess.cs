@@ -16,7 +16,7 @@ namespace FastApp.Services
     /// browser tab, a typed address. Now there are exactly two ways in:
     ///
     ///   - A browser FastApp opened. Every "open the dashboard" action goes through
-    ///     <see cref="LaunchUrl"/>, which carries a single-use token good for a minute.
+    ///     <see cref="LaunchUrl"/>, which carries a token good for one minute.
     ///     Redeeming it sets a session cookie in that browser; nothing has to be typed.
     ///   - Another app holding the read-only API token, if the user has switched that
     ///     on. A token can only GET data. It cannot change or delete anything, and it
@@ -35,7 +35,7 @@ namespace FastApp.Services
 
         // What the read-only token is never allowed to fetch, even though they are GETs:
         // the whole database file, the diagnostics, and the token's own settings.
-        private static readonly string[] TokenBlocked = { "/api/backup", "/api/diagnostics", "/api/settings/api-access" };
+        private static readonly string[] TokenBlocked = { "/api/backup", "/api/diagnostics", "/api/settings/api-access", "/api/settings/recovery-key" };
 
         private static readonly ConcurrentDictionary<string, DateTime> LaunchTokens = new();
         private static readonly object Gate = new();
@@ -67,9 +67,20 @@ namespace FastApp.Services
                 + (string.IsNullOrEmpty(query) ? "" : "&to=" + Uri.EscapeDataString(query));
         }
 
-        /// <summary>True once per token, and only within its minute.</summary>
+        /// <summary>
+        /// True for a link FastApp issued, within its minute. Deliberately not single-use:
+        /// some browsers and security tools request an address once before the visible
+        /// navigation does, and a spent token would leave the user at a locked page after
+        /// doing nothing wrong. A minute is the whole exposure either way.
+        /// </summary>
         internal static bool RedeemLaunchToken(string token) =>
-            !string.IsNullOrEmpty(token) && LaunchTokens.TryRemove(token, out var expires) && expires >= DateTime.UtcNow;
+            !string.IsNullOrEmpty(token) && LaunchTokens.TryGetValue(token, out var expires) && expires >= DateTime.UtcNow;
+
+        /// <summary>Tests only: makes every outstanding launch link as old as it will ever get.</summary>
+        internal static void ExpireLaunchTokensForTests()
+        {
+            foreach (var key in LaunchTokens.Keys.ToList()) LaunchTokens[key] = DateTime.UtcNow.AddSeconds(-1);
+        }
 
         /// <summary>The value the session cookie must carry. Survives restarts and updates.</summary>
         internal static string SessionSecret
@@ -242,7 +253,7 @@ namespace FastApp.Services
             !string.IsNullOrEmpty(a) && !string.IsNullOrEmpty(b)
             && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(a), Encoding.UTF8.GetBytes(b));
 
-        private static string ReadProtected(string path)
+        internal static string ReadProtected(string path)
         {
             try
             {
@@ -254,7 +265,7 @@ namespace FastApp.Services
             catch { return null; }   // unreadable (copied from another account, damaged): treated as absent
         }
 
-        private static void WriteProtected(string path, string value)
+        internal static void WriteProtected(string path, string value)
         {
             try
             {
