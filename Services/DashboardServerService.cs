@@ -504,7 +504,13 @@ namespace FastApp.Services
             if (!Directory.Exists(wwwrootPath)) Directory.CreateDirectory(wwwrootPath);
 
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { ContentRootPath = exeFolder, WebRootPath = wwwrootPath });
-            builder.WebHost.UseUrls("http://127.0.0.1:5050");
+            // Off the network unless "Phone app" is switched on. Then it listens on every
+            // address, because the Tailscale one may not exist yet when FastApp starts --
+            // and DashboardAccess.Guard turns away whatever did not arrive over Tailscale.
+            // Read once here: a listening address cannot change while the server runs, so
+            // the switch takes effect at the next start.
+            DashboardAccess.PhoneListening = AppSettingsStore.GetBool("PhoneAccess", false);
+            builder.WebHost.UseUrls(DashboardAccess.PhoneListening ? "http://0.0.0.0:5050" : "http://127.0.0.1:5050");
 
             // Pin the JSON contract. camelCase is already what ASP.NET Core's web
             // defaults produce and what every endpoint here has always emitted --
@@ -581,8 +587,11 @@ namespace FastApp.Services
 
             app.Use(async (context, next) =>
             {
+                // The phone names this PC by its Tailscale address, so its Host cannot be
+                // on the list. Rebinding gains nothing there: the browser cookie is never
+                // accepted from outside this PC (DashboardAccess.Guard), only the token.
                 string host = context.Request.Host.Value ?? string.Empty;
-                if (!allowedHosts.Contains(host, StringComparer.OrdinalIgnoreCase))
+                if (!DashboardAccess.IsRemote(context) && !allowedHosts.Contains(host, StringComparer.OrdinalIgnoreCase))
                 {
                     context.Response.StatusCode = 400;
                     await context.Response.WriteAsJsonAsync(new { error = "Unrecognized Host header." });

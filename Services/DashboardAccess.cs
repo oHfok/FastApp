@@ -22,6 +22,8 @@ namespace FastApp.Services
     ///     on. A token can only GET data. It cannot change or delete anything, and it
     ///     cannot download the whole database.
     ///
+    /// The phone app is that second way, reached over Tailscale -- see "the phone app" below.
+    ///
     /// Both secrets are stored encrypted for this Windows account (DPAPI), so another
     /// user of the PC, or a copy of the folder, cannot use them. A program running as
     /// this same user still could -- that is a limit of Windows, not something this
@@ -35,7 +37,7 @@ namespace FastApp.Services
 
         // What the read-only token is never allowed to fetch, even though they are GETs:
         // the whole database file, the diagnostics, and the token's own settings.
-        private static readonly string[] TokenBlocked = { "/api/backup", "/api/diagnostics", "/api/settings/api-access", "/api/settings/recovery-key" };
+        private static readonly string[] TokenBlocked = { "/api/backup", "/api/diagnostics", "/api/settings/api-access", "/api/settings/phone-access", "/api/settings/recovery-key" };
 
         private static readonly ConcurrentDictionary<string, DateTime> LaunchTokens = new();
         private static readonly object Gate = new();
@@ -145,6 +147,58 @@ namespace FastApp.Services
             }
         }
 
+        // ---------------------------------------------------------------- the phone app
+        //
+        // The one way in from outside this PC, and only while "Phone app" is switched on:
+        // over Tailscale, with the read-only token. The phone gets the token by typing a
+        // six-digit code the dashboard shows for two minutes, so the token itself is never
+        // typed or sent anywhere but down the Tailscale link.
+
+        /// <summary>Set once at server start: whether it listens beyond 127.0.0.1 at all.</summary>
+        public static bool PhoneListening { get; set; }
+
+        private static readonly TimeSpan PairingLife = TimeSpan.FromMinutes(2);
+        private const int PairingTries = 5;
+        private static string _pairCode;
+        private static DateTime _pairExpires;
+        private static int _pairTriesLeft;
+
+        /// <summary>Tailscale hands every device an address in 100.64.0.0/10; a request that arrived on one came through the user's own tailnet.</summary>
+        internal static bool OverTailscale(System.Net.IPAddress local)
+        {
+            if (local == null) return false;
+            if (local.IsIPv4MappedToIPv6) local = local.MapToIPv4();
+            byte[] b = local.GetAddressBytes();
+            return b.Length == 4 && b[0] == 100 && (b[1] & 0xC0) == 64;
+        }
+
+        /// <summary>A fresh code for the dashboard to show. Replaces any earlier one.</summary>
+        public static string NewPairingCode()
+        {
+            lock (Gate)
+            {
+                _pairCode = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+                _pairExpires = DateTime.UtcNow + PairingLife;
+                _pairTriesLeft = PairingTries;
+                return _pairCode;
+            }
+        }
+
+        /// <summary>
+        /// The token for a correct code, once. A million codes against five tries: after the
+        /// fifth wrong one the code is void and a new one has to be shown on the PC.
+        /// </summary>
+        internal static string RedeemPairingCode(string code)
+        {
+            lock (Gate)
+            {
+                if (_pairCode == null || DateTime.UtcNow > _pairExpires || _pairTriesLeft-- <= 0) { _pairCode = null; return null; }
+                if (!Same(code, _pairCode)) return null;
+                _pairCode = null;
+                return EnableApiToken();
+            }
+        }
+
         // ---------------------------------------------------------------- the decision
 
         /// <summary>
@@ -177,6 +231,30 @@ namespace FastApp.Services
         {
             string path = context.Request.Path.Value ?? string.Empty;
             string cookie = context.Request.Cookies[CookieName];
+
+            if (IsRemote(context))
+            {
+                context.Response.Headers.CacheControl = "no-store";
+                if (!PhoneListening || !OverTailscale(context.Connection.LocalIpAddress))
+                {
+                    context.Response.StatusCode = 403;
+                    await context.Response.WriteAsJsonAsync(new { error = "FastApp only answers on this PC, or to the phone app over Tailscale." });
+                    return;
+                }
+                if (path.Equals("/pair", StringComparison.OrdinalIgnoreCase) && HttpMethods.IsPost(context.Request.Method))
+                {
+                    using var reader = new StreamReader(context.Request.Body);
+                    string token = RedeemPairingCode((await reader.ReadToEndAsync()).Trim());
+                    if (token == null) context.Response.StatusCode = 401;
+                    await context.Response.WriteAsJsonAsync(token == null
+                        ? new { error = "Wrong or expired code. Show a new one in FastApp's settings.", token = (string)null }
+                        : new { error = (string)null, token });
+                    return;
+                }
+                // The browser session never works from outside, and neither does the link that grants it.
+                cookie = null;
+                if (path.Equals("/unlock", StringComparison.OrdinalIgnoreCase)) { await WriteLocked(context); return; }
+            }
 
             if (path.Equals("/unlock", StringComparison.OrdinalIgnoreCase))
             {
@@ -223,6 +301,10 @@ namespace FastApp.Services
                     return;
             }
         }
+
+        /// <summary>True for a request that did not start on this PC.</summary>
+        internal static bool IsRemote(HttpContext context) =>
+            context.Connection.RemoteIpAddress is { } from && !System.Net.IPAddress.IsLoopback(from);
 
         private static async Task WriteLocked(HttpContext context)
         {

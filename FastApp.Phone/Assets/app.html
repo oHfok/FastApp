@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>FastApp</title>
+<style>
+:root{--bg:#0C0E13;--card:#14171E;--sunk:#1F2330;--line:rgba(255,255,255,.08);--text:#EEF0F4;--dim:#A8B0BE;--mute:#6B7382;--accent:#6EA8FF;--good:#4FD08A;--warn:#F0B44C;--bad:#F0655C}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,sans-serif;overflow-wrap:anywhere}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:18px;flex:1}
+#status{font-size:12px;padding:5px 10px;border-radius:99px;background:var(--sunk);color:var(--dim);border:0}
+#status.live{color:var(--good)}#status.off{color:var(--warn)}
+main{padding:14px 16px 90px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line)}
+nav a{flex:1;padding:14px 0;text-align:center;color:var(--mute);text-decoration:none;font-size:13px}
+nav a.on{color:var(--accent);font-weight:600}
+a{color:inherit;text-decoration:none}
+.card{display:block;background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:14px;font-weight:600}
+.dim{color:var(--dim)}.small{font-size:12px;color:var(--dim)}.caps{font-size:10.5px;letter-spacing:.06em;color:var(--mute);font-weight:600}
+.good{color:var(--good)}.warn{color:var(--warn)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.grid .card{margin:0}
+.big{font-size:22px;font-weight:600}
+.bar{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden;margin:4px 0 10px}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+.line{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.line>:last-child{text-align:right;flex-shrink:0}
+.row{display:block;padding:11px 0;border-top:1px solid var(--line)}.row:first-of-type{border-top:0}
+.datenav{display:flex;align-items:center;margin-bottom:12px}
+.datenav b{flex:1;text-align:center;font-size:17px}
+.datenav a{padding:6px 16px;background:var(--card);border-radius:10px;font-size:18px}
+.datenav a.no{opacity:.25;pointer-events:none}
+.seg{display:flex;background:var(--sunk);border-radius:10px;padding:3px;margin-bottom:12px}
+.seg a{flex:1;text-align:center;padding:7px 0;border-radius:8px;color:var(--dim);font-size:13px}
+.seg a.on{background:#335580;color:var(--text)}
+.chip{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;background:var(--sunk);color:var(--dim);margin:6px 6px 0 0}
+.chip.via{background:rgba(240,180,76,.2);color:var(--warn)}
+.dev{display:flex;gap:14px;align-items:center}.dev>div{flex:1;min-width:0}
+.week{display:flex;gap:6px;align-items:flex-end;height:90px}
+.week div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;font-size:10.5px;color:var(--mute)}
+.week i{display:block;width:100%;border-radius:3px 3px 0 0;background:var(--accent);min-height:2px;margin-bottom:4px}
+.tl{position:relative;margin:6px 0 0 44px}
+.tl-h{position:absolute;left:-44px;right:0;border-top:1px solid var(--line)}
+.tl-h span{position:absolute;top:-8px;left:0;font-size:10.5px;color:var(--mute);background:var(--card);padding-right:4px}
+.tl-s{position:absolute;left:14px;right:0;border-radius:3px;font-size:11px;line-height:15px;padding:0 6px;overflow:hidden;white-space:nowrap;color:#fff}
+.tl-afk,.tl-mus{position:absolute;width:4px;border-radius:2px}
+.tl-afk{left:0;background:var(--mute)}.tl-mus{left:6px;background:#B38DFF}
+canvas{display:block;width:100%}
+canvas.chart{height:190px}canvas.spark{height:38px;margin-top:10px}
+#sheet{position:fixed;inset:0;z-index:9;background:rgba(0,0,0,.55);display:flex;align-items:flex-end}
+#sheet[hidden]{display:none}
+#sheet div{background:var(--card);border-radius:16px 16px 0 0;padding:18px 18px 28px;width:100%;max-height:70vh;overflow:auto;white-space:pre-wrap}
+input,button.go{width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--sunk);color:var(--text);margin:6px 0 12px}
+button.go{background:var(--accent);color:#08121F;font-weight:600;border:0}
+ol{padding-left:20px;margin:0;color:var(--dim)}ol li{margin-bottom:6px}
+</style>
+</head>
+<body>
+<header><h1>FastApp</h1><button id="status">…</button></header>
+<main id="main"></main>
+<nav><a href="#day" data-tab="day">Day</a><a href="#history" data-tab="history">History</a><a href="#bat" data-tab="bat">Batteries</a><a href="#setup" data-tab="setup">PC</a></nav>
+<div id="sheet" hidden><div></div></div>
+<script>
+'use strict';
+// Every screen asks for the same "/api/..." paths FastApp's own dashboard uses. The app
+// underneath (MainActivity.cs) answers from the PC, or from what it kept when the PC is off,
+// and says which in X-Source: live / cache (PC not reachable) / kept (a finished day, final).
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const col = c => /^#[0-9a-f]{6}$/i.test(c) ? c : '#A8B0BE';   // colours come from data: never straight into a style
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => iso(new Date());
+const addDays = (s, n) => { const d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return iso(d); };
+const hm = h => { const m = Math.round(h * 60); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${pad(m % 60)}m`; };
+const when = unix => new Date(unix * 1000).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const nice = app => String(app).replace(/\.exe$/i, '');
+const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 45% 38%)`; };
+const bars = (rows, name, value, text) => { const top = Math.max(1e-9, ...rows.map(value)); return rows.map(r => `<div class="line"><span>${esc(name(r))}</span><span class="dim">${text(r)}</span></div><div class="bar"><i style="width:${100 * value(r) / top}%"></i></div>`).join(''); };
+
+function setStatus(live, at) {
+    $('#status').className = live ? 'live' : 'off';
+    $('#status').textContent = live ? '● Live' : at ? 'Offline · saved ' + when(at) : 'Offline';
+}
+
+async function api(path) {
+    const r = await fetch(path);
+    if (r.status === 401) { location.hash = '#setup'; throw new Error('This phone is not paired with the PC.'); }
+    const source = r.headers.get('X-Source');
+    if (source && source !== 'kept') setStatus(source === 'live', +r.headers.get('X-At'));
+    if (r.status === 504) throw new Error('Nothing saved for this yet. Open it once while the PC is reachable.');
+    if (!r.ok) throw new Error('The PC answered with an error (' + r.status + ').');
+    return r.json();
+}
+
+function sheet(title, text) {
+    $('#sheet div').innerHTML = `<b>${esc(title)}</b>\n\n<span class="dim">${esc(text)}</span>`;
+    $('#sheet').hidden = false;
+}
+$('#sheet').onclick = () => $('#sheet').hidden = true;
+
+// ------------------------------------------------------------------ a day in FastApp
+
+let blocks = [];   // the timeline on screen, for taps
+
+function timeline(t) {
+    blocks = [];
+    for (const s of t.sessions || []) {   // one block per stretch in the same program (FastApp logs every return to it)
+        const last = blocks[blocks.length - 1], end = s.startMinutes + s.durationMinutes;
+        if (last && last.app === s.appName && s.startMinutes - last.end <= 1) last.end = Math.max(last.end, end);
+        else blocks.push({ app: s.appName, start: s.startMinutes, end, title: s.windowTitle, from: s.start });
+    }
+    if (!blocks.length) return '<p class="dim">Nothing recorded on this day.</p>';
+    // Only the hours something happened in are drawn; a stretch of empty ones (the night, the PC off) becomes a small gap.
+    const K = 2, GAP = 22, top = {}, hours = [];
+    for (const b of blocks) for (let i = Math.floor(b.start / 60); i <= Math.min(23, Math.floor((b.end - 0.01) / 60)); i++) if (!hours.includes(i)) hours.push(i);
+    hours.sort((a, b) => a - b);
+    let height = 0;
+    hours.forEach((hour, i) => { if (i && hour !== hours[i - 1] + 1) height += GAP; top[hour] = height; height += 60 * K; });
+    const y = m => {
+        const hour = Math.floor(Math.max(0, m) / 60), next = hours.find(x => x > hour);
+        return hour in top ? top[hour] + (m - hour * 60) * K : next === undefined ? height : top[next];
+    };
+    const span = (cls, list) => (list || []).map(a => [y(a.startMinutes), y(a.startMinutes + a.durationMinutes)]).filter(([a, b]) => b > a)
+        .map(([a, b]) => `<div class="${cls}" style="top:${a}px;height:${b - a}px"></div>`).join('');
+    let h = `<div class="tl" style="height:${height}px">`;
+    for (const hour of hours) h += `<div class="tl-h" style="top:${top[hour]}px"><span>${pad(hour)}:00</span></div>`;
+    h += span('tl-afk', t.afk) + span('tl-mus', t.music);
+    blocks.forEach((b, i) => {
+        const height = Math.max(1.5, y(b.end) - y(b.start));
+        h += `<div class="tl-s" data-block="${i}" style="top:${y(b.start)}px;height:${height}px;background:${hue(b.app)}">${height >= 15 ? `<b>${esc(nice(b.app))}</b> ${hm((b.end - b.start) / 60)}` : ''}</div>`;
+    });
+    return h + '</div><p class="small" style="margin:12px 0 0">Grey strip: away from the PC · purple strip: music playing · tap a block for details</p>';
+}
+
+async function viewDay(date) {
+    date = /^\d{4}-\d\d-\d\d$/.test(date || '') ? date : today();
+    const [o, t] = await Promise.all([api('/api/overview?date=' + date), api('/api/timeline?date=' + date)]);
+    const label = date === today() ? 'Today' : date === addDays(today(), -1) ? 'Yesterday'
+        : new Date(date + 'T12:00:00').toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const week = o.weeklyTrend || [], weekTop = Math.max(1e-9, ...week.map(d => d.focusedHours));
+    const tile = (name, value, sub) => `<div class="card"><div class="small">${name}</div><div class="big">${value}</div><div class="small">${sub}</div></div>`;
+    return `
+        <div class="datenav"><a href="#day/${addDays(date, -1)}">‹</a><b>${label}</b><a href="#day/${addDays(date, 1)}" class="${date >= today() ? 'no' : ''}">›</a></div>
+        <div class="grid">
+            ${tile('On the PC', hm(o.totalToday), hm(o.prevTotalToday) + ' the day before')}
+            ${tile('Focused', hm(o.focusToday), 'usually ' + hm(o.usualDailyFocus))}
+            ${tile('Away', hm(o.afkToday), (o.contextSwitches || 0) + ' app switches')}
+            ${tile('Music', hm(o.musicToday), 'playing time')}
+        </div>
+        <div class="card"><h2>Top apps</h2>${(o.topAppsToday || []).length ? bars(o.topAppsToday, a => nice(a.appName), a => a.focusedMinutes, a => hm(a.focusedMinutes / 60)) : '<p class="dim">Nothing recorded.</p>'}</div>
+        ${(o.categories || []).length ? `<div class="card"><h2>Categories</h2>${bars(o.categories, c => c.category, c => c.focusedMinutes, c => hm(c.focusedMinutes / 60))}</div>` : ''}
+        <div class="card"><h2>Focus, the 7 days up to here</h2><div class="week">${week.map(d => `<div><span>${d.focusedHours >= 0.1 ? d.focusedHours.toFixed(1) : ''}</span><i style="height:${70 * d.focusedHours / weekTop}%"></i>${esc(d.day)}</div>`).join('')}</div>
+            <p class="small" style="margin:10px 0 0">This week ${hm(o.focusWeek)} focused of ${hm(o.totalWeek)} on the PC · last week ${hm(o.prevFocusWeek)}</p></div>
+        <div class="card"><h2>Timeline</h2>${timeline(t)}</div>`;
+}
+
+// ------------------------------------------------------------------ past days and weeks
+
+async function viewHistory(kind) {
+    kind = kind === 'week' ? 'week' : 'day';
+    const list = await api('/api/periods?type=' + kind);
+    return `<div class="seg"><a href="#history/day" class="${kind === 'day' ? 'on' : ''}">Days</a><a href="#history/week" class="${kind === 'week' ? 'on' : ''}">Weeks</a></div>
+        <div class="card">${list.length ? list.map(p => `<a class="row" href="#day/${esc(p.startDate)}">
+            <div class="line"><b>${esc(p.label)}${kind === 'week' ? ` <span class="small">from ${esc(p.startDate)}</span>` : ''}</b><b>${hm(p.totalFocusMinutes / 60)}</b></div>
+            <div class="line small"><span>mostly ${esc(nice(p.mostUsedApp))} · away ${hm(p.totalAfkMinutes / 60)}</span><span>#${p.rank} of ${p.totalPeriods}</span></div></a>`).join('')
+            : '<p class="dim">No history yet.</p>'}</div>
+        <p class="small">Focused time, newest first. The rank is among all ${kind}s on record. Tap one to open ${kind === 'week' ? 'its Monday' : 'it'}.</p>`;
+}
+
+// ------------------------------------------------------------------ Device Battery
+
+let battery = null;   // the snapshot on screen, for the charts and taps
+let range = 168;
+
+const ring = (pct, color, text, size) => {
+    const r = size / 2 - 6, c = 2 * Math.PI * r, mid = size / 2;
+    return `<svg width="${size}" height="${size}" style="flex-shrink:0"><circle cx="${mid}" cy="${mid}" r="${r}" fill="none" stroke="#1F2330" stroke-width="8"/>
+        ${pct > 0 ? `<circle cx="${mid}" cy="${mid}" r="${r}" fill="none" stroke="${col(color)}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c * Math.min(1, pct / 100)} ${c}" transform="rotate(-90 ${mid} ${mid})"/>` : ''}
+        <text x="${mid}" y="${mid}" dominant-baseline="central" text-anchor="middle" fill="#EEF0F4" font-size="${size / 4.6}" font-weight="600">${esc(text)}</text></svg>`;
+};
+const learning = l => `<div class="caps" style="margin-top:12px">${esc(l.head)}</div><div class="line"><span><b class="${l.done ? 'good' : ''}" style="font-size:18px">${l.pct}%</b> <span class="small">${l.done ? 'learnt' : 'learnt so far'}</span></span></div>
+    <div class="bar"><i style="width:${l.pct}%;background:${l.done ? 'var(--good)' : 'var(--accent)'}"></i></div>`;
+const heroCard = (d, size) => `${ring(d.pct, d.online ? d.accent : '#6B7382', d.level, size)}<div><div class="small">${esc(d.name)}</div>
+    <div style="font-size:${size > 80 ? 21 : 17}px;font-weight:600;color:${col(d.heroColor)}">${esc(d.hero)}</div><div class="small">${esc(d.sub)}</div>
+    ${d.chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>`;
+
+// The level over time: one colour per polling rate (green without), blue on the charger - dashed where that level is
+// Device Battery's own estimate - and broken wherever nothing was recorded for half an hour.
+function drawLevels(cv, d, hours) {
+    const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight, bare = cv.classList.contains('spark');
+    cv.width = W * dpr; cv.height = H * dpr;
+    const g = cv.getContext('2d'), S = d.samples;
+    g.scale(dpr, dpr);
+    if (!S.length) return;
+    const L = bare ? 0 : 36, R = W - (bare ? 0 : 4), T = bare ? 2 : 8, B = H - (bare ? 2 : 20);
+    const t1 = battery.at, t0 = hours ? t1 - hours * 3600 : S[0][0];
+    const X = t => L + (t - t0) / Math.max(1, t1 - t0) * (R - L), Y = p => B - p / 100 * (B - T);
+    g.font = '11px system-ui'; g.fillStyle = '#6B7382'; g.strokeStyle = 'rgba(255,255,255,.08)';
+    if (!bare) {
+        for (const p of [0, 25, 50, 75, 100]) { g.beginPath(); g.moveTo(L, Y(p)); g.lineTo(R, Y(p)); g.stroke(); g.fillText(p + '%', 0, Y(p) + 4); }
+        for (let i = 0; i <= 3; i++) {
+            const at = new Date((t0 + (t1 - t0) * i / 3) * 1000);
+            g.textAlign = i === 0 ? 'left' : i === 3 ? 'right' : 'center';
+            g.fillText(t1 - t0 <= 36 * 3600 ? at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : at.toLocaleDateString([], { day: 'numeric', month: 'short' }), X(at / 1000), H - 4);
+        }
+        if (battery.lowPercent > 0) { g.strokeStyle = 'rgba(240,101,92,.5)'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(L, Y(battery.lowPercent)); g.lineTo(R, Y(battery.lowPercent)); g.stroke(); }
+    }
+    g.save(); g.beginPath(); g.rect(L, 0, R - L, H); g.clip();
+    g.lineWidth = bare ? 1.5 : 2; g.lineJoin = g.lineCap = 'round';
+    let prev = null;
+    for (const s of S) {
+        if (prev && s[0] >= t0 && s[0] - prev[0] <= 1800) {
+            g.strokeStyle = s[2] ? '#5AA9FF' : col(d.modeColors[s[3]] || '#4FD08A');
+            g.setLineDash(s[2] && d.estimated ? [4, 3] : []);
+            g.beginPath(); g.moveTo(X(prev[0]), Y(prev[1])); g.lineTo(X(s[0]), Y(s[1])); g.stroke();
+        }
+        prev = s;
+    }
+    g.restore();
+}
+
+async function viewBattery(name) {
+    battery = await api('/api/device-battery');
+    const asOf = `<p class="small">Device Battery's figures as of ${when(battery.at)}. It updates them when a level changes, while the PC is on.</p>`;
+    const d = battery.devices.find(x => x.name === name);
+    if (!d) {
+        const online = battery.devices.filter(x => x.online);
+        return `<div class="card"><div class="big">Batteries</div><div class="small">${online.length} of ${battery.devices.length} connected${online.length ? ` · lowest: ${esc(online[0].name)} at ${esc(online[0].level)}` : ''}</div></div>
+            ${battery.devices.map((x, i) => `<a class="card" href="#bat/${encodeURIComponent(x.name)}"><div class="dev">${heroCard(x, 76)}</div>${learning(x.learning)}
+                <div class="caps">LAST 7 DAYS</div><canvas class="spark" data-device="${i}"></canvas></a>`).join('')}${asOf}`;
+    }
+    const all = `<a class="small" data-more style="color:var(--accent)">Show all ›</a>`;
+    return `<div class="card"><div class="dev">${heroCard(d, 96)}</div>${learning(d.learning)}<div class="small" data-tip="${esc(d.learning.head)}|${esc(d.learning.tip)}">${esc(d.learning.line)}</div></div>
+        ${d.banner ? `<div class="card warn" style="border-left:4px solid var(--warn)">${esc(d.banner)}</div>` : ''}
+        ${d.rates ? `<div class="card"><h2>Polling rates</h2>${d.rates.map(r => `<div class="row"><div class="line"><b><span style="color:${col(r.color)}">●</span> ${esc(r.name)}${r.now ? ' <span class="chip">now</span>' : ''}</b><b>${r.drain > 0 ? r.drain.toFixed(1) + ' %/h' : ''}</b></div>
+            <div class="line small"><span>${esc(r.time)}${r.hours > 0 ? ' on battery' : ''}</span><span>${r.hours > 0 ? `a full charge ${esc(r.full)} · learnt ${r.learnt}%` : ''}</span></div></div>`).join('')}
+            <p class="small" style="margin:8px 0 0">${esc(d.rateNote)}</p></div>` : ''}
+        ${d.samples.length ? `<div class="card"><h2>Battery level</h2><div class="seg">${[[24, '24 h'], [168, '7 days'], [720, '30 days'], [0, 'All']].map(([h, t]) => `<a data-range="${h}" class="${h === range ? 'on' : ''}">${t}</a>`).join('')}</div>
+            <canvas class="chart" data-device="${battery.devices.indexOf(d)}"></canvas>
+            <p class="small" style="margin:8px 0 0">${d.samples.length} samples since ${new Date(d.samples[0][0] * 1000).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })} · blue: charging${d.estimated ? ' (level estimated)' : ''}</p></div>` : ''}
+        ${d.tiles ? `<div class="grid">${d.tiles.map(t => `<div class="card" data-tip="${esc(t.label)}|${esc(t.tip)}"><div class="small">${esc(t.label)}</div><div class="big" style="font-size:18px;color:${col(t.color)}">${esc(t.value)}</div>
+            <div class="small">${esc(t.sub)}</div>${t.tag ? `<span class="chip ${t.tag.startsWith('via') ? 'via' : ''}">${esc(t.tag)}</span>` : ''}</div>`).join('')}</div>` : ''}
+        ${d.apps ? `<div class="card"><h2>By program in front</h2><p class="small ${d.apps.explains ? 'good' : 'warn'}" style="margin:0 0 10px">${esc(d.apps.note)}</p>
+            ${d.apps.rows.map(a => `<div class="line"><span>${esc(a.app)} <span class="small">${esc(a.inFront)}</span></span><span class="${a.tone}">${a.extra ? '+' : ''}${a.rate.toFixed(1)} %/h <span class="small">${esc(a.left)}</span></span></div>
+                <div class="bar"><i style="width:${100 * a.share}%;background:var(--${a.tone || 'mute'})"></i></div>`).join('')}</div>` : ''}
+        ${d.sessions.length ? `<div class="card"><h2>Sessions and charges</h2>${d.sessions.map((s, i) => `<div class="row" ${i >= 8 ? 'hidden' : ''}><div class="line"><b><span style="color:${col(s.color)}">●</span> ${when(s.from)}</b><b>${s.fromPct} → ${s.toPct}%</b></div>
+            <div class="line small"><span>${s.charging ? 'charging' : 'on battery'}${s.mode ? ` · ${s.mode} Hz` : ''} · ${esc(s.lasted)}${s.speed ? ' · ' + esc(s.speed) : ''}</span><span class="${s.tone}">${esc(s.versus)}</span></div></div>`).join('')}${d.sessions.length > 8 ? all : ''}</div>` : ''}
+        <div class="card"><h2>Hours on battery, last 30 days</h2><div class="week">${(() => { const days = d.days.slice(-30), top = Math.max(2, ...days.map(x => x.hours)); return days.map((x, i) => `<div><i style="height:${85 * x.hours / top}%;${x.hours ? '' : 'background:var(--sunk)'}"></i>${i % 5 === 4 ? +x.day.slice(8) : '&nbsp;'}</div>`).join(''); })()}</div></div>${asOf}`;
+}
+
+// ------------------------------------------------------------------ pairing
+
+async function viewSetup() {
+    const s = await (await fetch('/local/state')).json();
+    if (!s.paired) setStatus(false, 0);
+    return `<div class="card"><h2>${s.paired ? 'Paired with ' + esc(s.address) : 'Pair with your PC'}</h2>
+        <ol><li>Install Tailscale on the PC and on this phone, signed in to the same account.</li>
+        <li>On the PC: FastApp dashboard → Settings → <b>Phone App</b>, switch it on, then restart FastApp.</li>
+        <li>Enter the address shown there, press <b>Show pairing code</b> and type the code here.</li></ol></div>
+        <div class="card"><label class="small">PC address</label><input id="address" value="${esc(s.address || '')}" placeholder="100.101.102.103" autocapitalize="off" autocomplete="off">
+        <label class="small">Pairing code</label><input id="code" inputmode="numeric" maxlength="6" placeholder="6 digits" autocomplete="off">
+        <button class="go" id="pair">${s.paired ? 'Pair again' : 'Pair'}</button><div class="warn" id="pair-result"></div></div>
+        <p class="small">The phone can only read. It talks to the PC through Tailscale and keeps the last data it saw for when the PC is off.</p>`;
+}
+
+async function pair() {
+    $('#pair-result').textContent = 'Asking the PC…';
+    const r = await (await fetch(`/local/pair?address=${encodeURIComponent($('#address').value)}&code=${encodeURIComponent($('#code').value)}`)).json();
+    if (r.error) $('#pair-result').textContent = r.error; else location.hash = '#day';
+}
+
+// ------------------------------------------------------------------ the frame
+
+const views = { day: viewDay, history: viewHistory, bat: viewBattery, setup: viewSetup };
+let drawn = 0, fetched = false;
+
+async function render() {
+    const mine = ++drawn, [tab, arg] = location.hash.slice(1).split('/'), view = views[tab] ? tab : 'day';
+    document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.tab === view));
+    let html;
+    try { html = await views[view](arg && decodeURIComponent(arg)); }
+    catch (e) { html = `<div class="card"><p class="dim">${esc(e.message)}</p></div>`; }
+    if (mine !== drawn) return;   // the user has moved on
+    $('#main').innerHTML = html;
+    document.querySelectorAll('canvas[data-device]').forEach(cv => drawLevels(cv, battery.devices[cv.dataset.device], cv.classList.contains('spark') ? 168 : range));
+    if (!fetched && $('#status').className === 'live') { fetched = true; keepRecent(); }
+}
+
+// While the PC answers: fetch what an evening away from it would want, so it is there offline.
+// A finished day is asked for once and then kept for good (see Pc.Finished).
+async function keepRecent() {
+    const quiet = path => fetch(path).catch(() => { });
+    for (const path of ['/api/device-battery', '/api/periods?type=day', '/api/periods?type=week']) await quiet(path);
+    for (let i = 0; i <= 14; i++) { await quiet('/api/overview?date=' + addDays(today(), -i)); await quiet('/api/timeline?date=' + addDays(today(), -i)); }
+}
+
+$('#main').onclick = e => {
+    const on = sel => e.target.closest(sel);
+    if (on('[data-block]')) { const b = blocks[on('[data-block]').dataset.block]; sheet(nice(b.app), `${b.from} · ${hm((b.end - b.start) / 60)}${b.title ? '\n' + b.title : ''}`); }
+    else if (on('[data-range]')) { range = +on('[data-range]').dataset.range; render(); }
+    else if (on('[data-more]')) { on('.card').querySelectorAll('[hidden]').forEach(r => r.hidden = false); on('[data-more]').remove(); }
+    else if (on('#pair')) pair();
+    else if (on('[data-tip]')) { const [title, ...text] = on('[data-tip]').dataset.tip.split('|'); if (text.join('|')) sheet(title, text.join('|')); }
+};
+const refresh = async () => { await fetch('/local/retry'); render(); };
+$('#status').onclick = refresh;
+window.onhashchange = render;
+// Back from another app: look for the PC again. Not on the pairing screen, where it would wipe a half-typed address.
+document.onvisibilitychange = () => { if (!document.hidden && !$('#pair')) refresh(); };
+render();
+</script>
+</body>
+</html>

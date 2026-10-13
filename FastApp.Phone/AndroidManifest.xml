@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- targetSdk 34: from 35 on Android draws every app under the status and navigation bars,
+     which a single full-screen WebView would have to be padded for by hand. Sideloaded, so
+     no store rule asks for a newer one. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
+  <uses-permission android:name="android.permission.INTERNET" />
+  <!-- allowBackup off: the saved token must not travel to a cloud backup. -->
+  <application android:label="FastApp" android:icon="@drawable/icon" android:allowBackup="false" />
+</manifest>
