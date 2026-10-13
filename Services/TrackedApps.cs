@@ -100,7 +100,7 @@ namespace FastApp.Services
                         if (!string.Equals(process.ProcessName, trackedName, StringComparison.OrdinalIgnoreCase))
                             continue;
 
-                        string path = process.MainModule?.FileName;
+                        string path = RunningApps.ImagePath(process.Id);
                         if (!string.IsNullOrEmpty(path)) return path;
                     }
                     catch

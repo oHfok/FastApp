@@ -43,6 +43,37 @@ namespace FastApp.Services
             }
         }
 
+        /// <summary>
+        /// Where a process's executable is on disk, or null if Windows will not say.
+        ///
+        /// Asks for exactly that one fact. Process.MainModule gets it by enumerating
+        /// every module the process has loaded, which needs more access and, for some
+        /// processes (suspended Store apps, protected or anti-cheat-guarded ones),
+        /// fails slowly. The tracker's stalls in the diagnostics came in steps of about
+        /// 0.8 seconds (0.8, 1.6, 2.4, 4.0, 4.7), which is what one, two, three or more
+        /// such processes met in the same tick would look like.
+        /// </summary>
+        public static string ImagePath(int processId)
+        {
+            IntPtr handle = OpenProcess(ProcessQueryLimitedInformation, false, (uint)processId);
+            if (handle == IntPtr.Zero) return null;
+            try
+            {
+                var buffer = new System.Text.StringBuilder(1024);
+                int size = buffer.Capacity;
+                return QueryFullProcessImageName(handle, 0, buffer, ref size) && size > 0 ? buffer.ToString(0, size) : null;
+            }
+            catch { return null; }
+            finally { CloseHandle(handle); }
+        }
+
+        private const uint ProcessQueryLimitedInformation = 0x1000;
+
+        [DllImport("kernel32.dll", SetLastError = true)] private static extern IntPtr OpenProcess(uint access, bool inherit, uint processId);
+        [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr handle);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool QueryFullProcessImageName(IntPtr process, uint flags, System.Text.StringBuilder name, ref int size);
+
         private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
 
         [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);

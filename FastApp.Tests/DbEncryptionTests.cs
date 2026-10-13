@@ -164,6 +164,50 @@ public class DbEncryptionTests
     }
 
     [Fact]
+    public void WarmingUpInTheBackgroundRacesStartUpSafely()
+    {
+        using var pc = new Pc();
+        Pc.WritePlain(pc.Db, rows: 3000);
+        pc.Use();   // a launch that still has the first-time encryption to do
+
+        // The background warm-up and several "UI thread" readers all arrive at once.
+        var states = new System.Collections.Concurrent.ConcurrentBag<DbEncryption.DbState>();
+        var threads = Enumerable.Range(0, 6).Select(i => new Thread(() =>
+        {
+            if (i == 0) DbEncryption.WarmUp();
+            states.Add(DbEncryption.State);
+            AppSettingsStore.Get("anything");
+        })).ToList();
+        threads.ForEach(t => t.Start());
+        threads.ForEach(t => t.Join());
+
+        Assert.All(states, s => Assert.Equal(DbEncryption.DbState.Encrypted, s));
+        SqliteConnection.ClearAllPools();
+        Assert.Equal(3000L, Pc.Run(pc.Db, DbEncryption.Password, "SELECT count(*) FROM DailyLogs"));
+        Assert.Single(Directory.GetFiles(pc.Folder, "db.key"));
+    }
+
+    [Fact]
+    public void WarmingUpLeavesALockedDatabaseForTheUserToAnswer()
+    {
+        using var newPc = new Pc();
+        using (var oldPc = new Pc())
+        {
+            Pc.WritePlain(oldPc.Db);
+            oldPc.Use();
+            _ = DbEncryption.State;
+            SqliteConnection.ClearAllPools();
+            File.Copy(oldPc.Db, newPc.Db);
+        }
+        newPc.Use();
+
+        DbEncryption.WarmUp();   // must not throw, create a key, or touch the file
+
+        Assert.Equal(DbEncryption.DbState.NeedsRecoveryKey, DbEncryption.State);
+        Assert.False(File.Exists(Path.Combine(newPc.Folder, "db.key")));
+    }
+
+    [Fact]
     public void TheRecoveryKeyIsTypableAndCatchesTypos()
     {
         using var pc = new Pc();

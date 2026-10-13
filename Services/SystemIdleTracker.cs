@@ -75,12 +75,22 @@ namespace FastApp.Services
         /// app, a package family name for Store apps, "chrome"/"msedge" for a
         /// browser tab, and so on.
         /// </summary>
+        // Asked for once and kept. This used to call RequestAsync() on every tracker
+        // tick -- 720 managers an hour. Each is a system object that Windows keeps
+        // notifying about every media session until .NET's garbage collector gets
+        // round to releasing it, and with a heap this small that is rare. The result,
+        // measured over full days: native memory up ~7 MB an hour, and CPU climbing
+        // from 1% to 10-24% of a core as thousands of abandoned managers each received
+        // every play/pause/position event, on Windows' own thread-pool threads where
+        // none of FastApp's timings could see it. Only the tracker thread calls this.
+        private static GlobalSystemMediaTransportControlsSessionManager _mediaManager;
+
         public static async Task<HashSet<string>> GetPlayingMediaSourcesAsync()
         {
             var playing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             try
             {
-                var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+                var manager = _mediaManager ??= await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
                 foreach (var session in manager.GetSessions())
                 {
                     try
@@ -97,7 +107,12 @@ namespace FastApp.Services
                     catch { /* a session disconnected mid-enumeration */ }
                 }
             }
-            catch { /* OS without the API, or the manager itself is unavailable */ }
+            catch
+            {
+                // OS without the API, or the manager itself is unavailable. Dropped so the
+                // next tick asks for a fresh one rather than reusing a dead one forever.
+                _mediaManager = null;
+            }
             return playing;
         }
 

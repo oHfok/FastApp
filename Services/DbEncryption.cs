@@ -78,6 +78,24 @@ namespace FastApp.Services
             }
         }
 
+        /// <summary>
+        /// Does the slow first-time work of opening the database -- everything a first
+        /// query would otherwise pay for on the UI thread -- and nothing else. Safe to
+        /// run concurrently with start-up: whoever needs the database first waits on
+        /// the same lock rather than doing the work twice.
+        /// </summary>
+        public static void WarmUp()
+        {
+            try
+            {
+                EnsureReady();
+                if (_state == DbState.NeedsRecoveryKey) return;   // nothing can be opened until the user answers
+                AppSettingsStore.Get("WarmUp");                   // a real query: context, model, connection, key
+                PerfLog.EarlyMark("warmup.database-ready");
+            }
+            catch { /* start-up carries on exactly as it would have without the head start */ }
+        }
+
         private static void Prepare()
         {
             string db = AppDbContext.GetDbPath();

@@ -94,6 +94,15 @@ namespace FastApp
 
             PerfLog.EarlyMark("main.single-instance-checked");
 
+            // The first database open (loading SQLite, deriving the key, building the EF
+            // model) took 4-22 seconds at Windows login, and it used to happen on the UI
+            // thread AFTER the 5-11 seconds WPF needs to create the app. They do not
+            // depend on each other, so the database now warms up on another thread while
+            // WPF starts; the first real query then finds everything already loaded.
+            // Only after the single-instance check: a second launch must never touch the
+            // database. If the UI gets there first it simply waits on the same lock.
+            System.Threading.Tasks.Task.Run(DbEncryption.WarmUp);
+
             // Owned by this (the only) instance: later launches set it to ask for
             // the window. Created before App so a launch racing ours still finds it.
             using var showWindowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowWindowEventName);

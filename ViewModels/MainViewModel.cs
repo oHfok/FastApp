@@ -2084,9 +2084,12 @@ namespace FastApp.ViewModels
 
             try
             {
-            while (await timer.WaitForNextTickAsync(_trackerCts.Token))
+            // The first pass runs at once instead of five seconds in: the open session,
+            // the away state and limit enforcement all begin when the tracker does.
+            while (firstTickPending || await timer.WaitForNextTickAsync(_trackerCts.Token))
             {
                 long perfTick = Services.PerfLog.Stamp();
+                bool immediatePass = firstTickPending;
                 if (firstTickPending) { firstTickPending = false; Services.PerfLog.Milestone("tracker.first-tick"); }
                 // A timed pause expires here rather than on a timer of its own:
                 // this loop already runs every five seconds, which is finer
@@ -2163,11 +2166,11 @@ namespace FastApp.ViewModels
                     exePathsKnown.Clear();
                 }
                 var exePathsFound = new List<KeyValuePair<string, string>>();
-                // Reading MainModule costs several milliseconds per process. The hourly
-                // refresh above forgets every name at once, and re-reading all ~380 in one
-                // tick stalled the tracker for 2.5 seconds, every hour, for as long as the
-                // app ran. A handful per tick spreads the same work over a couple of
-                // minutes; the names left over are simply still unknown next tick.
+                // The path comes from RunningApps.ImagePath, not Process.MainModule --
+                // see there for why MainModule stalled this loop for seconds at a time.
+                // Capped per tick as well, so the hourly refresh (which forgets every
+                // name at once) spreads over a couple of minutes instead of landing in
+                // one tick; the names left over are simply still unknown next tick.
                 int exePathReads = 0;
                 foreach (var proc in allProcesses)
                 {
@@ -2179,8 +2182,8 @@ namespace FastApp.ViewModels
                     exePathReads++;
 
                     string modulePath = null;
-                    try { modulePath = proc.MainModule?.FileName; }
-                    catch { /* protected, exiting, or a bitness the API refuses */ }
+                    try { modulePath = Services.RunningApps.ImagePath(proc.Id); }
+                    catch { /* exited between being listed and being asked */ }
 
                     // Marked known either way, so a process whose path can never
                     // be read is not retried on every one of the next 720 ticks.
@@ -2212,7 +2215,9 @@ namespace FastApp.ViewModels
 
                 bool isAfk = await Services.SystemIdleTracker.IsTrulyAfkAsync(nonMusicMediaPlaying);
                 Services.AfkBarService.SetVisible(isAfk);
-                TimeSpan tickDuration = TimeSpan.FromSeconds(5);
+                // No time has passed yet on the immediate first pass, so it credits none:
+                // it opens the session and records state, and the clock starts from here.
+                TimeSpan tickDuration = immediatePass ? TimeSpan.Zero : TimeSpan.FromSeconds(5);
                 DateTime now = DateTime.Now;
 
                 // AFK interval boundary: the false->true edge opens one, the

@@ -93,6 +93,7 @@ namespace FastApp.Services
         {
             try
             {
+                if (_enabled) { Milestone(name); return; }
                 lock (Early)
                 {
                     if (_processStart == default)
