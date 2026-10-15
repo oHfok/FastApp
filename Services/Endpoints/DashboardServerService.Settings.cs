@@ -45,6 +45,42 @@ namespace FastApp.Services
             await context.Response.WriteAsJsonAsync(ApiAccessState());
         });
 
+        // The phone app: the switch (applies at the next start, when the server binds),
+        // the addresses to type into the phone, and the code that hands it the token.
+        static object PhoneAccessState() => new
+        {
+            Enabled = AppSettingsStore.GetBool("PhoneAccess", false),
+            Listening = DashboardAccess.PhoneListening,
+            Addresses = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up)
+                .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+                .Where(a => DashboardAccess.OverTailscale(a.Address))
+                .Select(a => a.Address.ToString()).ToList()
+        };
+        app.MapGet("/api/settings/phone-access", async (HttpContext context) => await context.Response.WriteAsJsonAsync(PhoneAccessState()));
+        app.MapPost("/api/settings/phone-access", async (HttpContext context) =>
+        {
+            using var reader = new StreamReader(context.Request.Body);
+            AppSettingsStore.SetBool("PhoneAccess", (await reader.ReadToEndAsync()).Trim().ToLower() == "true");
+            await context.Response.WriteAsJsonAsync(PhoneAccessState());
+        });
+        app.MapPost("/api/settings/phone-access/code", async (HttpContext context) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            await context.Response.WriteAsJsonAsync(new { Code = DashboardAccess.NewPairingCode() });
+        });
+
+        // Device Battery's dashboard as data, for the phone app. That app writes the file
+        // (see its HistoryForm.Export.cs); FastApp only hands it over, so the phone needs
+        // one address and one token for both.
+        app.MapGet("/api/device-battery", async (HttpContext context) =>
+        {
+            string file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeviceBattery", "phone.json");
+            if (!File.Exists(file)) { context.Response.StatusCode = 404; await context.Response.WriteAsJsonAsync(new { error = "Device Battery has not written its data yet." }); return; }
+            context.Response.ContentType = "application/json; charset=utf-8";
+            await context.Response.SendFileAsync(file);
+        });
+
         // The recovery key, on request. A POST and off-limits to the API token: it is
         // the one value that opens every copy of the data.
         app.MapPost("/api/settings/recovery-key", async (HttpContext context) =>

@@ -729,6 +729,25 @@
     </div>
 
     <div class="dd-section">
+        <div class="dd-section-label">Phone App</div>
+        <p class="dd-hint">
+            Lets the FastApp phone app read your data while this PC is on, through
+            <strong>Tailscale</strong> only: nothing else on your Wi-Fi or the internet can reach it.
+            The phone can only read, like the token above. Takes effect the next time FastApp starts.
+        </p>
+        <label class="dd-toggle-label">
+            <input type="checkbox" id="phone-access-toggle" onchange="savePhoneAccess()">
+            <span>Let my phone read FastApp over Tailscale</span>
+        </label>
+        <div id="phone-access-details" style="display:none;">
+            <p class="dd-hint" style="margin-top:10px;" id="phone-access-state"></p>
+            <button class="btn" type="button" onclick="showPhoneCode()">Show pairing code</button>
+            <span id="phone-code" style="margin-left:12px;font-family:var(--font-mono);font-size:22px;letter-spacing:4px;"></span>
+            <span class="dd-hint" id="phone-code-hint" style="margin-left:8px;"></span>
+        </div>
+    </div>
+
+    <div class="dd-section">
         <div class="dd-section-label">Hidden Applications</div>
         <div class="settings-list" id="hidden-apps-list"></div>
     </div>

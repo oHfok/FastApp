@@ -11,9 +11,14 @@ public class DashboardAccessTests
 {
     private sealed record Result(int Status, bool Served, string Location, string SetCookie, string Body);
 
-    private static async Task<Result> Send(string method, string pathAndQuery, string cookie = null, string bearer = null)
+    // from/on: the caller's address and the address of this PC it reached (null = on this PC, as before the phone app).
+    private static async Task<Result> Send(string method, string pathAndQuery, string cookie = null, string bearer = null,
+        string from = null, string on = null, string body = null)
     {
         var context = new DefaultHttpContext { RequestServices = new ServiceCollection().BuildServiceProvider() };
+        if (from != null) context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(from);
+        if (on != null) context.Connection.LocalIpAddress = System.Net.IPAddress.Parse(on);
+        if (body != null) context.Request.Body = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(body));
         int q = pathAndQuery.IndexOf('?');
         context.Request.Method = method;
         context.Request.Path = q < 0 ? pathAndQuery : pathAndQuery[..q];
@@ -121,6 +126,65 @@ public class DashboardAccessTests
         }
         finally { DashboardAccess.DisableApiToken(); }
     }
+
+    [Fact]
+    public async Task ThePhoneGetsInOverTailscaleWithACodeAndCanOnlyRead()
+    {
+        const string phone = "100.101.102.103", tailscale = "100.64.0.7", lan = "192.168.1.20";
+        DashboardAccess.DisableApiToken();
+        try
+        {
+            // Switched off: nothing from outside this PC is answered, whatever it carries.
+            DashboardAccess.PhoneListening = false;
+            string token = DashboardAccess.EnableApiToken();
+            Assert.Equal(403, (await Send("GET", "/api/overview", bearer: token, from: phone, on: tailscale)).Status);
+
+            DashboardAccess.PhoneListening = true;
+            // Switched on: still nothing for the Wi-Fi or the internet, only for Tailscale.
+            Assert.Equal(403, (await Send("GET", "/api/overview", bearer: token, from: "192.168.1.50", on: lan)).Status);
+            Assert.Equal(403, (await Send("GET", "/api/overview", bearer: token, from: "8.8.8.8", on: "83.12.4.9")).Status);
+            Assert.Equal(403, (await Send("POST", "/pair", from: "192.168.1.50", on: lan, body: "000000")).Status);
+
+            // Pairing: the code on the PC's screen buys the token, once.
+            string code = DashboardAccess.NewPairingCode();
+            var paired = await Send("POST", "/pair", from: phone, on: tailscale, body: code);
+            Assert.Equal(200, paired.Status);
+            Assert.Contains(token, paired.Body);
+            Assert.Equal(401, (await Send("POST", "/pair", from: phone, on: tailscale, body: code)).Status);
+
+            // Five wrong guesses and the code is void, the right one included.
+            code = DashboardAccess.NewPairingCode();
+            string wrong = code == "111111" ? "222222" : "111111";
+            for (int i = 0; i < 5; i++) Assert.Equal(401, (await Send("POST", "/pair", from: phone, on: tailscale, body: wrong)).Status);
+            Assert.Equal(401, (await Send("POST", "/pair", from: phone, on: tailscale, body: code)).Status);
+
+            // With the token the phone reads, and that is all.
+            Assert.True((await Send("GET", "/api/timeline?date=2026-10-12", bearer: token, from: phone, on: tailscale)).Served);
+            Assert.True((await Send("GET", "/api/device-battery", bearer: token, from: phone, on: tailscale)).Served);
+            Assert.False((await Send("POST", "/api/hide", bearer: token, from: phone, on: tailscale)).Served);
+            Assert.False((await Send("GET", "/api/settings/phone-access", bearer: token, from: phone, on: tailscale)).Served);
+            Assert.False((await Send("GET", "/api/overview", from: phone, on: tailscale)).Served);
+
+            // The browser session is for this PC: neither the cookie nor a launch link works from outside.
+            Assert.False((await Send("GET", "/dashboard.html", cookie: DashboardAccess.SessionSecret, from: phone, on: tailscale)).Served);
+            Assert.False((await Send("POST", "/api/hide", cookie: DashboardAccess.SessionSecret, from: phone, on: tailscale)).Served);
+            var unlock = await Send("GET", PathOf(DashboardAccess.LaunchUrl()), from: phone, on: tailscale);
+            Assert.Equal(401, unlock.Status);
+            Assert.DoesNotContain(DashboardAccess.CookieName, unlock.SetCookie);
+        }
+        finally { DashboardAccess.PhoneListening = false; DashboardAccess.DisableApiToken(); }
+    }
+
+    [Theory]
+    [InlineData("100.64.0.1", true)]
+    [InlineData("100.127.255.254", true)]
+    [InlineData("::ffff:100.100.1.1", true)]
+    [InlineData("100.63.255.255", false)]
+    [InlineData("100.128.0.1", false)]
+    [InlineData("192.168.1.20", false)]
+    [InlineData("127.0.0.1", false)]
+    public void OnlyTailscaleAddressesCountAsTailscale(string address, bool expected) =>
+        Assert.Equal(expected, DashboardAccess.OverTailscale(System.Net.IPAddress.Parse(address)));
 
     [Theory]
     [InlineData("?app=Discord", "/dashboard.html?app=Discord")]

@@ -229,6 +229,40 @@ async function regenerateApiToken() {
     } catch (err) { console.error(err); }
 }
 
+function renderPhoneAccess(data) {
+    document.getElementById('phone-access-toggle').checked = !!data.enabled;
+    document.getElementById('phone-access-details').style.display = data.enabled ? 'block' : 'none';
+    const addresses = (data.addresses || []).join(' or ');
+    document.getElementById('phone-access-state').textContent =
+        !data.listening ? 'Restart FastApp to switch this on.'
+        : addresses ? `In the phone app, enter this PC's address: ${addresses}`
+        : 'Tailscale is not running on this PC. Install it and sign in on both this PC and the phone.';
+}
+
+async function loadPhoneAccess() {
+    try { renderPhoneAccess(await (await fetch('/api/settings/phone-access')).json()); }
+    catch (err) { console.error(err); }
+}
+
+async function savePhoneAccess() {
+    const enabled = document.getElementById('phone-access-toggle').checked;
+    try { renderPhoneAccess(await (await fetch('/api/settings/phone-access', { method: 'POST', body: String(enabled) })).json()); }
+    catch (err) { console.error(err); loadPhoneAccess(); }
+}
+
+async function showPhoneCode() {
+    try {
+        const { code } = await (await fetch('/api/settings/phone-access/code', { method: 'POST' })).json();
+        document.getElementById('phone-code').textContent = code;
+        document.getElementById('phone-code-hint').textContent = 'valid for 2 minutes';
+        setTimeout(() => {
+            if (document.getElementById('phone-code').textContent !== code) return;
+            document.getElementById('phone-code').textContent = '';
+            document.getElementById('phone-code-hint').textContent = '';
+        }, 120000);
+    } catch (err) { console.error(err); }
+}
+
 function toggleApiTokenVisible() {
     const field = document.getElementById('api-token-field');
     const showing = field.type === 'text';
@@ -409,6 +443,7 @@ Dashboard.tabs.settings = {
         loadPinSetting();
         loadDbStats();
         loadApiAccess();
+        loadPhoneAccess();
         loadAutoBackups();
     }
 };
