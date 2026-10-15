@@ -64,6 +64,15 @@ namespace FastApp
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
         };
 
+        // A slow fade on a small dot looks the same at 12 frames a second as at 60, but
+        // WPF redraws this whole screen-wide transparent window on every frame. At the
+        // default 60 the pulse alone cost 16% of a CPU core for as long as you were
+        // away -- all night, on 2026-10-14. Only the pulse is slowed; the show and hide
+        // fades are a fraction of a second and keep the full rate.
+        private const int PulseFramesPerSecond = 12;
+
+        static AfkBarWindow() => Timeline.SetDesiredFrameRate(Pulse, PulseFramesPerSecond);
+
         public void ShowBar()
         {
             PositionAtTop();
