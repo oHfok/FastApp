@@ -226,18 +226,12 @@ function initDelegatedOpeners() {
 
 // --- Escape closes whatever is layered on top --------------------------------
 // There were no keyboard handlers in the dashboard at all, so the only way out
-// of a drawer or the Wrapped story was finding its ✕ or clicking the backdrop.
+// of a drawer was finding its ✕ or clicking the backdrop.
 // Closes one layer per press, innermost first, so Escape never skips past
 // something the user was looking at.
 function initEscapeToClose() {
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
-
-        const wrapped = document.getElementById('wrapped-overlay');
-        if (wrapped && wrapped.style.display !== 'none') { closeWrappedStory(); return; }
-
-        const panel = document.getElementById('wrapped-panel');
-        if (panel && panel.style.display !== 'none') { panel.style.display = 'none'; return; }
 
         if (document.getElementById('cat-drawer').classList.contains('open')) { closeCategoryDetail(); return; }
         if (document.getElementById('dd-drawer').classList.contains('open')) { closeDrilldown(); return; }
@@ -490,10 +484,6 @@ async function boot() {
     // Independent of both polls -- this is what actually ages the glow
     // between them rather than it only ever snapping between two states.
     setInterval(updateStatusGlow, 1000);
-
-    loadWrappedAvailable();
-    initWrappedPanelOutsideClick();
-    initWrappedKeys();
 
     setInterval(pollCurrentView, POLL_INTERVAL_MS);
 

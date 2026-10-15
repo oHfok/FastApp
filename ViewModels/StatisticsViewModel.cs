@@ -84,20 +84,6 @@ namespace FastApp.ViewModels
         private readonly AppDbContext _dbContext;
         private readonly MainViewModel _mainVM;
 
-        // ==========================================
-        // FASTAPP WRAPPED PROPERTIES
-        // ==========================================
-        [ObservableProperty] private Visibility _wrappedVisibility = Visibility.Collapsed;
-        [ObservableProperty] private string _wrappedMonthName;
-        [ObservableProperty] private string _wrappedTopApp;
-        [ObservableProperty] private string _wrappedTopAppTime;
-        [ObservableProperty] private string _wrappedDistraction;
-        [ObservableProperty] private string _wrappedDistractionTime;
-        [ObservableProperty] private string _wrappedPeakDayDate;
-        [ObservableProperty] private string _wrappedPeakDayTime;
-        [ObservableProperty] private string _wrappedMacros;
-        [ObservableProperty] private string _wrappedTotalTime;
-
         // THE MASTER LIST: Bind the UI directly to this pure string list
         public List<string> AvailableCategories { get; } = new List<string>
         {
@@ -426,65 +412,6 @@ namespace FastApp.ViewModels
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to open web dashboard: {ex.Message}");
             }
-        }
-
-        [RelayCommand]
-        public void GenerateWrapped()
-        {
-            DateTime today = DateTime.Today;
-            DateTime startOfMonth = new DateTime(today.Year, today.Month, 1);
-            WrappedMonthName = today.ToString("MMMM").ToUpper() + " WRAPPED";
-
-            HashSet<string> hiddenAppNames;
-            Dictionary<string, string> categoryMap;
-            List<DailyUsageLog> monthLogs;
-            lock (_dbContext)
-            {
-                hiddenAppNames = _dbContext.HiddenApps.Select(h => h.AppName).ToHashSet();
-                categoryMap = _dbContext.AppCategories.ToDictionary(c => c.AppName, c => c.Category);
-                monthLogs = _dbContext.DailyLogs.AsNoTracking().Where(l => l.Date >= startOfMonth).ToList();
-            }
-
-            // 1. Total PC Time
-            long pcTicks = monthLogs.Where(l => l.AppName == "SYSTEM_PC").Sum(l => GetTicks(new[] { l }));
-            WrappedTotalTime = FormatTime(pcTicks);
-
-            // 2. Top App
-            var appGroups = monthLogs.Where(l => l.AppName != "SYSTEM_PC" && !hiddenAppNames.Contains(l.AppName))
-                .GroupBy(l => l.AppName)
-                .Select(g => new { AppName = g.Key, Ticks = GetTicks(g), Cat = categoryMap.GetValueOrDefault(g.Key, "Other") })
-                .OrderByDescending(x => x.Ticks).ToList();
-
-            var topApp = appGroups.FirstOrDefault();
-            WrappedTopApp = topApp != null ? topApp.AppName : "No Data";
-            WrappedTopAppTime = topApp != null ? FormatTime(topApp.Ticks) : "0h 00m";
-
-            // 3. Biggest Distraction (Filters specifically for fun/gaming)
-            var distractionCats = new[] { "Gaming", "Fun", "Browsing", "Media Production" };
-            var distraction = appGroups.FirstOrDefault(a => distractionCats.Contains(a.Cat));
-            WrappedDistraction = distraction != null ? distraction.AppName : "You were 100% productive!";
-            WrappedDistractionTime = distraction != null ? FormatTime(distraction.Ticks) : "-";
-
-            // 4. Peak Day
-            var peakDay = monthLogs.Where(l => l.AppName == "SYSTEM_PC")
-                .GroupBy(l => l.Date)
-                .Select(g => new { Date = g.Key, Ticks = GetTicks(g) })
-                .OrderByDescending(x => x.Ticks).FirstOrDefault();
-
-            WrappedPeakDayDate = peakDay != null ? peakDay.Date.ToString("MMMM dd") : "No Data";
-            WrappedPeakDayTime = peakDay != null ? FormatTime(peakDay.Ticks) : "0h 00m";
-
-            // 5. Total Macros Fired
-            WrappedMacros = (_mainVM?.ManagedApps?.Sum(m => m.HotkeyTriggerCount) ?? 0).ToString();
-
-            // Trigger Overlay
-            WrappedVisibility = Visibility.Visible;
-        }
-
-        [RelayCommand]
-        public void CloseWrapped()
-        {
-            WrappedVisibility = Visibility.Collapsed;
         }
 
         [RelayCommand]

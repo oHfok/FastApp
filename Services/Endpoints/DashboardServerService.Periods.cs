@@ -348,15 +348,6 @@ namespace FastApp.Services
             }
             catch (Exception ex) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = ex.Message }); }
         });
-
-        // ---- /api/wrapped/available and /api/wrapped?type=week|month|year --------
-        // A Spotify-Wrapped-style recap of the *current* week/month/year, always live
-        // (never a one-time reveal) — an in-progress period is compared to the same
-        // elapsed portion of the previous one, not its full total, so checking on a
-        // Tuesday doesn't read as a huge decline against a completed prior week.
-        // Deliberately no historical browsing here (no `start` param): Wrapped is a
-        // small, curated "here's what's ready" moment, not another way to page through
-        // old periods — that's what the Periods tab is for.
         }
     }
 }

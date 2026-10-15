@@ -268,7 +268,7 @@ function errorStateHtml(title, detail, retryFnName) {
 // --- Milestone badges (App Detail drawer) -----------------------------------
 // The tier ladder itself (names + hour thresholds) is owned by the backend and
 // arrives with /api/app-details — see Services/MilestoneTiers.cs. It used to be
-// duplicated here, which meant the drawer and Wrapped could silently disagree
+// duplicated here, which meant two views could silently disagree
 // about the same app if either copy was edited alone.
 //
 // Only the colors live here, because they're presentation. Fixed medal values
