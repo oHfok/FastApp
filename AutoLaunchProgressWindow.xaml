@@ -1,7 +1,7 @@
 ﻿<Window x:Class="FastApp.AutoLaunchProgressWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Auto-Launch" Width="440" SizeToContent="Height"
+        FontFamily="Segoe UI Variable Text, Segoe UI" Title="Auto-Launch" Width="440" SizeToContent="Height"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize" WindowStartupLocation="Manual">
@@ -52,7 +52,11 @@
                         <ColumnDefinition x:Name="FillColumn" Width="0*"/>
                         <ColumnDefinition x:Name="RestColumn" Width="1*"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" CornerRadius="2" Background="{StaticResource BrandBrass}"/>
+                    <Border Grid.Column="0" CornerRadius="2" Background="{StaticResource BrandBrass}">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="8" ShadowDepth="0" Opacity="0.8" Color="#FF7A1A"/>
+                        </Border.Effect>
+                    </Border>
                 </Grid>
             </Grid>
 

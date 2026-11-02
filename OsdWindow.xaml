@@ -1,7 +1,7 @@
 ﻿<Window x:Class="FastApp.OsdWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="OSD" SizeToContent="WidthAndHeight" MinWidth="230" MaxWidth="420"
+        FontFamily="Segoe UI Variable Text, Segoe UI" Title="OSD" SizeToContent="WidthAndHeight" MinWidth="230" MaxWidth="420"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize" WindowStartupLocation="Manual">
@@ -37,7 +37,11 @@
                 <TextBlock x:Name="MarkerText" Text="&#x25CF;"
                            FontSize="13" FontWeight="Bold"
                            Foreground="{StaticResource BrandBrass}"
-                           VerticalAlignment="Center" Margin="0,0,11,0"/>
+                           VerticalAlignment="Center" Margin="0,0,11,0">
+                    <TextBlock.Effect>
+                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Opacity="0.8" Color="#FF7A1A"/>
+                    </TextBlock.Effect>
+                </TextBlock>
 
                 <TextBlock x:Name="OsdText" Text="Valorant"
                            FontSize="16" Foreground="{StaticResource BrandText}"

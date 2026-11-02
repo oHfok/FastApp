@@ -1,8 +1,8 @@
 /* ---------------------------------------------------------------------------
    The desktop palette. Built on the same tokens as the dashboard (tokens.css)
    -- this file only positions things; every colour, size and radius comes from
-   there, so the two surfaces share one look: Inter, a white (or near-black)
-   surface, thin borders, rounded rectangles, one blue accent.
+   there, so the two surfaces share one look: neon on true black, hairline
+   borders, rounded rectangles, orange as the accent, glow where it means something.
 
    The window is frameless; its rounded corners come from DWM on the WPF side
    rather than from this file, because the transparency WPF would need to round
@@ -74,7 +74,8 @@ body {
 
 .palette {
     height: 100%;
-    background: var(--surface);
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 20px 22px 0 22px;
     display: flex;
@@ -90,14 +91,15 @@ body {
     width: 22px;
     height: 22px;
     flex-shrink: 0;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%233D5AFE'/%3E%3Cpath d='M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z' fill='white'/%3E%3C/svg%3E") center / contain no-repeat;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='3' y='3' width='94' height='94' rx='24' fill='%2307070B' stroke='%23FF7A1A' stroke-width='5'/%3E%3Cpath d='M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z' fill='%23FF7A1A'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+.chrome-dot { filter: drop-shadow(0 0 5px rgba(255, 122, 26, 0.55)); }
 .chrome-name { font-size: var(--fs-strong); font-weight: 650; letter-spacing: -0.01em; }
 .chrome-spacer { flex-grow: 1; }
 .chrome-sep { width: 1px; height: 16px; background: var(--border); }
 
 .status { display: flex; align-items: center; gap: 7px; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex-shrink: 0; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: var(--glow-good); flex-shrink: 0; }
 /* Paused is a state to notice, not an error: amber rather than rose, and the
    dot stops reading as "live". */
 .status-dot.paused { background: var(--warn); }
@@ -154,7 +156,7 @@ body {
     font-size: var(--fs-caption);
     font-weight: 500;
     color: var(--text-faint);
-    background: var(--surface);
+    background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 2px 8px;
@@ -183,13 +185,13 @@ body {
     padding: 7px 12px;
     cursor: pointer;
 }
-.row.active { background: var(--wash-accent); }
+.row.active { background: var(--select-bg); box-shadow: inset 0 0 0 1px var(--select-ring), var(--select-glow); }
 .row.active .row-name { color: var(--accent); font-weight: 600; }
 .row.active .row-figure { color: var(--accent); }
 
 /* Running, so the button focuses rather than starts: a ring and a corner dot,
    the same "online" convention chat apps use. */
-.avatar.live { box-shadow: 0 0 0 1.5px var(--good); }
+.avatar.live { box-shadow: 0 0 0 1.5px var(--good), var(--glow-good); }
 .avatar.live::after {
     content: "";
     position: absolute;
@@ -313,7 +315,7 @@ body {
 
 .detail {
     height: 100%;
-    background: var(--surface);
+    background: var(--bg);
     padding: 20px 22px;
     display: flex;
     flex-direction: column;
@@ -336,14 +338,14 @@ body {
 .icon-btn {
     width: 34px; height: 34px;
     border-radius: 8px;
-    background: var(--surface);
+    background: var(--surface-2);
     border: 1px solid var(--border-strong);
     color: var(--text-dim);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     cursor: pointer;
 }
-.icon-btn:hover { color: var(--text); background: var(--surface-2); }
+.icon-btn:hover { color: var(--text); background: var(--surface-3); }
 
 /* The detail view's counterpart to .row-run. Labelled rather than a bare
    glyph, because here there is room and no ambiguity about which row it
@@ -354,7 +356,7 @@ body {
     gap: 9px;
     border-radius: 8px;
     padding: 8px 14px;
-    background: var(--surface);
+    background: var(--surface-2);
     border: 1px solid var(--border-strong);
     color: var(--text-dim);
     cursor: pointer;
@@ -382,7 +384,7 @@ body {
 .detail-grid::-webkit-scrollbar { width: 0; }
 
 .card {
-    background: var(--surface-2);
+    background: var(--card-gradient);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 16px 18px;
@@ -395,7 +397,7 @@ body {
 .field-label { font-size: var(--fs-small); color: var(--text-faint); }
 
 .field {
-    background: var(--surface);
+    background: var(--surface-2);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm);
     padding: 9px 12px;
@@ -409,7 +411,7 @@ body {
 }
 .field::placeholder { color: var(--text-faint); }
 .field:hover { border-color: var(--text-faint); }
-.field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--wash-accent-strong); }
+.field:focus { border-color: var(--select-ring); box-shadow: 0 0 0 3px var(--wash-accent-strong), var(--select-glow); }
 
 .field-button { text-align: left; cursor: pointer; font-weight: 500; }
 .field-button.capturing {
@@ -447,10 +449,11 @@ body {
     height: 100%;
     border-radius: var(--radius-pill);
     background: var(--accent);
+    box-shadow: var(--glow-accent);
     width: 0%;
     transition: width 0.25s ease, background 0.25s ease;
 }
-.limit-progress-fill.over { background: var(--afk); }
+.limit-progress-fill.over { background: var(--afk); box-shadow: var(--glow-afk); }
 .limit-progress-caption { display: block; margin-top: 6px; font-size: var(--fs-caption); color: var(--text-faint); }
 .limit-progress-caption.over { color: var(--afk); }
 
@@ -482,11 +485,12 @@ body {
     transition: background 0.15s;
 }
 .toggle > span { width: 16px; height: 16px; border-radius: 50%; background: #FFFFFF; display: block; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.3); }
-.toggle[aria-checked="true"] { background: var(--accent-fill); justify-content: flex-end; }
+.toggle[aria-checked="true"] { background: var(--accent-fill); box-shadow: var(--glow-accent); justify-content: flex-end; }
+.toggle[aria-checked="true"] > span { background: var(--ink-on-fill); }
 .toggle:disabled { opacity: 0.5; cursor: default; }
 
 .btn {
-    background: var(--surface);
+    background: var(--surface-2);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm);
     padding: 9px 16px;
@@ -498,7 +502,7 @@ body {
     white-space: nowrap;
     transition: background 0.12s;
 }
-.btn:hover { background: var(--surface-2); }
+.btn:hover { background: var(--surface-3); border-color: var(--select-ring); }
 .btn-danger { color: var(--afk); background: none; border-color: transparent; }
 .btn-danger:hover { color: var(--afk); background: var(--wash-afk); }
 /* Armed by a first click, waiting on the second one that actually removes the
@@ -523,7 +527,7 @@ body {
 
 .manage {
     height: 100%;
-    background: var(--surface);
+    background: var(--bg);
     padding: 20px 22px;
     display: flex;
     flex-direction: column;
@@ -549,7 +553,7 @@ body {
 .m-list::-webkit-scrollbar { width: 0; }
 
 .m-row { border-radius: 10px; padding: 8px 12px; cursor: pointer; }
-.m-row.active { background: var(--wash-accent); }
+.m-row.active { background: var(--select-bg); box-shadow: inset 0 0 0 1px var(--select-ring), var(--select-glow); }
 .m-row.active .m-name { color: var(--accent); font-weight: 600; }
 
 .m-name { font-size: var(--fs-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -557,10 +561,10 @@ body {
 .m-figure { font-size: var(--fs-body); font-weight: 600; color: var(--text-dim); text-align: right; white-space: nowrap; }
 .m-row.active .m-figure { color: var(--accent); }
 
-.m-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin: 0 auto; }
+.m-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: var(--glow-accent); margin: 0 auto; }
 .m-dot.off { background: var(--surface-3); }
 
-.btn-primary { background: var(--accent-fill); color: var(--ink-on-fill); border-color: transparent; }
+.btn-primary { background: var(--accent-fill); color: var(--ink-on-fill); border-color: transparent; box-shadow: var(--glow-accent); }
 .btn-primary:hover { background: var(--accent-hover); color: var(--ink-on-fill); }
 
 /* ---------- Action type: a segmented control ---------- */
@@ -578,7 +582,7 @@ body {
     cursor: pointer;
     white-space: nowrap;
 }
-.pill[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.14), 0 0 0 1px var(--border); }
+.pill[aria-pressed="true"] { background: var(--select-bg); box-shadow: inset 0 0 0 1px var(--select-ring), var(--select-glow); color: var(--accent); font-weight: 600; }
 
 .stack { display: flex; flex-direction: column; gap: 7px; }
 
@@ -589,7 +593,7 @@ body {
 
 .settings {
     height: 100%;
-    background: var(--surface);
+    background: var(--bg);
     padding: 20px 22px;
     display: flex;
     flex-direction: column;
@@ -620,7 +624,7 @@ body {
 }
 .s-nav-item svg { flex-shrink: 0; }
 .s-nav-item:hover { background: var(--surface-2); color: var(--text); }
-.s-nav-item[aria-selected="true"] { background: var(--wash-accent); color: var(--accent); font-weight: 600; }
+.s-nav-item[aria-selected="true"] { background: var(--select-bg); box-shadow: inset 0 0 0 1px var(--select-ring), var(--select-glow); color: var(--accent); font-weight: 600; }
 .s-nav-item:focus-visible { outline-offset: -2px; border-radius: 10px; }
 
 .s-pane { display: flex; flex-direction: column; gap: 12px; }
@@ -630,7 +634,7 @@ body {
 
 /* One section, one concern. */
 .s-sec {
-    background: var(--surface-2);
+    background: var(--card-gradient);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 16px 18px;
@@ -704,7 +708,7 @@ body {
 .warn { font-size: var(--fs-caption); color: var(--afk); }
 
 select.field { appearance: none; cursor: pointer; flex-grow: 1; }
-select.field option { background: var(--surface); color: var(--text); }
+select.field option { background: var(--surface-2); color: var(--text); }
 
 
 /* ---------------------------------------------------------------------------
@@ -713,7 +717,7 @@ select.field option { background: var(--surface); color: var(--text); }
 
 .scanner {
     height: 100%;
-    background: var(--surface);
+    background: var(--bg);
     padding: 20px 22px;
     display: flex;
     flex-direction: column;
@@ -728,14 +732,14 @@ select.field option { background: var(--surface); color: var(--text); }
 .sc-list::-webkit-scrollbar { width: 0; }
 
 .sc-row { display: flex; align-items: center; gap: 12px; border-radius: 10px; padding: 8px 12px; cursor: pointer; }
-.sc-row.active { background: var(--wash-accent); }
+.sc-row.active { background: var(--select-bg); box-shadow: inset 0 0 0 1px var(--select-ring), var(--select-glow); }
 .sc-row.picked .sc-name { color: var(--accent); font-weight: 600; }
 
 .sc-tick {
     width: 20px; height: 20px;
     border-radius: 6px;
     border: 1.5px solid var(--border-strong);
-    background: var(--surface);
+    background: var(--surface-2);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
 }
@@ -760,7 +764,7 @@ select.field option { background: var(--surface); color: var(--text); }
 /* ---------- Extend time ---------- */
 .extend {
     height: 100%;
-    background: var(--surface);
+    background: var(--card-gradient);
     padding: 20px 22px;
     display: flex;
     flex-direction: column;
@@ -778,7 +782,7 @@ select.field option { background: var(--surface); color: var(--text); }
     flex: 1;
     padding: 9px 0;
     border-radius: var(--radius-sm);
-    background: var(--surface);
+    background: var(--surface-2);
     border: 1px solid var(--border-strong);
     color: var(--text-dim);
     font-size: var(--fs-body);
@@ -824,7 +828,7 @@ select.field option { background: var(--surface); color: var(--text); }
     font-size: var(--fs-caption);
     font-weight: 600;
     color: var(--text);
-    background: var(--surface);
+    background: var(--surface-2);
     border: 1px solid var(--border-strong);
     border-radius: 6px;
     padding: 4px 12px;
@@ -875,9 +879,9 @@ select.field option { background: var(--surface); color: var(--text); }
 .command-chip:hover svg { color: var(--text); }
 
 /* The command this window exists for, lifted onto a surface of its own. */
-.command-chip.lead { background: var(--surface); box-shadow: 0 0 0 1px var(--border-strong); font-weight: 600; }
+.command-chip.lead { background: var(--surface-2); box-shadow: 0 0 0 1px var(--border-strong); font-weight: 600; }
 .command-chip.lead svg { color: var(--accent); }
-.command-chip.lead:hover { background: var(--surface); box-shadow: 0 0 0 1px var(--text-faint); }
+.command-chip.lead:hover { background: var(--surface-2); box-shadow: 0 0 0 1px var(--text-faint); }
 
 /* Only ever on Resume: the strip carries a state (the clock is stopped) rather
    than colouring a button. The tint and the glyph carry it; the words stay

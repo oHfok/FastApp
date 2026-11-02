@@ -26,13 +26,13 @@ namespace FastApp
         private readonly bool _light;
         private Answer _answer = Answer.Closed;
 
-        private WM.Brush Bg => Hex(_light ? "#FFFFFF" : "#14171E");
-        private WM.Brush Field => Hex(_light ? "#F1F3F6" : "#1A1E27");
-        private WM.Brush Line => Hex(_light ? "#CDD3DC" : "#2F3542");
-        private WM.Brush Ink => Hex(_light ? "#101828" : "#EEF0F4");
-        private WM.Brush Dim => Hex(_light ? "#475467" : "#A8B0BE");
-        private WM.Brush Danger => Hex(_light ? "#D92D3A" : "#FF7A82");
-        private static WM.Brush Accent => Hex("#3D5AFE");
+        private WM.Brush Bg => Hex(_light ? "#FFFFFF" : "#000000");
+        private WM.Brush Field => Hex(_light ? "#F1F3F6" : "#14141D");
+        private WM.Brush Line => Hex(_light ? "#CDD3DC" : "#2A2A36");
+        private WM.Brush Ink => Hex(_light ? "#101828" : "#F4F6FF");
+        private WM.Brush Dim => Hex(_light ? "#475467" : "#A9ADC2");
+        private WM.Brush Danger => Hex(_light ? "#D92D3A" : "#FF3D71");
+        private static WM.Brush Accent => Hex("#FF7A1A");
 
         private RecoveryKeyWindow(bool light)
         {
@@ -271,7 +271,7 @@ namespace FastApp
                 Template = template,
                 Background = primary ? Accent : Field,
                 BorderBrush = primary ? Accent : Line,
-                Foreground = primary ? WM.Brushes.White : Ink,
+                Foreground = primary ? Hex("#1A0A00") : Ink,
                 FontWeight = FontWeights.SemiBold,
                 Cursor = System.Windows.Input.Cursors.Hand,
                 MinWidth = 84

@@ -1342,8 +1342,6 @@ const st = {
     whatsNewEmpty: document.getElementById('s-whatsnew-empty'),
     rollbackRow: document.getElementById('s-rollback-row'),
     rollbackEmpty: document.getElementById('s-rollback-empty'),
-    theme: document.getElementById('s-theme'),
-    themeHint: document.getElementById('s-theme-hint'),
     titles: document.getElementById('s-titles'),
     perf: document.getElementById('s-perf'),
     perfReport: document.getElementById('s-perf-report'),
@@ -1429,8 +1427,6 @@ function renderSettings(v) {
     st.rollbackStatus.textContent = v.rollbackStatus || '';
     st.rollback.textContent = v.rollbackBusy ? 'Working…' : 'Reinstall';
     st.rollback.disabled = !!v.rollbackBusy;
-
-    renderTheme(v.themePreference, v.systemIsLight);
 
     setToggle(st.titles, v.captureWindowTitles);
     st.titlesNote.textContent = titlesNote(v.captureWindowTitles);
@@ -1527,49 +1523,6 @@ function renderNotes(text) {
         st.whatsNew.appendChild(note);
     }
 }
-
-/// The host decides the theme, because the OS is no longer the only thing that
-/// can set it. Dark is stamped as explicitly as light: leaving the attribute
-/// off would hand the page back to prefers-color-scheme, which is exactly the
-/// answer someone choosing Dark on a light machine has said no to.
-function applyTheme(theme) {
-    const light = theme === 'light';
-    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
-    // Form controls, scrollbars and the caret are drawn by the browser from
-    // this rather than from our tokens.
-    document.documentElement.style.colorScheme = light ? 'light' : 'dark';
-}
-
-const THEME_HINTS = {
-    system: light => `Following Windows, which is set to ${light ? 'light' : 'dark'}.`,
-    dark: () => 'Always dark, whatever Windows is set to.',
-    light: () => 'Always light, whatever Windows is set to.'
-};
-
-/// Remembered rather than re-derived, because a click knows which preference
-/// was picked and nothing about Windows -- and "Following Windows, which is set
-/// to ..." has to keep telling the truth between the click and the host's reply.
-let windowsIsLight = false;
-
-function renderTheme(preference, systemLight) {
-    if (systemLight !== undefined) windowsIsLight = !!systemLight;
-
-    const chosen = THEME_HINTS[preference] ? preference : 'system';
-    for (const pill of st.theme.querySelectorAll('[data-theme-pref]')) {
-        pill.setAttribute('aria-pressed', pill.dataset.themePref === chosen ? 'true' : 'false');
-    }
-    st.themeHint.textContent = THEME_HINTS[chosen](windowsIsLight);
-}
-
-st.theme.addEventListener('click', event => {
-    const pill = event.target.closest('[data-theme-pref]');
-    if (!pill) return;
-
-    // Optimistic, like the toggles: the host answers with a settings push and
-    // a theme message, and both overwrite this.
-    renderTheme(pill.dataset.themePref);
-    settingText('theme', pill.dataset.themePref);
-});
 
 /* ---------------------------------------------------------------------------
    The parental PIN
@@ -2250,7 +2203,6 @@ if (bridge) {
             return;
         }
 
-        if (message.type === 'theme') { applyTheme(message.theme); return; }
 
         if (message.type === 'app') { renderDetail(message.app); return; }
 

@@ -1,11 +1,8 @@
 /* ==========================================================
    SETTINGS
-   1. Dashboard theme (instant, localStorage-only, no server call)
-   2. Hidden apps list + unhide
-   3. Database retention (default: Keep Forever) + save
+   1. Hidden apps list + unhide
+   2. Database retention (default: Keep Forever) + save
    ========================================================== */
-
-const DASHBOARD_THEME_KEY = 'fastapp-theme';
 
 function setSettingsTab(tab, btnEl) {
     document.querySelectorAll('#settings-tab-toggle button').forEach(b => b.classList.toggle('active', b === btnEl));
@@ -15,36 +12,6 @@ function setSettingsTab(tab, btnEl) {
     // Fetched on first view rather than on page load: it is a network call to
     // GitHub, and most visits to Settings are not about the changelog.
     if (tab === 'whatsnew') loadReleaseNotes();
-}
-
-function loadDashboardTheme() {
-    // No stored choice means Windows decides, which is the new default: the
-    // app used to be dark whatever the OS was set to, with no way out.
-    // Themes from earlier versions (terminal, glass, nova...) no longer exist
-    // and count as "follow Windows".
-    const stored = localStorage.getItem(DASHBOARD_THEME_KEY);
-    const current = stored === 'light' || stored === 'dark' ? stored : 'system';
-    updateThemePickerActiveState(current);
-}
-
-function setDashboardTheme(theme) {
-    // Following Windows is the absence of a stamp, so the media query in
-    // tokens.css gets to decide. Stamping "system" would just be a third
-    // theme that happens to look like one of the other two.
-    if (theme === 'system') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(DASHBOARD_THEME_KEY, theme);
-    updateThemePickerActiveState(theme);
-    // Chart.js canvases and the JS-computed heatmap fills only re-theme when
-    // re-rendered, not from the CSS change alone — refresh whatever's behind
-    // this drawer so it's already correct once Settings closes.
-    refreshActiveTab();
-}
-
-function updateThemePickerActiveState(theme) {
-    document.querySelectorAll('#theme-picker .theme-swatch').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.themeValue === theme);
-    });
 }
 
 // TIMELINE_COLOR_MODE_KEY / getTimelineColorMode() live in utils.js since
@@ -435,7 +402,6 @@ async function savePinSetting() {
 
 Dashboard.tabs.settings = {
     onEnter: () => {
-        loadDashboardTheme();
         loadTimelineColorMode();
         loadTimelineRangeMode();
         loadHiddenApps();

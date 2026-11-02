@@ -31,9 +31,9 @@ namespace FastApp
         private static Brush Violet => Light ? LightViolet : DarkViolet;
         private static Brush Rose => Light ? LightRose : DarkRose;
 
-        private static readonly Brush DarkAccent = Frozen("#7F97FF");
-        private static readonly Brush DarkViolet = Frozen("#BE9BFF");
-        private static readonly Brush DarkRose = Frozen("#FF7A82");
+        private static readonly Brush DarkAccent = Frozen("#FF7A1A");
+        private static readonly Brush DarkViolet = Frozen("#B36BFF");
+        private static readonly Brush DarkRose = Frozen("#FF3D71");
 
         private static readonly Brush LightAccent = Frozen("#3D5AFE");
         private static readonly Brush LightViolet = Frozen("#8B3FD9");

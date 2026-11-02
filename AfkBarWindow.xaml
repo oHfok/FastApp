@@ -35,10 +35,10 @@
         <Rectangle x:Name="Hairline" Height="2" Canvas.Top="0" Canvas.Left="0">
             <Rectangle.Fill>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                    <GradientStop Color="#00FF6B6B" Offset="0"/>
-                    <GradientStop Color="#CCFF6B6B" Offset="0.35"/>
-                    <GradientStop Color="#CCFF6B6B" Offset="0.65"/>
-                    <GradientStop Color="#00FF6B6B" Offset="1"/>
+                    <GradientStop Color="#00FF3D71" Offset="0"/>
+                    <GradientStop Color="#CCFF3D71" Offset="0.35"/>
+                    <GradientStop Color="#CCFF3D71" Offset="0.65"/>
+                    <GradientStop Color="#00FF3D71" Offset="1"/>
                 </LinearGradientBrush>
             </Rectangle.Fill>
         </Rectangle>
@@ -50,12 +50,12 @@
             </Border.RenderTransform>
             <Border.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#F02C1418" Offset="0"/>
-                    <GradientStop Color="#F00B0C12" Offset="1"/>
+                    <GradientStop Color="#F0160710" Offset="0"/>
+                    <GradientStop Color="#F007070B" Offset="1"/>
                 </LinearGradientBrush>
             </Border.Background>
             <Border.BorderBrush>
-                <SolidColorBrush Color="#59FF6B6B"/>
+                <SolidColorBrush Color="#73FF3D71"/>
             </Border.BorderBrush>
             <Border.Effect>
                 <DropShadowEffect BlurRadius="20" ShadowDepth="5" Direction="270"
@@ -64,14 +64,14 @@
 
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <Ellipse x:Name="MarkerDot" Width="7" Height="7" Margin="0,0,10,0"
-                         VerticalAlignment="Center" Fill="#FF6B6B">
+                         VerticalAlignment="Center" Fill="#FF3D71">
                     <Ellipse.Effect>
-                        <DropShadowEffect BlurRadius="7" ShadowDepth="0" Opacity="0.9" Color="#FF6B6B"/>
+                        <DropShadowEffect BlurRadius="7" ShadowDepth="0" Opacity="0.9" Color="#FF3D71"/>
                     </Ellipse.Effect>
                 </Ellipse>
                 <TextBlock Text="AFK DETECTED" VerticalAlignment="Center"
-                           FontFamily="Consolas" FontWeight="Bold" FontSize="11.5"
-                           Foreground="#F3F1EA"/>
+                           FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="Bold" FontSize="11.5"
+                           Foreground="#F4F6FF"/>
 
                 <!-- How long, not just that: the bar only ever appears once
                      you're already past the threshold, so "AFK DETECTED" alone
@@ -80,11 +80,11 @@
                      timer already polls every 250ms, so this is a second use
                      of a call already being made, not a new one. -->
                 <TextBlock Text=" · " VerticalAlignment="Center"
-                           FontFamily="Consolas" FontSize="11.5"
-                           Foreground="#6B6F80"/>
+                           FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="11.5"
+                           Foreground="#8C90A6"/>
                 <TextBlock x:Name="DurationText" Text="0m 00s" VerticalAlignment="Center"
-                           FontFamily="Consolas" FontSize="11.5"
-                           Foreground="#9C9FAE"/>
+                           FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="11.5"
+                           Foreground="#A9ADC2"/>
             </StackPanel>
         </Border>
     </Canvas>

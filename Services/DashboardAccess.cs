@@ -317,10 +317,9 @@ namespace FastApp.Services
         public const string LockedPage =
             "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
             "<meta name=\"robots\" content=\"noindex\"><title>FastApp is locked</title><style>" +
-            ":root{color-scheme:light dark;--bg:#F5F6F8;--card:#fff;--line:#E4E7EC;--text:#101828;--dim:#475467}" +
-            "@media(prefers-color-scheme:dark){:root{--bg:#0C0E13;--card:#14171E;--line:rgba(255,255,255,.08);--text:#EEF0F4;--dim:#A8B0BE}}" +
-            "body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--text);font:15px/1.5 'Segoe UI',system-ui,sans-serif}" +
-            "main{max-width:420px;margin:16px;padding:28px;background:var(--card);border:1px solid var(--line);border-radius:12px}" +
+            ":root{color-scheme:dark;--bg:#000;--card:#07070B;--line:rgba(255,255,255,.07);--text:#F4F6FF;--dim:#A9ADC2}" +
+            "body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--text);font:15px/1.5 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}" +
+            "main{max-width:420px;margin:16px;padding:28px;background:var(--card);border:1px solid var(--line);border-radius:14px}" +
             "h1{font-size:20px;margin:0 0 8px}p{margin:0 0 10px;color:var(--dim)}b{color:var(--text)}</style></head><body><main>" +
             "<h1>The dashboard is locked</h1>" +
             "<p>For your privacy, it only opens in a browser that FastApp itself started.</p>" +

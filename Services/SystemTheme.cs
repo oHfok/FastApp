@@ -123,28 +123,9 @@ namespace FastApp.Services
             : preference == AlwaysLight ? AlwaysLight
             : FollowSystem;
 
-        private static bool Resolve() =>
-            _preference == AlwaysLight ? true
-            : _preference == AlwaysDark ? false
-            : ReadIsLight();
-
-        private static bool ReadIsLight()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(PersonalizeKey);
-                // Absent means dark: the value is only written once someone has
-                // been to the personalisation settings, and Windows' own default
-                // for apps is dark when it is missing on the editions that omit
-                // it.
-                return key?.GetValue(AppsUseLightValue) is int v && v != 0;
-            }
-            catch
-            {
-                // A locked-down or roaming profile can refuse the read. Dark is
-                // what the app has always been, so it is the safe answer.
-                return false;
-            }
-        }
+        // shortcut: the app has one look (neon on black), so nothing is ever light.
+        // The preference plumbing stays until the light palettes are deleted from
+        // TrayMenuTheme, OsdWindow, AutoLaunchProgressWindow and RecoveryKeyWindow.
+        private static bool Resolve() => false;
     }
 }

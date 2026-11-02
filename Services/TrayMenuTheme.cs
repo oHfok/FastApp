@@ -33,29 +33,29 @@ namespace FastApp.Services
         // --surface, the menu surface
         private static Color Surface => Light
             ? Color.FromArgb(0xFF, 0xFF, 0xFF)
-            : Color.FromArgb(0x14, 0x17, 0x1E);
-        // --border: rgba(255,255,255,0.08) over that surface on dark
+            : Color.FromArgb(0x07, 0x07, 0x0B);
+        // Dim orange on dark: the neon edge of the menu
         private static Color Border => Light
             ? Color.FromArgb(0xE4, 0xE7, 0xEC)
-            : Color.FromArgb(0x27, 0x2A, 0x30);
+            : Color.FromArgb(0x3A, 0x1C, 0x08);
         // A shade softer than --border, for the dividers
         private static Color Divider => Light
             ? Color.FromArgb(0xEE, 0xF0, 0xF3)
-            : Color.FromArgb(0x22, 0x25, 0x2C);
+            : Color.FromArgb(0x1A, 0x1A, 0x22);
         // --text and --text-faint
         private static Color Text => Light
             ? Color.FromArgb(0x10, 0x18, 0x28)
-            : Color.FromArgb(0xEE, 0xF0, 0xF4);
+            : Color.FromArgb(0xF4, 0xF6, 0xFF);
         private static Color TextFaint => Light
             ? Color.FromArgb(0x66, 0x70, 0x85)
-            : Color.FromArgb(0x87, 0x91, 0xA3);
+            : Color.FromArgb(0x8C, 0x90, 0xA6);
         // --accent, and --wash-accent over the surface: focus, and only focus
         private static Color Accent => Light
             ? Color.FromArgb(0x3D, 0x5A, 0xFE)
-            : Color.FromArgb(0x7F, 0x97, 0xFF);
+            : Color.FromArgb(0xFF, 0x7A, 0x1A);
         private static Color AccentWash => Light
             ? Color.FromArgb(0xEC, 0xEF, 0xFF)
-            : Color.FromArgb(0x21, 0x26, 0x39);
+            : Color.FromArgb(0x1A, 0x0C, 0x03);
 
         private const int DwmwaWindowCornerPreference = 33;
         private const int DwmwcpRound = 2;
@@ -262,8 +262,11 @@ namespace FastApp.Services
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 using (var path = Pill(bounds))
                 using (var brush = new SolidBrush(AccentWash))
+                using (var ring = new Pen(Color.FromArgb(Accent.R * 55 / 100, Accent.G * 55 / 100, Accent.B * 55 / 100)))
                 {
                     e.Graphics.FillPath(brush, path);
+                    // The hovered row gets a orange rounded outline (~50% over the surface).
+                    e.Graphics.DrawPath(ring, path);
                 }
                 e.Graphics.SmoothingMode = previous;
             }

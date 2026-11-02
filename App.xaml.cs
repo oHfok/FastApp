@@ -42,7 +42,7 @@ namespace FastApp
         // Kept in step with --accent-fill in wwwroot/css/tokens.css. WPF-UI's
         // accent has to be applied in code, so this one value cannot live in the
         // dictionary with the others.
-        private const string BrandAccentHex = "#3D5AFE";
+        private const string BrandAccentHex = "#FF7A1A";
 
         private static System.Windows.Media.Color Brand(string hex) =>
             (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
@@ -142,8 +142,8 @@ namespace FastApp
             ApplicationAccentColorManager.Apply(
                 Brand(BrandAccentHex),   // systemAccent  -> SystemAccentBrush
                 Brand(BrandAccentHex),   // primaryAccent -> accent fill, matches .btn-brass
-                Brand("#7F97FF"),   // secondary     -> accent-coloured text on dark
-                Brand("#A9B8FF"));  // tertiary      -> quieter accent text
+                Brand("#FF7A1A"),   // secondary     -> accent-coloured text on dark
+                Brand("#FFA057"));  // tertiary      -> quieter accent text
 
             // 2. Create the host. It owns the tray icon, the keyboard hook, the
             //    view model and the palette; it is never shown itself.

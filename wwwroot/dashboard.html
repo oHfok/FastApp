@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FastApp Dashboard</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%233D5AFE'/%3E%3Cpath d='M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z' fill='white'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='3' y='3' width='94' height='94' rx='24' fill='%2307070B' stroke='%23FF7A1A' stroke-width='5'/%3E%3Cpath d='M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z' fill='%23FF7A1A'/%3E%3C/svg%3E">
 <!-- Fonts and Chart.js are served from vendor/, not a CDN. FastApp ships as a
      self-contained app and tracks usage privately; loading either from the
      network meant the dashboard's charts silently broke with no internet, that
@@ -17,17 +17,10 @@
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">
 <script>
-    // Set the theme before first paint so there's no flash of the default
-    // theme before the saved one applies. Deliberately inline and tiny —
-    // this has to run before the stylesheets above finish, not after.
+    // Restore the rail state before first paint so it does not jump.
+    // Deliberately inline and tiny — this has to run before the stylesheets
+    // above finish, not after.
     (function () {
-        var saved = localStorage.getItem('fastapp-theme');
-        // "system" is stored as a choice but applied as the absence of one:
-        // with no attribute the stylesheet's prefers-color-scheme rule decides,
-        // which is what following Windows means. Anything else a previous
-        // version stored (terminal, glass, nova, instrument) no longer exists
-        // and falls back to following Windows too.
-        if (saved === 'light' || saved === 'dark') document.documentElement.setAttribute('data-theme', saved);
         // Both states are stamped, because "no attribute" is a third thing:
         // it lets a narrow window collapse the rail on its own. A stored
         // preference outranks that; a failed read leaves it to the window.
@@ -50,8 +43,8 @@
     <nav class="rail" aria-label="Views">
         <div class="rail-brand">
         <svg class="tb-mark-logo" viewBox="0 0 100 100" width="28" height="28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <rect width="100" height="100" rx="24" fill="#3D5AFE"/>
-            <path d="M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z" fill="#FFFFFF"/>
+            <rect x="3" y="3" width="94" height="94" rx="24" fill="#07070B" stroke="#FF7A1A" stroke-width="5"/>
+            <path d="M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z" fill="#FF7A1A"/>
         </svg>
         <span class="rail-brand-name">FastApp</span>
     </div>
@@ -502,27 +495,6 @@
     </div>
 
     <div class="settings-tab-panel" data-tab="appearance">
-    <div class="dd-section">
-        <div class="dd-section-label">Appearance</div>
-        <p class="dd-hint">
-            Light or dark, or follow Windows. Applies instantly and is saved on this device only.
-        </p>
-        <div class="theme-picker" id="theme-picker">
-            <button class="theme-swatch" data-theme-value="system" onclick="setDashboardTheme('system')">
-                <span class="theme-swatch-dot" style="background:linear-gradient(135deg,#FFFFFF 50%,#14171E 50%);"></span>
-                Follow Windows
-            </button>
-            <button class="theme-swatch" data-theme-value="light" onclick="setDashboardTheme('light')">
-                <span class="theme-swatch-dot" style="background:#FFFFFF;"></span>
-                Light
-            </button>
-            <button class="theme-swatch" data-theme-value="dark" onclick="setDashboardTheme('dark')">
-                <span class="theme-swatch-dot" style="background:#14171E;"></span>
-                Dark
-            </button>
-        </div>
-    </div>
-
     <div class="dd-section">
         <div class="dd-section-label">Timeline Colors</div>
         <p class="dd-hint">

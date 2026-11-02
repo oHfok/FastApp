@@ -1,73 +1,69 @@
 ﻿<!--
-    FastApp brand palette.
+    FastApp brand palette: neon on true black.
 
-    These are the same values the web dashboard and the palette use
-    (wwwroot/css/tokens.css, the dark block) so every surface of the product
-    reads as one thing. Key names such as BrandBrass are legacy: the accent used
-    to be brass and is now the dashboard's blue, but renaming the keys would
+    The same values as wwwroot/css/tokens.css, so every surface of the product
+    reads as one thing. Key names such as BrandBrass are legacy: the accent has
+    been brass, then blue, and is now neon orange, but renaming the keys would
     touch every window for no visible change.
 
-    Deliberately NOT a full re-skin. The window chrome stays WPF-UI/Fluent with
-    its Mica backdrop, because a native app that looks native is a feature.
-    What is shared is identity: the accent, the text ramp and the data colours.
+    There is no light variant. The overlays are #000-adjacent near-blacks so
+    OLED pixels stay off, and anything that carries meaning glows in its own
+    colour (the windows add that with DropShadowEffect).
 
     Accent brushes (buttons with Appearance="Primary", etc.) are not set here.
     They come from WPF-UI's own accent system, which is driven in App.xaml.cs
-    via ApplicationAccentColorManager so the library can derive its own
-    light/dark variants from the one brass value.
+    via ApplicationAccentColorManager from the one orange value.
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Accent: the one blue, as text/marker on a dark surface (the accent token).
-         The vivid fill, #3D5AFE, is set in App.xaml.cs. -->
-    <Color x:Key="BrandBrassColor">#7F97FF</Color>
+    <!-- Accent: neon orange, for selection, focus, links and charging. -->
+    <Color x:Key="BrandBrassColor">#FF7A1A</Color>
     <SolidColorBrush x:Key="BrandBrass" Color="{StaticResource BrandBrassColor}"/>
-    <SolidColorBrush x:Key="BrandBrassDim" Color="#3D4FB3"/>
+    <SolidColorBrush x:Key="BrandBrassDim" Color="#7A3A0A"/>
 
-    <!-- Secondary accent, used where something must read as distinct from a
-         plain tracked app — the "action" apps that fire a macro (the music violet). -->
-    <SolidColorBrush x:Key="BrandAction" Color="#BE9BFF"/>
+    <!-- Second accent (violet): the "action" apps that fire a macro, and the
+         music colour. -->
+    <SolidColorBrush x:Key="BrandAction" Color="#B36BFF"/>
 
-    <!-- Text ramp, matching the dashboard's text, text-dim and text-faint tokens.
-         The old greys (#888888, #999999, #CCCCCC, #555555, #444) were five
-         unrelated values doing three jobs. -->
-    <SolidColorBrush x:Key="BrandText" Color="#EEF0F4"/>
-    <SolidColorBrush x:Key="BrandTextDim" Color="#A8B0BE"/>
-    <SolidColorBrush x:Key="BrandTextFaint" Color="#8791A3"/>
+    <!-- Text ramp, matching the dashboard's text, text-dim and text-faint tokens. -->
+    <SolidColorBrush x:Key="BrandText" Color="#F4F6FF"/>
+    <SolidColorBrush x:Key="BrandTextDim" Color="#A9ADC2"/>
+    <SolidColorBrush x:Key="BrandTextFaint" Color="#8C90A6"/>
 
-    <!-- Floating popups (the hotkey OSD and the auto-launch progress window).
-         These sit over full-screen games, so they are opaque enough to read
-         against anything and keep a slightly stronger border than the
-         dashboard's panels use inside a page. The bg token at 90% opacity. -->
-    <SolidColorBrush x:Key="BrandOverlayBackground" Color="#E614171E"/>
-    <SolidColorBrush x:Key="BrandOverlayBorder" Color="#2EFFFFFF"/>
-    <SolidColorBrush x:Key="BrandOverlayTrack" Color="#22FFFFFF"/>
+    <!-- Floating popups (the hotkey OSD, the auto-launch progress window): the
+         dashboard's card, a near-black gradient from top to bottom at 95%
+         opacity so they read against anything, with a hairline border. -->
+    <LinearGradientBrush x:Key="BrandOverlayBackground" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#F207070B" Offset="0"/>
+        <GradientStop Color="#F20C0C12" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="BrandOverlayBorder" Color="#26FFFFFF"/>
+    <SolidColorBrush x:Key="BrandOverlayTrack" Color="#1D1D28"/>
 
-    <!-- Outcome colours, matching —teal and —rose in wwwroot/css/tokens.css:
-         teal for something that is up and running, rose for something that
-         failed. Used by the auto-launch progress list. -->
-    <SolidColorBrush x:Key="BrandTeal" Color="#34D6C2"/>
-    <SolidColorBrush x:Key="BrandRose" Color="#FF7A82"/>
+    <!-- Outcome colours: neon green for something that is up and running, hot
+         pink-red for something that failed or is critical. -->
+    <SolidColorBrush x:Key="BrandTeal" Color="#2BFF95"/>
+    <SolidColorBrush x:Key="BrandRose" Color="#FF3D71"/>
 
     <!-- Subtle raised chip inside a card (the hotkey pill). -->
-    <SolidColorBrush x:Key="BrandChipBackground" Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="BrandChipBackground" Color="#14141D"/>
 
     <!--
-        Ink for anything sitting ON an accent fill: white on the dashboard's
-        #3D5AFE fill (5.1:1), as .btn-brass does there.
+        Ink for anything sitting ON an accent fill: near-black on the orange, as
+        .btn-brass does on the dashboard.
 
         Overriding the library's keys rather than restyling each button, so
         every accent surface (buttons, selection highlights, toggles) gets
         the right ink without the control templates being touched.
     -->
-    <Color x:Key="TextOnAccentFillColorPrimary">#FFFFFF</Color>
-    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#FFFFFF"/>
-    <Color x:Key="TextOnAccentFillColorSecondary">#B3FFFFFF</Color>
-    <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#B3FFFFFF"/>
-    <Color x:Key="TextOnAccentFillColorSelectedText">#FFFFFF</Color>
-    <SolidColorBrush x:Key="TextOnAccentFillColorSelectedTextBrush" Color="#FFFFFF"/>
-    <Color x:Key="TextOnAccentFillColorDisabled">#66FFFFFF</Color>
-    <SolidColorBrush x:Key="TextOnAccentFillColorDisabledBrush" Color="#66FFFFFF"/>
+    <Color x:Key="TextOnAccentFillColorPrimary">#1A0A00</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#1A0A00"/>
+    <Color x:Key="TextOnAccentFillColorSecondary">#B31A0A00</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#B31A0A00"/>
+    <Color x:Key="TextOnAccentFillColorSelectedText">#1A0A00</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorSelectedTextBrush" Color="#1A0A00"/>
+    <Color x:Key="TextOnAccentFillColorDisabled">#661A0A00</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorDisabledBrush" Color="#661A0A00"/>
 
 </ResourceDictionary>

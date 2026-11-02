@@ -2,76 +2,104 @@
    FastApp design tokens -- the single source of truth.
 
    Read by both halves of the product: the web dashboard (through base.css) and
-   the desktop palette (palette.css). Colours, type ramp, radii and elevation
-   live here and nowhere else, so the two surfaces cannot drift apart.
+   the desktop palette (palette.css). The desktop's hand-drawn surfaces (the tray
+   menu, the OSD, the progress window, the AFK bar) transcribe these values in
+   C#; keep them in step.
 
-   Clean and quiet: a cool grey canvas, white surfaces on thin borders, Inter,
-   and one blue accent. Colour is spent on data -- focus is blue, AFK is rose,
-   music is violet -- never on chrome. Light and dark are both designed. With no
-   stored choice the page follows Windows; the palette is told which to use by
-   its host, which stamps data-theme.
+   One look everywhere: neon on true black, built for OLED screens. Windows are
+   #000 so the pixels stay off; cards are near-black with a faint top-to-bottom
+   gradient; colour is neon and carries meaning -- orange is focus and selection,
+   green is healthy, amber is a warning, hot pink is AFK or critical, violet is
+   music and the second accent. Anything that carries meaning also glows, in its
+   own colour. There is no light theme.
 
    Anything that belongs to the design rather than to one surface goes in this
    file. Anything that styles a particular component does not.
    --------------------------------------------------------------------------- */
 
 :root {
-    color-scheme: light;
+    color-scheme: dark;
 
     /* --- Surfaces ---------------------------------------------------- */
-    --bg: #F5F6F8;              /* the canvas behind everything */
-    --surface: #FFFFFF;         /* cards, drawers, popovers */
-    --surface-2: #F1F3F6;       /* inset: tracks, inputs, hovered rows */
-    --surface-3: #E7EAEF;       /* pressed / stronger inset */
-    --border: #E4E7EC;
-    --border-strong: #CDD3DC;
+    --bg: #000000;              /* the canvas: pure black, OLED pixels off */
+    --surface: #07070B;         /* cards, drawers, popovers (top of the gradient) */
+    --surface-end: #0C0C12;     /* ...and the bottom of it */
+    --surface-2: #14141D;       /* raised: hovered rows, inputs, tracks */
+    --surface-3: #1D1D28;       /* pressed, and empty bars and rings */
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --card-gradient: linear-gradient(180deg, var(--surface) 0%, var(--surface-end) 100%);
 
     /* --- Text -------------------------------------------------------- */
-    --text: #101828;
-    --text-dim: #475467;
-    --text-faint: #667085;
+    --text: #F4F6FF;
+    --text-dim: #A9ADC2;
+    --text-faint: #8C90A6;
 
-    /* --- Accent: focus ------------------------------------------------
-       --accent is the one you READ (links, values, active states);
-       --accent-fill is the one you SIT ON (primary buttons), always
-       under white ink. They differ only in dark mode. */
-    --accent: #3D5AFE;
-    --accent-fill: #3D5AFE;
-    --accent-hover: #2F49E0;
-    --ink-on-fill: #FFFFFF;
-    --wash-accent: rgba(61, 90, 254, 0.08);
-    --wash-accent-strong: rgba(61, 90, 254, 0.14);
+    /* --- Accent: orange --------------------------------------------------
+       --accent is the one you READ (links, values, selection, focus);
+       --accent-fill is the one you SIT ON (primary buttons), under the dark
+       ink in --ink-on-fill. --neon-2 is the second accent: violet, used in
+       gradient borders. */
+    --accent: #FF7A1A;
+    --accent-fill: #FF7A1A;
+    --accent-hover: #FFA057;
+    --ink-on-fill: #1A0A00;
+    --neon-2: #B36BFF;
+    --wash-accent: rgba(255, 122, 26, 0.09);
+    --wash-accent-strong: rgba(255, 122, 26, 0.16);
 
-    /* --- Data colours -------------------------------------------------
-       Each reads as text on both the canvas and a card. */
+    /* --- Data colours ------------------------------------------------- */
     --focus: var(--accent);
-    --afk: #D92D3A;
-    --music: #8B3FD9;
-    /* Music on the focus dial only: vivid amber, because violet disappeared against
-       the blue focus arc and the rose AFK arc it is drawn over. Same in both themes. */
-    --music-arc: #F5A524;
-    --good: #0A7F72;
-    --warn: #B45309;
-    --wash-afk: rgba(217, 45, 58, 0.08);
-    --wash-music: rgba(139, 63, 217, 0.09);
-    --wash-good: rgba(10, 127, 114, 0.10);
-    --wash-warn: rgba(180, 83, 9, 0.10);
+    --afk: #FF3D71;
+    --bad: var(--afk);
+    --music: #B36BFF;
+    /* Music on the dial uses its own violet, which stays clear of the orange
+       focus arc and the pink AFK arc it is drawn over. */
+    --music-arc: var(--music);
+    --good: #2BFF95;
+    --warn: #FFD43B;
+    --wash-afk: rgba(255, 61, 113, 0.09);
+    --wash-music: rgba(179, 107, 255, 0.10);
+    --wash-good: rgba(43, 255, 149, 0.08);
+    --wash-warn: rgba(255, 212, 59, 0.09);
 
-    /* --- Elevation --------------------------------------------------- */
-    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
-    --shadow-md: 0 6px 20px -4px rgba(16, 24, 40, 0.10), 0 2px 6px rgba(16, 24, 40, 0.05);
-    --shadow-lg: 0 24px 56px -12px rgba(16, 24, 40, 0.22);
-    --scrim: rgba(16, 24, 40, 0.42);
+    /* --- Glow ----------------------------------------------------------
+       box-shadows in the element's own colour: bars, dots, ring arcs. Large
+       numbers take a soft text-shadow instead. */
+    --glow-accent: 0 0 10px rgba(255, 122, 26, 0.55);
+    --glow-good: 0 0 10px rgba(43, 255, 149, 0.50);
+    --glow-afk: 0 0 10px rgba(255, 61, 113, 0.55);
+    --glow-music: 0 0 10px rgba(179, 107, 255, 0.55);
+    --glow-warn: 0 0 10px rgba(255, 212, 59, 0.50);
+    --glow-text: 0 0 18px rgba(255, 122, 26, 0.35);
+    /* Neon selection: orange tint, orange outline, soft outer glow. */
+    --select-bg: rgba(255, 122, 26, 0.10);
+    --select-ring: rgba(255, 122, 26, 0.50);
+    --select-glow: 0 0 14px rgba(255, 122, 26, 0.22);
+    /* The hairline on the hero and top cards: orange fading to violet, then to
+       the plain line colour. */
+    --hairline-gradient: linear-gradient(135deg, rgba(255, 122, 26, 0.7), rgba(179, 107, 255, 0.5) 45%, rgba(255, 255, 255, 0.07) 80%);
+
+    /* --- Elevation ---------------------------------------------------- */
+    --shadow-sm: none;
+    --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.8);
+    --shadow-lg: 0 28px 64px -12px rgba(0, 0, 0, 0.9);
+    --scrim: rgba(0, 0, 0, 0.72);
+
+    /* --- Motion -------------------------------------------------------- */
+    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
     /* --- Charts (read at render time by getChartTheme in utils.js) ---- */
-    --chart-grid: rgba(16, 24, 40, 0.07);
-    --chart-tooltip-bg: rgba(16, 24, 40, 0.95);
-    --chart-tooltip-title: #A9B8FF;
-    --chart-tooltip-text: #F2F4F7;
+    --chart-grid: rgba(255, 255, 255, 0.07);
+    --chart-tooltip-bg: rgba(12, 12, 18, 0.97);
+    --chart-tooltip-title: #FF7A1A;
+    --chart-tooltip-text: #F4F6FF;
 
-    /* --- Type --------------------------------------------------------- */
-    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --font-display: var(--font-body);
+    /* --- Type ----------------------------------------------------------
+       Segoe UI Variable on Windows (the Display cut for big numbers, the Text
+       cut for body); Inter is the fallback for the phone and anything older. */
+    --font-body: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-display: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
 
     --fs-micro: 11px;     /* eyebrows, table headers */
@@ -80,14 +108,15 @@
     --fs-body: 14px;      /* default */
     --fs-strong: 15px;    /* row titles, emphasised values */
     --fs-stat: 18px;      /* compact numeric readouts */
-    --fs-title: 20px;     /* drawer and panel titles */
+    --fs-title: 21px;     /* drawer and panel titles */
     --fs-view: 24px;      /* page headings */
     --fs-display: 30px;   /* stat-card values */
     --fs-hero: 48px;      /* the hero figure */
 
     /* --- Shape ------------------------------------------------------- */
-    --radius: 12px;       /* cards */
-    --radius-sm: 8px;     /* controls, rows, inner surfaces */
+    --radius: 14px;       /* cards */
+    --radius-sm: 10px;    /* controls, rows, chips, inner surfaces */
+    --radius-bar: 4px;    /* thin bars */
     --radius-pill: 999px;
 
     /* --- Legacy names ------------------------------------------------
@@ -117,89 +146,5 @@
     --wash-rose-soft: var(--wash-afk);
     --lift: var(--surface-2);
     --lift-strong: var(--surface-3);
-    --shadow-soft: rgba(16, 24, 40, 0.08);
-}
-
-/* Dark. Declared twice -- for an explicit choice, and for no choice on a
-   machine set to dark -- from one block of values so the two cannot drift. */
-:root[data-theme="dark"] {
-    color-scheme: dark;
-    --bg: #0C0E13;
-    --surface: #14171E;
-    --surface-2: #1A1E27;
-    --surface-3: #232834;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.17);
-
-    --text: #EEF0F4;
-    --text-dim: #A8B0BE;
-    --text-faint: #8791A3;
-
-    --accent: #7F97FF;
-    --accent-fill: #3D5AFE;
-    --accent-hover: #5974FF;
-    --wash-accent: rgba(127, 151, 255, 0.12);
-    --wash-accent-strong: rgba(127, 151, 255, 0.20);
-
-    --afk: #FF7A82;
-    --music: #BE9BFF;
-    --good: #34D6C2;
-    --warn: #FBBF24;
-    --wash-afk: rgba(255, 122, 130, 0.12);
-    --wash-music: rgba(190, 155, 255, 0.13);
-    --wash-good: rgba(52, 214, 194, 0.13);
-    --wash-warn: rgba(251, 191, 36, 0.13);
-
-    --shadow-sm: none;
-    --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.55);
-    --shadow-lg: 0 28px 64px -12px rgba(0, 0, 0, 0.7);
-    --scrim: rgba(3, 4, 7, 0.62);
-
-    --chart-grid: rgba(255, 255, 255, 0.07);
-    --chart-tooltip-bg: rgba(31, 36, 48, 0.96);
-    --chart-tooltip-title: #A9B8FF;
-    --chart-tooltip-text: #EEF0F4;
-    --shadow-soft: rgba(0, 0, 0, 0.35);
-}
-
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme]) {
-        color-scheme: dark;
-        --bg: #0C0E13;
-        --surface: #14171E;
-        --surface-2: #1A1E27;
-        --surface-3: #232834;
-        --border: rgba(255, 255, 255, 0.08);
-        --border-strong: rgba(255, 255, 255, 0.17);
-
-        --text: #EEF0F4;
-        --text-dim: #A8B0BE;
-        --text-faint: #8791A3;
-
-        --accent: #7F97FF;
-        --accent-fill: #3D5AFE;
-        --accent-hover: #5974FF;
-        --wash-accent: rgba(127, 151, 255, 0.12);
-        --wash-accent-strong: rgba(127, 151, 255, 0.20);
-
-        --afk: #FF7A82;
-        --music: #BE9BFF;
-        --good: #34D6C2;
-        --warn: #FBBF24;
-        --wash-afk: rgba(255, 122, 130, 0.12);
-        --wash-music: rgba(190, 155, 255, 0.13);
-        --wash-good: rgba(52, 214, 194, 0.13);
-        --wash-warn: rgba(251, 191, 36, 0.13);
-
-        --shadow-sm: none;
-        --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.55);
-        --shadow-lg: 0 28px 64px -12px rgba(0, 0, 0, 0.7);
-        --scrim: rgba(3, 4, 7, 0.62);
-
-        --chart-grid: rgba(255, 255, 255, 0.07);
-        --chart-tooltip-bg: rgba(31, 36, 48, 0.96);
-        --chart-tooltip-title: #A9B8FF;
-        --chart-tooltip-text: #EEF0F4;
-        --shadow-soft: rgba(0, 0, 0, 0.35);
-    }
+    --shadow-soft: rgba(0, 0, 0, 0.6);
 }

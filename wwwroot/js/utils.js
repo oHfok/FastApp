@@ -498,7 +498,7 @@ function hideTooltip() {
 function themeAccentRgb() {
     const hex = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     const parts = hex.replace('#', '').match(/.{1,2}/g);
-    if (!parts || parts.length < 3) return '61, 90, 254'; // fallback: the default accent
+    if (!parts || parts.length < 3) return '255, 122, 26'; // fallback: the default accent
     return parts.slice(0, 3).map(h => parseInt(h, 16)).join(', ');
 }
 function themeAccentAlpha(alpha) {
@@ -995,13 +995,13 @@ function getChartTheme() {
         violet: v('--music'),
         rose: v('--afk'),
         pointBorder: v('--bg'),
-        fontBody: v('--font-body') || "'Inter', sans-serif",
+        fontBody: v('--font-body') || "'Segoe UI Variable Text', 'Segoe UI', 'Inter', sans-serif",
         fontMono: v('--font-mono') || "'JetBrains Mono', monospace"
     };
 }
 if (window.Chart) {
     Chart.defaults.color = getChartTheme().tick;
-    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.family = getChartTheme().fontBody;
 }
 
 // --- Shared cross-tab state --------------------------------------------------

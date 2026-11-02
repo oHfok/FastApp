@@ -74,7 +74,12 @@ function switchView(viewId, opts) {
     });
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
     const target = document.getElementById('view-' + viewId);
-    if (target) target.classList.add('active');
+    if (target) {
+        target.classList.add('active');
+        // Lets bars and columns grow in, once, while the view is arriving.
+        target.classList.add('entering');
+        setTimeout(() => target.classList.remove('entering'), 700);
+    }
     closeSettings();
     currentViewId = viewId;
 

@@ -262,9 +262,7 @@ namespace FastApp
         /// </summary>
         private void ApplyWindowTheme()
         {
-            var ground = Services.SystemTheme.IsLight
-                ? System.Windows.Media.Color.FromRgb(0xFF, 0xFF, 0xFF)   // --surface, light
-                : System.Windows.Media.Color.FromRgb(0x14, 0x17, 0x1E);  // --surface, dark
+            var ground = System.Windows.Media.Color.FromRgb(0x00, 0x00, 0x00);  // --bg: true black, OLED pixels off
 
             Background = new System.Windows.Media.SolidColorBrush(ground);
 
