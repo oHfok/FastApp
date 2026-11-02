@@ -247,9 +247,107 @@ namespace FastApp
 
         private const int DwmwaWindowCornerPreference = 33;
         private const int DwmwcpRound = 2;
+        private const int DwmwaBorderColor = 34;
+        private const int DwmwaColorNone = unchecked((int)0xFFFFFFFE);
 
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        // ------------------------------------------------------------------
+        // Fading the whole window
+        // ------------------------------------------------------------------
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hwnd, int index);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern int SetWindowLong(IntPtr hwnd, int index, int value);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint colorKey, byte alpha, uint flags);
+
+        private const int GwlExStyle = -20;
+        private const int WsExLayered = 0x80000;
+        private const uint LwaAlpha = 0x2;
+
+        private const int FadeInMs = 160;
+        private const int FadeOutMs = 120;
+
+        private double _alpha = 1;
+        private bool _closing;
+        private bool _fadeUnsupported;
+        private EventHandler _fadeTick;
+
+        private bool CanFade => SystemParameters.ClientAreaAnimation && !_fadeUnsupported;
+
+        /// <summary>
+        /// The whole window's opacity, frame and shadow included, which nothing
+        /// inside the page can reach.
+        ///
+        /// Constant alpha on a layered window (SetLayeredWindowAttributes), NOT
+        /// WPF's Opacity or AllowsTransparency: those put the window on the
+        /// per-pixel UpdateLayeredWindow path, where WebView2 draws nothing. The
+        /// layered style is only on while a fade runs; at full opacity it is
+        /// taken off again, so the window spends its life on the ordinary path.
+        /// </summary>
+        private void SetAlpha(double alpha)
+        {
+            IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero) return;
+
+            int ex = GetWindowLong(hwnd, GwlExStyle);
+            if (alpha >= 1)
+            {
+                if ((ex & WsExLayered) != 0) SetWindowLong(hwnd, GwlExStyle, ex & ~WsExLayered);
+                _alpha = 1;
+                return;
+            }
+
+            if ((ex & WsExLayered) == 0) SetWindowLong(hwnd, GwlExStyle, ex | WsExLayered);
+            if (!SetLayeredWindowAttributes(hwnd, 0, (byte)Math.Round(Math.Max(0, alpha) * 255), LwaAlpha))
+            {
+                // Refused: say so once and stop trying, so a fade-out can never
+                // turn into a hide that is merely late.
+                _fadeUnsupported = true;
+                StopFade();
+                SetWindowLong(hwnd, GwlExStyle, ex & ~WsExLayered);
+                _alpha = 1;
+                try
+                {
+                    File.AppendAllText(LogPath,
+                        $"[{DateTime.Now:HH:mm:ss}] window fade unavailable (error {System.Runtime.InteropServices.Marshal.GetLastWin32Error()}){Environment.NewLine}");
+                }
+                catch { }
+                return;
+            }
+            _alpha = alpha;
+        }
+
+        private void Fade(double to, int ms, Func<double, double> ease, Action done)
+        {
+            StopFade();
+            double from = _alpha;
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            _fadeTick = (_, _) =>
+            {
+                double t = Math.Min(1.0, clock.Elapsed.TotalMilliseconds / ms);
+                SetAlpha(from + (to - from) * ease(t));
+                if (t < 1.0 && !_fadeUnsupported) return;
+                StopFade();
+                done?.Invoke();
+            };
+            System.Windows.Media.CompositionTarget.Rendering += _fadeTick;
+        }
+
+        private void StopFade()
+        {
+            if (_fadeTick == null) return;
+            System.Windows.Media.CompositionTarget.Rendering -= _fadeTick;
+            _fadeTick = null;
+        }
+
+        private static double EaseOut(double t) => 1 - Math.Pow(1 - t, 3);
+        private static double EaseIn(double t) => t * t * t;
 
         /// <summary>
         /// The window behind the page, and the colour the WebView2 paints
@@ -292,6 +390,12 @@ namespace FastApp
                 IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
                 int preference = DwmwcpRound;
                 DwmSetWindowAttribute(hwnd, DwmwaWindowCornerPreference, ref preference, sizeof(int));
+
+                // No system border. Windows 11 draws a grey 1px outline round every
+                // window, which sat outside the page's own neon border as a second,
+                // always-visible frame. The page draws the only edge now.
+                int none = DwmwaColorNone;
+                DwmSetWindowAttribute(hwnd, DwmwaBorderColor, ref none, sizeof(int));
             }
             catch
             {
@@ -397,6 +501,14 @@ namespace FastApp
             {
                 case "ready":
                     PushState();
+                    break;
+
+                case "painted":
+                    _firstPaint.TrySetResult(true);
+                    break;
+
+                case "open-frames":
+                    Services.PerfLog.Event("frames", "palette.open " + raw);
                     break;
 
                 case "activate-app":
@@ -1773,6 +1885,8 @@ namespace FastApp
         /// Build the WebView2 and render the palette once, invisibly, so the
         /// first real summon is a Show() rather than a browser start-up.
         /// </summary>
+        private readonly TaskCompletionSource<bool> _firstPaint = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public async Task PrewarmAsync()
         {
             // Shown unactivated and transparent purely to give the WebView2 a
@@ -1787,7 +1901,19 @@ namespace FastApp
             Left = -32000;
             Top = -32000;
             Show();
+            long perfPrewarm = Services.PerfLog.Stamp();
             await InitialiseAsync();
+
+            // InitialiseAsync returns once navigation has been STARTED, not
+            // finished. Hiding here meant the page loaded while hidden and was
+            // never painted, so the first open was also its first paint: about
+            // 150ms of an empty window and a stuttering animation, measured,
+            // against 1-5ms for every open after it. Wait for the page to report
+            // a drawn frame. Bounded, so a page that never says so cannot leave
+            // the prewarm hanging.
+            bool painted = await Task.WhenAny(_firstPaint.Task, Task.Delay(3000)) == _firstPaint.Task;
+            Services.PerfLog.Done("palette.prewarm", perfPrewarm, 1500, painted ? "painted" : "timeout");
+
             Hide();
             ShowActivated = true;
         }
@@ -1847,7 +1973,10 @@ namespace FastApp
             // call -- ShowPalette also runs when an already-open window
             // navigates straight to a sub-view (Manage/Settings/Extend), and
             // that isn't a fresh summon.
-            bool wasHidden = !IsVisible;
+            bool turningRound = _closing;
+            bool wasHidden = !IsVisible || turningRound;
+            if (turningRound) { _closing = false; StopFade(); }
+            bool fadeIn = wasHidden && CanFade;
             long perfShow = Services.PerfLog.Stamp();
 
             _allowAutoHide = false;
@@ -1860,13 +1989,22 @@ namespace FastApp
             // and slides into place afterwards.
             CentreOnScreen();
 
+            // Transparent before Show, so the first frame on screen is not a
+            // full-opacity one. Left alone when turning round mid fade-out:
+            // it fades back up from wherever it had got to.
+            if (fadeIn && !IsVisible) SetAlpha(0);
+
             Show();
+            if (fadeIn) Fade(1, FadeInMs, EaseOut, null);
 
             // After Show, deliberately. The page answers a reset by measuring
             // itself and asking for a height, and ResizeTo ignores that while
             // this window is hidden -- so the ask has to happen once the window
             // is up. The bridge delivers in order, so requesting a view after
             // the reset still lands on that view rather than flashing the list.
+            // Only a real summon plays the opening animation, not a hop to a sub-view
+            // of a window that is already up. The page runs it; see .vortex.
+            if (wasHidden) Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"summon\"}");
             Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"reset\"}");
             if (view == PaletteView.Manage) ShowManage();
             else if (view == PaletteView.Settings) ShowSettings();
@@ -1899,7 +2037,19 @@ namespace FastApp
                 Dispatcher.BeginInvoke(new Action(() => _allowAutoHide = true)));
         }
 
-        public void HidePalette() => Hide();
+        public void HidePalette()
+        {
+            if (!IsVisible || _closing) return;
+            if (!CanFade) { Hide(); return; }
+
+            _closing = true;
+            Fade(0, FadeOutMs, EaseIn, () =>
+            {
+                _closing = false;
+                Hide();
+                SetAlpha(1);
+            });
+        }
 
         protected override void OnActivated(EventArgs e)
         {
@@ -1916,7 +2066,7 @@ namespace FastApp
             if (!_allowAutoHide || _pinned || _modalOpen || !IsVisible) return;
             if (DateTime.UtcNow - _shownAtUtc < SettleWindow) return;
 
-            Hide();
+            HidePalette();
         }
 
         // Escape is deliberately NOT handled here. WebView2 forwards it to the

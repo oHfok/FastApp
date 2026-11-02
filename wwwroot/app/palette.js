@@ -18,6 +18,23 @@ function send(type, payload) {
     bridge.postMessage(JSON.stringify({ type, ...(payload || {}) }));
 }
 
+/// Frame timing for the first ~900ms after a summon, written to the perf log:
+/// how long until the first frame, and how many frames ran long. An open that
+/// stutters looks fine in every C# timing, because the stutter is in here.
+function measureOpen() {
+    const start = performance.now();
+    let last = start, first = 0, worst = 0, long = 0, frames = 0;
+    function tick(now) {
+        if (!frames) first = now - start;
+        else { const gap = now - last; worst = Math.max(worst, gap); if (gap > 25) long++; }
+        frames++;
+        last = now;
+        if (now - start < 900) requestAnimationFrame(tick);
+        else send('open-frames', { detail: `first=${Math.round(first)}ms frames=${frames} worst=${Math.round(worst)}ms long=${long}` });
+    }
+    requestAnimationFrame(tick);
+}
+
 let state = { apps: [], trackable: [], commands: [], focusToday: '—', tracking: true, trackingText: 'Tracking' };
 let query = '';
 let active = 0;
@@ -2252,6 +2269,15 @@ if (bridge) {
             return;
         }
 
+        if (message.type === 'summon') {
+            const root = document.querySelector('.palette');
+            root.classList.remove('opening');
+            void root.offsetWidth;   // restart the animation if it is already on
+            root.classList.add('opening');
+            setTimeout(() => root.classList.remove('opening'), 800);
+            measureOpen();
+            return;
+        }
         if (message.type === 'reset') {
             // A summon always starts clean. The window focus handler does this
             // too, but it does not fire when the palette is re-summoned while
@@ -2347,3 +2373,7 @@ window.addEventListener('focus', () => {
 
 render();
 send('ready');
+// Two frames on, something has reached the screen. The host waits for this
+// before hiding the prewarmed window, so the first real open is not also the
+// page's first paint.
+requestAnimationFrame(() => requestAnimationFrame(() => send('painted')));
