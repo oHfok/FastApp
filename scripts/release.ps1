@@ -52,7 +52,11 @@ param(
     [int]$KeepPackages = 2,
 
     # Skip the cleanup entirely, for when you want the local history.
-    [switch]$NoPrune
+    [switch]$NoPrune,
+
+    # A specific MSBuild.exe to use instead of the one vswhere finds -- e.g.
+    # Rider's, on a machine whose VS Build Tools cannot resolve the .NET SDK.
+    [string]$MSBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -164,10 +168,15 @@ $csprojContent = $csprojContent -replace '<Version>[\d\.]+</Version>', "<Version
 Set-Content -Path $csprojPath -Value $csprojContent -NoNewline
 
 # --- 2. Locate the full MSBuild (the dotnet CLI can't resolve the COM ref) -
-$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found -- is Visual Studio installed?" }
-$msbuildPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\amd64\MSBuild.exe" | Select-Object -First 1
-if (-not $msbuildPath) { throw "Could not locate MSBuild.exe via vswhere." }
+if ($MSBuild) {
+    if (-not (Test-Path $MSBuild)) { throw "MSBuild not found: $MSBuild" }
+    $msbuildPath = $MSBuild
+} else {
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found -- is Visual Studio installed?" }
+    $msbuildPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\amd64\MSBuild.exe" | Select-Object -First 1
+    if (-not $msbuildPath) { throw "Could not locate MSBuild.exe via vswhere." }
+}
 Write-Host "==> Using MSBuild: $msbuildPath" -ForegroundColor Cyan
 
 # --- 3. Publish a self-contained win-x64 build ----------------------------
