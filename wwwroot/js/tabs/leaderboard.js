@@ -14,11 +14,23 @@ const lbOpenCats = new Set();   // expanded category rows, kept across polls
 // a switch). Polls re-render every few seconds and must not replay it.
 let lbAnimateNext = false;
 let lbAnimTimer = 0;
+// A poll that lands mid-animation would rebuild the rows under .lb-anim and
+// play the whole cascade a second time, so its render waits for the motion
+// to finish and is applied quietly afterwards.
+let lbRenderPending = false;
+
+function lbSettling(container) {
+    return container.classList.contains('lb-anim') || !!container.querySelector('.just-opened');
+}
+
+function flushLbRender() {
+    if (lbRenderPending && !lbSettling(document.getElementById('lb-list'))) renderFullLeaderboard();
+}
 
 function playLbEntrance(container) {
     container.classList.add('lb-anim');
     clearTimeout(lbAnimTimer);
-    lbAnimTimer = setTimeout(() => container.classList.remove('lb-anim'), 1100);
+    lbAnimTimer = setTimeout(() => { container.classList.remove('lb-anim'); flushLbRender(); }, 1100);
 }
 
 function setLbMode(mode, btnEl) {
@@ -74,13 +86,22 @@ async function fetchFullLeaderboard() {
     try {
         lbData = await apiFetch(`/api/leaderboard?timeframe=${tf}&date=${getLocalTodayStr()}`,
                                 { signal: abortableSignal('leaderboard') });
+        if (!lbAnimateNext && lbSettling(container)) { lbRenderPending = true; return; }
         renderFullLeaderboard();
-    } catch (err) { if (!isAbort(err)) console.error('Leaderboard load failed', err); }
+    } catch (err) {
+        if (isAbort(err)) return;   // the request that replaced this one renders instead
+        lbAnimateNext = false;      // so a later poll doesn't play an entrance nobody asked for
+        console.error('Leaderboard load failed', err);
+    }
 }
 
 function renderFullLeaderboard() {
     const container = document.getElementById('lb-list');
+    lbRenderPending = false;
     if (lbAnimateNext) { lbAnimateNext = false; playLbEntrance(container); }
+    // Any other render (search typing, a deferred poll) settles a cascade
+    // still in flight rather than restarting it on the new rows.
+    else { clearTimeout(lbAnimTimer); container.classList.remove('lb-anim'); }
     if (!lbData || lbData.length === 0) {
         container.innerHTML = `<div class="empty-state">No data yet. Time to open some apps.</div>`;
         return;
@@ -360,7 +381,7 @@ function toggleCategoryRow(row) {
 
     // Contents cascade in on this open only; a poll re-render shows them settled.
     item.classList.add('just-opened');
-    setTimeout(() => item.classList.remove('just-opened'), 900);
+    setTimeout(() => { item.classList.remove('just-opened'); flushLbRender(); }, 900);
     // Once the panel has grown, nudge it into view if it opened below the fold.
     const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
     setTimeout(() => item.scrollIntoView({ block: 'nearest', behavior: smooth ? 'smooth' : 'auto' }), 320);
@@ -383,6 +404,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 Dashboard.tabs.leaderboard = {
-    onEnter: () => { lbAnimateNext = true; fetchFullLeaderboard(); },
+    // refreshActiveTab() also calls onEnter (after an edit in App Detail); only a
+    // real arrival on the tab, which switchView marks .entering, plays the cascade.
+    onEnter: () => {
+        lbAnimateNext = document.getElementById('view-leaderboard').classList.contains('entering');
+        fetchFullLeaderboard();
+    },
     refresh: fetchFullLeaderboard
 };
