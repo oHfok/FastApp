@@ -256,6 +256,56 @@
 .full-lb-app-name { font-weight: 600; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .full-lb-cat { font-size: var(--fs-caption); color: var(--cat-color, var(--text-faint)); font-weight: 500; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .full-lb-time { font-weight: 650; font-size: var(--fs-body); text-align: right; color: var(--text); }
+/* Categories mode: each row wraps its own expandable details, so the divider
+   moves from the row to the wrapper. */
+.cat-lb-item { border-bottom: 1px solid var(--border); }
+.cat-lb-item:last-child { border-bottom: none; }
+.cat-lb-item > .full-lb-row { border-bottom: none; }
+.cat-lb-item.open > .full-lb-row { background: var(--surface-2); }
+.cat-lb-chevron { display: inline-block; color: var(--text-faint); transition: transform 0.15s var(--ease); }
+.cat-lb-item.open .cat-lb-chevron { transform: rotate(90deg); color: var(--accent); }
+.cat-badge {
+    display: inline-block; margin-left: 6px; padding: 1px 7px; vertical-align: 1px;
+    font-size: var(--fs-micro); font-weight: 600; color: var(--accent);
+    background: var(--wash-accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    border-radius: var(--radius-pill);
+}
+.cat-lb-share { font-weight: 650; font-size: var(--fs-body); text-align: right; color: var(--text-dim); }
+.cat-lb-lineup { display: flex; height: 6px; border-radius: var(--radius-pill); background: var(--surface-3); overflow: hidden; gap: 1px; }
+.cat-lb-lineup > span { height: 100%; min-width: 2px; }
+
+.cat-lb-details { padding: 4px 20px 18px 66px; background: var(--surface-2); }
+.cat-lb-stats { display: flex; flex-wrap: wrap; gap: 10px 28px; padding: 10px 0 14px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.cat-lb-stat-label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 600; }
+.cat-lb-stat-value { font-size: var(--fs-strong); font-weight: 650; margin-top: 3px; }
+.cat-lb-app {
+    display: grid; grid-template-columns: 22px 10px minmax(0, 1fr) minmax(60px, 2fr) 44px 70px;
+    align-items: center; gap: 12px; padding: 7px 8px; margin: 0 -8px;
+    border-radius: 8px; cursor: pointer; font-size: var(--fs-body);
+}
+.cat-lb-app:hover { background: var(--surface-3); }
+.cat-lb-app:hover .cat-lb-app-name { color: var(--accent); }
+.cat-lb-app-rank { color: var(--text-faint); font-size: var(--fs-small); font-weight: 600; text-align: center; }
+.cat-lb-dot { width: 10px; height: 10px; border-radius: 50%; }
+.cat-lb-app-name { font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-lb-app-bar { height: 6px; border-radius: var(--radius-pill); background: var(--surface-3); overflow: hidden; }
+.cat-lb-app-bar > span { display: block; height: 100%; border-radius: var(--radius-pill); }
+.cat-lb-app-pct { text-align: right; color: var(--text-faint); font-size: var(--fs-small); }
+.cat-lb-app-time { text-align: right; font-weight: 600; }
+.cat-lb-open { margin-top: 10px; }
+@media (max-width: 1040px) {
+    /* Share sits under the time; the line-up gets a full-width row of its own. */
+    .full-lb-row > .cat-lb-share, .full-lb-row.no-movement > .cat-lb-share { grid-row: 2; grid-column: -2; font-size: var(--fs-small); }
+    .cat-lb-item .full-lb-row > div:last-child { grid-row: 2; grid-column: 3; }
+    .cat-lb-item .full-lb-row.no-movement > div:last-child { grid-column: 2; }
+    .cat-lb-details { padding-left: 20px; }
+    .cat-lb-app { grid-template-columns: 22px 10px minmax(0, 1fr) 44px 64px; }
+    .cat-lb-app-bar { display: none; }
+}
+@media (max-width: 520px) {
+    .cat-lb-item .full-lb-icon { display: none; }
+}
+
 .full-lb-eff-bar { height: 6px; border-radius: var(--radius-pill); background: var(--surface-3); overflow: hidden; }
 .full-lb-eff-fill { height: 100%; border-radius: var(--radius-pill); }
 .full-lb-eff-label { font-size: var(--fs-micro); color: var(--text-faint); text-align: right; margin-top: 4px; white-space: nowrap; }

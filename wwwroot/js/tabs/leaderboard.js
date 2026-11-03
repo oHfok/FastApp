@@ -7,6 +7,17 @@
 let lbData = [];
 let lbSearch = '';
 let lbRankBy = 'focus';
+let lbMode = 'apps';
+const lbOpenCats = new Set();   // expanded category rows, kept across polls
+
+function setLbMode(mode, btnEl) {
+    document.querySelectorAll('#lb-mode button').forEach(b => b.classList.toggle('active', b === btnEl));
+    document.getElementById('lb-mode').dataset.value = mode;
+    lbMode = mode;
+    document.getElementById('lb-search').placeholder = mode === 'categories' ? 'Search categories or apps…' : 'Search apps…';
+    updateLbSubtitle();
+    renderFullLeaderboard();
+}
 
 function setLbTimeframe(tf, btnEl) {
     document.querySelectorAll('#lb-scope button').forEach(b => b.classList.toggle('active', b === btnEl));
@@ -30,7 +41,8 @@ function updateLbSubtitle() {
     const sub = document.getElementById('lb-view-sub');
     if (!sub) return;
     const tf = document.getElementById('lb-scope').dataset.value || 'all';
-    const basis = lbRankBy === 'uptime' ? 'Ranked by uptime.' : 'Ranked by focus time.';
+    const basis = (lbMode === 'categories' ? 'Categories ranked by ' : 'Ranked by ')
+                + (lbRankBy === 'uptime' ? 'uptime.' : 'focus time.');
     sub.textContent = (tf === 'all' || tf === 'year')
         ? basis
         : `${basis} Arrows show movement since the previous ${tf}.`;
@@ -61,6 +73,7 @@ function renderFullLeaderboard() {
 
     const primaryMins = a => lbRankBy === 'uptime' ? (a.totalMinutes || 0) : (a.focusedMinutes || 0);
     const prevPrimaryMins = a => lbRankBy === 'uptime' ? (a.prevTotalMinutes || 0) : (a.prevFocusedMinutes || 0);
+    if (lbMode === 'categories') { renderCategoryLeaderboard(container, primaryMins, prevPrimaryMins); return; }
 
     // Rank against the FULL dataset, then filter for display. Both rankings used
     // to be computed from the search-filtered list, which meant a search silently
@@ -124,23 +137,8 @@ function renderFullLeaderboard() {
                        : efficiency >= 35 ? 'var(--brass-dim)'
                        : 'var(--text-faint)';
 
-        let medalOrRank = `<div class="full-lb-rank">${rank}</div>`;
-        if (rank === 1) medalOrRank = `<div class="medal medal-gold">1</div>`;
-        else if (rank === 2) medalOrRank = `<div class="medal medal-silver">2</div>`;
-        else if (rank === 3) medalOrRank = `<div class="medal medal-bronze">3</div>`;
-
-        let trendHtml = `<span class="trend-pill trend-flat">–</span>`;
-        const prevRank = prevRankOf[app.appName];
-        if (!showMovement) {
-            trendHtml = '';
-        } else if (!prevPrimaryMins(app)) {
-            trendHtml = `<span class="trend-pill trend-new">NEW</span>`;
-        } else if (prevRank !== undefined) {
-            const delta = prevRank - rank;
-            if (delta > 0) trendHtml = `<span class="trend-pill trend-up">&#9650; ${delta}</span>`;
-            else if (delta < 0) trendHtml = `<span class="trend-pill trend-down">&#9660; ${Math.abs(delta)}</span>`;
-            else trendHtml = `<span class="trend-pill trend-flat">–</span>`;
-        }
+        const medalOrRank = rankMarkerHtml(rank);
+        const trendHtml = showMovement ? rankMoveHtml(rank, prevRankOf[app.appName], prevPrimaryMins(app)) : '';
 
         const cat = app.category || 'Other';
         return `
@@ -165,5 +163,188 @@ function renderFullLeaderboard() {
 
     container.innerHTML = headerHtml + rowsHtml;
 }
+
+function rankMarkerHtml(rank) {
+    if (rank === 1) return `<div class="medal medal-gold">1</div>`;
+    if (rank === 2) return `<div class="medal medal-silver">2</div>`;
+    if (rank === 3) return `<div class="medal medal-bronze">3</div>`;
+    return `<div class="full-lb-rank">${rank}</div>`;
+}
+
+function rankMoveHtml(rank, prevRank, prevMins) {
+    if (!prevMins) return `<span class="trend-pill trend-new">NEW</span>`;
+    const delta = prevRank - rank;
+    if (delta > 0) return `<span class="trend-pill trend-up">&#9650; ${delta}</span>`;
+    if (delta < 0) return `<span class="trend-pill trend-down">&#9660; ${Math.abs(delta)}</span>`;
+    return `<span class="trend-pill trend-flat">–</span>`;
+}
+
+/* ---------- Categories mode ----------
+   Built from the same per-app payload: each category is the sum of its apps.
+   shortcut: the previous-period figures only cover apps used in the current
+   period too (that is what /api/leaderboard returns), so an app dropped since
+   last period doesn't count toward its category's "before" number. Return
+   previous-only apps from the endpoint if that ever matters. */
+function renderCategoryLeaderboard(container, primaryMins, prevPrimaryMins) {
+    const byCat = new Map();
+    for (const a of lbData) {
+        const name = a.category || 'Other';
+        let c = byCat.get(name);
+        if (!c) byCat.set(name, c = { name, apps: [], mins: 0, prev: 0, total: 0, active: 0, focused: 0 });
+        c.apps.push(a);
+        c.mins += primaryMins(a);
+        c.prev += prevPrimaryMins(a);
+        c.total += a.totalMinutes || 0;
+        c.active += a.activeMinutes || 0;
+        c.focused += a.focusedMinutes || 0;
+    }
+    const cats = [...byCat.values()];
+    cats.forEach(c => c.apps.sort((a, b) => primaryMins(b) - primaryMins(a)));
+
+    // Ranked against every category, then filtered, for the same reason as the app view.
+    const ranked = [...cats].sort((a, b) => b.mins - a.mins);
+    const rankOf = new Map(ranked.map((c, i) => [c.name, i + 1]));
+    const prevRankOf = new Map([...cats].sort((a, b) => b.prev - a.prev).map((c, i) => [c.name, i + 1]));
+    const grand = cats.reduce((s, c) => s + c.mins, 0) || 1;
+
+    const tf = document.getElementById('lb-scope').dataset.value || 'all';
+    const showMovement = tf !== 'all' && tf !== 'year';
+    const badges = categoryBadges(cats, showMovement);
+
+    const shown = ranked.filter(c => c.name.toLowerCase().includes(lbSearch)
+        || c.apps.some(a => a.appName.toLowerCase().includes(lbSearch)));
+    if (shown.length === 0) {
+        container.innerHTML = `<div class="empty-state">No categories or apps match your search.</div>`;
+        return;
+    }
+
+    const primaryLabel = lbRankBy === 'uptime' ? 'Uptime' : 'Focused';
+    const headerHtml = `
+        <div class="full-lb-header${showMovement ? '' : ' no-movement'}">
+            <span>Rank</span>
+            ${showMovement ? '<span></span>' : ''}
+            <span>Category</span>
+            <span>${primaryLabel}</span>
+            <span title="Share of all ${primaryLabel.toLowerCase()} time in this period">Share</span>
+            <span title="How the category's time splits across its apps">Line-up</span>
+        </div>`;
+
+    const rowsHtml = shown.map(c => {
+        const rank = rankOf.get(c.name);
+        const open = lbOpenCats.has(c.name);
+        const share = Math.round((c.mins / grand) * 100);
+        const mvp = c.apps[0];
+        const mvpShare = c.mins > 0 ? Math.round((primaryMins(mvp) / c.mins) * 100) : 0;
+        const badgeHtml = (badges.get(c.name) || [])
+            .map(b => `<span class="cat-badge" title="${escapeHtml(b.title)}">${b.icon} ${escapeHtml(b.label)}</span>`).join('');
+
+        return `
+            <div class="cat-lb-item${open ? ' open' : ''}">
+                <div class="full-lb-row${showMovement ? '' : ' no-movement'}" data-toggle-cat="${escapeHtml(c.name)}" role="button" tabindex="0" aria-expanded="${open}">
+                    ${rankMarkerHtml(rank)}
+                    ${showMovement ? `<div class="full-lb-trend">${rankMoveHtml(rank, prevRankOf.get(c.name), c.prev)}</div>` : ''}
+                    <div class="full-lb-name-wrap">
+                        <div class="full-lb-icon" style="${avatarStyle(c.name)}">${escapeHtml(c.name.charAt(0).toUpperCase())}</div>
+                        <div class="full-lb-name-col">
+                            <div class="full-lb-app-name"><span class="cat-lb-chevron">&#9656;</span> ${escapeHtml(c.name)} ${badgeHtml}</div>
+                            <div class="full-lb-cat">${c.apps.length} app${c.apps.length === 1 ? '' : 's'} · led by ${escapeHtml(displayAppName(mvp.appName))}</div>
+                        </div>
+                    </div>
+                    <div class="full-lb-time">${formatTime(c.mins)}</div>
+                    <div class="cat-lb-share">${share}%</div>
+                    <div>
+                        <div class="cat-lb-lineup">${lineupSegmentsHtml(c, primaryMins)}</div>
+                        <div class="full-lb-eff-label">${escapeHtml(displayAppName(mvp.appName))} carries ${mvpShare}%</div>
+                    </div>
+                </div>
+                ${open ? categoryDetailsHtml(c, primaryMins, primaryLabel, showMovement ? tf : null) : ''}
+            </div>`;
+    }).join('');
+
+    container.innerHTML = headerHtml + rowsHtml;
+}
+
+function lineupSegmentsHtml(c, primaryMins) {
+    if (c.mins <= 0) return '';
+    return c.apps.filter(a => primaryMins(a) > 0).map(a =>
+        `<span style="width:${(primaryMins(a) / c.mins) * 100}%;background:${appColor(a.appName)}" title="${escapeHtml(displayAppName(a.appName))}: ${formatTime(primaryMins(a))}"></span>`
+    ).join('');
+}
+
+function categoryDetailsHtml(c, primaryMins, primaryLabel, prevLabel) {
+    const efficiency = c.active > 0 ? Math.round((c.focused / c.active) * 100) : 0;
+    const afk = Math.max(0, c.total - c.active);
+    const stat = (label, value) => `<div class="cat-lb-stat"><div class="cat-lb-stat-label">${label}</div><div class="cat-lb-stat-value">${value}</div></div>`;
+
+    const appsHtml = c.apps.map((a, i) => {
+        const pct = c.mins > 0 ? (primaryMins(a) / c.mins) * 100 : 0;
+        return `
+            <div class="cat-lb-app" data-open-app="${escapeHtml(a.appName)}" role="button" tabindex="0">
+                <span class="cat-lb-app-rank">${i + 1}</span>
+                <span class="cat-lb-dot" style="background:${appColor(a.appName)}"></span>
+                <span class="cat-lb-app-name" title="${escapeHtml(a.appName)}">${escapeHtml(displayAppName(a.appName))}</span>
+                <span class="cat-lb-app-bar"><span style="width:${pct}%;background:${appColor(a.appName)}"></span></span>
+                <span class="cat-lb-app-pct">${Math.round(pct)}%</span>
+                <span class="cat-lb-app-time">${formatTime(primaryMins(a))}</span>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="cat-lb-details">
+            <div class="cat-lb-stats">
+                ${stat(primaryLabel, formatTime(c.mins))}
+                ${stat('Uptime', formatTime(c.total))}
+                ${stat('AFK', formatTime(afk))}
+                ${stat('Efficiency', `${efficiency}%`)}
+                ${prevLabel ? stat(`vs previous ${prevLabel}`, trendPill(c.mins, c.prev)) : ''}
+            </div>
+            <div class="cat-lb-apps">${appsHtml}</div>
+            <button type="button" class="btn btn-ghost cat-lb-open" data-open-cat="${escapeHtml(c.name)}">Open ${escapeHtml(c.name)} &rarr;</button>
+        </div>`;
+}
+
+// A handful of superlatives, each awarded to at most one category so they stay
+// worth reading. Needs two or more categories, or every badge is trivially won.
+function categoryBadges(cats, showMovement) {
+    const out = new Map();
+    const give = (c, b) => { if (c) (out.get(c.name) || out.set(c.name, []).get(c.name)).push(b); };
+    const live = cats.filter(c => c.mins > 0);
+    if (live.length < 2) return out;
+    const best = (list, score) => list.reduce((w, c) => (w === null || score(c) > score(w) ? c : w), null);
+
+    if (showMovement) {
+        const risers = live.filter(c => c.prev > 0 && c.mins > c.prev);
+        give(best(risers, c => c.mins / c.prev),
+             { icon: '&#128640;', label: 'Rising', title: 'Biggest growth since the previous period' });
+    }
+    // 30 minutes of active time before efficiency counts, so a 2-minute category can't take it.
+    give(best(live.filter(c => c.active >= 30), c => c.focused / c.active),
+         { icon: '&#127919;', label: 'Locked in', title: 'Highest share of active time spent focused' });
+    give(best(live.filter(c => c.apps.length >= 3), c => c.apps.length),
+         { icon: '&#127914;', label: 'Big tent', title: 'Most apps in one category' });
+    return out;
+}
+
+function toggleCategoryRow(name) {
+    if (lbOpenCats.has(name)) lbOpenCats.delete(name); else lbOpenCats.add(name);
+    renderFullLeaderboard();
+    document.querySelector(`#lb-list [data-toggle-cat="${CSS.escape(name)}"]`)?.focus();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('lb-list');
+    list.addEventListener('click', (e) => {
+        if (e.target.closest(OPENER_SELECTOR)) return;   // app / category openers inside win
+        const row = e.target.closest('[data-toggle-cat]');
+        if (row) toggleCategoryRow(row.dataset.toggleCat);
+    });
+    list.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const row = e.target.closest('[data-toggle-cat]');
+        if (!row || e.target !== row) return;
+        e.preventDefault();
+        toggleCategoryRow(row.dataset.toggleCat);
+    });
+});
 
 Dashboard.tabs.leaderboard = { onEnter: fetchFullLeaderboard, refresh: fetchFullLeaderboard };

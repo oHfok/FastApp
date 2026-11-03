@@ -449,6 +449,10 @@
                         <button class="active" onclick="setLbRankBy('focus', this)">Focus Time</button>
                         <button onclick="setLbRankBy('uptime', this)">Uptime</button>
                     </div>
+                    <div class="segmented" id="lb-mode" data-value="apps">
+                        <button class="active" onclick="setLbMode('apps', this)">Apps</button>
+                        <button onclick="setLbMode('categories', this)">Categories</button>
+                    </div>
                     <input type="text" id="lb-search" class="field" placeholder="Search apps…" style="width:220px;" onkeyup="handleLbSearch()">
                 </div>
                 <div id="lb-list"></div>
