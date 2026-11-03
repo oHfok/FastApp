@@ -151,7 +151,16 @@ function visible() {
     return { apps, trackable, commands, all: [...apps, ...trackable, ...commands] };
 }
 
+// When the current open began; rows rebuilt during it pick up its cascade
+// part-way through instead of replaying it (palette.css, .palette.opening .row).
+let openingStartedAt = 0;
+
 function render() {
+    const root = document.querySelector('.palette');
+    if (root.classList.contains('opening')) {
+        root.style.setProperty('--opening-elapsed', Math.round(performance.now() - openingStartedAt) + 'ms');
+    }
+
     const { apps, trackable, commands, all } = visible();
     if (active >= all.length) active = Math.max(0, all.length - 1);
 
@@ -2273,6 +2282,8 @@ if (bridge) {
             const root = document.querySelector('.palette');
             root.classList.remove('opening');
             void root.offsetWidth;   // restart the animation if it is already on
+            openingStartedAt = performance.now();
+            root.style.setProperty('--opening-elapsed', '0ms');
             root.classList.add('opening');
             setTimeout(() => root.classList.remove('opening'), 800);
             measureOpen();

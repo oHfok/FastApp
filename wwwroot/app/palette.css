@@ -88,7 +88,8 @@ body {
    lights once in the accent like neon powering on, and the first rows of the
    list settle in one after another so the eye lands on the top of the list.
    palette.js removes .opening after it has played, so later re-renders (typing in
-   the search box) do not replay it. Off with Windows animations
+   the search box) do not replay it, and renders during it continue the rows'
+   cascade rather than restarting it (see .row below). Off with Windows animations
    (prefers-reduced-motion). */
 .palette.opening { animation: palette-in 0.24s var(--ease) both, palette-ignite 0.7s ease-out both; }
 /* No fade on the whole page. The window itself cannot fade (see PaletteWindow),
@@ -102,16 +103,20 @@ body {
     from { border-color: var(--select-ring); box-shadow: inset 0 0 36px rgba(255, 122, 26, 0.16); }
     to   { border-color: var(--border); box-shadow: inset 0 0 0 rgba(255, 122, 26, 0); }
 }
-.palette.opening .row { animation: row-in 0.3s var(--ease) both; }
+/* Rows are rebuilt by every render (hover, the focus reset, a state push), and
+   a fresh row under .opening would start its entrance over. Each delay is
+   measured from the open instead: --opening-elapsed (set by render) shifts a
+   rebuilt row to where the original had got to, so the cascade carries on. */
+.palette.opening .row { animation: row-in 0.3s var(--ease) both; animation-delay: calc(0ms - var(--opening-elapsed, 0ms)); }
 @keyframes row-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.palette.opening .row:nth-child(1) { animation-delay: 62ms; }
-.palette.opening .row:nth-child(2) { animation-delay: 84ms; }
-.palette.opening .row:nth-child(3) { animation-delay: 106ms; }
-.palette.opening .row:nth-child(4) { animation-delay: 128ms; }
-.palette.opening .row:nth-child(5) { animation-delay: 150ms; }
-.palette.opening .row:nth-child(6) { animation-delay: 172ms; }
-.palette.opening .row:nth-child(7) { animation-delay: 194ms; }
-.palette.opening .row:nth-child(8) { animation-delay: 216ms; }
+.palette.opening .row:nth-child(1) { animation-delay: calc(62ms - var(--opening-elapsed, 0ms)); }
+.palette.opening .row:nth-child(2) { animation-delay: calc(84ms - var(--opening-elapsed, 0ms)); }
+.palette.opening .row:nth-child(3) { animation-delay: calc(106ms - var(--opening-elapsed, 0ms)); }
+.palette.opening .row:nth-child(4) { animation-delay: calc(128ms - var(--opening-elapsed, 0ms)); }
+.palette.opening .row:nth-child(5) { animation-delay: calc(150ms - var(--opening-elapsed, 0ms)); }
+.palette.opening .row:nth-child(6) { animation-delay: calc(172ms - var(--opening-elapsed, 0ms)); }
+.palette.opening .row:nth-child(7) { animation-delay: calc(194ms - var(--opening-elapsed, 0ms)); }
+.palette.opening .row:nth-child(8) { animation-delay: calc(216ms - var(--opening-elapsed, 0ms)); }
 @media (prefers-reduced-motion: reduce) { .palette.opening, .palette.opening .row { animation: none; } }
 
 /* ---------- Chrome ---------- */
