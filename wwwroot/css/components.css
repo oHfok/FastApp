@@ -258,11 +258,19 @@
 .full-lb-time { font-weight: 650; font-size: var(--fs-body); text-align: right; color: var(--text); }
 /* Categories mode: each row wraps its own expandable details, so the divider
    moves from the row to the wrapper. */
-.cat-lb-item { border-bottom: 1px solid var(--border); }
+.cat-lb-item { position: relative; border-bottom: 1px solid var(--border); }
 .cat-lb-item:last-child { border-bottom: none; }
 .cat-lb-item > .full-lb-row { border-bottom: none; }
 .cat-lb-item.open > .full-lb-row { background: var(--surface-2); }
-.cat-lb-chevron { display: inline-block; color: var(--text-faint); transition: transform 0.15s var(--ease); }
+/* An open category gets a glowing accent edge that draws down its full height. */
+.cat-lb-item::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; z-index: 1;
+    background: var(--accent); box-shadow: var(--glow-accent);
+    transform: scaleY(0); transform-origin: top; transition: transform 0.3s var(--ease);
+}
+.cat-lb-item.open::before { transform: none; }
+.cat-lb-chevron { display: inline-block; color: var(--text-faint); transition: transform 0.25s var(--ease), color 0.15s; }
+.full-lb-row:hover .cat-lb-chevron { color: var(--text-dim); }
 .cat-lb-item.open .cat-lb-chevron { transform: rotate(90deg); color: var(--accent); }
 .cat-badge {
     display: inline-block; margin-left: 6px; padding: 1px 7px; vertical-align: 1px;
@@ -272,9 +280,56 @@
 }
 .cat-lb-share { font-weight: 650; font-size: var(--fs-body); text-align: right; color: var(--text-dim); }
 .cat-lb-lineup { display: flex; height: 6px; border-radius: var(--radius-pill); background: var(--surface-3); overflow: hidden; gap: 1px; }
-.cat-lb-lineup > span { height: 100%; min-width: 2px; }
+.cat-lb-lineup > span { height: 100%; min-width: 2px; transition: opacity 0.15s; }
+/* Hovering the line-up dims every slice but the one under the pointer. */
+.cat-lb-lineup:hover > span { opacity: 0.35; }
+.cat-lb-lineup:hover > span:hover { opacity: 1; }
 
-.cat-lb-details { padding: 4px 20px 18px 66px; background: var(--surface-2); }
+/* The panel animates its height from 0 to auto by transitioning a one-row
+   grid from 0fr to 1fr; the clip hides the overflow while it grows, and the
+   padding lives one level further in so a closed panel is truly 0px tall. */
+.cat-lb-details {
+    display: grid; grid-template-rows: 0fr; opacity: 0;
+    background: var(--surface-2);
+    transition: grid-template-rows 0.32s var(--ease), opacity 0.22s ease;
+}
+.cat-lb-item.open > .cat-lb-details { grid-template-rows: 1fr; opacity: 1; }
+.cat-lb-details-clip { overflow: hidden; min-height: 0; }
+.cat-lb-details-body { padding: 4px 20px 18px 66px; }
+
+/* Revealed contents rise in one after another, on the open only (.just-opened
+   is a short-lived class from toggleCategoryRow). */
+.cat-lb-item.just-opened .cat-lb-stat,
+.cat-lb-item.just-opened .cat-lb-app,
+.cat-lb-item.just-opened .cat-lb-open {
+    animation: rise-in 0.3s var(--ease) both;
+    animation-delay: calc(var(--j, 0) * 30ms + 60ms);
+}
+.cat-lb-item.just-opened .cat-lb-app-bar > span {
+    transform-origin: left center;
+    animation: grow-x 0.45s var(--ease) both;
+    animation-delay: calc(var(--j, 0) * 30ms + 140ms);
+}
+
+/* Rows cascade in after a switch or when the tab opens (.lb-anim, leaderboard.js),
+   and their bars grow once each row has landed. */
+.lb-anim > .full-lb-header { animation: rise-in 0.25s var(--ease) both; }
+.lb-anim > .full-lb-row, .lb-anim > .cat-lb-item {
+    animation: rise-in 0.32s var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 28ms + 40ms);
+}
+.lb-anim .full-lb-eff-fill, .lb-anim .cat-lb-lineup {
+    transform-origin: left center;
+    animation: grow-x 0.45s var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 28ms + 160ms);
+}
+.lb-anim .medal { animation: medal-pop 0.4s var(--ease) both; animation-delay: calc(var(--i, 0) * 28ms + 120ms); }
+@keyframes medal-pop { from { transform: scale(0.4); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } to { transform: none; } }
+
+/* The top three glow in their own metal, like everything else that means something. */
+.medal-gold   { box-shadow: 0 0 12px rgba(251, 191, 36, 0.45); }
+.medal-silver { box-shadow: 0 0 10px rgba(203, 213, 225, 0.3); }
+.medal-bronze { box-shadow: 0 0 10px rgba(240, 163, 106, 0.35); }
 .cat-lb-stats { display: flex; flex-wrap: wrap; gap: 10px 28px; padding: 10px 0 14px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
 .cat-lb-stat-label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 600; }
 .cat-lb-stat-value { font-size: var(--fs-strong); font-weight: 650; margin-top: 3px; }
@@ -298,7 +353,7 @@
     .full-lb-row > .cat-lb-share, .full-lb-row.no-movement > .cat-lb-share { grid-row: 2; grid-column: -2; font-size: var(--fs-small); }
     .cat-lb-item .full-lb-row > div:last-child { grid-row: 2; grid-column: 3; }
     .cat-lb-item .full-lb-row.no-movement > div:last-child { grid-column: 2; }
-    .cat-lb-details { padding-left: 20px; }
+    .cat-lb-details-body { padding-left: 20px; }
     .cat-lb-app { grid-template-columns: 22px 10px minmax(0, 1fr) 44px 64px; }
     .cat-lb-app-bar { display: none; }
 }

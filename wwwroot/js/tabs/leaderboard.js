@@ -10,12 +10,24 @@ let lbRankBy = 'focus';
 let lbMode = 'apps';
 const lbOpenCats = new Set();   // expanded category rows, kept across polls
 
+// Rows cascade in only after something the user did (opening the tab, changing
+// a switch). Polls re-render every few seconds and must not replay it.
+let lbAnimateNext = false;
+let lbAnimTimer = 0;
+
+function playLbEntrance(container) {
+    container.classList.add('lb-anim');
+    clearTimeout(lbAnimTimer);
+    lbAnimTimer = setTimeout(() => container.classList.remove('lb-anim'), 1100);
+}
+
 function setLbMode(mode, btnEl) {
     document.querySelectorAll('#lb-mode button').forEach(b => b.classList.toggle('active', b === btnEl));
     document.getElementById('lb-mode').dataset.value = mode;
     lbMode = mode;
     document.getElementById('lb-search').placeholder = mode === 'categories' ? 'Search categories or apps…' : 'Search apps…';
     updateLbSubtitle();
+    lbAnimateNext = true;
     renderFullLeaderboard();
 }
 
@@ -23,6 +35,7 @@ function setLbTimeframe(tf, btnEl) {
     document.querySelectorAll('#lb-scope button').forEach(b => b.classList.toggle('active', b === btnEl));
     document.getElementById('lb-scope').dataset.value = tf;
     updateLbSubtitle();
+    lbAnimateNext = true;
     fetchFullLeaderboard();
 }
 
@@ -31,6 +44,7 @@ function setLbRankBy(mode, btnEl) {
     document.getElementById('lb-rankby').dataset.value = mode;
     lbRankBy = mode;
     updateLbSubtitle();
+    lbAnimateNext = true;
     renderFullLeaderboard();
 }
 
@@ -66,6 +80,7 @@ async function fetchFullLeaderboard() {
 
 function renderFullLeaderboard() {
     const container = document.getElementById('lb-list');
+    if (lbAnimateNext) { lbAnimateNext = false; playLbEntrance(container); }
     if (!lbData || lbData.length === 0) {
         container.innerHTML = `<div class="empty-state">No data yet. Time to open some apps.</div>`;
         return;
@@ -120,7 +135,7 @@ function renderFullLeaderboard() {
             <span title="Focused time as a share of time the app was open and you were at the keyboard">Efficiency</span>
         </div>`;
 
-    const rowsHtml = sorted.map((app) => {
+    const rowsHtml = sorted.map((app, i) => {
         const rank = rankOf[app.appName];
         const totalMins = app.totalMinutes || 0;
         const activeMins = app.activeMinutes || 0;
@@ -142,7 +157,7 @@ function renderFullLeaderboard() {
 
         const cat = app.category || 'Other';
         return `
-            <div class="full-lb-row${showMovement ? '' : ' no-movement'}" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0">
+            <div class="full-lb-row${showMovement ? '' : ' no-movement'}" style="--i:${Math.min(i, 14)}" data-open-app="${escapeHtml(app.appName)}" role="button" tabindex="0">
                 ${medalOrRank}
                 ${showMovement ? `<div class="full-lb-trend">${trendHtml}</div>` : ''}
                 <div class="full-lb-name-wrap">
@@ -229,7 +244,7 @@ function renderCategoryLeaderboard(container, primaryMins, prevPrimaryMins) {
             <span title="How the category's time splits across its apps">Line-up</span>
         </div>`;
 
-    const rowsHtml = shown.map(c => {
+    const rowsHtml = shown.map((c, i) => {
         const rank = rankOf.get(c.name);
         const open = lbOpenCats.has(c.name);
         const share = Math.round((c.mins / grand) * 100);
@@ -239,7 +254,7 @@ function renderCategoryLeaderboard(container, primaryMins, prevPrimaryMins) {
             .map(b => `<span class="cat-badge" title="${escapeHtml(b.title)}">${b.icon} ${escapeHtml(b.label)}</span>`).join('');
 
         return `
-            <div class="cat-lb-item${open ? ' open' : ''}">
+            <div class="cat-lb-item${open ? ' open' : ''}" style="--i:${Math.min(i, 14)}">
                 <div class="full-lb-row${showMovement ? '' : ' no-movement'}" data-toggle-cat="${escapeHtml(c.name)}" role="button" tabindex="0" aria-expanded="${open}">
                     ${rankMarkerHtml(rank)}
                     ${showMovement ? `<div class="full-lb-trend">${rankMoveHtml(rank, prevRankOf.get(c.name), c.prev)}</div>` : ''}
@@ -257,7 +272,7 @@ function renderCategoryLeaderboard(container, primaryMins, prevPrimaryMins) {
                         <div class="full-lb-eff-label">${escapeHtml(displayAppName(mvp.appName))} carries ${mvpShare}%</div>
                     </div>
                 </div>
-                ${open ? categoryDetailsHtml(c, primaryMins, primaryLabel, showMovement ? tf : null) : ''}
+                ${categoryDetailsHtml(c, primaryMins, primaryLabel, showMovement ? tf : null, open)}
             </div>`;
     }).join('');
 
@@ -271,15 +286,23 @@ function lineupSegmentsHtml(c, primaryMins) {
     ).join('');
 }
 
-function categoryDetailsHtml(c, primaryMins, primaryLabel, prevLabel) {
+// Rendered for every category, open or not, so expanding is a class flip that
+// can transition. Collapsed panels are inert: their links must not take focus.
+function categoryDetailsHtml(c, primaryMins, primaryLabel, prevLabel, open) {
     const efficiency = c.active > 0 ? Math.round((c.focused / c.active) * 100) : 0;
     const afk = Math.max(0, c.total - c.active);
-    const stat = (label, value) => `<div class="cat-lb-stat"><div class="cat-lb-stat-label">${label}</div><div class="cat-lb-stat-value">${value}</div></div>`;
+    let j = 0;   // stagger slot for the reveal animation
+    const stat = (label, value) => `<div class="cat-lb-stat" style="--j:${j++}"><div class="cat-lb-stat-label">${label}</div><div class="cat-lb-stat-value">${value}</div></div>`;
+    const statsHtml = stat(primaryLabel, formatTime(c.mins))
+        + stat('Uptime', formatTime(c.total))
+        + stat('AFK', formatTime(afk))
+        + stat('Efficiency', `${efficiency}%`)
+        + (prevLabel ? stat(`vs previous ${prevLabel}`, trendPill(c.mins, c.prev)) : '');
 
     const appsHtml = c.apps.map((a, i) => {
         const pct = c.mins > 0 ? (primaryMins(a) / c.mins) * 100 : 0;
         return `
-            <div class="cat-lb-app" data-open-app="${escapeHtml(a.appName)}" role="button" tabindex="0">
+            <div class="cat-lb-app" style="--j:${Math.min(i + 2, 12)}" data-open-app="${escapeHtml(a.appName)}" role="button" tabindex="0">
                 <span class="cat-lb-app-rank">${i + 1}</span>
                 <span class="cat-lb-dot" style="background:${appColor(a.appName)}"></span>
                 <span class="cat-lb-app-name" title="${escapeHtml(a.appName)}">${escapeHtml(displayAppName(a.appName))}</span>
@@ -290,16 +313,14 @@ function categoryDetailsHtml(c, primaryMins, primaryLabel, prevLabel) {
     }).join('');
 
     return `
-        <div class="cat-lb-details">
-            <div class="cat-lb-stats">
-                ${stat(primaryLabel, formatTime(c.mins))}
-                ${stat('Uptime', formatTime(c.total))}
-                ${stat('AFK', formatTime(afk))}
-                ${stat('Efficiency', `${efficiency}%`)}
-                ${prevLabel ? stat(`vs previous ${prevLabel}`, trendPill(c.mins, c.prev)) : ''}
+        <div class="cat-lb-details"${open ? '' : ' inert'}>
+            <div class="cat-lb-details-clip">
+                <div class="cat-lb-details-body">
+                    <div class="cat-lb-stats">${statsHtml}</div>
+                    <div class="cat-lb-apps">${appsHtml}</div>
+                    <button type="button" class="btn btn-ghost cat-lb-open" style="--j:${Math.min(c.apps.length + 2, 13)}" data-open-cat="${escapeHtml(c.name)}">Open ${escapeHtml(c.name)} &rarr;</button>
+                </div>
             </div>
-            <div class="cat-lb-apps">${appsHtml}</div>
-            <button type="button" class="btn btn-ghost cat-lb-open" data-open-cat="${escapeHtml(c.name)}">Open ${escapeHtml(c.name)} &rarr;</button>
         </div>`;
 }
 
@@ -325,10 +346,24 @@ function categoryBadges(cats, showMovement) {
     return out;
 }
 
-function toggleCategoryRow(name) {
-    if (lbOpenCats.has(name)) lbOpenCats.delete(name); else lbOpenCats.add(name);
-    renderFullLeaderboard();
-    document.querySelector(`#lb-list [data-toggle-cat="${CSS.escape(name)}"]`)?.focus();
+// In place, not a re-render, so the panel can transition open and closed.
+function toggleCategoryRow(row) {
+    const item = row.closest('.cat-lb-item');
+    const name = row.dataset.toggleCat;
+    const open = !lbOpenCats.has(name);
+    if (open) lbOpenCats.add(name); else lbOpenCats.delete(name);
+
+    item.classList.toggle('open', open);
+    row.setAttribute('aria-expanded', open);
+    item.querySelector('.cat-lb-details').inert = !open;
+    if (!open) return;
+
+    // Contents cascade in on this open only; a poll re-render shows them settled.
+    item.classList.add('just-opened');
+    setTimeout(() => item.classList.remove('just-opened'), 900);
+    // Once the panel has grown, nudge it into view if it opened below the fold.
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(() => item.scrollIntoView({ block: 'nearest', behavior: smooth ? 'smooth' : 'auto' }), 320);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -336,15 +371,18 @@ document.addEventListener('DOMContentLoaded', () => {
     list.addEventListener('click', (e) => {
         if (e.target.closest(OPENER_SELECTOR)) return;   // app / category openers inside win
         const row = e.target.closest('[data-toggle-cat]');
-        if (row) toggleCategoryRow(row.dataset.toggleCat);
+        if (row) toggleCategoryRow(row);
     });
     list.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         const row = e.target.closest('[data-toggle-cat]');
         if (!row || e.target !== row) return;
         e.preventDefault();
-        toggleCategoryRow(row.dataset.toggleCat);
+        toggleCategoryRow(row);
     });
 });
 
-Dashboard.tabs.leaderboard = { onEnter: fetchFullLeaderboard, refresh: fetchFullLeaderboard };
+Dashboard.tabs.leaderboard = {
+    onEnter: () => { lbAnimateNext = true; fetchFullLeaderboard(); },
+    refresh: fetchFullLeaderboard
+};
