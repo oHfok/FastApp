@@ -353,7 +353,7 @@
         <div class="s-list">
 
             <div class="s-pane" data-pane="general" role="tabpanel" aria-labelledby="s-tab-general">
-                <div class="s-pane-head"><h2 class="s-pane-title">General</h2><p class="s-pane-sub">How FastApp starts, how you open it, and how it looks.</p></div>
+                <div class="s-pane-head"><h2 class="s-pane-title">General</h2><p class="s-pane-sub">How FastApp starts, how you open it, and the extras it looks after.</p></div>
 
             <section class="s-sec">
                 <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"></path><path d="M6.3 7.3a8 8 0 1 0 11.4 0"></path></svg><span>Startup</span></h3>
@@ -380,6 +380,17 @@
                 <div class="s-sub">
                     <button class="field field-button" id="s-hotkey" type="button">Ctrl + Shift + Space</button>
                     <span class="field-label x-message" id="s-hotkey-message"></span>
+                </div>
+            </section>
+
+            <section class="s-sec">
+                <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg><span>Spotify</span></h3>
+                <div class="s-row">
+                    <span class="s-row-text">
+                        <span class="s-row-name">Keep Spicetify applied</span>
+                        <span class="s-row-hint">After a Spotify update, re-applies Spicetify automatically. Spotify restarts once when it does.</span>
+                    </span>
+                    <button class="toggle" id="s-spicetify" type="button" role="switch"><span></span></button>
                 </div>
             </section>
 
@@ -464,17 +475,6 @@
                     <button class="toggle" id="s-afk-bar" type="button" role="switch"><span></span></button>
                 </div>
                 <span class="s-row-hint" id="s-afk-note">Checked every 5 seconds.</span>
-            </section>
-
-            <section class="s-sec">
-                <h3 class="s-sec-title"><svg class="s-sec-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg><span>Spotify</span></h3>
-                <div class="s-row">
-                    <span class="s-row-text">
-                        <span class="s-row-name">Keep Spicetify applied</span>
-                        <span class="s-row-hint">After a Spotify update, re-applies Spicetify automatically. Spotify restarts once when it does.</span>
-                    </span>
-                    <button class="toggle" id="s-spicetify" type="button" role="switch"><span></span></button>
-                </div>
             </section>
 
             <section class="s-sec">
