@@ -1769,6 +1769,8 @@ const d = {
     payloadCard: document.getElementById('d-payload-card'),
     payload: document.getElementById('d-payload'),
     startupCard: document.getElementById('d-startup-card'),
+    spicetifyCard: document.getElementById('d-spicetify-card'),
+    spicetify: document.getElementById('d-spicetify'),
     execRow: document.getElementById('d-exec-row'),
     run: document.getElementById('d-run'),
     dashboard: document.getElementById('d-dashboard'),
@@ -1778,6 +1780,13 @@ const d = {
 
 d.run.addEventListener('click', () => {
     if (editing) send('activate-app', { id: editing.id });
+});
+
+d.spicetify.addEventListener('click', () => {
+    const next = !toggleOn(d.spicetify);
+    setToggle(d.spicetify, next);
+    if (editing) editing.keepSpicetify = next;   // so re-rendering this app doesn't flip it back
+    setting('keepSpicetify', next);
 });
 
 // This panel holds what you can change about an app; the dashboard holds what
@@ -1851,6 +1860,8 @@ function renderDetail(app) {
     // open at login and no running time to limit, so those cards go entirely
     // rather than sitting there greyed out inviting the question of why.
     d.startupCard.hidden = app.isAction;
+    d.spicetifyCard.hidden = app.keepSpicetify == null;
+    setToggle(d.spicetify, !!app.keepSpicetify);
     d.limitCard.hidden = app.isAction;
     d.execRow.hidden = app.isAction;
     d.payload.value = app.actionPayload || '';

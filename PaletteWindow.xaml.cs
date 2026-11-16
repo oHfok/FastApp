@@ -758,7 +758,12 @@ namespace FastApp
                     // live as it's typed, without parsing "2h 18m" back apart.
                     todayMinutes = (int)todaySpan.TotalMinutes,
                     running = !app.IsAction
-                              && RunningApps.IsRunning(RunningApps.WindowOwners(), app.ExecutablePath)
+                              && RunningApps.IsRunning(RunningApps.WindowOwners(), app.ExecutablePath),
+                    // Null hides the card: only the desktop Spotify, which is the one Spicetify patches.
+                    keepSpicetify = string.IsNullOrWhiteSpace(app.PackagedAppId)
+                                    && string.Equals(System.IO.Path.GetFileName(app.ExecutablePath), "Spotify.exe", StringComparison.OrdinalIgnoreCase)
+                        ? AppSettingsStore.GetBool(Services.SpicetifyGuard.SettingKey, false)
+                        : (bool?)null
                 }
             };
 
