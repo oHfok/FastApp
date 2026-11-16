@@ -1370,6 +1370,7 @@ const st = {
     rollbackEmpty: document.getElementById('s-rollback-empty'),
     titles: document.getElementById('s-titles'),
     perf: document.getElementById('s-perf'),
+    spicetify: document.getElementById('s-spicetify'),
     perfReport: document.getElementById('s-perf-report'),
     titlesNote: document.getElementById('s-titles-note'),
     pinState: document.getElementById('s-pin-state'),
@@ -1457,6 +1458,7 @@ function renderSettings(v) {
     setToggle(st.titles, v.captureWindowTitles);
     st.titlesNote.textContent = titlesNote(v.captureWindowTitles);
     setToggle(st.perf, v.performanceLogging);
+    setToggle(st.spicetify, v.keepSpicetify);
 
     // The PIN card. Only the fields are left alone here, because a settings
     // push can arrive while somebody is halfway through typing one.
@@ -1642,7 +1644,8 @@ for (const [el, key] of [
     [st.afkBar, 'showAfkBar'],
     [st.notify, 'notificationsEnabled'],
     [st.quiet, 'quietHoursEnabled'],
-    [st.perf, 'performanceLogging']
+    [st.perf, 'performanceLogging'],
+    [st.spicetify, 'keepSpicetify']
 ]) {
     el.addEventListener('click', () => {
         const next = !toggleOn(el);

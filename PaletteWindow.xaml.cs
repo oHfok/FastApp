@@ -1441,6 +1441,7 @@ namespace FastApp
                     // every flush, so there is nothing in memory to keep in step.
                     captureWindowTitles = AppSettingsStore.GetBool("CaptureWindowTitles", false),
                     performanceLogging = Services.PerfLog.Enabled,
+                    keepSpicetify = AppSettingsStore.GetBool(Services.SpicetifyGuard.SettingKey, false),
 
                     paletteHotkey = MainWindow.PaletteHotkeyDisplay,
                     paletteHotkeyIsDefault =
@@ -1520,6 +1521,9 @@ namespace FastApp
                     break;
                 case "performanceLogging":
                     Services.PerfLog.SetEnabled(value);
+                    break;
+                case "keepSpicetify":
+                    AppSettingsStore.SetBool(Services.SpicetifyGuard.SettingKey, value);
                     break;
 
                 // Not a view-model property: this one is drawn by four surfaces

@@ -150,6 +150,7 @@ namespace FastApp
             var mainWindow = new MainWindow();
             Services.PerfLog.Milestone("startup.main-window-created");
             Services.AutoBackup.Start();
+            Services.SpicetifyGuard.Start();
 
             // Hand over the recovery key, once. Asked again on the next launch if the
             // window is closed without confirming it was saved.
