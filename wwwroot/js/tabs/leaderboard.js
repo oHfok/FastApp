@@ -408,6 +408,10 @@ Dashboard.tabs.leaderboard = {
     // real arrival on the tab, which switchView marks .entering, plays the cascade.
     onEnter: () => {
         lbAnimateNext = document.getElementById('view-leaderboard').classList.contains('entering');
+        // Cascade the rows already in hand now, not after the fetch: waiting let the
+        // view's entrance show them first and the cascade replay them, so the tab
+        // looked like it loaded twice. The fetch then lands quietly after the motion.
+        if (lbAnimateNext && lbData && lbData.length) renderFullLeaderboard();
         fetchFullLeaderboard();
     },
     refresh: fetchFullLeaderboard

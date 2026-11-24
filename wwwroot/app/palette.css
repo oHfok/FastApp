@@ -126,7 +126,7 @@ body {
     width: 22px;
     height: 22px;
     flex-shrink: 0;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='3' y='3' width='94' height='94' rx='24' fill='%2307070B' stroke='%23FF7A1A' stroke-width='5'/%3E%3Cpath d='M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z' fill='%23FF7A1A'/%3E%3C/svg%3E") center / contain no-repeat;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='3' y='3' width='94' height='94' rx='24' fill='%232B2B2B' stroke='%2360CDFF' stroke-width='5'/%3E%3Cpath d='M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z' fill='%2360CDFF'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .chrome-name { font-size: var(--fs-strong); font-weight: 650; letter-spacing: -0.01em; }
 .chrome-spacer { flex-grow: 1; }
