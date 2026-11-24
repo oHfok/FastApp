@@ -26,7 +26,7 @@
             Background="{StaticResource BrandOverlayBackground}"
             BorderBrush="{StaticResource BrandOverlayBorder}"
             BorderThickness="1"
-            CornerRadius="14"
+            CornerRadius="8"
             Padding="24,20"
             Opacity="0">
         <StackPanel>
@@ -52,11 +52,7 @@
                         <ColumnDefinition x:Name="FillColumn" Width="0*"/>
                         <ColumnDefinition x:Name="RestColumn" Width="1*"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" CornerRadius="2" Background="{StaticResource BrandBrass}">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="8" ShadowDepth="0" Opacity="0.8" Color="#FF7A1A"/>
-                        </Border.Effect>
-                    </Border>
+                    <Border Grid.Column="0" CornerRadius="2" Background="{StaticResource BrandBrass}"/>
                 </Grid>
             </Grid>
 

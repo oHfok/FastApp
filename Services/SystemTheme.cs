@@ -123,7 +123,7 @@ namespace FastApp.Services
             : preference == AlwaysLight ? AlwaysLight
             : FollowSystem;
 
-        // shortcut: the app has one look (neon on black), so nothing is ever light.
+        // shortcut: the app has one look (Graphite, dark greys), so nothing is ever light.
         // The preference plumbing stays until the light palettes are deleted from
         // TrayMenuTheme, OsdWindow, AutoLaunchProgressWindow and RecoveryKeyWindow.
         private static bool Resolve() => false;

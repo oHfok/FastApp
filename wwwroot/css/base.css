@@ -3,10 +3,10 @@
    The app shell and the shared primitives (buttons, fields, segmented
    controls, pills). Design tokens live in tokens.css.
 
-   Neon on true black. Near-black cards on a #000 canvas, hairline
-   borders, Segoe UI Variable, and orange as the one accent. Anything
-   that carries meaning glows in its own colour; a selected item gets
-   a orange tint, outline and outer glow. Tokens live in tokens.css.
+   Graphite, as in device_battery: flat #2B2B2B cards on a #202020
+   canvas, hairline borders, Segoe UI Variable, and Windows blue as the
+   one accent, no glow; a selected item gets a blue tint and outline.
+   Tokens live in tokens.css.
 
    ========================================================== */
 
@@ -165,7 +165,6 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; font-family: var(--font
     background: var(--accent);
     box-shadow: var(--glow-accent);
 }
-.rail-brand .tb-mark-logo { filter: drop-shadow(0 0 6px rgba(255, 122, 26, 0.55)); }
 
 .rail-toggle { margin-top: auto; color: var(--text-faint); }
 .rail-toggle svg { transition: transform 0.18s ease; transform: var(--rail-chevron); }
@@ -257,7 +256,7 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; font-family: var(--font
 .chrono-ring-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
 .chrono-ring-wrap svg { transform: rotate(-90deg); }
 .chrono-track { fill: none; stroke: var(--surface-3); }
-.chrono-arc { fill: none; stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 0.6s var(--ease); filter: drop-shadow(0 0 3px var(--accent)); }
+.chrono-arc { fill: none; stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 0.6s var(--ease); }
 .chrono-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; }
 .chrono-mini { width: 32px; height: 32px; }
 
@@ -315,7 +314,7 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; font-family: var(--font
 }
 .glass { background: var(--card-gradient); border: 1px solid var(--border); border-radius: var(--radius); }
 
-/* The hero card and the top card: a hairline border fading orange to violet to
+/* The hero card and the top card: a hairline border in
    the plain line colour. The gradient is painted into the border box. */
 .stat-block.stat-hero, .an-body .an-summary {
     border: 1px solid transparent;

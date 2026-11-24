@@ -1,8 +1,8 @@
 /* ---------------------------------------------------------------------------
    The desktop palette. Built on the same tokens as the dashboard (tokens.css)
    -- this file only positions things; every colour, size and radius comes from
-   there, so the two surfaces share one look: neon on true black, hairline
-   borders, rounded rectangles, orange as the accent, glow where it means something.
+   there, so the two surfaces share one look: Graphite (device_battery's
+   look): Windows 11 greys, hairline borders, rounded rectangles, blue as the accent, no glow.
 
    The window is frameless; its rounded corners come from DWM on the WPF side
    rather than from this file, because the transparency WPF would need to round
@@ -100,8 +100,8 @@ body {
     to   { transform: none; }
 }
 @keyframes palette-ignite {
-    from { border-color: var(--select-ring); box-shadow: inset 0 0 36px rgba(255, 122, 26, 0.16); }
-    to   { border-color: var(--border); box-shadow: inset 0 0 0 rgba(255, 122, 26, 0); }
+    from { border-color: var(--select-ring); box-shadow: inset 0 0 36px rgba(96, 205, 255, 0.16); }
+    to   { border-color: var(--border); box-shadow: inset 0 0 0 rgba(96, 205, 255, 0); }
 }
 /* Rows are rebuilt by every render (hover, the focus reset, a state push), and
    a fresh row under .opening would start its entrance over. Each delay is
@@ -128,7 +128,6 @@ body {
     flex-shrink: 0;
     background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='3' y='3' width='94' height='94' rx='24' fill='%2307070B' stroke='%23FF7A1A' stroke-width='5'/%3E%3Cpath d='M 30 20 L 74 20 L 74 32 L 42 32 L 42 44 L 62 44 L 62 56 L 42 56 L 42 74 L 34 82 L 30 82 Z' fill='%23FF7A1A'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.chrome-dot { filter: drop-shadow(0 0 5px rgba(255, 122, 26, 0.55)); }
 .chrome-name { font-size: var(--fs-strong); font-weight: 650; letter-spacing: -0.01em; }
 .chrome-spacer { flex-grow: 1; }
 .chrome-sep { width: 1px; height: 16px; background: var(--border); }

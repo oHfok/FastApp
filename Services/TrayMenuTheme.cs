@@ -33,29 +33,29 @@ namespace FastApp.Services
         // --surface, the menu surface
         private static Color Surface => Light
             ? Color.FromArgb(0xFF, 0xFF, 0xFF)
-            : Color.FromArgb(0x07, 0x07, 0x0B);
-        // Dim orange on dark: the neon edge of the menu
+            : Color.FromArgb(0x2B, 0x2B, 0x2B);
+        // The window edge on dark, as device_battery's menu
         private static Color Border => Light
             ? Color.FromArgb(0xE4, 0xE7, 0xEC)
-            : Color.FromArgb(0x3A, 0x1C, 0x08);
+            : Color.FromArgb(0x45, 0x45, 0x45);
         // A shade softer than --border, for the dividers
         private static Color Divider => Light
             ? Color.FromArgb(0xEE, 0xF0, 0xF3)
-            : Color.FromArgb(0x1A, 0x1A, 0x22);
+            : Color.FromArgb(0x3D, 0x3D, 0x3D);
         // --text and --text-faint
         private static Color Text => Light
             ? Color.FromArgb(0x10, 0x18, 0x28)
-            : Color.FromArgb(0xF4, 0xF6, 0xFF);
+            : Color.FromArgb(0xFF, 0xFF, 0xFF);
         private static Color TextFaint => Light
             ? Color.FromArgb(0x66, 0x70, 0x85)
-            : Color.FromArgb(0x8C, 0x90, 0xA6);
+            : Color.FromArgb(0xAB, 0xAB, 0xAB);
         // --accent, and --wash-accent over the surface: focus, and only focus
         private static Color Accent => Light
-            ? Color.FromArgb(0x3D, 0x5A, 0xFE)
-            : Color.FromArgb(0xFF, 0x7A, 0x1A);
+            ? Color.FromArgb(0x00, 0x78, 0xD4)
+            : Color.FromArgb(0x60, 0xCD, 0xFF);
         private static Color AccentWash => Light
-            ? Color.FromArgb(0xEC, 0xEF, 0xFF)
-            : Color.FromArgb(0x1A, 0x0C, 0x03);
+            ? Color.FromArgb(0xE5, 0xF1, 0xFB)
+            : Color.FromArgb(0x31, 0x3E, 0x44);
 
         private const int DwmwaWindowCornerPreference = 33;
         private const int DwmwcpRound = 2;
@@ -265,7 +265,7 @@ namespace FastApp.Services
                 using (var ring = new Pen(Color.FromArgb(Accent.R * 55 / 100, Accent.G * 55 / 100, Accent.B * 55 / 100)))
                 {
                     e.Graphics.FillPath(brush, path);
-                    // The hovered row gets a orange rounded outline (~50% over the surface).
+                    // The hovered row gets a blue rounded outline (~50% over the surface).
                     e.Graphics.DrawPath(ring, path);
                 }
                 e.Graphics.SmoothingMode = previous;

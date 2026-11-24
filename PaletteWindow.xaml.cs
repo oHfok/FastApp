@@ -360,7 +360,7 @@ namespace FastApp
         /// </summary>
         private void ApplyWindowTheme()
         {
-            var ground = System.Windows.Media.Color.FromRgb(0x00, 0x00, 0x00);  // --bg: true black, OLED pixels off
+            var ground = System.Windows.Media.Color.FromRgb(0x20, 0x20, 0x20);  // --bg: Graphite canvas
 
             Background = new System.Windows.Media.SolidColorBrush(ground);
 

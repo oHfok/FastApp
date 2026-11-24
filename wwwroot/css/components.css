@@ -104,12 +104,12 @@
 /* 2 * pi * 104 = 653.5. Both arcs start at 12 o'clock and are driven by
    stroke-dashoffset from the render code; AFK sits under focus so the two read
    as one continuous ring. */
-.hero-dial-afk   { stroke: var(--afk);   filter: drop-shadow(0 0 5px var(--afk)); stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; opacity: 0.55; transition: stroke-dashoffset 0.45s var(--ease); }
-.hero-dial-focus { stroke: var(--focus); filter: drop-shadow(0 0 7px var(--focus)); stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s var(--ease); }
+.hero-dial-afk   { stroke: var(--afk);   stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; opacity: 0.55; transition: stroke-dashoffset 0.45s var(--ease); }
+.hero-dial-focus { stroke: var(--focus); stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s var(--ease); }
 /* Music is a thin overlay on the same track, not a slice of it. It uses its own
    colour (--music-arc) because the usual music violet vanished against the blue
    focus arc and the rose AFK arc it is drawn over. */
-.hero-dial-svg .hero-dial-music { stroke: var(--music-arc); filter: drop-shadow(0 0 5px var(--music-arc)); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s var(--ease), opacity 0.2s ease; }
+.hero-dial-svg .hero-dial-music { stroke: var(--music-arc); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 653.5; stroke-dashoffset: 653.5; transition: stroke-dashoffset 0.45s var(--ease), opacity 0.2s ease; }
 
 .hero-dial-face {
     position: absolute;
@@ -262,7 +262,7 @@
 .cat-lb-item:last-child { border-bottom: none; }
 .cat-lb-item > .full-lb-row { border-bottom: none; }
 .cat-lb-item.open > .full-lb-row { background: var(--surface-2); }
-/* An open category gets a glowing accent edge that draws down its full height. */
+/* An open category gets an accent edge that draws down its full height. */
 .cat-lb-item::before {
     content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; z-index: 1;
     background: var(--accent); box-shadow: var(--glow-accent);
@@ -326,10 +326,6 @@
 .lb-anim .medal { animation: medal-pop 0.4s var(--ease) both; animation-delay: calc(var(--i, 0) * 28ms + 120ms); }
 @keyframes medal-pop { from { transform: scale(0.4); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } to { transform: none; } }
 
-/* The top three glow in their own metal, like everything else that means something. */
-.medal-gold   { box-shadow: 0 0 12px rgba(251, 191, 36, 0.45); }
-.medal-silver { box-shadow: 0 0 10px rgba(203, 213, 225, 0.3); }
-.medal-bronze { box-shadow: 0 0 10px rgba(240, 163, 106, 0.35); }
 .cat-lb-stats { display: flex; flex-wrap: wrap; gap: 10px 28px; padding: 10px 0 14px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
 .cat-lb-stat-label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 600; }
 .cat-lb-stat-value { font-size: var(--fs-strong); font-weight: 650; margin-top: 3px; }
@@ -410,7 +406,7 @@
 .insight-dial-ring svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
 .insight-dial-ring circle { fill: none; stroke-width: 9; }
 .insight-dial-track { stroke: var(--surface-3); }
-.insight-dial-arc { stroke: var(--focus); filter: drop-shadow(0 0 5px var(--focus)); stroke-linecap: round; stroke-dasharray: 263.9; stroke-dashoffset: 263.9; transition: stroke-dashoffset 0.45s var(--ease); }
+.insight-dial-arc { stroke: var(--focus); stroke-linecap: round; stroke-dasharray: 263.9; stroke-dashoffset: 263.9; transition: stroke-dashoffset 0.45s var(--ease); }
 .insight-dial-value { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--fs-strong); font-weight: 700; color: var(--text); }
 .insight-dial-text { display: flex; flex-direction: column; gap: 4px; }
 .insight-dial-text .card-label { color: var(--text); font-weight: 600; font-size: var(--fs-body); }
@@ -594,9 +590,9 @@
 .pd-dial-svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
 .pd-dial-svg circle { fill: none; stroke-width: 13; }
 .pd-dial-track { stroke: var(--surface-3); }
-.pd-dial-afk   { stroke: var(--afk);   filter: drop-shadow(0 0 5px var(--afk)); opacity: 0.55; stroke-linecap: round; transition: stroke-dashoffset 0.45s var(--ease), opacity 0.2s ease; }
-.pd-dial-focus { stroke: var(--focus); filter: drop-shadow(0 0 7px var(--focus)); stroke-linecap: round; transition: stroke-dashoffset 0.45s var(--ease), opacity 0.2s ease; }
-.pd-dial-svg .pd-dial-music { stroke: var(--music-arc); filter: drop-shadow(0 0 5px var(--music-arc)); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 0.45s var(--ease), opacity 0.2s ease; }
+.pd-dial-afk   { stroke: var(--afk);   opacity: 0.55; stroke-linecap: round; transition: stroke-dashoffset 0.45s var(--ease), opacity 0.2s ease; }
+.pd-dial-focus { stroke: var(--focus); stroke-linecap: round; transition: stroke-dashoffset 0.45s var(--ease), opacity 0.2s ease; }
+.pd-dial-svg .pd-dial-music { stroke: var(--music-arc); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 0.45s var(--ease), opacity 0.2s ease; }
 .pd-dial-face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; padding: 0 20px; }
 .pd-dial-face .stat-value { font-size: 30px; font-weight: 700; line-height: 1.05; white-space: nowrap; }
 .pd-hero-side { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }
@@ -943,7 +939,7 @@
 
 .an-hours { display: flex; align-items: flex-end; gap: 3px; height: 110px; }
 .an-hour { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
-.an-hour-bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 0; box-shadow: 0 0 8px rgba(255, 122, 26, 0.45); }
+.an-hour-bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 0; }
 .an-hour-label { position: absolute; bottom: -18px; left: 0; right: 0; text-align: center; font-size: var(--fs-micro); color: var(--text-faint); }
 .an-hours + * { margin-top: 20px; }
 

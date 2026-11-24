@@ -6,12 +6,11 @@
    menu, the OSD, the progress window, the AFK bar) transcribe these values in
    C#; keep them in step.
 
-   One look everywhere: neon on true black, built for OLED screens. Windows are
-   #000 so the pixels stay off; cards are near-black with a faint top-to-bottom
-   gradient; colour is neon and carries meaning -- orange is focus and selection,
-   green is healthy, amber is a warning, hot pink is AFK or critical, violet is
-   music and the second accent. Anything that carries meaning also glows, in its
-   own colour. There is no light theme.
+   One look everywhere, "Graphite", shared with device_battery: Windows 11's
+   dark greys with its blue, no glow. The canvas is #202020, cards are a flat
+   #2B2B2B with a hairline and a small shadow; colour carries meaning -- blue is
+   focus and selection, green is healthy, amber is a warning, pink is AFK or
+   critical, lavender is music and the second accent. There is no light theme.
 
    Anything that belongs to the design rather than to one surface goes in this
    file. Anything that styles a particular component does not.
@@ -21,67 +20,65 @@
     color-scheme: dark;
 
     /* --- Surfaces ---------------------------------------------------- */
-    --bg: #000000;              /* the canvas: pure black, OLED pixels off */
-    --surface: #07070B;         /* cards, drawers, popovers (top of the gradient) */
-    --surface-end: #0C0C12;     /* ...and the bottom of it */
-    --surface-2: #14141D;       /* raised: hovered rows, inputs, tracks */
-    --surface-3: #1D1D28;       /* pressed, and empty bars and rings */
+    --bg: #202020;              /* the canvas */
+    --surface: #2B2B2B;         /* cards, drawers, popovers */
+    --surface-end: #2B2B2B;     /* flat: the gradient's other end */
+    --surface-2: #333333;       /* raised: hovered rows, inputs, tracks */
+    --surface-3: #3D3D3D;       /* pressed, and empty bars and rings */
     --border: rgba(255, 255, 255, 0.07);
-    --border-strong: rgba(255, 255, 255, 0.16);
+    --border-strong: rgba(255, 255, 255, 0.14);
     --card-gradient: linear-gradient(180deg, var(--surface) 0%, var(--surface-end) 100%);
 
     /* --- Text -------------------------------------------------------- */
-    --text: #F4F6FF;
-    --text-dim: #A9ADC2;
-    --text-faint: #8C90A6;
+    --text: #FFFFFF;
+    --text-dim: #ABABAB;
+    --text-faint: #9A9A9A;
 
-    /* --- Accent: orange --------------------------------------------------
+    /* --- Accent: blue --------------------------------------------------
        --accent is the one you READ (links, values, selection, focus);
        --accent-fill is the one you SIT ON (primary buttons), under the dark
-       ink in --ink-on-fill. --neon-2 is the second accent: violet, used in
-       gradient borders. */
-    --accent: #FF7A1A;
-    --accent-fill: #FF7A1A;
-    --accent-hover: #FFA057;
-    --ink-on-fill: #1A0A00;
-    --neon-2: #B36BFF;
-    --wash-accent: rgba(255, 122, 26, 0.09);
-    --wash-accent-strong: rgba(255, 122, 26, 0.16);
+       ink in --ink-on-fill. --neon-2 is the second accent: lavender. */
+    --accent: #60CDFF;
+    --accent-fill: #60CDFF;
+    --accent-hover: #8AD8FF;
+    --ink-on-fill: #000000;
+    --neon-2: #B4A0FF;
+    --wash-accent: rgba(96, 205, 255, 0.12);
+    --wash-accent-strong: rgba(96, 205, 255, 0.16);
 
     /* --- Data colours ------------------------------------------------- */
     --focus: var(--accent);
-    --afk: #FF3D71;
+    --afk: #FF99A4;
     --bad: var(--afk);
-    --music: #B36BFF;
-    /* Music on the dial uses its own violet, which stays clear of the orange
+    --music: #B4A0FF;
+    /* Music on the dial uses its own lavender, which stays clear of the blue
        focus arc and the pink AFK arc it is drawn over. */
     --music-arc: var(--music);
-    --good: #2BFF95;
-    --warn: #FFD43B;
-    --wash-afk: rgba(255, 61, 113, 0.09);
-    --wash-music: rgba(179, 107, 255, 0.10);
-    --wash-good: rgba(43, 255, 149, 0.08);
-    --wash-warn: rgba(255, 212, 59, 0.09);
+    --good: #6CCB5F;
+    --warn: #F4C04F;
+    --wash-afk: rgba(255, 153, 164, 0.09);
+    --wash-music: rgba(180, 160, 255, 0.10);
+    --wash-good: rgba(108, 203, 95, 0.08);
+    --wash-warn: rgba(244, 192, 79, 0.09);
 
     /* --- Glow ----------------------------------------------------------
-       box-shadows in the element's own colour: bars, dots, ring arcs. Large
-       numbers take a soft text-shadow instead. */
-    --glow-accent: 0 0 10px rgba(255, 122, 26, 0.55);
-    --glow-good: 0 0 10px rgba(43, 255, 149, 0.50);
-    --glow-afk: 0 0 10px rgba(255, 61, 113, 0.55);
-    --glow-music: 0 0 10px rgba(179, 107, 255, 0.55);
-    --glow-warn: 0 0 10px rgba(255, 212, 59, 0.50);
-    --glow-text: 0 0 18px rgba(255, 122, 26, 0.35);
-    /* Neon selection: orange tint, orange outline, soft outer glow. */
-    --select-bg: rgba(255, 122, 26, 0.10);
-    --select-ring: rgba(255, 122, 26, 0.50);
-    --select-glow: 0 0 14px rgba(255, 122, 26, 0.22);
-    /* The hairline on the hero and top cards: orange fading to violet, then to
-       the plain line colour. */
-    --hairline-gradient: linear-gradient(135deg, rgba(255, 122, 26, 0.7), rgba(179, 107, 255, 0.5) 45%, rgba(255, 255, 255, 0.07) 80%);
+       Graphite has none. The names stay because components still list them;
+       an invisible shadow is valid inside a shadow list, where `none` is not. */
+    --glow-accent: 0 0 0 transparent;
+    --glow-good: 0 0 0 transparent;
+    --glow-afk: 0 0 0 transparent;
+    --glow-music: 0 0 0 transparent;
+    --glow-warn: 0 0 0 transparent;
+    --glow-text: 0 0 0 transparent;
+    /* Selection: blue tint and blue outline. */
+    --select-bg: rgba(96, 205, 255, 0.12);
+    --select-ring: rgba(96, 205, 255, 0.40);
+    --select-glow: 0 0 0 transparent;
+    /* The hairline on the hero and top cards: the plain line colour. */
+    --hairline-gradient: linear-gradient(var(--border), var(--border));
 
     /* --- Elevation ---------------------------------------------------- */
-    --shadow-sm: none;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.25);
     --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.8);
     --shadow-lg: 0 28px 64px -12px rgba(0, 0, 0, 0.9);
     --scrim: rgba(0, 0, 0, 0.72);
@@ -91,9 +88,9 @@
 
     /* --- Charts (read at render time by getChartTheme in utils.js) ---- */
     --chart-grid: rgba(255, 255, 255, 0.07);
-    --chart-tooltip-bg: rgba(12, 12, 18, 0.97);
-    --chart-tooltip-title: #FF7A1A;
-    --chart-tooltip-text: #F4F6FF;
+    --chart-tooltip-bg: rgba(43, 43, 43, 0.97);
+    --chart-tooltip-title: #60CDFF;
+    --chart-tooltip-text: #FFFFFF;
 
     /* --- Type ----------------------------------------------------------
        Segoe UI Variable on Windows (the Display cut for big numbers, the Text
@@ -114,8 +111,8 @@
     --fs-hero: 48px;      /* the hero figure */
 
     /* --- Shape ------------------------------------------------------- */
-    --radius: 14px;       /* cards */
-    --radius-sm: 10px;    /* controls, rows, chips, inner surfaces */
+    --radius: 8px;        /* cards */
+    --radius-sm: 6px;     /* controls, rows, chips, inner surfaces */
     --radius-bar: 4px;    /* thin bars */
     --radius-pill: 999px;
 

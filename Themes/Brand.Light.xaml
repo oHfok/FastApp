@@ -12,9 +12,9 @@
     -->
 
     <!-- The accent as text/marker on a light surface. -->
-    <Color x:Key="BrandBrassColor">#3D5AFE</Color>
+    <Color x:Key="BrandBrassColor">#0078D4</Color>
     <SolidColorBrush x:Key="BrandBrass" Color="{StaticResource BrandBrassColor}"/>
-    <SolidColorBrush x:Key="BrandBrassDim" Color="#7F97FF"/>
+    <SolidColorBrush x:Key="BrandBrassDim" Color="#66AEE5"/>
 
     <SolidColorBrush x:Key="BrandAction" Color="#8B3FD9"/>
 

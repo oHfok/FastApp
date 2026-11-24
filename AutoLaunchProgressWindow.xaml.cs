@@ -204,17 +204,17 @@ namespace FastApp
         private static Brush Teal => Light ? LightTeal : DarkTeal;
         private static Brush Rose => Light ? LightRose : DarkRose;
 
-        private static readonly Brush DarkText = Frozen("#F4F6FF");
-        private static readonly Brush DarkDim = Frozen("#A9ADC2");
-        private static readonly Brush DarkFaint = Frozen("#8C90A6");
-        private static readonly Brush DarkAccent = Frozen("#FF7A1A");
-        private static readonly Brush DarkTeal = Frozen("#2BFF95");
-        private static readonly Brush DarkRose = Frozen("#FF3D71");
+        private static readonly Brush DarkText = Frozen("#FFFFFF");
+        private static readonly Brush DarkDim = Frozen("#ABABAB");
+        private static readonly Brush DarkFaint = Frozen("#9A9A9A");
+        private static readonly Brush DarkAccent = Frozen("#60CDFF");
+        private static readonly Brush DarkTeal = Frozen("#6CCB5F");
+        private static readonly Brush DarkRose = Frozen("#FF99A4");
 
         private static readonly Brush LightText = Frozen("#101828");
         private static readonly Brush LightDim = Frozen("#475467");
         private static readonly Brush LightFaint = Frozen("#667085");
-        private static readonly Brush LightAccent = Frozen("#3D5AFE");
+        private static readonly Brush LightAccent = Frozen("#0078D4");
         private static readonly Brush LightTeal = Frozen("#0A7F72");
         private static readonly Brush LightRose = Frozen("#D92D3A");
 

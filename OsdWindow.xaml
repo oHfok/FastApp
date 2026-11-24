@@ -20,7 +20,7 @@
             Background="{StaticResource BrandOverlayBackground}"
             BorderBrush="{StaticResource BrandOverlayBorder}"
             BorderThickness="1"
-            CornerRadius="14"
+            CornerRadius="8"
             Padding="22,15"
             Opacity="0">
         <Border.RenderTransform>
@@ -38,9 +38,6 @@
                            FontSize="13" FontWeight="Bold"
                            Foreground="{StaticResource BrandBrass}"
                            VerticalAlignment="Center" Margin="0,0,11,0">
-                    <TextBlock.Effect>
-                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Opacity="0.8" Color="#FF7A1A"/>
-                    </TextBlock.Effect>
                 </TextBlock>
 
                 <TextBlock x:Name="OsdText" Text="Valorant"

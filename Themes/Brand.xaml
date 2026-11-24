@@ -1,69 +1,66 @@
 ﻿<!--
-    FastApp brand palette: neon on true black.
+    FastApp brand palette: "Graphite", the look device_battery uses:
+    Windows 11's dark greys with its blue, no glow.
 
     The same values as wwwroot/css/tokens.css, so every surface of the product
     reads as one thing. Key names such as BrandBrass are legacy: the accent has
-    been brass, then blue, and is now neon orange, but renaming the keys would
+    been brass, orange, and is now Windows blue, but renaming the keys would
     touch every window for no visible change.
-
-    There is no light variant. The overlays are #000-adjacent near-blacks so
-    OLED pixels stay off, and anything that carries meaning glows in its own
-    colour (the windows add that with DropShadowEffect).
 
     Accent brushes (buttons with Appearance="Primary", etc.) are not set here.
     They come from WPF-UI's own accent system, which is driven in App.xaml.cs
-    via ApplicationAccentColorManager from the one orange value.
+    via ApplicationAccentColorManager from the one blue value.
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Accent: neon orange, for selection, focus, links and charging. -->
-    <Color x:Key="BrandBrassColor">#FF7A1A</Color>
+    <!-- Accent: Windows blue, for selection, focus, links and charging. -->
+    <Color x:Key="BrandBrassColor">#60CDFF</Color>
     <SolidColorBrush x:Key="BrandBrass" Color="{StaticResource BrandBrassColor}"/>
-    <SolidColorBrush x:Key="BrandBrassDim" Color="#7A3A0A"/>
+    <SolidColorBrush x:Key="BrandBrassDim" Color="#2E6A85"/>
 
-    <!-- Second accent (violet): the "action" apps that fire a macro, and the
+    <!-- Second accent (lavender): the "action" apps that fire a macro, and the
          music colour. -->
-    <SolidColorBrush x:Key="BrandAction" Color="#B36BFF"/>
+    <SolidColorBrush x:Key="BrandAction" Color="#B4A0FF"/>
 
     <!-- Text ramp, matching the dashboard's text, text-dim and text-faint tokens. -->
-    <SolidColorBrush x:Key="BrandText" Color="#F4F6FF"/>
-    <SolidColorBrush x:Key="BrandTextDim" Color="#A9ADC2"/>
-    <SolidColorBrush x:Key="BrandTextFaint" Color="#8C90A6"/>
+    <SolidColorBrush x:Key="BrandText" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BrandTextDim" Color="#ABABAB"/>
+    <SolidColorBrush x:Key="BrandTextFaint" Color="#9A9A9A"/>
 
     <!-- Floating popups (the hotkey OSD, the auto-launch progress window): the
-         dashboard's card, a near-black gradient from top to bottom at 95%
+         dashboard's card, flat #2B2B2B at 95%
          opacity so they read against anything, with a hairline border. -->
     <LinearGradientBrush x:Key="BrandOverlayBackground" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#F207070B" Offset="0"/>
-        <GradientStop Color="#F20C0C12" Offset="1"/>
+        <GradientStop Color="#F22B2B2B" Offset="0"/>
+        <GradientStop Color="#F22B2B2B" Offset="1"/>
     </LinearGradientBrush>
     <SolidColorBrush x:Key="BrandOverlayBorder" Color="#26FFFFFF"/>
-    <SolidColorBrush x:Key="BrandOverlayTrack" Color="#1D1D28"/>
+    <SolidColorBrush x:Key="BrandOverlayTrack" Color="#3D3D3D"/>
 
-    <!-- Outcome colours: neon green for something that is up and running, hot
-         pink-red for something that failed or is critical. -->
-    <SolidColorBrush x:Key="BrandTeal" Color="#2BFF95"/>
-    <SolidColorBrush x:Key="BrandRose" Color="#FF3D71"/>
+    <!-- Outcome colours: green for something that is up and running, pink
+         for something that failed or is critical. -->
+    <SolidColorBrush x:Key="BrandTeal" Color="#6CCB5F"/>
+    <SolidColorBrush x:Key="BrandRose" Color="#FF99A4"/>
 
     <!-- Subtle raised chip inside a card (the hotkey pill). -->
-    <SolidColorBrush x:Key="BrandChipBackground" Color="#14141D"/>
+    <SolidColorBrush x:Key="BrandChipBackground" Color="#333333"/>
 
     <!--
-        Ink for anything sitting ON an accent fill: near-black on the orange, as
+        Ink for anything sitting ON an accent fill: black on the blue, as
         .btn-brass does on the dashboard.
 
         Overriding the library's keys rather than restyling each button, so
         every accent surface (buttons, selection highlights, toggles) gets
         the right ink without the control templates being touched.
     -->
-    <Color x:Key="TextOnAccentFillColorPrimary">#1A0A00</Color>
-    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#1A0A00"/>
-    <Color x:Key="TextOnAccentFillColorSecondary">#B31A0A00</Color>
-    <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#B31A0A00"/>
-    <Color x:Key="TextOnAccentFillColorSelectedText">#1A0A00</Color>
-    <SolidColorBrush x:Key="TextOnAccentFillColorSelectedTextBrush" Color="#1A0A00"/>
-    <Color x:Key="TextOnAccentFillColorDisabled">#661A0A00</Color>
-    <SolidColorBrush x:Key="TextOnAccentFillColorDisabledBrush" Color="#661A0A00"/>
+    <Color x:Key="TextOnAccentFillColorPrimary">#000000</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#000000"/>
+    <Color x:Key="TextOnAccentFillColorSecondary">#B3000000</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#B3000000"/>
+    <Color x:Key="TextOnAccentFillColorSelectedText">#000000</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorSelectedTextBrush" Color="#000000"/>
+    <Color x:Key="TextOnAccentFillColorDisabled">#66000000</Color>
+    <SolidColorBrush x:Key="TextOnAccentFillColorDisabledBrush" Color="#66000000"/>
 
 </ResourceDictionary>

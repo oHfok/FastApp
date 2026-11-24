@@ -22,7 +22,7 @@ public class MainActivity : Activity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
-        var background = Color.ParseColor("#000000");
+        var background = Color.ParseColor("#202020");
 #pragma warning disable CA1422 // bar colours: still honoured at targetSdk 34 (see AndroidManifest.xml)
         Window!.SetStatusBarColor(background);
         Window.SetNavigationBarColor(background);
